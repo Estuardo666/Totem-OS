@@ -1,0 +1,40 @@
+import { z } from "zod";
+
+export const userSchema = z.object({
+  id: z.string().cuid().optional(),
+  name: z.string().min(1, "El nombre es requerido"),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  email: z.string().email("Email inválido"),
+  password: z.string().optional(),
+  role: z.enum(["ADMIN", "EDITOR"]),
+  specialty: z.enum(["EDITOR", "COMMUNITY"]).optional().nullable(),
+  baseSalary: z.number().min(0, "El salario base debe ser mayor o igual a 0"),
+});
+
+export const createUserSchema = userSchema.omit({ id: true });
+export const updateUserSchema = userSchema.partial();
+
+// Schema para registro de usuarios
+export const registerSchema = z.object({
+  firstName: z.string().min(1, "El nombre es requerido"),
+  lastName: z.string().min(1, "El apellido es requerido"),
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+});
+
+// Schema para configuración de usuario
+export const userSettingsSchema = z.object({
+  soundNotifications: z.boolean().optional(),
+  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "El color debe ser un hex válido (ej: #2563eb)").optional(),
+  darkMode: z.boolean().optional(),
+});
+
+export type User = z.infer<typeof userSchema>;
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
+export type UserSettings = z.infer<typeof userSettingsSchema>;
+
+
+

@@ -1,0 +1,561 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// USUARIOS Y EQUIPO (compatible con Auth.js)
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  firstName     String?
+  lastName      String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String? // Opcional: solo para usuarios con credenciales (no Google)
+  role          String    @default("EDITOR") // "ADMIN", "EDITOR", "VIEWER"
+  specialty     String? // "EDITOR", "COMMUNITY" - Especialidad del usuario (para asignación de clientes)
+  salaryType    String    @default("MONTHLY") // "HOURLY", "MONTHLY", "PROFIT_SHARE" (default MONTHLY, admins suelen usar PROFIT_SHARE)
+  baseSalary    Float? // Sueldo mensual fijo (opcional)
+  profitSharePercent Float? // Porcentaje de participación en ganancias (opcional, para socios, ej: 50.0)
+  bankAccountInfo String? // Información de cuenta bancaria para transferencias
+  hourlyRate    Float     @default(0.0) // Tarifa por hora en USD
+  currency      String    @default("USD")
+  
+  // Configuración de usuario
+  soundNotifications Boolean @default(true)
+  primaryColor       String  @default("#2563eb")
+  darkMode           Boolean @default(false)
+
+  // Relaciones de Auth.js
+  accounts Account[]
+  sessions Session[]
+
+  // Relaciones de la aplicación
+  tasks            ContentTask[]     @relation("AssignedUser")
+  expensesPaid     Expense[]          @relation("PaidByUser")
+  transactions     Transaction[]      @relation("TransactionUser") // Gastos asignados para reembolso
+  transactionsReceived Transaction[]  @relation("TransactionRecipient") // Honorarios/salarios recibidos
+  payrolls          Payroll[]
+  shoots           Shoot[]           @relation("ShootCrew")
+  internalTransfers InternalTransfer[] @relation("InternalTransferUser")
+  clientsAsEditor   Client[]          @relation("ClientEditor") // Clientes donde es editor responsable
+  clientsAsCommunity Client[]         @relation("ClientCommunity") // Clientes donde es community manager
+  notifications     Notification[]     // Notificaciones recibidas
+  voiceNotes        VoiceNote[]        // Notas de voz personales
+  timeEntries       TimeEntry[]        // Registros de tiempo trabajado
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
+// Modelos de Auth.js
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// CLIENTES (COMMAND CENTER)
+model Client {
+  id     String @id @default(cuid())
+  name   String
+  status String @default("ACTIVE") // ACTIVE, PAUSED, DEBT
+  color  String @default("#000000") // Color de marca del cliente
+
+  // JSON Blobs para flexibilidad (almacenados como String en SQLite)
+  brandKit   String? // { colors: [], fonts: [], driveLink: "" }
+  vault      String? // { instagram: { user, pass }, ... } (encrypted)
+  planConfig String? // { quota: { reels: 3, flyers: 1 } }
+  brandDNA   String? // { businessDescription, toneOfVoice, audience, values }
+
+  // Contrato mensual de entregables
+  monthlyReels  Int   @default(0) // Cantidad de Reels contratados al mes
+  monthlyFlyers Int   @default(0) // Cantidad de Flyers contratados al mes
+  monthlyRate   Float @default(0) // Tarifa mensual del plan (para cobro automático)
+
+  // Asignación por Cliente
+  editorId    String? // Editor responsable de la cuenta
+  editor      User?   @relation("ClientEditor", fields: [editorId], references: [id], onDelete: SetNull)
+  communityId String? // Community Manager responsable de la publicación
+  community   User?   @relation("ClientCommunity", fields: [communityId], references: [id], onDelete: SetNull)
+
+  lastPostDate     DateTime?
+  shareToken       String? @unique // Token para enlaces compartidos de reportes
+  reportLastViewed DateTime? // Última vez que el cliente vio el reporte compartido
+  
+  // IA Performance Overview
+  lastAiOverview     String? // Último análisis de performance generado por IA (almacenado como texto)
+  lastAiOverviewDate DateTime? // Fecha de la última generación
+  
+  // Meta Graph API Integration
+  facebookPageId      String? // ID de la Fanpage vinculada
+  instagramBusinessId String? // ID de la cuenta de Instagram vinculada
+  pageAccessToken     String? // Token específico de la página (necesario para leer insights sin que caduque la sesión del usuario)
+  adAccountId         String? // ID de la cuenta publicitaria de Meta (para IA Ads Advisor y optimizaciones)
+
+  tasks        ContentTask[]
+  expenses     Expense[]
+  invoices     Invoice[]
+  transactions Transaction[]
+  credentials  Credential[]
+  brandAssets  BrandAsset[]
+  feedbacks    ClientFeedback[]
+  shootings    Shoot[]
+  metrics      ClientMetric[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([name])
+  @@index([editorId])
+  @@index([communityId])
+}
+
+// BÓVEDA DE CREDENCIALES
+model Credential {
+  id       String  @id @default(cuid())
+  service  String // "Instagram", "Web", "Email", etc.
+  username String
+  password String
+  url      String?
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([service])
+}
+
+// PRODUCCIÓN (CONTENT FACTORY)
+model ContentTask {
+  id          String    @id @default(cuid())
+  title       String
+  type        String // REEL, FLYER, STORY
+  status      String // IDEA, RECORDED, EDITING, REVIEW_INTERNAL, REVIEW_CLIENT, CLIENT_APPROVED, APPROVED, PUBLISHED
+  priority    String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  dueDate     DateTime?
+  scheduledAt DateTime? // Fecha y hora programada para publicación
+  publishedAt DateTime?
+
+  // Link Mágico
+  reviewToken    String? @unique
+  clientFeedback String?
+
+  // Recursos Creativos
+  postCopy       String? // Texto del post/copy
+  coverImageUrl  String? // URL de la imagen de portada subida
+  audioBriefUrl  String? // URL de la nota de voz (Totem Voice)
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedUser", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedAt   DateTime? // Fecha en que se asignó la tarea (para badge "Nuevo")
+
+  shootId String?
+  shoot   Shoot?  @relation(fields: [shootId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relación con métricas
+  metrics TaskMetrics?
+
+  @@index([clientId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([type])
+  @@index([priority])
+}
+
+model Shoot {
+  id            String        @id @default(cuid())
+  title         String
+  startTime     DateTime // Fecha y hora de inicio
+  endTime       DateTime // Fecha y hora de finalización
+  address       String? // Dirección escrita
+  mapLink       String? // Link de Google Maps
+  scriptUrl     String? // Archivo del guión (PDF/Word)
+  audioBriefUrl String? // Nota de voz
+  notes         String? // Notas adicionales del rodaje
+  status        String        @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELED
+  
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  tasks         ContentTask[] // Relación One-to-Many (una tarea puede estar en un rodaje)
+  crew          User[]        @relation("ShootCrew") // Relación Many-to-Many
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  @@index([clientId])
+  @@index([startTime])
+  @@index([endTime])
+  @@index([status])
+}
+
+// FINANZAS (TOTEM POCKET)
+model Expense {
+  id          String   @id @default(cuid())
+  description String
+  amount      Float
+  category    String // SOFTWARE, EQUIPMENT, OFFICE, PAYROLL
+  date        DateTime @default(now())
+  receiptUrl  String?
+
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  // Control de Reembolsos
+  paidByUserId String? // Si existe, es deuda de la empresa al usuario
+  paidByUser   User?   @relation("PaidByUser", fields: [paidByUserId], references: [id], onDelete: SetNull)
+  reimbursed   Boolean @default(false)
+
+  payrollId String?
+  payroll   Payroll? @relation(fields: [payrollId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([paidByUserId])
+  @@index([payrollId])
+  @@index([reimbursed])
+  @@index([date])
+}
+
+model Payroll {
+  id    String @id @default(cuid())
+  month Int
+  year  Int
+
+  // Calculadora Salarial
+  baseSalary     Float
+  reimbursements Float // Suma de expenses
+  advances       Float
+  previousDebt   Float
+  totalToPay     Float
+
+  status     String // PENDING, PAID
+  amountPaid Float  @default(0)
+
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses Expense[] // Gastos saldados en este rol
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, month, year])
+  @@index([userId])
+  @@index([status])
+  @@index([year, month])
+}
+
+model Invoice {
+  id          String    @id @default(cuid())
+  amount      Float
+  status      String // PENDING, SENT, PAID
+  clientId    String
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  dueDate     DateTime?
+  generatedAt DateTime  @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+  @@index([generatedAt])
+}
+
+// TRANSACCIONES (Sistema de cobro automático)
+model Transaction {
+  id          String  @id @default(cuid())
+  amount      Float
+  type        String // INCOME, EXPENSE, HONORARIOS
+  status      String  @default("PENDING") // PENDING, PAID, CANCELLED
+  description String?
+  category    String? // Comida, Transporte, Invitaciones, Software, Otros
+
+  // Relaciones
+  relatedClientId String?
+  relatedClient   Client? @relation(fields: [relatedClientId], references: [id], onDelete: SetNull)
+  clientId        String? // Alias para relatedClientId (para compatibilidad)
+  assignedToId    String? // Para vincular gastos a usuarios (reembolsos)
+  assignedTo      User?   @relation("TransactionUser", fields: [assignedToId], references: [id], onDelete: SetNull)
+  userId          String? // Para vincular honorarios/salarios a usuarios (quién recibió el pago)
+  user            User?   @relation("TransactionRecipient", fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([relatedClientId])
+  @@index([clientId])
+  @@index([assignedToId])
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([category])
+  @@index([createdAt])
+}
+
+// BRAND KIT ASSETS
+model BrandAsset {
+  id       String @id @default(cuid())
+  name     String
+  url      String
+  fileKey  String @unique
+  fileType String // "image", "pdf", "document"
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([fileType])
+}
+
+// FEEDBACK DE CLIENTES
+model ClientFeedback {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  month     Int      // Mes del reporte (1-12)
+  year      Int      // Año del reporte
+  
+  approved  Boolean  @default(false) // Si el cliente aprobó el reporte
+  approvedAt DateTime? // Fecha de aprobación
+  
+  comment   String?  // Comentario del cliente
+  viewed    Boolean  @default(false) // Si el feedback ha sido visto por la agencia
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([month, year])
+  @@unique([clientId, month, year]) // Un solo feedback por cliente/mes/año
+}
+
+// TRANSFERENCIAS INTERNAS (Liquidación de Honorarios y Salarios)
+model InternalTransfer {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("InternalTransferUser", fields: [userId], references: [id], onDelete: Cascade)
+  
+  amount Float
+  month  Int
+  year   Int
+  type   String // "HONORARIOS", "SALARIO"
+  status String @default("PENDING") // "PENDING", "PAID"
+  
+  description String? // Descripción opcional del pago
+  paidAt      DateTime? // Fecha en que se registró el pago
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, month, year, type], name: "userId_month_year_type") // Un solo registro por usuario/mes/año/tipo
+  @@index([userId])
+  @@index([status])
+  @@index([year, month])
+  @@index([type])
+}
+
+// MÉTRICAS DE TAREAS (Meta - Instagram/Facebook y TikTok)
+model TaskMetrics {
+  id     String @id @default(cuid())
+  taskId String @unique
+  task   ContentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  // Métricas Meta (Instagram/Facebook)
+  metaViews    Int @default(0)
+  metaLikes    Int @default(0)
+  metaShares   Int @default(0)
+  metaComments Int @default(0)
+  metaSaves    Int @default(0)
+  metaReach    Int @default(0) // Alcance (solo para Meta)
+
+  // Métricas TikTok
+  ttViews    Int @default(0)
+  ttLikes    Int @default(0)
+  ttShares   Int @default(0)
+  ttComments Int @default(0)
+  ttSaves    Int @default(0)
+
+  // Métricas globales
+  totalBudgetSpent Float? // Presupuesto gastado (opcional)
+  notes            String? // Notas adicionales sobre las métricas
+
+  // Métricas de conversión y ventas
+  conversions      Int @default(0) // Leads, registros, clics en link de bio
+  salesCount       Int @default(0) // Número de ventas cerradas
+  revenue          Float @default(0.0) // Monto total en dinero generado por esta pieza
+  conversionSource String? // Ej: "Link en Bio", "DM", "WhatsApp", "Web", "Local Físico"
+
+  // Métricas calculadas
+  erMeta    Float @default(0.0) // Engagement Rate Meta
+  erTikTok  Float @default(0.0) // Engagement Rate TikTok
+  totalBrandAwareness Float @default(0.0) // Reach Meta + Views TikTok
+  globalSocialProof   Float @default(0.0) // Suma total de Likes y Comentarios
+  viralityIndex      Float @default(0.0) // Relación Shares vs Views
+  efficiencyScore    Float @default(0.0) // Promedio ponderado del ER global
+  cpa                Float @default(0.0) // Costo por Adquisición (budget / salesCount)
+  roas               Float @default(0.0) // Retorno a la Inversión Publicitaria (revenue / budget)
+  conversionRate     Float @default(0.0) // Tasa de conversión (conversions / (metaReach + ttViews)) * 100
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+}
+
+// NOTAS DE VOZ PERSONALES (Totem Voice)
+model VoiceNote {
+  id        String   @id @default(cuid())
+  userId    String
+  audioUrl  String
+  title     String?  @default("Nota de voz")
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// NOTIFICACIONES
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   // El destinatario
+  message   String
+  type      String   // ej: "ASSIGNED", "STATUS_CHANGE", "INFO"
+  read      Boolean  @default(false)
+  createdBy String?  // ID del usuario que creó la notificación (opcional, para mostrar foto de perfil)
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+// CONFIGURACIÓN GLOBAL DEL SISTEMA
+model GlobalConfig {
+  id    String   @id @default(cuid())
+  key   String   @unique
+  value String   // JSON string para valores complejos
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("global_config")
+}
+
+// INTEGRACIÓN META GRAPH API (Facebook & Instagram)
+model AgencyMetaAccount {
+  id             String   @id @default(cuid())
+  facebookUserId String   // ID numérico del usuario de FB
+  name           String   // Nombre del usuario, ej: "Stuart Admin"
+  accessToken    String   // Token de usuario de larga duración (60 días)
+  tokenExpiresAt DateTime // Fecha de expiración del token
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([facebookUserId])
+}
+
+// MÉTRICAS DE CLIENTES (Insights Engine)
+model ClientMetric {
+  id         String   @id @default(cuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  platform   String   // "FACEBOOK" | "INSTAGRAM"
+  metricName String   // ej: "page_impressions", "page_engaged_users"
+  value      Float
+  date       DateTime // Fecha del dato
+  fetchedAt  DateTime @default(now())
+
+  @@unique([clientId, platform, metricName, date]) // Evita duplicados para el mismo día
+  @@index([clientId, date]) // Optimiza la carga de gráficas
+}
+
+// CONTROL DE TIEMPO - TOTEM CHRONOS
+model TimeEntry {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId        String?   // Opcional: vincular a una tarea específica
+  clientId      String?   // Opcional: vincular a un cliente
+  
+  startTime     DateTime  @default(now())
+  endTime       DateTime?
+  duration      Int?      // En segundos (calculado al cerrar)
+  hourlyRate    Float     // Tarifa horaria en ese momento ($)
+  earnings      Float?    // Dinero ganado en esta sesión
+  
+  description   String?   // Descripción de lo trabajado
+  aiSummary     String?   // Resumen generado por IA
+  
+  status        String    @default("RUNNING") // RUNNING, COMPLETED, MANUAL
+  createdAt     DateTime  @default(now())
+
+  @@index([userId, startTime])
+  @@index([status])
+  @@index([clientId])
+  @@index([taskId])
+}

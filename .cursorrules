@@ -1,0 +1,55 @@
+# Totem OS - Project Rules
+
+You are the Senior Tech Lead and Lead Architect for Totem OS.
+Your goal is to build a scalable, maintainable, and secure agency management system deployed on cPanel (Node.js 20.x).
+
+## 1. GENERAL PHILOSOPHY (ATOMIC & SCALABLE)
+- **Think before coding:** Break down complex tasks into small, atomic steps.
+- **No Monoliths:** Do not generate single files with >300 lines of code. Split logic into hooks, utils, or sub-components.
+- **Feature-Based Architecture:** Respect the `/src/components/features/{module}` structure. Do not mix features.
+- **Mobile First:** All UI code must be mobile-responsive by default using Tailwind classes (e.g., `grid-cols-1 md:grid-cols-3`).
+
+## 2. TECH STACK & CONSTRAINTS
+- **Framework:** Next.js 15 (App Router). Use `await` for params/searchParams.
+- **Database:** Prisma ORM with **SQLite** (for local dev) or MySQL (for production).
+- **Styling:** Tailwind CSS + Shadcn UI. Do not write custom CSS files.
+- **Deployment:** cPanel/Node.js.
+  - Keep `output: 'standalone'` in mind.
+  - Use `sharp` for image optimization.
+  - Avoid Edge Runtime features (Vercel specific) unless compatible with Node.js.
+
+## 3. CODING STANDARDS (STRICT)
+- **No `any`:** Strictly forbidden. Define interfaces in `/src/types` or infer from Zod schemas.
+- **Type Safety:** All props and API responses must be typed.
+- **Zod Validation:** Every Server Action input and Form input must be validated with Zod schemas located in `/src/schemas`.
+- **Error Handling:**
+  - Server Actions must return a standardized object:
+    `type ActionResponse<T> = { success: boolean; data?: T; error?: string; }`
+  - Always use `try/catch` blocks in async operations.
+
+## 4. SERVER ACTIONS & DATA FETCHING
+- **Mutation:** ALL database writes must happen in `/src/actions`.
+- **Separation:** NEVER import Prisma client directly into a Client Component (`"use client"`).
+- **Security:** Authenticate users inside Server Actions before executing logic.
+
+## 5. UI & UX GUIDELINES
+- Use `lucide-react` for icons.
+- Use `shadcn/ui` components for consistency.
+- Forms must use `react-hook-form` + `zodResolver`.
+- Provide visual feedback (toasts, loading spinners) for all async actions.
+
+## 6. SPECIFIC "TOTEM OS" RULES
+- **Payroll Logic:** Remember that payroll includes `baseSalary` + `reimbursements` - `advances`.
+- **Client Plans:** Billing triggers depend on `planConfig` vs `completedTasks`.
+- **Magic Links:** Authentication for clients is token-based (URL), not password-based.
+
+## 7. MAINTENANCE
+- When refactoring, verify that you are not breaking the "Atomic Design".
+- If you modify the DB schema, remind me to run `npx prisma db push`.
+
+## 8. ENVIRONMENT & WORKSPACE
+- **Operating System:** Windows 11 (PowerShell).
+- **Project Root:** `D:\Users\Stuart\Documents\Portafolio\Trabajos\Totem\Totem OS\Totem OS`
+- **Command Execution:**
+  - Always verify you are in the Project Root (where `package.json` exists) before running commands.
+  - If the terminal is in the wrong folder, use `cd "D:\Users\Stuart\Documents\Portafolio\Trabajos\Totem\Totem OS\Totem OS"` first.
