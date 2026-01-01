@@ -51,6 +51,8 @@ export function ClientForm({ users }: ClientFormProps) {
     },
   });
 
+  const { formState: { isSubmitting } } = form;
+
   const onSubmit = async (data: CreateClientInput) => {
     startTransition(async () => {
       try {
