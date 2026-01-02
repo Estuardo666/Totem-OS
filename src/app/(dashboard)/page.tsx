@@ -49,7 +49,7 @@ function getCountColor(count: number): string {
 function getCountMessage(count: number): string {
   if (count === 0) return "¡Todo al día!";
   if (count >= 1 && count <= 3) return "En progreso";
-  if (count >= 4 && count <= 9) return "Carga moderada";
+  if (count >= 4 && count <= 9) return "Carga moderate";
   return "Carga de trabajo alta";
 }
 
@@ -355,7 +355,7 @@ export default async function Home() {
                       </p>
                       {feedback.comment && (
                         <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded border">
-                          "{feedback.comment}"
+                        "{feedback.comment}"
                         </p>
                       )}
                       <p className="text-xs text-muted-foreground mt-2">
