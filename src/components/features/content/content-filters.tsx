@@ -65,7 +65,7 @@ export function ContentFilters({
 
     // Filtro principal: "Mis Tareas" vs "Todo el Equipo"
     if (viewMode === "my-tasks" && userId) {
-      filtered = filtered.filter((task) => task.assignedToId === userId);
+      filtered = filtered.filter((task) => task.assignedEditorId === userId);
     }
 
     // Filtrar por cliente
@@ -89,9 +89,9 @@ export function ContentFilters({
     // Filtrar por usuario (solo si no está en modo "Mis Tareas")
     if (viewMode === "all" && selectedUserId !== "all") {
       if (selectedUserId === "unassigned") {
-        filtered = filtered.filter((task) => task.assignedToId === null);
+        filtered = filtered.filter((task) => task.assignedEditorId === null);
       } else {
-        filtered = filtered.filter((task) => task.assignedToId === selectedUserId);
+        filtered = filtered.filter((task) => task.assignedEditorId === selectedUserId);
       }
     }
 

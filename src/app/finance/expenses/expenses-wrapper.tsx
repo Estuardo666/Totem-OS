@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { getExpensesStats } from "@/actions/finance-actions";
 import { getUsers } from "@/actions/user.actions";
 import { getClients } from "@/actions/client-actions";

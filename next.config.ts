@@ -6,12 +6,24 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "utfs.io",
+        hostname: "lh3.googleusercontent.com"
       },
       {
         protocol: "https",
-        hostname: "52ezad8kea.ufs.sh",
+        hostname: "avatars.githubusercontent.com"
       },
+      {
+        protocol: "https",
+        hostname: "avatar.vercel.sh"
+      },
+      {
+        protocol: "https",
+        hostname: "utfs.io"
+      },
+      {
+        protocol: "https",
+        hostname: "52ezad8kea.ufs.sh"
+      }
     ],
   },
   experimental: {

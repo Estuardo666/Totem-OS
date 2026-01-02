@@ -1,15 +1,40 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
+// ============================================================================
+// 🔄 SWITCH ENTRE SQLITE (LOCAL) Y POSTGRESQL (NUBE)
+// ============================================================================
+// 
+// ANTES DE HACER 'db push' A LA NUBE (Neon):
+// 1. Cambiar 'provider' de "sqlite" a "postgresql"
+// 2. Cambiar 'url' de 'env("DATABASE_URL")' a 'env("POSTGRES_PRISMA_URL")'
+// 3. Añadir 'directUrl = env("POSTGRES_URL_NON_POOLING")'
+// 4. Verificar que las variables de entorno en .env apunten a Neon
+//
+// PARA VOLVER A SQLITE (DESARROLLO LOCAL):
+// 1. Cambiar 'provider' de "postgresql" a "sqlite"
+// 2. Cambiar 'url' a 'env("DATABASE_URL")'
+// 3. Remover 'directUrl'
+// 4. Verificar que DATABASE_URL="file:./dev.db" en .env
+//
+// ============================================================================
+
 generator client {
   provider = "prisma-client-js"
 }
 
+// 🔧 DESARROLLO LOCAL (SQLite) - ACTIVO
 datasource db {
-  provider  = "postgresql"
-  url       = env("POSTGRES_PRISMA_URL") // Connection Pooling
-  directUrl = env("POSTGRES_URL_NON_POOLING") // Direct connection
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
+
+// 🔧 PRODUCCIÓN/NUBE (PostgreSQL Neon) - COMENTADO
+// datasource db {
+//   provider  = "postgresql"
+//   url       = env("POSTGRES_PRISMA_URL") // Connection Pooling
+//   directUrl = env("POSTGRES_URL_NON_POOLING") // Direct connection
+// }
 
 // USUARIOS Y EQUIPO (compatible con Auth.js)
 model User {
@@ -40,7 +65,8 @@ model User {
   sessions Session[]
 
   // Relaciones de la aplicación
-  tasks            ContentTask[]     @relation("AssignedUser")
+  tasksAsEditor       ContentTask[]     @relation("AssignedEditor")
+  tasksAsCommunity    ContentTask[]     @relation("AssignedCommunity")
   expensesPaid     Expense[]          @relation("PaidByUser")
   transactions     Transaction[]      @relation("TransactionUser") // Gastos asignados para reembolso
   transactionsReceived Transaction[]  @relation("TransactionRecipient") // Honorarios/salarios recibidos
@@ -111,11 +137,13 @@ model Client {
   vault      String? // { instagram: { user, pass }, ... } (encrypted)
   planConfig String? // { quota: { reels: 3, flyers: 1 } }
   brandDNA   String? // { businessDescription, toneOfVoice, audience, values }
+  metricsConfig String? // { enabledMetrics: ["metaViews", "metaLikes", ...] }
 
   // Contrato mensual de entregables
   monthlyReels  Int   @default(0) // Cantidad de Reels contratados al mes
   monthlyFlyers Int   @default(0) // Cantidad de Flyers contratados al mes
   monthlyRate   Float @default(0) // Tarifa mensual del plan (para cobro automático)
+  logo          String? // URL del logotipo del cliente
 
   // Asignación por Cliente
   editorId    String? // Editor responsable de la cuenta
@@ -126,6 +154,7 @@ model Client {
   lastPostDate     DateTime?
   shareToken       String? @unique // Token para enlaces compartidos de reportes
   reportLastViewed DateTime? // Última vez que el cliente vio el reporte compartido
+  hasPendingFeedback Boolean @default(false) // Indica si el cliente tiene feedback pendiente de revisar
   
   // IA Performance Overview
   lastAiOverview     String? // Último análisis de performance generado por IA (almacenado como texto)
@@ -197,8 +226,10 @@ model ContentTask {
   clientId String
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  assignedToId String?
-  assignedTo   User?   @relation("AssignedUser", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedEditorId String?
+  assignedEditor   User?   @relation("AssignedEditor", fields: [assignedEditorId], references: [id], onDelete: SetNull)
+  assignedCommunityId String?
+  assignedCommunity   User?   @relation("AssignedCommunity", fields: [assignedCommunityId], references: [id], onDelete: SetNull)
   assignedAt   DateTime? // Fecha en que se asignó la tarea (para badge "Nuevo")
 
   shootId String?
@@ -211,7 +242,8 @@ model ContentTask {
   metrics TaskMetrics?
 
   @@index([clientId])
-  @@index([assignedToId])
+  @@index([assignedEditorId])
+  @@index([assignedCommunityId])
   @@index([status])
   @@index([type])
   @@index([priority])

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getUserNotifications, markAllAsRead } from "@/actions/notification-actions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell } from "lucide-react";
 import { NotificationsList } from "@/components/features/shared/notifications-list";
 import { MarkAllAsReadButton } from "@/components/features/shared/mark-all-as-read-button";
 

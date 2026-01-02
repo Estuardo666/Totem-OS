@@ -14,13 +14,12 @@ import { Receipt, TrendingDown } from "lucide-react";
 export default async function FinancePage() {
   const session = await auth();
   const userRole = session?.user?.role;
-  const userId = session?.user?.id;
   const isEditor = userRole === "EDITOR";
 
   const [result, profitabilityResult] = await Promise.all([
     getFinancialStats(),
     // Solo ADMIN ve rentabilidad global
-    isEditor ? Promise.resolve({ success: false, error: "No autorizado" }) : getGlobalProfitabilityStats(),
+    isEditor ? Promise.resolve({ success: false, error: "No autorizado" } as const) : getGlobalProfitabilityStats(),
   ]);
 
   // Si hay error, mostrar mensaje

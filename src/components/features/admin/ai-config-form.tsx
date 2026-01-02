@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Save, Eye, EyeOff, Sparkles } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { updateGlobalAiConfig, getGlobalAiConfig } from "@/actions/admin-actions";
+import { updateGlobalAiConfig, getGlobalAiConfig, testAIConnection } from "@/actions/admin-actions";
 import {
   Form,
   FormControl,
@@ -30,6 +30,8 @@ import {
 const aiConfigSchema = z.object({
   activeProvider: z.enum(["openai", "grok", "deepseek", "google"]),
   openaiApiKey: z.string().optional(),
+  openaiBaseUrl: z.string().url("Debe ser una URL válida").optional().or(z.literal("")),
+  openaiModel: z.string().optional().or(z.literal("")),
   grokApiKey: z.string().optional(),
   deepseekApiKey: z.string().optional(),
   googleApiKey: z.string().optional(),
@@ -37,9 +39,17 @@ const aiConfigSchema = z.object({
 
 type AiConfigFormData = z.infer<typeof aiConfigSchema>;
 
+interface ModelOption {
+  id: string;
+  name: string;
+}
+
 export function AiConfigForm() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; models?: ModelOption[] } | null>(null);
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
@@ -48,6 +58,7 @@ export function AiConfigForm() {
     defaultValues: {
       activeProvider: "openai",
       openaiApiKey: "",
+      openaiBaseUrl: "",
       grokApiKey: "",
       deepseekApiKey: "",
       googleApiKey: "",
@@ -68,6 +79,8 @@ export function AiConfigForm() {
           form.reset({
             activeProvider: (result.data.activeProvider as "openai" | "grok" | "deepseek" | "google") || "openai",
             openaiApiKey: result.data.openaiApiKey || "",
+            openaiBaseUrl: result.data.openaiBaseUrl || "",
+            openaiModel: result.data.openaiModel || "",
             grokApiKey: result.data.grokApiKey || "",
             deepseekApiKey: result.data.deepseekApiKey || "",
             googleApiKey: result.data.googleApiKey || "",
@@ -77,6 +90,8 @@ export function AiConfigForm() {
           form.reset({
             activeProvider: "openai",
             openaiApiKey: "",
+            openaiBaseUrl: "",
+            openaiModel: "",
             grokApiKey: "",
             deepseekApiKey: "",
             googleApiKey: "",
@@ -94,6 +109,8 @@ export function AiConfigForm() {
         form.reset({
           activeProvider: "openai",
           openaiApiKey: "",
+          openaiBaseUrl: "",
+          openaiModel: "",
           grokApiKey: "",
           deepseekApiKey: "",
           googleApiKey: "",
@@ -137,6 +154,86 @@ export function AiConfigForm() {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    setAvailableModels([]);
+
+    const formData = form.getValues();
+    const apiKey = formData.openaiApiKey || "";
+    const baseUrl = formData.openaiBaseUrl || "";
+
+    // Validar que hay API Key
+    if (!apiKey.trim()) {
+      setTestResult({
+        success: false,
+        message: "Debes ingresar una API Key primero",
+      });
+      setIsTesting(false);
+      toast({
+        variant: "destructive",
+        title: "Error de validación",
+        description: "Debes ingresar una API Key primero",
+      });
+      return;
+    }
+
+    try {
+      const result = await testAIConnection(apiKey, baseUrl || undefined);
+
+      if (result.success && result.data) {
+        // Guardar modelos disponibles
+        if (result.data.models && result.data.models.length > 0) {
+          setAvailableModels(result.data.models);
+          
+          // Si no hay modelo seleccionado, sugerir el primero o uno común
+          if (!formData.openaiModel && result.data.models.length > 0) {
+            // Buscar un modelo común o usar el primero
+            const commonModel = result.data.models.find(m => 
+              m.id.includes("gpt-4o-mini") || 
+              m.id.includes("gpt-3.5-turbo") || 
+              m.id.includes("gpt-4")
+            ) || result.data.models[0];
+            
+            form.setValue("openaiModel", commonModel.id, { shouldDirty: true });
+          }
+        }
+
+        setTestResult({
+          success: true,
+          message: `✅ Conexión exitosa. ${result.data.models.length} modelos disponibles.`,
+        });
+        toast({
+          title: "Conexión exitosa",
+          description: `Se encontraron ${result.data.models.length} modelos`,
+        });
+      } else {
+        setTestResult({
+          success: false,
+          message: `❌ Error: ${result.error}`,
+        });
+        toast({
+          variant: "destructive",
+          title: "Error de conexión",
+          description: result.error,
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Error desconocido";
+      setTestResult({
+        success: false,
+        message: `❌ Error: ${errorMessage}`,
+      });
+      toast({
+        variant: "destructive",
+        title: "Error inesperado",
+        description: errorMessage,
+      });
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -242,6 +339,127 @@ export function AiConfigForm() {
 
               <FormField
                 control={form.control}
+                name="openaiBaseUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>OpenAI Base URL (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="https://api.openai.com/v1"
+                        {...field}
+                        value={field.value || ""}
+                        disabled={isSaving}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      URL personalizada para OpenAI. Por defecto: https://api.openai.com/v1
+                      <br />
+                      Ejemplos: https://openrouter.ai/api/v1, https://api.together.xyz/v1
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Campo de Modelo - Solo para OpenAI */}
+              <FormField
+                control={form.control}
+                name="openaiModel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Modelo de IA (OpenAI)</FormLabel>
+                    <FormControl>
+                      {availableModels.length > 0 ? (
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ""}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona un modelo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableModels.map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.name} {model.id !== model.name ? `(${model.id})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          type="text"
+                          placeholder="gpt-4o-mini"
+                          {...field}
+                          value={field.value || ""}
+                          disabled={isSaving}
+                        />
+                      )}
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      {availableModels.length > 0 
+                        ? `Modelos disponibles: ${availableModels.length}. Selecciona uno de la lista.`
+                        : `Modelo a usar. Haz clic en "Probar Conexión" para cargar la lista de modelos disponibles.`}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Botón de Prueba de Conexión */}
+              <div className="flex gap-2 items-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleTestConnection}
+                  disabled={isTesting || isSaving}
+                  className="flex-1"
+                >
+                  {isTesting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Probando...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Probar Conexión
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Resultado de la Prueba */}
+              {testResult && (
+                <div className={`p-3 rounded-lg border ${
+                  testResult.success 
+                    ? 'bg-green-50 border-green-200 text-green-800' 
+                    : 'bg-red-50 border-red-200 text-red-800'
+                }`}>
+                  <p className="text-sm font-medium">{testResult.message}</p>
+                  {testResult.success && availableModels.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-xs font-semibold mb-1">Modelos disponibles:</p>
+                      <div className="max-h-32 overflow-y-auto text-xs space-y-1">
+                        {availableModels.slice(0, 10).map((model) => (
+                          <div key={model.id} className="flex items-center gap-2">
+                            <span className="font-mono bg-white/50 px-1 rounded">{model.id}</span>
+                            {model.name && model.name !== model.id && (
+                              <span className="opacity-75">- {model.name}</span>
+                            )}
+                          </div>
+                        ))}
+                        {availableModels.length > 10 && (
+                          <div className="opacity-75">...y {availableModels.length - 10} más</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <FormField
+                control={form.control}
                 name="grokApiKey"
                 render={({ field }) => (
                   <FormItem>
@@ -343,7 +561,12 @@ export function AiConfigForm() {
               />
             </div>
 
-            <Button type="submit" disabled={isSaving} className="w-full">
+            <Button 
+              type="submit" 
+              disabled={isSaving || (isTesting === false && testResult === null)} 
+              className="w-full"
+              title={(isTesting === false && testResult === null) ? "Primero prueba la conexión" : ""}
+            >
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

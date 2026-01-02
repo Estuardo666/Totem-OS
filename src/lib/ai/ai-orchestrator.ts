@@ -39,8 +39,6 @@ function parseAIResponse(content: string): AIResponse {
       cleanedContent = jsonMatch[0];
     }
 
-    console.log("[AI Parser] Attempting to parse:", cleanedContent.substring(0, 300));
-
     const parsed = JSON.parse(cleanedContent) as AIResponse;
 
     // Validar estructura
@@ -63,8 +61,8 @@ function parseAIResponse(content: string): AIResponse {
       }
     }
 
-    const frameworks = parsed.options.map((opt) => opt.framework);
-    const requiredFrameworks = ["AIDA", "PAS", "Storytelling"];
+    const frameworks = parsed.options.map((opt) => opt.framework) as ("AIDA" | "PAS" | "Storytelling")[];
+    const requiredFrameworks: ("AIDA" | "PAS" | "Storytelling")[] = ["AIDA", "PAS", "Storytelling"];
 
     for (const required of requiredFrameworks) {
       if (!frameworks.includes(required)) {
@@ -73,7 +71,6 @@ function parseAIResponse(content: string): AIResponse {
       }
     }
 
-    console.log("[AI Parser] Successfully parsed response");
     return parsed;
   } catch (error) {
     console.error("[AI Parser] Parse error:", error);
@@ -88,45 +85,206 @@ function parseAIResponse(content: string): AIResponse {
 }
 
 /**
- * Llamada a OpenAI
+ * Helper para intentar múltiples modelos de OpenAI con fallback
+ * @param endpoint - URL del endpoint
+ * @param apiKey - API Key
+ * @param messages - Mensajes para la API
+ * @param responseFormat - Formato de respuesta
+ * @param configuredModel - Modelo configurado por el usuario (opcional)
+ * @param isCustomEndpoint - Si es un endpoint personalizado (diferente a OpenAI oficial)
+ */
+async function tryOpenAIModels(
+  endpoint: string,
+  apiKey: string,
+  messages: any[],
+  responseFormat: any,
+  configuredModel?: string,
+  isCustomEndpoint: boolean = false
+): Promise<{ data: any; model: string }> {
+    // Si hay modelo configurado y es endpoint personalizado, usa SOLO ese modelo
+    if (configuredModel && isCustomEndpoint) {
+      try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: configuredModel,
+          messages: messages,
+          response_format: responseFormat,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Unknown error" }));
+        const errorMsg = error.error?.message || error.message || "Unknown error";
+        throw new Error(`Modelo ${configuredModel} no soportado: ${errorMsg}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+        throw new Error(`Modelo ${configuredModel} no devolvió estructura válida`);
+      }
+
+      const content = data.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error(`Modelo ${configuredModel} no devolvió contenido`);
+      }
+
+      return { data, model: configuredModel };
+
+    } catch (error) {
+      // En endpoint personalizado, NO hacer fallback, lanzar error inmediatamente
+      throw error;
+    }
+  }
+
+  // Si hay modelo configurado pero es endpoint oficial, intenta con ese primero
+  const modelsToTry = configuredModel 
+    ? [configuredModel, "gpt-4o-mini", "gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo-1106"]
+    : ["gpt-4o-mini", "gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo-1106"];
+
+  let lastError: Error | null = null;
+
+  for (const model of modelsToTry) {
+    try {
+      
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: messages,
+          response_format: responseFormat,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Unknown error" }));
+        const errorMsg = error.error?.message || error.message || "Unknown error";
+        
+        // Si es error de modelo no soportado, intenta con el siguiente
+        if (errorMsg.toLowerCase().includes("not supported") || 
+            errorMsg.toLowerCase().includes("model") ||
+            errorMsg.toLowerCase().includes("param")) {
+          lastError = new Error(`Modelo ${model} no soportado: ${errorMsg}`);
+          continue; // Intentar siguiente modelo
+        }
+        
+        // Otro tipo de error, lanzar inmediatamente
+        throw new Error(`OpenAI API error: ${errorMsg}`);
+      }
+
+      const data = await response.json();
+
+      // Validación defensiva de la estructura
+      if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+        console.error("Respuesta inválida de OpenAI:", data);
+        lastError = new Error(`Modelo ${model} no devolvió estructura válida`);
+        continue;
+      }
+
+      const content = data.choices[0]?.message?.content;
+
+      if (!content) {
+        lastError = new Error(`Modelo ${model} no devolvió contenido`);
+        continue;
+      }
+
+      return { data, model };
+
+    } catch (error) {
+      // Si es un error de red o timeout, lanzar inmediatamente
+      if (error instanceof Error && (error.message.includes("Failed to fetch") || error.message.includes("timeout"))) {
+        throw error;
+      }
+      
+      lastError = error as Error;
+      continue; // Intentar siguiente modelo
+    }
+  }
+
+  // Si llegamos aquí, ningún modelo funcionó
+  if (lastError) {
+    throw lastError;
+  }
+
+  throw new Error("No se pudo generar contenido. Error desconocido.");
+}
+
+/**
+ * Llamada a OpenAI con soporte para múltiples modelos y fallback
+ * @param apiKey - API Key
+ * @param systemPrompt - Prompt del sistema
+ * @param userPrompt - Prompt del usuario
+ * @param baseUrl - Base URL personalizado (opcional)
+ * @param configuredModel - Modelo configurado por el usuario (opcional)
  */
 async function callOpenAI(
   apiKey: string,
   systemPrompt: string,
-  userPrompt: string
+  userPrompt: string,
+  baseUrl?: string,
+  configuredModel?: string
 ): Promise<AIResponse> {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.7,
-    }),
-  });
+  // Corregir barras duplicadas en la URL
+  const cleanBaseUrl = (baseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
+  const endpoint = `${cleanBaseUrl}/chat/completions`;
+  
+  // Determinar si es endpoint personalizado
+  const isCustomEndpoint = cleanBaseUrl !== "https://api.openai.com/v1";
+  
+  const messages = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
+  ];
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(
-      `OpenAI API error: ${error.error?.message || "Failed to generate content"}`
+  try {
+    const { data, model } = await tryOpenAIModels(
+      endpoint, 
+      apiKey, 
+      messages, 
+      { type: "json_object" },
+      configuredModel,
+      isCustomEndpoint
     );
+    
+    const content = data.choices[0]?.message?.content;
+    return parseAIResponse(content);
+
+  } catch (error) {
+    // Mejorar el mensaje de error con sugerencias
+    let errorMessage = `No se pudo generar contenido.\n\n`;
+    
+    if (error instanceof Error) {
+      errorMessage += `Error: ${error.message}\n\n`;
+    }
+    
+    if (isCustomEndpoint) {
+      errorMessage += `💡 Sugerencias para "${cleanBaseUrl}":\n`;
+      errorMessage += `   1. Verifica que la URL sea correcta\n`;
+      errorMessage += `   2. Verifica que el modelo "${configuredModel}" sea correcto\n`;
+      errorMessage += `   3. Revisa qué modelos soporta este endpoint\n`;
+      errorMessage += `   4. Contacta al proveedor del endpoint\n`;
+      errorMessage += `   5. Verifica que tu API Key sea válida para este endpoint\n`;
+    } else {
+      errorMessage += `💡 Sugerencias para OpenAI:\n`;
+      errorMessage += `   1. Verifica que tu API Key sea válida\n`;
+      errorMessage += `   2. Asegúrate de tener crédito disponible\n`;
+      errorMessage += `   3. Revisa tu quota en la cuenta de OpenAI\n`;
+      errorMessage += `   4. Verifica que tu plan soporte el modelo configurado\n`;
+    }
+    
+    throw new Error(errorMessage);
   }
-
-  const data = await response.json();
-  const content = data.choices[0]?.message?.content;
-
-  if (!content) {
-    throw new Error("No se recibió contenido de OpenAI");
-  }
-
-  return parseAIResponse(content);
 }
 
 /**
@@ -160,9 +318,6 @@ CRÍTICO: Debes responder ÚNICAMENTE con un JSON válido. No incluyas markdown,
       }),
     });
 
-    // Log para debugging
-    console.log("[Grok API] Status:", response.status, response.statusText);
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error("[Grok API] Error response:", errorText);
@@ -178,12 +333,14 @@ CRÍTICO: Debes responder ÚNICAMENTE con un JSON válido. No incluyas markdown,
     }
 
     const data = await response.json();
-    console.log("[Grok API] Response data:", JSON.stringify(data, null, 2));
 
-    // Verificar estructura de respuesta
+    // Validación defensiva de la estructura
     if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
       console.error("[Grok API] Invalid response structure:", data);
-      throw new Error("La respuesta de Grok no tiene la estructura esperada");
+      throw new Error(
+        `La API de Grok no devolvió la estructura esperada. ` +
+        `Respuesta recibida: ${JSON.stringify(data, null, 2)}`
+      );
     }
 
     const content = data.choices[0]?.message?.content;
@@ -192,8 +349,6 @@ CRÍTICO: Debes responder ÚNICAMENTE con un JSON válido. No incluyas markdown,
       console.error("[Grok API] No content in response:", data);
       throw new Error("No se recibió contenido válido de Grok");
     }
-
-    console.log("[Grok API] Content received:", content.substring(0, 200));
 
     return parseAIResponse(content);
   } catch (error) {
@@ -243,6 +398,16 @@ async function callDeepSeek(
   }
 
   const data = await response.json();
+
+  // Validación defensiva
+  if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+    console.error("Respuesta inválida de DeepSeek:", data);
+    throw new Error(
+      `La API de DeepSeek no devolvió la estructura esperada. ` +
+      `Respuesta recibida: ${JSON.stringify(data, null, 2)}`
+    );
+  }
+
   const content = data.choices[0]?.message?.content;
 
   if (!content) {
@@ -291,6 +456,16 @@ async function callGoogle(
   }
 
   const data = await response.json();
+
+  // Validación defensiva
+  if (!data.candidates || !Array.isArray(data.candidates) || data.candidates.length === 0) {
+    console.error("Respuesta inválida de Google:", data);
+    throw new Error(
+      `La API de Google no devolvió la estructura esperada. ` +
+      `Respuesta recibida: ${JSON.stringify(data, null, 2)}`
+    );
+  }
+
   const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!content) {
@@ -348,35 +523,59 @@ async function callRefineAPI(
   apiKey: string,
   systemPrompt: string,
   userPrompt: string,
-  provider: "openai" | "grok" | "deepseek" | "google"
+  provider: "openai" | "grok" | "deepseek" | "google",
+  baseUrl?: string,
+  configuredModel?: string
 ): Promise<RefineResponse> {
   let response: Response;
   let data: any;
 
   switch (provider) {
     case "openai":
-      response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.7,
-        }),
-      });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(`OpenAI API error: ${error.error?.message || "Failed to refine content"}`);
+      const cleanBaseUrl = (baseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
+      const endpoint = `${cleanBaseUrl}/chat/completions`;
+      const isCustomEndpoint = cleanBaseUrl !== "https://api.openai.com/v1";
+      
+      const messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ];
+
+      try {
+        const { data, model } = await tryOpenAIModels(
+          endpoint, 
+          apiKey, 
+          messages, 
+          { type: "json_object" },
+          configuredModel,
+          isCustomEndpoint
+        );
+        
+        const content = data.choices[0]?.message?.content || "";
+        return parseRefineResponse(content);
+
+      } catch (error) {
+        // Mejorar mensaje de error
+        let errorMessage = `No se pudo refinar contenido.\n\n`;
+        
+        if (error instanceof Error) {
+          errorMessage += `Error: ${error.message}\n\n`;
+        }
+        
+        if (isCustomEndpoint) {
+          errorMessage += `💡 Sugerencias para "${cleanBaseUrl}":\n`;
+          errorMessage += `   1. Verifica que la URL sea correcta\n`;
+          errorMessage += `   2. Verifica que el modelo "${configuredModel}" sea correcto\n`;
+          errorMessage += `   3. Revisa qué modelos soporta este endpoint\n`;
+          errorMessage += `   4. Verifica tu API Key\n`;
+        } else {
+          errorMessage += `💡 Sugerencias para OpenAI:\n`;
+          errorMessage += `   1. Verifica tu API Key y crédito\n`;
+          errorMessage += `   2. Revisa tu quota\n`;
+        }
+        
+        throw new Error(errorMessage);
       }
-      data = await response.json();
-      return parseRefineResponse(data.choices[0]?.message?.content || "");
 
     case "grok":
       const enhancedSystemPrompt = `${systemPrompt}
@@ -409,6 +608,16 @@ CRÍTICO: Debes responder ÚNICAMENTE con un JSON válido. No incluyas markdown,
         throw new Error(`Grok API error: ${errorMessage}`);
       }
       data = await response.json();
+
+      // Validación defensiva
+      if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+        console.error("Respuesta inválida de Grok (refine):", data);
+        throw new Error(
+          `La API de Grok no devolvió la estructura esperada. ` +
+          `Respuesta recibida: ${JSON.stringify(data, null, 2)}`
+        );
+      }
+      
       return parseRefineResponse(data.choices[0]?.message?.content || "");
 
     case "deepseek":
@@ -433,6 +642,16 @@ CRÍTICO: Debes responder ÚNICAMENTE con un JSON válido. No incluyas markdown,
         throw new Error(`DeepSeek API error: ${error.error?.message || "Failed to refine content"}`);
       }
       data = await response.json();
+
+      // Validación defensiva
+      if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+        console.error("Respuesta inválida de DeepSeek (refine):", data);
+        throw new Error(
+          `La API de DeepSeek no devolvió la estructura esperada. ` +
+          `Respuesta recibida: ${JSON.stringify(data, null, 2)}`
+        );
+      }
+      
       return parseRefineResponse(data.choices[0]?.message?.content || "");
 
     case "google":
@@ -463,6 +682,16 @@ CRÍTICO: Debes responder ÚNICAMENTE con un JSON válido. No incluyas markdown,
         throw new Error(`Google API error: ${error.error?.message || "Failed to refine content"}`);
       }
       data = await response.json();
+
+      // Validación defensiva
+      if (!data.candidates || !Array.isArray(data.candidates) || data.candidates.length === 0) {
+        console.error("Respuesta inválida de Google (refine):", data);
+        throw new Error(
+          `La API de Google no devolvió la estructura esperada. ` +
+          `Respuesta recibida: ${JSON.stringify(data, null, 2)}`
+        );
+      }
+      
       return parseRefineResponse(data.candidates?.[0]?.content?.parts?.[0]?.text || "");
 
     default:
@@ -493,7 +722,7 @@ export async function generateContent(
   // Llamar al proveedor correspondiente
   switch (config.provider) {
     case "openai":
-      return callOpenAI(config.apiKey, systemPrompt, userPrompt);
+      return callOpenAI(config.apiKey, systemPrompt, userPrompt, config.baseUrl, config.model);
     case "grok":
       return callGrok(config.apiKey, systemPrompt, userPrompt);
     case "deepseek":
@@ -527,7 +756,7 @@ export async function refineContent(
     taskContext.type
   );
 
-  return callRefineAPI(config.apiKey, systemPrompt, userPrompt, config.provider);
+  return callRefineAPI(config.apiKey, systemPrompt, userPrompt, config.provider, config.baseUrl, config.model);
 }
 
 /**
@@ -537,34 +766,58 @@ async function callPerformanceAPI(
   apiKey: string,
   systemPrompt: string,
   userPrompt: string,
-  provider: "openai" | "grok" | "deepseek" | "google"
+  provider: "openai" | "grok" | "deepseek" | "google",
+  baseUrl?: string,
+  configuredModel?: string
 ): Promise<string> {
   let response: Response;
   let data: any;
 
   switch (provider) {
     case "openai":
-      response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          temperature: 0.7,
-        }),
-      });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(`OpenAI API error: ${error.error?.message || "Failed to generate performance analysis"}`);
+      const cleanBaseUrl = (baseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
+      const endpoint = `${cleanBaseUrl}/chat/completions`;
+      const isCustomEndpoint = cleanBaseUrl !== "https://api.openai.com/v1";
+      
+      const messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ];
+
+      try {
+        const { data, model } = await tryOpenAIModels(
+          endpoint, 
+          apiKey, 
+          messages, 
+          undefined,
+          configuredModel,
+          isCustomEndpoint
+        );
+        
+        return data.choices[0]?.message?.content || "";
+
+      } catch (error) {
+        // Mejorar mensaje de error
+        let errorMessage = `No se pudo generar análisis.\n\n`;
+        
+        if (error instanceof Error) {
+          errorMessage += `Error: ${error.message}\n\n`;
+        }
+        
+        if (isCustomEndpoint) {
+          errorMessage += `💡 Sugerencias para "${cleanBaseUrl}":\n`;
+          errorMessage += `   1. Verifica que la URL sea correcta\n`;
+          errorMessage += `   2. Verifica que el modelo "${configuredModel}" sea correcto\n`;
+          errorMessage += `   3. Revisa qué modelos soporta este endpoint\n`;
+          errorMessage += `   4. Verifica tu API Key\n`;
+        } else {
+          errorMessage += `💡 Sugerencias para OpenAI:\n`;
+          errorMessage += `   1. Verifica tu API Key y crédito\n`;
+          errorMessage += `   2. Revisa tu quota\n`;
+        }
+        
+        throw new Error(errorMessage);
       }
-      data = await response.json();
-      return data.choices[0]?.message?.content || "";
 
     case "grok":
       response = await fetch("https://api.x.ai/v1/chat/completions", {
@@ -594,6 +847,16 @@ async function callPerformanceAPI(
         throw new Error(`Grok API error: ${errorMessage}`);
       }
       data = await response.json();
+
+      // Validación defensiva
+      if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+        console.error("Respuesta inválida de Grok (performance):", data);
+        throw new Error(
+          `La API de Grok no devolvió la estructura esperada. ` +
+          `Respuesta recibida: ${JSON.stringify(data, null, 2)}`
+        );
+      }
+      
       return data.choices[0]?.message?.content || "";
 
     case "deepseek":
@@ -617,6 +880,16 @@ async function callPerformanceAPI(
         throw new Error(`DeepSeek API error: ${error.error?.message || "Failed to generate performance analysis"}`);
       }
       data = await response.json();
+
+      // Validación defensiva
+      if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+        console.error("Respuesta inválida de DeepSeek (performance):", data);
+        throw new Error(
+          `La API de DeepSeek no devolvió la estructura esperada. ` +
+          `Respuesta recibida: ${JSON.stringify(data, null, 2)}`
+        );
+      }
+      
       return data.choices[0]?.message?.content || "";
 
     case "google":
@@ -646,6 +919,16 @@ async function callPerformanceAPI(
         throw new Error(`Google API error: ${error.error?.message || "Failed to generate performance analysis"}`);
       }
       data = await response.json();
+
+      // Validación defensiva
+      if (!data.candidates || !Array.isArray(data.candidates) || data.candidates.length === 0) {
+        console.error("Respuesta inválida de Google (performance):", data);
+        throw new Error(
+          `La API de Google no devolvió la estructura esperada. ` +
+          `Respuesta recibida: ${JSON.stringify(data, null, 2)}`
+        );
+      }
+      
       return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     default:
@@ -670,5 +953,5 @@ export async function generatePerformanceAnalysis(
   const systemPrompt = buildPerformanceSystemPrompt(context);
   const userPrompt = buildPerformanceUserPrompt(context.metrics);
 
-  return callPerformanceAPI(config.apiKey, systemPrompt, userPrompt, config.provider);
+  return callPerformanceAPI(config.apiKey, systemPrompt, userPrompt, config.provider, config.baseUrl, config.model);
 }

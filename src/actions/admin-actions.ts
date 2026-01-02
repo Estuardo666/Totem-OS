@@ -11,6 +11,8 @@ const aiProviderSchema = z.enum(["openai", "grok", "deepseek", "google"]);
 const updateGlobalAiConfigSchema = z.object({
   activeProvider: aiProviderSchema,
   openaiApiKey: z.string().optional(),
+  openaiBaseUrl: z.string().url("Debe ser una URL válida").optional().or(z.literal("")),
+  openaiModel: z.string().optional().or(z.literal("")),
   grokApiKey: z.string().optional(),
   deepseekApiKey: z.string().optional(),
   googleApiKey: z.string().optional(),
@@ -60,6 +62,34 @@ export async function updateGlobalAiConfig(
           create: {
             key: "openaiApiKey",
             value: validatedData.openaiApiKey,
+          },
+        });
+      }
+
+      // Actualizar Base URL de OpenAI (solo si se proporcionó)
+      if (validatedData.openaiBaseUrl !== undefined) {
+        await prisma.globalConfig.upsert({
+          where: { key: "openaiBaseUrl" },
+          update: {
+            value: validatedData.openaiBaseUrl || "https://api.openai.com/v1",
+          },
+          create: {
+            key: "openaiBaseUrl",
+            value: validatedData.openaiBaseUrl || "https://api.openai.com/v1",
+          },
+        });
+      }
+
+      // Actualizar Modelo de OpenAI (solo si se proporcionó)
+      if (validatedData.openaiModel !== undefined) {
+        await prisma.globalConfig.upsert({
+          where: { key: "openaiModel" },
+          update: {
+            value: validatedData.openaiModel || "gpt-4o-mini",
+          },
+          create: {
+            key: "openaiModel",
+            value: validatedData.openaiModel || "gpt-4o-mini",
           },
         });
       }
@@ -127,6 +157,8 @@ export async function getGlobalAiConfig(): Promise<
   ApiResponse<{
     activeProvider: string | null;
     openaiApiKey: string | null;
+    openaiBaseUrl: string | null;
+    openaiModel: string | null;
     grokApiKey: string | null;
     deepseekApiKey: string | null;
     googleApiKey: string | null;
@@ -143,10 +175,12 @@ export async function getGlobalAiConfig(): Promise<
     }
 
     // 2. Obtener configuración
-    const [activeProvider, openaiKey, grokKey, deepseekKey, googleKey] =
+    const [activeProvider, openaiKey, openaiBaseUrl, openaiModel, grokKey, deepseekKey, googleKey] =
       await Promise.all([
         db.globalConfig.findUnique({ where: { key: "activeAiProvider" } }),
         db.globalConfig.findUnique({ where: { key: "openaiApiKey" } }),
+        db.globalConfig.findUnique({ where: { key: "openaiBaseUrl" } }),
+        db.globalConfig.findUnique({ where: { key: "openaiModel" } }),
         db.globalConfig.findUnique({ where: { key: "grokApiKey" } }),
         db.globalConfig.findUnique({ where: { key: "deepseekApiKey" } }),
         db.globalConfig.findUnique({ where: { key: "googleApiKey" } }),
@@ -159,6 +193,8 @@ export async function getGlobalAiConfig(): Promise<
           ? JSON.parse(activeProvider.value)
           : null,
         openaiApiKey: openaiKey?.value || null,
+        openaiBaseUrl: openaiBaseUrl?.value || null,
+        openaiModel: openaiModel?.value || null,
         grokApiKey: grokKey?.value || null,
         deepseekApiKey: deepseekKey?.value || null,
         googleApiKey: googleKey?.value || null,
@@ -669,6 +705,123 @@ export async function updateLoginBackground(
         error instanceof Error
           ? error.message
           : "Error al actualizar background del login",
+    };
+  }
+}
+
+/**
+ * Server Action para probar la conexión con la API de IA y obtener lista de modelos
+ * @param apiKey - API Key a probar
+ * @param baseUrl - Base URL a probar (opcional, usa default de OpenAI si no se proporciona)
+ * @returns { success: true, models: [...] } si la conexión es exitosa, o { success: false, error: string } si falla
+ */
+export async function testAIConnection(
+  apiKey: string,
+  baseUrl?: string
+): Promise<ApiResponse<{ success: boolean; models: { id: string; name?: string }[] }>> {
+  try {
+    // 1. Validar sesión y permisos
+    const session = await auth();
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return {
+        success: false,
+        error: "No autorizado. Solo los administradores pueden probar conexiones.",
+      };
+    }
+
+    // 2. Validar que se proporcionó una API Key
+    if (!apiKey || apiKey.trim() === "") {
+      return {
+        success: false,
+        error: "API Key es requerida",
+      };
+    }
+
+    // 3. Determinar la URL a usar (limpiar barras duplicadas)
+    const cleanBaseUrl = (baseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
+    const testUrl = `${cleanBaseUrl}/models`;
+
+    console.log(`[testAIConnection] Probando conexión con: ${testUrl}`);
+
+    // 4. Hacer una llamada a /models para verificar conexión y obtener lista
+    const response = await fetch(testUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    // 5. Manejar la respuesta
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      
+      // Intentar obtener el mensaje de error de la API
+      try {
+        const errorData = await response.json();
+        if (errorData.error?.message) {
+          errorMessage = errorData.error.message;
+        } else if (errorData.error) {
+          errorMessage = typeof errorData.error === 'string' 
+            ? errorData.error 
+            : JSON.stringify(errorData.error);
+        }
+      } catch {
+        // Si no podemos parsear el error, usar el status text
+      }
+
+      console.error(`[testAIConnection] Error de API: ${errorMessage}`);
+      
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+
+    // 6. Verificar que la respuesta contiene datos válidos
+    const data = await response.json();
+    
+    if (!data || !data.data || !Array.isArray(data.data)) {
+      return {
+        success: false,
+        error: "Respuesta inválida de la API (formato inesperado)",
+      };
+    }
+
+    // 7. Extraer lista de modelos (solo IDs y nombres)
+    const models = data.data.map((model: any) => ({
+      id: model.id,
+      name: model.name || model.id,
+    }));
+
+    // 8. Éxito
+    console.log(`[testAIConnection] ✅ Conexión exitosa. ${models.length} modelos disponibles.`);
+    
+    return {
+      success: true,
+      data: { 
+        success: true,
+        models: models,
+      },
+    };
+  } catch (error) {
+    console.error(`[testAIConnection] Error inesperado:`, error);
+    
+    let errorMessage = "Error desconocido al conectar con la API";
+    
+    if (error instanceof Error) {
+      if (error.message.includes("Failed to fetch")) {
+        errorMessage = "No se pudo conectar con la API. Verifica la URL y tu conexión a internet.";
+      } else if (error.message.includes("NetworkError") || error.message.includes("TypeError")) {
+        errorMessage = "Error de red. La URL podría ser incorrecta o el servidor no responde.";
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
+    return {
+      success: false,
+      error: errorMessage,
     };
   }
 }

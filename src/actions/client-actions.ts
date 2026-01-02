@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { createClientSchema, createCredentialSchema, updateClientSchema } from "@/schemas/client";
 import type { ApiResponse } from "@/types";
-import type { Client, Credential, ContentTask, BrandAsset } from "@prisma/client";
+import type { Client, Credential, ContentTask, BrandAsset, TaskMetrics } from "@prisma/client";
 
 /**
  * Server Action para crear un cliente
@@ -202,13 +202,167 @@ export async function getClientProfitability(
  * Server Action para obtener todos los clientes
  * Retorna los clientes ordenados por fecha de creación descendente
  */
-export async function getClients(): Promise<ApiResponse<Client[]>> {
+export async function getClients(): Promise<ApiResponse<Array<
+  Omit<Client, "tasks" | "shootings"> & {
+    hasPendingFeedback: boolean;
+    reelsCompleted: number;
+    flyersCompleted: number;
+    publishedTasksCount: number;
+    pendingTasksCount: number;
+    nextShootDate: Date | null;
+    lastPostDate: Date | null;
+    lastPostTask?: { title: string; postCopy?: string };
+    nextShootDetails?: { title: string; address?: string };
+  }
+>>> {
   try {
+    const { startOfMonth, endOfMonth } = await import("date-fns");
+    const now = new Date();
+    const currentMonthStart = startOfMonth(now);
+    const currentMonthEnd = endOfMonth(now);
+
     const clients = await db.client.findMany({
+      include: {
+        tasks: {
+          select: {
+            type: true,
+            status: true,
+            publishedAt: true,
+            title: true,
+            postCopy: true,
+            dueDate: true,
+          },
+        },
+        shootings: {
+          select: {
+            startTime: true,
+            status: true,
+            title: true,
+            address: true,
+          },
+          where: {
+            status: "SCHEDULED",
+            startTime: {
+              gte: now,
+            },
+          },
+          orderBy: {
+            startTime: "asc",
+          },
+          take: 1,
+        },
+      },
       orderBy: { createdAt: "desc" },
     });
 
-    return { success: true, data: clients };
+    // Obtener todos los clientIds para verificar feedbacks pendientes
+    const clientIds = clients.map((c) => c.id);
+    let pendingFeedbacksMap = new Map<string, boolean>();
+
+    try {
+      const pendingFeedbacks = await db.clientFeedback.findMany({
+        where: {
+          clientId: { in: clientIds },
+          viewed: false,
+        },
+        select: {
+          clientId: true,
+        },
+        distinct: ["clientId"],
+      });
+
+      pendingFeedbacks.forEach((feedback) => {
+        pendingFeedbacksMap.set(feedback.clientId, true);
+      });
+    } catch (feedbackError) {
+      // Si la tabla no existe aún, simplemente ignorar el error
+      console.warn("No se pudo verificar feedbacks pendientes:", feedbackError);
+    }
+
+    // Estados válidos para contar como "completado" (APPROVED, CLIENT_APPROVED o PUBLISHED)
+    // Nota: SCHEDULED no es un estado de ContentTask, solo de Shoot
+    const validCompletionStates = ['APPROVED', 'CLIENT_APPROVED', 'PUBLISHED'];
+
+    const clientsWithMetrics = clients.map((client) => {
+      // Filtrar tareas del mes actual (basado en publishedAt o dueDate)
+      const tasksThisMonth = client.tasks.filter((task) => {
+        const taskDate = task.publishedAt || task.dueDate;
+        if (!taskDate) return false;
+        const date = new Date(taskDate);
+        return date >= currentMonthStart && date <= currentMonthEnd;
+      });
+
+      // 1. Último posteo: fecha más reciente de tareas PUBLISHED (de cualquier fecha)
+      const publishedTasks = client.tasks.filter(
+        (task) => task.status === "PUBLISHED" && task.publishedAt
+      );
+      const lastPostDate = publishedTasks.length > 0
+        ? publishedTasks
+            .sort((a, b) => new Date(b.publishedAt!).getTime() - new Date(a.publishedAt!).getTime())[0]
+            .publishedAt
+        : null;
+
+      // Detalles de la última tarea publicada para tooltip
+      const lastPostTask = publishedTasks.length > 0
+        ? publishedTasks.sort((a, b) =>
+            new Date(b.publishedAt!).getTime() - new Date(a.publishedAt!).getTime()
+          )[0]
+        : undefined;
+
+      // 2. Reels completados (mes actual): tareas en estados válidos del mes actual
+      const reelsCompleted = tasksThisMonth.filter(
+        (task) => task.type === "REEL" && validCompletionStates.includes(task.status)
+      ).length;
+
+      // 3. Flyers completados (mes actual): tareas en estados válidos del mes actual
+      const flyersCompleted = tasksThisMonth.filter(
+        (task) => task.type === "FLYER" && validCompletionStates.includes(task.status)
+      ).length;
+
+      // 4. Tareas publicadas (mes actual): solo estado PUBLISHED del mes actual
+      const publishedTasksCount = tasksThisMonth.filter(
+        (task) => task.status === "PUBLISHED"
+      ).length;
+
+      // 5. Tareas pendientes (todas): NO PUBLISHED ni CANCELLED (de todas las fechas)
+      const pendingTasksCount = client.tasks.filter(
+        (task) => task.status !== "PUBLISHED" && task.status !== "CANCELLED"
+      ).length;
+
+      // Próximo rodaje
+      const nextShootDate = client.shootings.length > 0
+        ? client.shootings[0].startTime
+        : null;
+
+      // Detalles del próximo rodaje para tooltip
+      const nextShootDetails = client.shootings.length > 0
+        ? {
+            title: client.shootings[0].title,
+            address: client.shootings[0].address,
+          }
+        : undefined;
+
+      const hasPendingFeedback = pendingFeedbacksMap.has(client.id);
+      const { tasks, shootings, ...clientWithoutRelations } = client;
+
+      return {
+        ...clientWithoutRelations,
+        hasPendingFeedback,
+        reelsCompleted,
+        flyersCompleted,
+        publishedTasksCount,
+        pendingTasksCount,
+        nextShootDate,
+        lastPostDate,
+        lastPostTask: lastPostTask ? {
+          title: lastPostTask.title,
+          postCopy: lastPostTask.postCopy,
+        } : undefined,
+        nextShootDetails,
+      };
+    });
+
+    return { success: true, data: clientsWithMetrics as any };
   } catch (error) {
     return {
       success: false,
@@ -220,7 +374,7 @@ export async function getClients(): Promise<ApiResponse<Client[]>> {
 
 // Tipo para Client con relaciones incluidas
 export type ClientWithRelations = Client & {
-  tasks: ContentTask[];
+  tasks: (ContentTask & { metrics: TaskMetrics | null })[];
   credentials: Credential[];
   brandAssets: BrandAsset[];
 };
@@ -294,7 +448,7 @@ export async function getClientById(
       data: {
         ...client,
         hasPendingFeedback,
-      },
+      } as ClientWithRelations & { hasPendingFeedback: boolean },
     };
   } catch (error) {
     return {
@@ -578,6 +732,9 @@ export async function getClientByShareToken(
       where: { shareToken },
       include: {
         tasks: {
+          include: {
+            metrics: true,
+          },
           orderBy: { createdAt: "desc" },
         },
         credentials: {
@@ -596,7 +753,7 @@ export async function getClientByShareToken(
       };
     }
 
-    return { success: true, data: client };
+    return { success: true, data: client as ClientWithRelations };
   } catch (error) {
     return {
       success: false,
@@ -794,4 +951,51 @@ export async function deleteBrandAsset(
     };
   }
 }
+
+/**
+ * Server Action para actualizar la configuración de métricas de un cliente
+ * @param clientId - ID del cliente
+ * @param enabledMetrics - Array con los nombres de las métricas habilitadas
+ */
+export async function updateClientMetricsConfig(
+  clientId: string,
+  enabledMetrics: string[]
+): Promise<ApiResponse<Client>> {
+  try {
+    // Validar que el cliente existe
+    const existingClient = await db.client.findUnique({
+      where: { id: clientId },
+    });
+
+    if (!existingClient) {
+      return {
+        success: false,
+        error: "Cliente no encontrado",
+      };
+    }
+
+    // Crear el objeto de configuración
+    const metricsConfig = JSON.stringify({ enabledMetrics });
+
+    // Actualizar el cliente
+    const updatedClient = await db.client.update({
+      where: { id: clientId },
+      data: {
+        metricsConfig,
+      },
+    });
+
+    // Revalidar la ruta del cliente
+    revalidatePath(`/clients/${clientId}`);
+
+    return { success: true, data: updatedClient };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Error al actualizar configuración de métricas",
+    };
+  }
+}
+
 

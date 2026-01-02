@@ -115,7 +115,7 @@ export async function generateMonthlyPlan(
             type: planItem.type,
             status: "IDEA",
             clientId: clientId,
-            assignedToId: client.editorId || null,
+            assignedEditorId: client.editorId || null,
             assignedAt: client.editorId ? new Date() : null,
             scheduledAt: scheduledDate,
             dueDate: dueDate,

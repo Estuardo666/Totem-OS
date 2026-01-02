@@ -23,8 +23,41 @@ import { MetricsChart } from "@/components/features/metrics/metrics-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
+import type { TaskMetrics } from "@prisma/client";
 import { calculateMonthlyEngagement, calculateMonthlyEfficiency, formatCurrency } from "@/lib/metrics-calculations";
 import { TrendingUp, Brain } from "lucide-react";
+
+interface TaskWithMetrics {
+  id: string;
+  title: string;
+  type: string;
+  publishedAt: Date | null;
+  metrics: {
+    metaViews: number;
+    metaReach: number;
+    metaLikes: number;
+    metaComments: number;
+    metaShares: number;
+    metaSaves: number;
+    erMeta: number;
+    ttViews: number;
+    ttLikes: number;
+    ttComments: number;
+    ttShares: number;
+    ttSaves: number;
+    erTikTok: number;
+    totalBrandAwareness: number;
+    globalSocialProof: number;
+    viralityIndex: number;
+    efficiencyScore: number;
+    revenue: number;
+    conversions: number;
+    salesCount: number;
+    conversionRate: number;
+    cpa: number;
+    roas: number;
+  } | null;
+}
 
 interface ClientDetailPageProps {
   params: Promise<{ id: string }>;
@@ -51,6 +84,11 @@ export default async function ClientDetailPage({
 
   const client = result.data;
 
+  // Convertir recentTasksResult.data al tipo TaskWithMetrics[]
+  const recentTasks: TaskWithMetrics[] = recentTasksResult.success && recentTasksResult.data 
+    ? recentTasksResult.data as TaskWithMetrics[] 
+    : [];
+
   // Calcular eficiencia mensual
   const monthlyEngagement = calculateMonthlyEngagement(
     client.tasks.map((task) => ({
@@ -61,7 +99,7 @@ export default async function ClientDetailPage({
   const monthlyEfficiency = calculateMonthlyEfficiency(monthlyEngagement, client.monthlyRate);
 
   // Convertir las tareas del cliente al formato esperado por KanbanBoard
-  const tasksForKanban: ContentTaskWithClient[] = client.tasks.map((task) => ({
+  const tasksForKanban = client.tasks.map((task) => ({
     ...task,
     client: {
       id: client.id,
@@ -83,7 +121,7 @@ export default async function ClientDetailPage({
         fileType: asset.fileType,
       })),
     },
-  }));
+  })) as (ContentTaskWithClient & { metrics: TaskMetrics | null })[];
 
   const users = usersResult.success ? usersResult.data ?? [] : [];
 
@@ -122,7 +160,7 @@ export default async function ClientDetailPage({
         </TabsList>
 
         <TabsContent value="performance" className="mt-6 space-y-6">
-          {globalMetricsResult.success && globalMetricsResult.data && recentTasksResult.success && recentTasksResult.data ? (
+          {globalMetricsResult.success && globalMetricsResult.data && recentTasks.length > 0 ? (
             <>
               {/* IA Performance Overview */}
               <AiOverviewCard
@@ -159,11 +197,11 @@ export default async function ClientDetailPage({
                 tiktokMetrics={globalMetricsResult.data.tiktokMetrics}
               />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <MetaPanel tasks={recentTasksResult.data} />
-                <TikTokPanel tasks={recentTasksResult.data} />
+                <MetaPanel tasks={recentTasks} />
+                <TikTokPanel tasks={recentTasks} />
               </div>
               <RevenueROIPanel
-                tasks={recentTasksResult.data}
+                tasks={recentTasks}
                 totalRevenue={globalMetricsResult.data.businessMetrics.totalRevenue}
                 totalConversions={globalMetricsResult.data.businessMetrics.totalConversions}
                 totalSales={globalMetricsResult.data.businessMetrics.totalSales}

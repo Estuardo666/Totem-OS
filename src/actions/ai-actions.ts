@@ -62,7 +62,7 @@ export async function generateTaskOptionsAction(
     }
 
     // 3. Validar permisos: EDITOR solo puede generar para sus tareas asignadas
-    if (userRole === "EDITOR" && task.assignedToId !== session.user.id) {
+    if (userRole === "EDITOR" && task.assignedEditorId !== session.user.id) {
       return {
         success: false,
         error: "No tienes permisos para generar contenido para esta tarea",
@@ -115,8 +115,14 @@ export async function generateTaskOptionsAction(
       },
     };
 
+    // DEBUG: Log del contexto antes de enviar a IA
+    console.log("[generateTaskOptionsAction] Task Context:", JSON.stringify(taskContext, null, 2));
+
     // 7. Ejecutar inferencia mediante el orquestador
     const result = await generateContent(taskContext);
+
+    // DEBUG: Log del resultado
+    console.log("[generateTaskOptionsAction] Result:", JSON.stringify(result, null, 2));
 
     return {
       success: true,
@@ -151,6 +157,14 @@ export async function generateTaskOptionsAction(
         };
       }
 
+      // Errores de configuración
+      if (error.message.includes("proveedor") || error.message.includes("configuración") || error.message.includes("No hay proveedor")) {
+        return {
+          success: false,
+          error: "Error de configuración: Verifica la API Key y el Base URL en Settings > Configuración de IA",
+        };
+      }
+
       return {
         success: false,
         error: error.message,
@@ -175,7 +189,7 @@ interface RefineContentResponse {
 export async function refineTaskContentAction(
   taskId: string,
   currentText: string,
-  destination: "script" | "copy"
+  _destination: "script" | "copy"
 ): Promise<ApiResponse<RefineContentResponse>> {
   try {
     // 1. Validar sesión y permisos
@@ -219,7 +233,7 @@ export async function refineTaskContentAction(
     }
 
     // 4. Validar permisos: EDITOR solo puede refinar para sus tareas asignadas
-    if (userRole === "EDITOR" && task.assignedToId !== session.user.id) {
+    if (userRole === "EDITOR" && task.assignedEditorId !== session.user.id) {
       return {
         success: false,
         error: "No tienes permisos para refinar contenido para esta tarea",
@@ -268,8 +282,14 @@ export async function refineTaskContentAction(
       brandDNA,
     };
 
+    // DEBUG: Log del contexto
+    console.log("[refineTaskContentAction] Task Context:", JSON.stringify(taskContext, null, 2));
+
     // 8. Ejecutar refinamiento mediante el orquestador
     const result = await refineContent(taskContext, currentText);
+
+    // DEBUG: Log del resultado
+    console.log("[refineTaskContentAction] Result:", JSON.stringify(result, null, 2));
 
     return {
       success: true,
@@ -301,6 +321,14 @@ export async function refineTaskContentAction(
         return {
           success: false,
           error: "Error de conexión con el proveedor de IA. Verifica tu conexión a internet.",
+        };
+      }
+
+      // Errores de configuración
+      if (error.message.includes("proveedor") || error.message.includes("configuración")) {
+        return {
+          success: false,
+          error: "Error de configuración: Verifica la API Key y el Base URL en Settings > Configuración de IA",
         };
       }
 

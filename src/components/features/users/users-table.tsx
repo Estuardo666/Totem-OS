@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { Pencil } from "lucide-react";
-import type { User } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -15,10 +14,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { EditUserDialog } from "./edit-user-dialog";
 import { SalaryConfigCard } from "@/components/features/team/salary-config-card";
 import type { UserWithTaskCount } from "@/actions/user.actions";
@@ -51,7 +51,7 @@ export function UsersTable({ users }: UsersTableProps) {
   };
 
   const getWorkloadBadge = (user: UserWithTaskCount) => {
-    const taskCount = user._count.tasks;
+    const taskCount = (user._count?.tasksAsEditor || 0) + (user._count?.tasksAsCommunity || 0);
     const badge = (() => {
       if (taskCount === 0) {
         return <Badge variant="outline">0</Badge>;
@@ -78,41 +78,21 @@ export function UsersTable({ users }: UsersTableProps) {
       return badge;
     }
 
-    // Si hay tareas, envolver en Popover
+    // Si hay tareas, mostrar tooltip simple (no tenemos preview de tareas específicas por relación)
     return (
-      <Popover>
-        <PopoverTrigger asChild>
+      <Tooltip>
+        <TooltipTrigger asChild>
           {badge}
-        </PopoverTrigger>
-        <PopoverContent className="w-80" align="start">
-          <div className="space-y-2">
-            <h4 className="font-medium text-sm">Pendientes recientes</h4>
-            <ul className="space-y-1.5 text-xs">
-              {user.tasks.map((task) => (
-                <li key={task.id} className="flex items-start gap-2">
-                  <span className="text-muted-foreground">•</span>
-                  <span>
-                    <span className="font-medium text-muted-foreground">
-                      {task.client.name}
-                    </span>
-                    : {task.title}
-                  </span>
-                </li>
-              ))}
-              {taskCount > 10 && (
-                <li className="text-muted-foreground italic pt-1">
-                  ...y {taskCount - 10} más
-                </li>
-              )}
-            </ul>
-          </div>
-        </PopoverContent>
-      </Popover>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Total de tareas activas: {taskCount}</p>
+        </TooltipContent>
+      </Tooltip>
     );
   };
 
   return (
-    <>
+    <TooltipProvider>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -185,7 +165,7 @@ export function UsersTable({ users }: UsersTableProps) {
           onOpenChange={handleClose}
         />
       )}
-    </>
+    </TooltipProvider>
   );
 }
 

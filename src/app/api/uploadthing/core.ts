@@ -117,7 +117,7 @@ export const ourFileRouter = {
 
   // Sexto endpoint (Background del Login - Solo Administradores)
   loginBackground: f({
-    image: { maxFileSize: "5MB", maxFileCount: 1 },
+    image: { maxFileSize: "16MB", maxFileCount: 1 },
   })
     .middleware(async () => {
       // Verificar que el usuario esté autenticado y sea ADMIN

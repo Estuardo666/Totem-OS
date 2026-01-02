@@ -231,9 +231,9 @@ export type ActiveTaskPreview = {
  * Tipo extendido de User con conteo y preview de tareas activas
  */
 export type UserWithTaskCount = User & {
-  tasks: ActiveTaskPreview[];
   _count: {
-    tasks: number;
+    tasksAsEditor: number;
+    tasksAsCommunity: number;
   };
 };
 
@@ -244,33 +244,10 @@ export async function getUsers(): Promise<ApiResponse<UserWithTaskCount[]>> {
   try {
     const users = await db.user.findMany({
       include: {
-        tasks: {
-          where: {
-            status: {
-              not: "PUBLISHED", // Tareas activas = no publicadas
-            },
-          },
-          select: {
-            id: true,
-            title: true,
-            client: {
-              select: {
-                name: true,
-              },
-            },
-          },
-          orderBy: { createdAt: "desc" },
-          take: 10, // Solo las 10 más recientes para no explotar la UI
-        },
         _count: {
           select: {
-            tasks: {
-              where: {
-                status: {
-                  not: "PUBLISHED", // Tareas activas = no publicadas
-                },
-              },
-            },
+            tasksAsEditor: true,
+            tasksAsCommunity: true,
           },
         },
       },

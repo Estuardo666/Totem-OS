@@ -9,7 +9,7 @@ import { getPendingPartnerFee } from "@/actions/settlement-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, CheckCircle2, Users, AlertCircle, MessageSquare, DollarSign, Zap, UserCog, PlusCircle, FileText, Receipt } from "lucide-react";
+import { TrendingUp, CheckCircle2, Users, AlertCircle, MessageSquare, DollarSign, Zap, UserCog, FileText } from "lucide-react";
 import { TodayScheduledTasks } from "@/components/features/content/today-scheduled-tasks";
 import { WorkloadPanel } from "@/components/features/content/workload-panel";
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
@@ -95,10 +95,10 @@ export default async function Home() {
   
   const urgentTasks = allTasks
     .filter((task) => {
-      // Filtrar por usuario asignado O sin asignar (misma lógica que getPendingTasksCount)
-      if (userId && task.assignedToId !== null && task.assignedToId !== userId) {
-        return false;
-      }
+// Filtrar por usuario asignado como editor O community O sin asignar (misma lógica que getPendingTasksCount)
+    if (userId && task.assignedEditorId !== userId && task.assignedCommunityId !== userId) {
+      return false;
+    }
       // Filtrar por estado (no publicado)
       if (task.status === "PUBLISHED") return false;
       // Filtrar por fecha (dentro de los próximos 3 días, usando endOfDay para incluir todo el día)
@@ -127,7 +127,8 @@ export default async function Home() {
   console.log("🔍 Tareas prioritarias detalle:", urgentTasks.map(t => ({
     title: t.title,
     dueDate: t.dueDate ? format(new Date(t.dueDate), "dd/MM/yyyy") : null,
-    assignedToId: t.assignedToId,
+    assignedEditorId: t.assignedEditorId,
+    assignedCommunityId: t.assignedCommunityId,
   })));
 
   // Contar clientes activos
@@ -135,21 +136,6 @@ export default async function Home() {
     (client) => client.status === "ACTIVE"
   ).length;
 
-  // Nombres de meses en español
-  const monthNames = [
-    "Enero",
-    "Febrero",
-    "Marzo",
-    "Abril",
-    "Mayo",
-    "Junio",
-    "Julio",
-    "Agosto",
-    "Septiembre",
-    "Octubre",
-    "Noviembre",
-    "Diciembre",
-  ];
 
   // Últimas 3 transacciones
   const recentTransactions = financialStats?.recentTransactions.slice(0, 3) || [];

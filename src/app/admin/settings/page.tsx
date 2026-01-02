@@ -1,20 +1,40 @@
 import { Suspense } from "react";
-import { getCurrentUser } from "@/actions/user.actions";
+import { auth } from "@/auth";
 import { AppearanceForm } from "@/components/features/settings/appearance-form";
 import { NotificationSettings } from "@/components/features/settings/notification-settings";
 import { AiConfigForm } from "@/components/features/admin/ai-config-form";
 import { BrandingSettings } from "@/components/features/admin/branding-settings";
 import { SettingsSkeleton } from "@/components/features/settings/settings-skeleton";
 import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
 
 async function SettingsContent() {
-  const result = await getCurrentUser();
+  // ✅ Verificar sesión PRIMERO (antes de cualquier otra lógica)
+  const session = await auth();
 
-  if (!result.success || !result.data) {
+  // ✅ Redirect ANTES de cualquier llamada a Prisma
+  if (!session?.user?.id) {
     redirect("/sign-in");
   }
 
-  const user = result.data;
+  // ✅ Obtener datos del usuario desde la BD
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      primaryColor: true,
+      darkMode: true,
+      soundNotifications: true,
+    },
+  });
+
+  // ✅ Verificar usuario después de la query
+  if (!user) {
+    redirect("/sign-in");
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-6">

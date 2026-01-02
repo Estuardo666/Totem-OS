@@ -1,11 +1,19 @@
 "use client";
 
-import { useTransition, useState } from "react";
+import { useTransition, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { subHours } from "date-fns";
 import { Loader2, X, Download, Copy, Check } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { generateTaskOptionsAction, refineTaskContentAction } from "@/actions/ai-actions";
+import { AiContentAssistant } from "@/components/features/ai/ai-content-assistant";
 import { createContentTaskSchema, type CreateContentTaskInput } from "@/schemas/content";
 import type { Client } from "@prisma/client";
 import { createTask } from "@/actions/content-actions";
@@ -13,7 +21,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import type { UserWithTaskCount } from "@/actions/user.actions";
 import { UploadButton } from "@uploadthing/react";
 import Image from "next/image";
@@ -35,6 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 interface TaskFormProps {
   clients: Client[];
@@ -54,7 +62,8 @@ export function TaskForm({ clients, users }: TaskFormProps) {
       status: "IDEA",
       priority: "MEDIUM",
       clientId: "",
-      assignedToId: undefined,
+      assignedEditorId: undefined,
+      assignedCommunityId: undefined,
       dueDate: undefined,
       scheduledAt: undefined,
       postCopy: undefined,
@@ -64,7 +73,29 @@ export function TaskForm({ clients, users }: TaskFormProps) {
   });
 
   const [copied, setCopied] = useState(false);
+  const [isGenerating, startGenerating] = useTransition();
+  const [isRefining, startRefining] = useTransition();
   const coverImageUrl = form.watch("coverImageUrl");
+  const selectedClientId = form.watch("clientId");
+  const postCopy = form.watch("postCopy");
+
+  // Verificar si el cliente seleccionado tiene ADN de marca configurado
+  const selectedClient = selectedClientId ? clients.find((c) => c.id === selectedClientId) : null;
+
+  // Auto-rellenar Editor y Community cuando se selecciona un cliente
+  useEffect(() => {
+    if (selectedClientId) {
+      const selectedClient = clients.find((c) => c.id === selectedClientId);
+      if (selectedClient) {
+        if (selectedClient.editorId) {
+          form.setValue("assignedEditorId", selectedClient.editorId);
+        }
+        if (selectedClient.communityId) {
+          form.setValue("assignedCommunityId", selectedClient.communityId);
+        }
+      }
+    }
+  }, [selectedClientId, clients, form]);
 
   const handleCopy = async () => {
     const copyText = form.getValues("postCopy");
@@ -144,8 +175,89 @@ export function TaskForm({ clients, users }: TaskFormProps) {
     });
   };
 
+  // Función helper para obtener el color del círculo de prioridad
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "LOW":
+        return "bg-white border border-gray-300";
+      case "MEDIUM":
+        return "bg-green-500";
+      case "HIGH":
+        return "bg-orange-500";
+      case "URGENT":
+        return "bg-red-500";
+      default:
+        return "bg-gray-300";
+    }
+  };
+
+  // Función helper para obtener el texto de prioridad
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case "LOW":
+        return "Baja";
+      case "MEDIUM":
+        return "Media";
+      case "HIGH":
+        return "Alta";
+      case "URGENT":
+        return "Urgente";
+      default:
+        return priority;
+    }
+  };
+
+  // Función helper para obtener las iniciales de un cliente
+  const getClientInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Función helper para verificar si el brandDNA está completo
+  const isBrandDNAComplete = (brandDNA: any): boolean => {
+    if (!brandDNA) return false;
+    
+    const requiredFields = ["businessDescription", "toneOfVoice", "audience"];
+    return requiredFields.every(field => {
+      const value = brandDNA[field];
+      return value && typeof value === "string" && value.trim().length > 0;
+    });
+  };
+
+  // Función helper para obtener el error del brandDNA
+  const getBrandDNAError = (brandDNA: any): string => {
+    if (!brandDNA) return "El cliente no tiene configurado el ADN de Marca";
+    
+    const missingFields: string[] = [];
+    
+    if (!brandDNA.businessDescription || brandDNA.businessDescription.trim().length === 0) {
+      missingFields.push("Descripción del negocio");
+    }
+    if (!brandDNA.toneOfVoice || brandDNA.toneOfVoice.trim().length === 0) {
+      missingFields.push("Tono de voz");
+    }
+    if (!brandDNA.audience || brandDNA.audience.trim().length === 0) {
+      missingFields.push("Audiencia objetivo");
+    }
+    
+    if (missingFields.length > 0) {
+      return `Faltan campos en el ADN de marca: ${missingFields.join(", ")}`;
+    }
+    
+    return "ADN de marca completo";
+  };
+
+  // Calcular si el brandDNA está completo
+  const hasCompleteBrandDNA = selectedClient ? isBrandDNAComplete(selectedClient.brandDNA) : false;
+  const brandDNAError = selectedClient ? getBrandDNAError(selectedClient.brandDNA) : "Selecciona un cliente primero";
+
   return (
-    <Form {...form}>
+    <TooltipProvider>
+      <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full relative">
         <div className="flex-1 overflow-y-auto py-4 px-1 space-y-6">
         <FormField
@@ -174,7 +286,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
               <FormLabel>Cliente</FormLabel>
               <Select
                 onValueChange={field.onChange}
-                defaultValue={field.value}
+                value={field.value}
                 disabled={isPending}
               >
                 <FormControl>
@@ -185,7 +297,27 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                 <SelectContent>
                   {clients.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
-                      {client.name}
+                      <div className="flex items-center gap-2">
+                        {client.logo ? (
+                          <Image
+                            src={client.logo}
+                            alt={client.name}
+                            width={20}
+                            height={20}
+                            className="rounded object-cover"
+                          />
+                        ) : (
+                          <div
+                            className="h-5 w-5 rounded flex items-center justify-center text-xs font-semibold text-white"
+                            style={{
+                              backgroundColor: client.color ? `${client.color}80` : "#00000080",
+                            }}
+                          >
+                            {getClientInitials(client.name)}
+                          </div>
+                        )}
+                        <span>{client.name}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -195,16 +327,16 @@ export function TaskForm({ clients, users }: TaskFormProps) {
           )}
         />
 
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="type"
             render={({ field }) => (
-              <FormItem className="flex-1">
+              <FormItem>
                 <FormLabel>Tipo de Contenido</FormLabel>
                 <Select
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                   disabled={isPending}
                 >
                   <FormControl>
@@ -227,11 +359,11 @@ export function TaskForm({ clients, users }: TaskFormProps) {
             control={form.control}
             name="priority"
             render={({ field }) => (
-              <FormItem className="flex-1">
+              <FormItem>
                 <FormLabel>Prioridad</FormLabel>
                 <Select
                   onValueChange={field.onChange}
-                  defaultValue={field.value || "MEDIUM"}
+                  value={field.value || "MEDIUM"}
                   disabled={isPending}
                 >
                   <FormControl>
@@ -240,10 +372,66 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="LOW">Baja</SelectItem>
-                    <SelectItem value="MEDIUM">Media</SelectItem>
-                    <SelectItem value="HIGH">Alta</SelectItem>
-                    <SelectItem value="URGENT">Urgente</SelectItem>
+                    {(["LOW", "MEDIUM", "HIGH", "URGENT"] as const).map((priority) => (
+                      <SelectItem key={priority} value={priority}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={cn(
+                              "h-3 w-3 rounded-full",
+                              getPriorityColor(priority)
+                            )}
+                          />
+                          <span>{getPriorityLabel(priority)}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="assignedEditorId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Editor Asignado</FormLabel>
+                <Select
+                  onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
+                  value={field.value || "none"}
+                  disabled={isPending}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un editor (opcional)" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">Sin asignar</SelectItem>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        <div className="flex items-center gap-2">
+                          {user.image ? (
+                            <Image
+                              src={user.image}
+                              alt={user.name}
+                              width={20}
+                              height={20}
+                              className="rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold">
+                              {user.name[0]?.toUpperCase()}
+                            </div>
+                          )}
+                          <span>{user.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -253,59 +441,48 @@ export function TaskForm({ clients, users }: TaskFormProps) {
 
           <FormField
             control={form.control}
-            name="assignedToId"
+            name="assignedCommunityId"
             render={({ field }) => (
-              <FormItem className="flex-1">
-                <FormLabel>Asignar a</FormLabel>
-              <Select
-                onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
-                value={field.value || "none"}
-                disabled={isPending}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un usuario (opcional)" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">Sin asignar</SelectItem>
-                  {users.map((user) => {
-                    const taskCount = user._count?.tasks || 0;
-                    
-                    // Lógica de colores según carga de trabajo
-                    const getBadgeColor = (count: number) => {
-                      if (count === 0) {
-                        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-                      }
-                      if (count >= 10) {
-                        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-                      }
-                      if (count >= 5) {
-                        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
-                      }
-                      return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-                    };
-
-                    return (
+              <FormItem>
+                <FormLabel>Community Asignado</FormLabel>
+                <Select
+                  onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
+                  value={field.value || "none"}
+                  disabled={isPending}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un community (opcional)" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">Sin asignar</SelectItem>
+                    {users.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
-                        <div className="flex justify-between items-center w-full">
+                        <div className="flex items-center gap-2">
+                          {user.image ? (
+                            <Image
+                              src={user.image}
+                              alt={user.name}
+                              width={20}
+                              height={20}
+                              className="rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold">
+                              {user.name[0]?.toUpperCase()}
+                            </div>
+                          )}
                           <span>{user.name}</span>
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs rounded-full px-2 py-0.5 ${getBadgeColor(taskCount)}`}
-                          >
-                            {taskCount}
-                          </Badge>
                         </div>
                       </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
         <FormField
@@ -338,7 +515,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
           )}
         />
 
-        <Separator />
+        <Separator className="h-[2px] bg-primary/50" />
 
         {/* Sección de Recursos Creativos */}
         <div className="space-y-6">
@@ -374,6 +551,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                     <Textarea
                       placeholder="Escribe el texto del post aquí..."
                       {...field}
+                      value={field.value ?? ""}
                       disabled={isPending}
                       className="min-h-[120px] resize-y"
                     />
@@ -383,6 +561,23 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                 <p className="text-xs text-muted-foreground">
                   Usa el botón de copiar para copiar el texto al portapapeles
                 </p>
+                
+                {/* IA Content Assistant */}
+                {selectedClientId ? (
+                  <AiContentAssistant
+                    taskId="" // No hay taskId en creación, pero el componente maneja este caso
+                    currentCopy={postCopy}
+                    onInsertCopy={(content) => {
+                      form.setValue("postCopy", content, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: false,
+                      });
+                    }}
+                    hasCompleteBrandDNA={hasCompleteBrandDNA}
+                    brandDNAError={brandDNAError}
+                  />
+                ) : null}
               </FormItem>
             )}
           />
@@ -403,7 +598,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                     <div className="relative rounded-lg border border-input overflow-hidden">
                       <div className="relative w-full h-64">
                         <Image
-                          src={field.value}
+                          src={field.value ?? ""}
                           alt="Imagen de portada"
                           fill
                           className="object-cover"
@@ -416,7 +611,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                             className="h-8 w-8 bg-background/80 backdrop-blur-sm"
                             asChild
                           >
-                            <Link href={field.value} target="_blank" rel="noopener noreferrer">
+                            <Link href={field.value ?? ""} target="_blank" rel="noopener noreferrer">
                               <Download className="h-4 w-4" />
                             </Link>
                           </Button>
@@ -451,7 +646,6 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                         }}
                         content={{ button: "Subir Portada" }}
                         onClientUploadComplete={(res) => {
-                          console.log("✅ Archivos: ", res);
                           if (res && res[0]) {
                             const newUrl = res[0].ufsUrl || res[0].url; // Usa ufsUrl, con fallback a url
                             // Actualiza el estado local "en caliente" para mostrar la nueva imagen inmediatamente
@@ -511,7 +705,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                             <X className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
-                        <audio controls src={field.value} className="w-full" />
+                        <audio controls src={field.value ?? ""} className="w-full" />
                       </div>
                     ) : (
                       <AudioRecorder
@@ -563,6 +757,6 @@ export function TaskForm({ clients, users }: TaskFormProps) {
         </div>
       </form>
     </Form>
+    </TooltipProvider>
   );
 }
-

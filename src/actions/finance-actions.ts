@@ -141,6 +141,13 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
           lte: monthEnd,
         },
       },
+      include: {
+        assignedTo: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
 
     // Calcular gastos pagados del mes (solo PAID del mes actual)
@@ -210,7 +217,11 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
         paidByUserId: userId, // Solo gastos creados por el EDITOR
       } : undefined,
       include: {
-        paidByUser: true,
+        paidByUser: {
+          select: {
+            name: true,
+          },
+        },
         client: true,
       },
       orderBy: {
@@ -227,7 +238,11 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
       } : undefined,
       include: {
         relatedClient: true,
-        assignedTo: true,
+        assignedTo: {
+          select: {
+            name: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -246,6 +261,8 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
         status: invoice.status,
         category: undefined as string | undefined,
         sourceType: "INVOICE" as const,
+        assignedToName: undefined as string | undefined,
+        assignedToId: undefined as string | undefined,
       })),
       ...allExpenses.map((expense) => ({
         id: expense.id,
@@ -254,12 +271,11 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
         description: expense.description,
         date: expense.date,
         clientName: expense.client?.name,
-        clientId: expense.clientId,
+        status: expense.reimbursed ? "PAID" : "PENDING",
         category: expense.category,
-        status: expense.reimbursed ? "PAID" : "PENDING" as string | undefined,
         sourceType: "EXPENSE" as const,
         assignedToName: expense.paidByUser?.name,
-        assignedToId: expense.paidByUserId,
+        assignedToId: expense.paidByUserId ?? undefined,
       })),
       ...allTransactions.map((transaction) => ({
         id: transaction.id,
@@ -268,14 +284,13 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
         description: transaction.description || "Transacción",
         date: transaction.createdAt,
         clientName: transaction.relatedClient?.name,
-        clientId: transaction.relatedClientId || transaction.clientId,
         status: transaction.status,
         category: transaction.category,
         sourceType: "TRANSACTION" as const,
         assignedToName: transaction.assignedTo?.name,
-        assignedToId: transaction.assignedToId,
+        assignedToId: transaction.assignedToId ?? undefined,
       })),
-    ].sort((a, b) => b.date.getTime() - a.date.getTime());
+    ].sort((a, b) => b.date.getTime() - a.date.getTime()) as FinancialStats["recentTransactions"];
 
     return {
       success: true,
@@ -816,7 +831,6 @@ export async function getReceivables(): Promise<ApiResponse<{
 }>> {
   try {
     // Obtener sesión del usuario logueado
-    const { auth } = await import("@/auth");
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -1042,6 +1056,11 @@ export async function getClientAccountStatus(
       },
       include: {
         relatedClient: true,
+        assignedTo: {
+          select: {
+            name: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -1230,7 +1249,6 @@ export async function getExpensesStats(filters?: {
 }>> {
   try {
     // Obtener sesión del usuario logueado
-    const { auth } = await import("@/auth");
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -1316,7 +1334,11 @@ export async function getExpensesStats(filters?: {
     const expenseTransactionsThisMonth = await db.transaction.findMany({
       where: transactionWhere,
       include: {
-        assignedTo: true,
+        assignedTo: {
+          select: {
+            name: true,
+          },
+        },
         relatedClient: true,
       },
       orderBy: {
@@ -1360,7 +1382,7 @@ export async function getExpensesStats(filters?: {
         date: exp.date,
         status: exp.reimbursed ? "REIMBURSED" : "PENDING",
         assignedToName: exp.paidByUser?.name,
-        assignedToId: exp.paidByUserId,
+        assignedToId: exp.paidByUserId ?? undefined,
         reimbursed: exp.reimbursed,
         sourceType: "EXPENSE" as const,
         clientName: exp.client?.name,
@@ -1386,7 +1408,7 @@ export async function getExpensesStats(filters?: {
           date: t.createdAt,
           status: t.status,
           assignedToName: t.assignedTo?.name,
-          assignedToId: t.assignedToId,
+          assignedToId: t.assignedToId ?? undefined,
           reimbursed: t.status === "PAID",
           sourceType: "TRANSACTION" as const,
           clientName: t.relatedClient?.name,
@@ -1628,10 +1650,6 @@ export async function updateExpense(
       ? validatedData.paidByUserIds[0]
       : validatedData.paidByUserId || currentExpense.paidByUserId;
 
-    // Detectar si cambió el estado de reembolso
-    const reimbursedChanged = validatedData.reimbursed !== undefined && 
-      validatedData.reimbursed !== expenseBefore.reimbursed;
-
     // Preparar datos de actualización
     const updateData: any = {};
     if (validatedData.description !== undefined) {
@@ -1855,7 +1873,6 @@ export async function liquidateReimbursements(
 export async function getGlobalProfitabilityStats(): Promise<ApiResponse<GlobalProfitabilityStats>> {
   try {
     const now = new Date();
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1); // Últimos 6 meses
     
     // Generar array de meses a analizar
     const months: Array<{ year: number; month: number; start: Date; end: Date }> = [];

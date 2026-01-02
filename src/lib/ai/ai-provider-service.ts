@@ -7,6 +7,8 @@ export type AIProvider = "openai" | "grok" | "deepseek" | "google";
 interface AIProviderConfig {
   provider: AIProvider;
   apiKey: string;
+  baseUrl?: string; // Opcional: solo para OpenAI
+  model?: string;   // Opcional: solo para OpenAI
 }
 
 /**
@@ -59,9 +61,29 @@ export async function getActiveProvider(): Promise<AIProviderConfig | null> {
       return null;
     }
 
+    // Si es OpenAI, buscar también el Base URL y el Modelo personalizados
+    let baseUrl: string | undefined;
+    let model: string | undefined;
+    
+    if (provider === "openai") {
+      const [baseUrlConfig, modelConfig] = await Promise.all([
+        db.globalConfig.findUnique({ where: { key: "openaiBaseUrl" } }),
+        db.globalConfig.findUnique({ where: { key: "openaiModel" } }),
+      ]);
+      
+      if (baseUrlConfig?.value) {
+        baseUrl = baseUrlConfig.value;
+      }
+      if (modelConfig?.value) {
+        model = modelConfig.value;
+      }
+    }
+
     return {
       provider,
       apiKey: apiKeyConfig.value,
+      baseUrl,
+      model,
     };
   } catch (error) {
     console.error("Error al obtener proveedor de IA:", error);

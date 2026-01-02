@@ -25,7 +25,7 @@ async function getUserHourlyRate(userId: string): Promise<number> {
   }
 
   // Si no, calcular desde baseSalary como fallback
-  if (user.baseSalary > 0) {
+  if (user.baseSalary && user.baseSalary > 0) {
     const HOURS_PER_MONTH = 160;
     return user.baseSalary / HOURS_PER_MONTH;
   }
@@ -188,16 +188,14 @@ export async function startTimeEntry(
     }
 
     // Obtener información de la tarea si está vinculada
-    let taskTitle: string | null = null;
     let taskClientId: string | null = null;
 
     if (taskId) {
       const task = await db.contentTask.findUnique({
         where: { id: taskId },
-        select: { title: true, clientId: true },
+        select: { clientId: true },
       });
       if (task) {
-        taskTitle = task.title;
         taskClientId = task.clientId || null;
       }
     }

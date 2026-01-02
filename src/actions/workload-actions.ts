@@ -42,7 +42,7 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
       users.map(async (user) => {
         const pendingTasksCount = await db.contentTask.count({
           where: {
-            assignedToId: user.id,
+            assignedEditorId: user.id,
             status: {
               in: validStatuses,
             },

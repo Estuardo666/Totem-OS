@@ -35,6 +35,7 @@ export const clientSchema = z.object({
   monthlyReels: z.number().int().min(0).default(0),
   monthlyFlyers: z.number().int().min(0).default(0),
   monthlyRate: z.number().min(0).default(0),
+  logo: z.string().url("Debe ser una URL válida").optional().nullable(),
   lastPostDate: z.date().optional(),
   editorId: z.string().cuid().optional().nullable(),
   communityId: z.string().cuid().optional().nullable(),

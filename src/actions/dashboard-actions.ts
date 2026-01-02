@@ -26,9 +26,20 @@ export interface DashboardData {
     client: Client;
     crew: Array<{ id: string; name: string; image: string | null }>;
   }>;
-  warRoom: Array<ContentTask & {
-    client: Client;
+  warRoom: Array<{
+    id: string;
+    title: string;
+    type: string;
+    status: string;
+    priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+    scheduledAt: Date | null;
+    publishedAt: Date | null;
+    client: {
+      id: string;
+      name: string;
+    };
     assignedTo: { id: string; name: string } | null;
+    metrics: { id: string } | null;
   }>;
   calendar: {
     shoots: Array<Shoot & { client: Client }>;
@@ -159,10 +170,18 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
         },
         include: {
           client: true,
-          assignedTo: {
+          assignedEditor: {
             select: {
               id: true,
               name: true,
+              image: true,
+            },
+          },
+          assignedCommunity: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
             },
           },
           metrics: {
@@ -288,18 +307,38 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
     // Ordenar por prioridad: URGENT -> HIGH -> MEDIUM -> LOW
     // Dentro de cada prioridad, ordenar por scheduledAt ascendente
     const priorityOrder = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
-    const warRoom = filteredTasks.sort((a, b) => {
-      const priorityA = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 2;
-      const priorityB = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 2;
-      
-      if (priorityA !== priorityB) {
-        return priorityA - priorityB;
-      }
-      
-      // Si tienen la misma prioridad, ordenar por scheduledAt
-      if (!a.scheduledAt || !b.scheduledAt) return 0;
-      return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
-    });
+    const warRoom = filteredTasks
+      .map((task) => ({
+        id: task.id,
+        title: task.title,
+        type: task.type,
+        status: task.status,
+        priority: task.priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT",
+        scheduledAt: task.scheduledAt,
+        publishedAt: task.publishedAt,
+        client: {
+          id: task.client.id,
+          name: task.client.name,
+        },
+        assignedTo: task.assignedEditor 
+          ? { id: task.assignedEditor.id, name: task.assignedEditor.name }
+          : task.assignedCommunity 
+            ? { id: task.assignedCommunity.id, name: task.assignedCommunity.name }
+            : null,
+        metrics: task.metrics,
+      }))
+      .sort((a, b) => {
+        const priorityA = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 2;
+        const priorityB = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 2;
+        
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+        
+        // Si tienen la misma prioridad, ordenar por scheduledAt
+        if (!a.scheduledAt || !b.scheduledAt) return 0;
+        return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+      });
 
     return {
       success: true,

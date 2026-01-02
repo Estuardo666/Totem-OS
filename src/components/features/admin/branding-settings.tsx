@@ -132,206 +132,209 @@ export function BrandingSettings() {
           Identidad de Marca
         </CardTitle>
         <CardDescription>
-          Configura los logos de la aplicación. El logo claro se mostrará sobre fondos blancos y el logo oscuro sobre fondos oscuros.
+          Configura los logos de la aplicación y el background de login. El logo claro se mostrará sobre fondos blancos y el logo oscuro sobre fondos oscuros.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Logo Modo Claro */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Logo Modo Claro</label>
-            {logoLightUrl && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRemoveLogo("light")}
-                className="h-8 text-destructive hover:text-destructive"
-              >
-                <X className="h-4 w-4 mr-1" />
-                Eliminar
-              </Button>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Se verá sobre fondos blancos
-          </p>
-
-          {logoLightUrl ? (
-            <div className="flex flex-col gap-3">
-              <div className="relative w-full h-32 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                <img
-                  src={logoLightUrl}
-                  alt="Logo modo claro"
-                  className="max-w-full max-h-full object-contain"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              {isUploadingLight && (
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        {/* Grid de 3 columnas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Logo Modo Claro - Columna 1 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Logo Modo Claro</label>
+              {logoLightUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveLogo("light")}
+                  className="h-8 text-destructive hover:text-destructive"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Eliminar
+                </Button>
               )}
-              <UploadButton<OurFileRouter>
-                endpoint="brandLogo"
-                onClientUploadComplete={(res) => {
-                  if (res && res.length > 0) {
-                    setLogoLightUrl(res[0].url);
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Se verá sobre fondos blancos
+            </p>
+
+            {logoLightUrl ? (
+              <div className="flex flex-col gap-3">
+                <div className="relative w-full h-32 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                  <img
+                    src={logoLightUrl}
+                    alt="Logo modo claro"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {isUploadingLight && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+                <UploadButton<OurFileRouter>
+                  endpoint="brandLogo"
+                  onClientUploadComplete={(res) => {
+                    if (res && res.length > 0) {
+                      setLogoLightUrl(res[0].url);
+                      setIsUploadingLight(false);
+                      toast({
+                        title: "Logo subido",
+                        description: "El logo modo claro se ha subido correctamente. No olvides guardar los cambios.",
+                      });
+                    }
+                  }}
+                  onUploadProgress={() => {
+                    setIsUploadingLight(true);
+                  }}
+                  onUploadError={(error: Error) => {
                     setIsUploadingLight(false);
                     toast({
-                      title: "Logo subido",
-                      description: "El logo modo claro se ha subido correctamente. No olvides guardar los cambios.",
+                      variant: "destructive",
+                      title: "Error al subir logo",
+                      description: error.message,
                     });
-                  }
-                }}
-                onUploadProgress={() => {
-                  setIsUploadingLight(true);
-                }}
-                onUploadError={(error: Error) => {
-                  setIsUploadingLight(false);
-                  toast({
-                    variant: "destructive",
-                    title: "Error al subir logo",
-                    description: error.message,
-                  });
-                }}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Logo Modo Oscuro */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Logo Modo Oscuro</label>
-            {logoDarkUrl && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRemoveLogo("dark")}
-                className="h-8 text-destructive hover:text-destructive"
-              >
-                <X className="h-4 w-4 mr-1" />
-                Eliminar
-              </Button>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Se verá sobre fondos oscuros
-          </p>
-
-          {logoDarkUrl ? (
-            <div className="flex flex-col gap-3">
-              <div className="relative w-full h-32 bg-gray-900 border-2 border-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
-                <img
-                  src={logoDarkUrl}
-                  alt="Logo modo oscuro"
-                  className="max-w-full max-h-full object-contain"
+                  }}
                 />
               </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              {isUploadingDark && (
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+
+          {/* Logo Modo Oscuro - Columna 2 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Logo Modo Oscuro</label>
+              {logoDarkUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveLogo("dark")}
+                  className="h-8 text-destructive hover:text-destructive"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Eliminar
+                </Button>
               )}
-              <UploadButton<OurFileRouter>
-                endpoint="brandLogo"
-                onClientUploadComplete={(res) => {
-                  if (res && res.length > 0) {
-                    setLogoDarkUrl(res[0].url);
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Se verá sobre fondos oscuros
+            </p>
+
+            {logoDarkUrl ? (
+              <div className="flex flex-col gap-3">
+                <div className="relative w-full h-32 bg-gray-900 border-2 border-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
+                  <img
+                    src={logoDarkUrl}
+                    alt="Logo modo oscuro"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {isUploadingDark && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+                <UploadButton<OurFileRouter>
+                  endpoint="brandLogo"
+                  onClientUploadComplete={(res) => {
+                    if (res && res.length > 0) {
+                      setLogoDarkUrl(res[0].url);
+                      setIsUploadingDark(false);
+                      toast({
+                        title: "Logo subido",
+                        description: "El logo modo oscuro se ha subido correctamente. No olvides guardar los cambios.",
+                      });
+                    }
+                  }}
+                  onUploadProgress={() => {
+                    setIsUploadingDark(true);
+                  }}
+                  onUploadError={(error: Error) => {
                     setIsUploadingDark(false);
                     toast({
-                      title: "Logo subido",
-                      description: "El logo modo oscuro se ha subido correctamente. No olvides guardar los cambios.",
+                      variant: "destructive",
+                      title: "Error al subir logo",
+                      description: error.message,
                     });
-                  }
-                }}
-                onUploadProgress={() => {
-                  setIsUploadingDark(true);
-                }}
-                onUploadError={(error: Error) => {
-                  setIsUploadingDark(false);
-                  toast({
-                    variant: "destructive",
-                    title: "Error al subir logo",
-                    description: error.message,
-                  });
-                }}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Background del Login */}
-        <div className="space-y-3 pt-4 border-t">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Palette className="h-4 w-4" />
-              Background del Login
-            </label>
-            {backgroundUrl && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleRemoveBackground}
-                className="h-8 text-destructive hover:text-destructive"
-              >
-                <X className="h-4 w-4 mr-1" />
-                Eliminar
-              </Button>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Imagen de fondo personalizada para las páginas de inicio de sesión y registro
-          </p>
-
-          {backgroundUrl ? (
-            <div className="flex flex-col gap-3">
-              <div className="relative w-full h-48 border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                <img
-                  src={backgroundUrl}
-                  alt="Background del login"
-                  className="w-full h-full object-cover"
+                  }}
                 />
               </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              {isUploadingBackground && (
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+
+          {/* Background del Login - Columna 3 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                Background Login
+              </label>
+              {backgroundUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemoveBackground}
+                  className="h-8 text-destructive hover:text-destructive"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Eliminar
+                </Button>
               )}
-              <UploadButton<OurFileRouter>
-                endpoint="loginBackground"
-                onClientUploadComplete={(res) => {
-                  if (res && res.length > 0) {
-                    setBackgroundUrl(res[0].url);
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Imagen de fondo para login/registro
+            </p>
+
+            {backgroundUrl ? (
+              <div className="flex flex-col gap-3">
+                <div className="relative w-full h-32 border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  <img
+                    src={backgroundUrl}
+                    alt="Background del login"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {isUploadingBackground && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+                <UploadButton<OurFileRouter>
+                  endpoint="loginBackground"
+                  onClientUploadComplete={(res) => {
+                    if (res && res.length > 0) {
+                      setBackgroundUrl(res[0].url);
+                      setIsUploadingBackground(false);
+                      toast({
+                        title: "Background subido",
+                        description: "El background se ha subido correctamente. No olvides guardar los cambios.",
+                      });
+                    }
+                  }}
+                  onUploadProgress={() => {
+                    setIsUploadingBackground(true);
+                  }}
+                  onUploadError={(error: Error) => {
                     setIsUploadingBackground(false);
                     toast({
-                      title: "Background subido",
-                      description: "El background se ha subido correctamente. No olvides guardar los cambios.",
+                      variant: "destructive",
+                      title: "Error al subir background",
+                      description: error.message,
                     });
-                  }
-                }}
-                onUploadProgress={() => {
-                  setIsUploadingBackground(true);
-                }}
-                onUploadError={(error: Error) => {
-                  setIsUploadingBackground(false);
-                  toast({
-                    variant: "destructive",
-                    title: "Error al subir background",
-                    description: error.message,
-                  });
-                }}
-              />
-            </div>
-          )}
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Botón Guardar */}
+        {/* Botón Guardar - Fuera del grid */}
         <Button
           type="button"
           onClick={handleSave}

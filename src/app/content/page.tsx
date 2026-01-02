@@ -4,8 +4,6 @@ import { auth } from "@/auth";
 import { getTasks } from "@/actions/content-actions";
 import { getClients } from "@/actions/client-actions";
 import { getUsers } from "@/actions/user.actions";
-import { KanbanBoard } from "@/components/features/content/kanban-board";
-import { ContentFilters } from "@/components/features/content/content-filters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ContentFactoryWrapper } from "@/components/features/content/content-factory-wrapper";

@@ -96,10 +96,17 @@ export function AiContentAssistant({
         });
 
         if (!result.success) {
+          // Mensaje específico para errores de configuración
+          let errorMessage = result.error || "Error al generar contenido";
+          
+          if (result.error?.includes("proveedor") || result.error?.includes("configuración") || result.error?.includes("API key")) {
+            errorMessage = "Error de configuración: Verifica la API Key y el Base URL en Settings > Configuración de IA";
+          }
+
           toast({
             variant: "destructive",
-            title: "Error",
-            description: result.error || "Error al generar contenido",
+            title: "Error de IA",
+            description: errorMessage,
           });
           return;
         }
@@ -107,15 +114,28 @@ export function AiContentAssistant({
         if (result.data) {
           setOptions(result.data.options);
           setIsOpen(true);
+          toast({
+            title: "✅ Contenido generado",
+            description: "Se han generado 3 opciones de copy con IA",
+          });
         }
       } catch (error) {
+        let errorMessage = "Error desconocido al generar contenido";
+        
+        if (error instanceof Error) {
+          if (error.message.includes("configuración") || error.message.includes("proveedor")) {
+            errorMessage = "Error de configuración: Verifica la API Key y el Base URL en Settings > Configuración de IA";
+          } else if (error.message.includes("fetch") || error.message.includes("network")) {
+            errorMessage = "Error de conexión: No se pudo contactar con la API de IA. Verifica tu conexión e inténtalo de nuevo.";
+          } else {
+            errorMessage = error.message;
+          }
+        }
+
         toast({
           variant: "destructive",
-          title: "Error",
-          description:
-            error instanceof Error
-              ? error.message
-              : "Error desconocido al generar contenido",
+          title: "Error de IA",
+          description: errorMessage,
         });
       }
     });

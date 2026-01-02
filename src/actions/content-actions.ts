@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { pusherServer } from "@/lib/pusher";
-import { createContentTaskSchema, updateContentTaskSchema, updateTaskMetricsSchema } from "@/schemas/content";
+import { createContentTaskSchema, updateContentTaskSchema, updateTaskMetricsSchema, dynamicTaskMetricsSchema } from "@/schemas/content";
 import type { ApiResponse } from "@/types";
 import type { ContentTask, Client, TaskMetrics } from "@prisma/client";
 import { sendNotification } from "./notification-actions";
@@ -91,14 +91,16 @@ export async function createTask(
     // 1. Validar con Zod
     const validatedData = createContentTaskSchema.parse(input);
 
-    // 2. Obtener el cliente para verificar si tiene editorId asignado
+    // 2. Obtener el cliente para verificar si tiene editorId y communityId asignados
     const client = await db.client.findUnique({
       where: { id: validatedData.clientId },
-      select: { editorId: true },
+      select: { editorId: true, communityId: true },
     });
 
-    // 3. Si no se especifica assignedToId pero el cliente tiene editorId, asignar automáticamente
-    const assignedToId = validatedData.assignedToId ?? client?.editorId ?? null;
+    // 3. Si no se especifica assignedEditorId pero el cliente tiene editorId, asignar automáticamente
+    const assignedEditorId = validatedData.assignedEditorId ?? client?.editorId ?? null;
+    // Si no se especifica assignedCommunityId pero el cliente tiene communityId, asignar automáticamente
+    const assignedCommunityId = validatedData.assignedCommunityId ?? client?.communityId ?? null;
 
     // 4. Operación de DB
     const task = await db.contentTask.create({
@@ -109,8 +111,9 @@ export async function createTask(
         dueDate: validatedData.dueDate ?? null,
         scheduledAt: validatedData.scheduledAt ?? null,
         clientId: validatedData.clientId,
-        assignedToId: assignedToId,
-        assignedAt: assignedToId ? new Date() : null, // Marcar fecha de asignación si se asigna al crear
+        assignedEditorId: assignedEditorId,
+        assignedCommunityId: assignedCommunityId,
+        assignedAt: (assignedEditorId || assignedCommunityId) ? new Date() : null, // Marcar fecha de asignación si se asigna al crear
         shootId: validatedData.shootId ?? null,
         // Campos opcionales que no se incluyen en el formulario inicial
         reviewToken: validatedData.reviewToken ?? null,
@@ -128,24 +131,37 @@ export async function createTask(
     const session = await auth();
     const sessionUserId = session?.user?.id;
 
-    // 4. Enviar notificación si se asignó a alguien
-    if (assignedToId && assignedToId !== sessionUserId) {
-      try {
-        // Obtener información del cliente para el mensaje
-        const clientInfo = await db.client.findUnique({
-          where: { id: validatedData.clientId },
-          select: { name: true },
-        });
+    // 4. Enviar notificaciones si se asignó a alguien
+    const clientInfo = await db.client.findUnique({
+      where: { id: validatedData.clientId },
+      select: { name: true },
+    });
 
+    // Notificar al editor si se asignó
+    if (assignedEditorId && assignedEditorId !== sessionUserId) {
+      try {
         await sendNotification({
-          userId: assignedToId,
-          message: `Se te ha asignado una nueva tarea: "${task.title}"${clientInfo ? ` para ${clientInfo.name}` : ""}`,
+          userId: assignedEditorId,
+          message: `Se te ha asignado una nueva tarea como Editor: "${task.title}"${clientInfo ? ` para ${clientInfo.name}` : ""}`,
           type: "ASSIGNED",
           createdBy: sessionUserId || undefined,
         });
       } catch (error) {
-        console.error("❌ Error al enviar notificación de asignación:", error);
-        // No fallar la operación si la notificación falla
+        console.error("❌ Error al enviar notificación de asignación (Editor):", error);
+      }
+    }
+
+    // Notificar al community manager si se asignó
+    if (assignedCommunityId && assignedCommunityId !== sessionUserId) {
+      try {
+        await sendNotification({
+          userId: assignedCommunityId,
+          message: `Se te ha asignado una nueva tarea como Community: "${task.title}"${clientInfo ? ` para ${clientInfo.name}` : ""}`,
+          type: "ASSIGNED",
+          createdBy: sessionUserId || undefined,
+        });
+      } catch (error) {
+        console.error("❌ Error al enviar notificación de asignación (Community):", error);
       }
     }
 
@@ -170,10 +186,13 @@ export async function createTask(
     }
 
     // Disparar evento para actualizar dashboards de usuarios afectados
-    // Incluir al usuario asignado (si existe) y siempre al usuario que creó la tarea
+    // Incluir a los usuarios asignados (si existen) y siempre al usuario que creó la tarea
     const affectedUserIds: string[] = [];
-    if (assignedToId) {
-      affectedUserIds.push(assignedToId);
+    if (assignedEditorId) {
+      affectedUserIds.push(assignedEditorId);
+    }
+    if (assignedCommunityId) {
+      affectedUserIds.push(assignedCommunityId);
     }
     // Siempre incluir al usuario que creó la tarea para actualizar su contador de tareas pendientes
     if (sessionUserId) {
@@ -208,13 +227,18 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
     const sessionUserId = session?.user?.id;
     const userRole = session?.user?.role;
 
-    // Si es EDITOR, siempre filtrar solo sus tareas asignadas
+    // Si es EDITOR, siempre filtrar solo sus tareas asignadas como editor
     // Si es ADMIN y showOnlyMine es true, filtrar solo sus tareas
     // Si es ADMIN y showOnlyMine es false o undefined, mostrar todas
     const whereClause = 
       (userRole === "EDITOR" && sessionUserId) || 
       (userRole === "ADMIN" && showOnlyMine && sessionUserId)
-        ? { assignedToId: sessionUserId }
+        ? { 
+            OR: [
+              { assignedEditorId: sessionUserId },
+              { assignedCommunityId: sessionUserId }
+            ]
+          }
         : {};
 
     const tasks = await db.contentTask.findMany({
@@ -263,8 +287,9 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
 
 /**
  * Server Action para obtener tareas pendientes del usuario logueado
- * Retorna el conteo de tareas asignadas al usuario (assignedToId === session.user.id)
- * Solo cuenta tareas con estado operativo (no PUBLISHED)
+ * Retorna el conteo de tareas asignadas al usuario
+ * Regla especial para COMMUNITY (specialty): solo cuenta tareas con estado CLIENT_APPROVED
+ * Regla para EDITOR: cuenta todas las tareas excepto PUBLISHED/CANCELADO
  */
 export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
   try {
@@ -273,50 +298,43 @@ export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
     const session = await auth();
     const sessionUserId = session?.user?.id;
 
-    // Log crítico de depuración
-    console.log("🔍 ID SESION:", sessionUserId);
-    console.log("🔍 Session completa:", JSON.stringify(session?.user, null, 2));
-
     // Si no hay userId en la sesión, retornar 0
     if (!sessionUserId) {
-      console.log("📊 No hay userId en la sesión, retornando 0");
       return { success: true, data: 0 };
     }
 
-    // Obtener todas las tareas del usuario para depuración
-    const allUserTasks = await db.contentTask.findMany({
-      where: {
-        assignedToId: sessionUserId,
-      },
-      select: {
-        id: true,
-        title: true,
-        assignedToId: true,
-        status: true,
-      },
+    // Obtener specialty del usuario desde la base de datos
+    const user = await db.user.findUnique({
+      where: { id: sessionUserId },
+      select: { specialty: true },
     });
 
-    console.log("📊 TODAS las tareas asignadas al usuario:", allUserTasks);
-    console.log("📊 Total de tareas asignadas:", allUserTasks.length);
+    const userSpecialty = user?.specialty;
 
-    // Filtrar tareas por estados válidos
+    // Si es COMMUNITY, solo contar tareas con estado CLIENT_APPROVED
+    if (userSpecialty === "COMMUNITY") {
+      const count = await db.contentTask.count({
+        where: {
+          assignedCommunityId: sessionUserId,
+          status: "CLIENT_APPROVED",
+        },
+      });
+      return { success: true, data: count };
+    }
+
+    // Para EDITOR o cualquier otro usuario, contar tareas asignadas como editor
+    // Estados válidos: todos excepto PUBLISHED
     const validStatuses = ["IDEA", "RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT", "CLIENT_APPROVED", "APPROVED"];
-    const pendingTasks = allUserTasks.filter(task => validStatuses.includes(task.status));
     
-    console.log("📊 Tareas con estados válidos:", pendingTasks);
-    console.log("📊 Estados de las tareas:", allUserTasks.map(t => ({ title: t.title, status: t.status })));
-
-    // Contar solo tareas asignadas al usuario actual con estados válidos
     const count = await db.contentTask.count({
       where: {
-        assignedToId: sessionUserId,
+        assignedEditorId: sessionUserId,
         status: {
           in: validStatuses,
         },
       },
     });
 
-    console.log("📊 Conteo final de tareas pendientes:", count);
     return { success: true, data: count };
   } catch (error) {
     console.error("❌ Error en getPendingTasksCount:", error);
@@ -363,8 +381,10 @@ export async function updateTaskStatus(
       select: { 
         status: true, 
         clientId: true, 
-        assignedToId: true,
+        assignedEditorId: true,
+        assignedCommunityId: true,
         title: true,
+        clientFeedback: true,
         client: {
           select: { name: true },
         },
@@ -387,18 +407,20 @@ export async function updateTaskStatus(
     const isChangingToClientApproved = newStatus === "CLIENT_APPROVED" && currentTask.status !== "CLIENT_APPROVED";
     const isChangingToEditing = newStatus === "EDITING" && currentTask.status !== "EDITING";
 
-    // Guardar el editor previo antes de reasignar (para notificaciones)
-    const previousEditorId = currentTask.assignedToId;
+    // Guardar IDs previos antes de reasignar (para notificaciones)
+    const previousEditorId = currentTask.assignedEditorId;
+    const previousCommunityId = currentTask.assignedCommunityId;
 
     // Obtener el cliente para verificar editorId y communityId
-    let newAssignedToId: string | null | undefined = undefined;
+    let newAssignedCommunityId: string | null | undefined = undefined;
+    let newAssignedEditorId: string | null | undefined = undefined;
     let shouldUpdateAssignedAt = false;
 
     if (isChangingToClientApproved) {
       // AUTOMATIZACIÓN: CLIENT_APPROVED -> asignar automáticamente al Community Manager
       const cmId = await getCommunityManagerId(currentTask.clientId);
       if (cmId) {
-        newAssignedToId = cmId;
+        newAssignedCommunityId = cmId;
         shouldUpdateAssignedAt = true;
         console.log(`✅ [AUTOMATIZACIÓN] Tarea "${currentTask.title}" reasignada automáticamente al CM (${cmId})`);
       } else {
@@ -411,7 +433,7 @@ export async function updateTaskStatus(
         select: { editorId: true },
       });
       if (client?.editorId) {
-        newAssignedToId = client.editorId;
+        newAssignedEditorId = client.editorId;
         shouldUpdateAssignedAt = true;
       }
     }
@@ -423,13 +445,16 @@ export async function updateTaskStatus(
         status: newStatus,
         // Si cambia a PUBLISHED, actualizar publishedAt
         ...(isChangingToPublished && { publishedAt: new Date() }),
-        // Pase de estafeta: actualizar assignedToId y assignedAt
-        ...(newAssignedToId !== undefined && {
-          assignedToId: newAssignedToId,
-          assignedAt: shouldUpdateAssignedAt ? new Date() : undefined,
+        // Pase de estafeta: actualizar assignedCommunityId/assignedEditorId y assignedAt
+        ...(newAssignedCommunityId !== undefined && {
+          assignedCommunityId: newAssignedCommunityId,
         }),
+        ...(newAssignedEditorId !== undefined && {
+          assignedEditorId: newAssignedEditorId,
+        }),
+        ...(shouldUpdateAssignedAt && { assignedAt: new Date() }),
         // Log de auditoría: agregar comentario automático si cambió a CLIENT_APPROVED
-        ...(isChangingToClientApproved && newAssignedToId && {
+        ...(isChangingToClientApproved && newAssignedCommunityId && {
           clientFeedback: currentTask.clientFeedback 
             ? `${currentTask.clientFeedback}\n\n[Automático] Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM.`
             : "[Automático] Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM.",
@@ -454,11 +479,11 @@ export async function updateTaskStatus(
       const oldStatusLabel = statusLabels[currentTask.status] || currentTask.status;
 
       // AUTOMATIZACIÓN: Notificaciones específicas cuando cambia a CLIENT_APPROVED
-      if (isChangingToClientApproved && newAssignedToId) {
+      if (isChangingToClientApproved && newAssignedCommunityId) {
         // Notificar al Community Manager
-        if (newAssignedToId !== sessionUserId) {
+        if (newAssignedCommunityId !== sessionUserId) {
           await sendNotification({
-            userId: newAssignedToId,
+            userId: newAssignedCommunityId,
             message: `✅ Tarea lista para publicar: "${currentTask.title}" ha sido aprobada por el cliente y se te ha asignado.`,
             type: "ASSIGNED",
             createdBy: sessionUserId || undefined,
@@ -466,7 +491,7 @@ export async function updateTaskStatus(
         }
 
         // Notificar al Editor previo (si existe y es diferente del CM)
-        if (previousEditorId && previousEditorId !== newAssignedToId && previousEditorId !== sessionUserId) {
+        if (previousEditorId && previousEditorId !== newAssignedCommunityId && previousEditorId !== sessionUserId) {
           await sendNotification({
             userId: previousEditorId,
             message: `👍 ¡Buen trabajo! Tu tarea "${currentTask.title}" ha sido aprobada por el cliente.`,
@@ -476,11 +501,11 @@ export async function updateTaskStatus(
         }
       } else {
         // Notificaciones estándar para otros cambios de estado
-        const targetUserId = newAssignedToId || currentTask.assignedToId;
-        
-        if (targetUserId && targetUserId !== sessionUserId && currentTask.status !== newStatus) {
+        // Notificar al editor asignado
+        const targetEditorId = newAssignedEditorId ?? currentTask.assignedEditorId;
+        if (targetEditorId && targetEditorId !== sessionUserId && currentTask.status !== newStatus) {
           await sendNotification({
-            userId: targetUserId,
+            userId: targetEditorId,
             message: `La tarea "${currentTask.title}" cambió de estado: ${oldStatusLabel} → ${statusLabel}${currentTask.client ? ` (${currentTask.client.name})` : ""}`,
             type: "STATUS_CHANGE",
             createdBy: sessionUserId || undefined,
@@ -488,9 +513,9 @@ export async function updateTaskStatus(
         }
 
         // Si se reasignó la tarea, notificar al nuevo asignado
-        if (newAssignedToId && newAssignedToId !== currentTask.assignedToId && newAssignedToId !== sessionUserId) {
+        if (newAssignedEditorId && newAssignedEditorId !== currentTask.assignedEditorId && newAssignedEditorId !== sessionUserId) {
           await sendNotification({
-            userId: newAssignedToId,
+            userId: newAssignedEditorId,
             message: `Se te ha asignado la tarea "${currentTask.title}"${currentTask.client ? ` para ${currentTask.client.name}` : ""}`,
             type: "ASSIGNED",
             createdBy: sessionUserId || undefined,
@@ -518,8 +543,14 @@ export async function updateTaskStatus(
     if (previousEditorId) {
       affectedUserIds.push(previousEditorId);
     }
-    if (newAssignedToId) {
-      affectedUserIds.push(newAssignedToId);
+    if (previousCommunityId) {
+      affectedUserIds.push(previousCommunityId);
+    }
+    if (newAssignedEditorId) {
+      affectedUserIds.push(newAssignedEditorId);
+    }
+    if (newAssignedCommunityId) {
+      affectedUserIds.push(newAssignedCommunityId);
     }
     if (sessionUserId && !affectedUserIds.includes(sessionUserId)) {
       affectedUserIds.push(sessionUserId);
@@ -575,8 +606,10 @@ export async function updateTask(
       select: { 
         status: true, 
         clientId: true, 
-        assignedToId: true,
+        assignedEditorId: true,
+        assignedCommunityId: true,
         title: true,
+        clientFeedback: true,
         client: {
           select: { name: true },
         },
@@ -603,30 +636,36 @@ export async function updateTask(
       validatedData.status === "CLIENT_APPROVED" && 
       taskBefore.status !== "CLIENT_APPROVED";
 
-    // Guardar el editor previo antes de reasignar (para notificaciones)
-    const previousEditorId = taskBefore.assignedToId;
+    // Guardar los IDs previos antes de reasignar (para notificaciones)
+    const previousEditorId = taskBefore.assignedEditorId;
+    const previousCommunityId = taskBefore.assignedCommunityId;
 
     // AUTOMATIZACIÓN: Si cambia a CLIENT_APPROVED, asignar automáticamente al CM
-    let newAssignedToId: string | null | undefined = undefined;
+    let newAssignedCommunityId: string | null | undefined = undefined;
+    let newAssignedEditorId: string | null | undefined = undefined;
     let shouldUpdateAssignedAt = false;
 
     if (isChangingToClientApproved) {
       const cmId = await getCommunityManagerId(taskBefore.clientId);
       if (cmId) {
-        newAssignedToId = cmId;
+        newAssignedCommunityId = cmId;
         shouldUpdateAssignedAt = true;
         console.log(`✅ [AUTOMATIZACIÓN] Tarea "${taskBefore.title}" reasignada automáticamente al CM (${cmId})`);
       } else {
         console.warn(`⚠️ [AUTOMATIZACIÓN] No se encontró Community Manager para cliente ${taskBefore.clientId}`);
       }
     } else {
-      // Detectar si cambió el responsable manualmente (assignedToId)
-      newAssignedToId = validatedData.assignedToId !== undefined 
-        ? validatedData.assignedToId || null 
-        : taskBefore.assignedToId;
+      // Detectar si cambió el responsable manualmente
+      newAssignedEditorId = validatedData.assignedEditorId !== undefined 
+        ? validatedData.assignedEditorId || null 
+        : taskBefore.assignedEditorId;
+      newAssignedCommunityId = validatedData.assignedCommunityId !== undefined 
+        ? validatedData.assignedCommunityId || null 
+        : taskBefore.assignedCommunityId;
     }
 
-    const assignedToIdChanged = taskBefore.assignedToId !== newAssignedToId;
+    const assignedEditorIdChanged = taskBefore.assignedEditorId !== newAssignedEditorId;
+    const assignedCommunityIdChanged = taskBefore.assignedCommunityId !== newAssignedCommunityId;
 
     // Actualizar la tarea
     const task = await db.contentTask.update({
@@ -642,27 +681,26 @@ export async function updateTask(
         }),
         ...(validatedData.status && { status: validatedData.status }),
         // AUTOMATIZACIÓN: Si cambió a CLIENT_APPROVED, usar el CM asignado automáticamente
-        // Si no, usar el assignedToId del formulario (si se proporcionó)
-        ...(isChangingToClientApproved && newAssignedToId !== undefined
+        // Si no, usar los IDs del formulario (si se proporcionaron)
+        ...(isChangingToClientApproved && newAssignedCommunityId !== undefined
           ? {
-              assignedToId: newAssignedToId,
-              assignedAt: shouldUpdateAssignedAt ? new Date() : undefined,
-            }
-          : validatedData.assignedToId !== undefined
-          ? {
-              assignedToId: validatedData.assignedToId || null,
-              // Si se asigna una tarea (antes no tenía assignedToId o cambió), marcar assignedAt
-              assignedAt: 
-                validatedData.assignedToId && 
-                (!taskBefore.assignedToId || taskBefore.assignedToId !== validatedData.assignedToId)
-                  ? new Date()
-                  : validatedData.assignedToId === null 
-                    ? null 
-                    : undefined, // Mantener el valor actual si no cambia
+              assignedCommunityId: newAssignedCommunityId,
             }
           : {}),
+        ...(validatedData.assignedEditorId !== undefined && {
+          assignedEditorId: validatedData.assignedEditorId || null,
+        }),
+        ...(validatedData.assignedCommunityId !== undefined && {
+          assignedCommunityId: validatedData.assignedCommunityId || null,
+        }),
+        // Actualizar assignedAt si se asignó algún usuario (nuevo o cambio)
+        ...((shouldUpdateAssignedAt || 
+             (validatedData.assignedEditorId !== undefined && validatedData.assignedEditorId && (!taskBefore.assignedEditorId || taskBefore.assignedEditorId !== validatedData.assignedEditorId)) ||
+             (validatedData.assignedCommunityId !== undefined && validatedData.assignedCommunityId && (!taskBefore.assignedCommunityId || taskBefore.assignedCommunityId !== validatedData.assignedCommunityId)))
+          ? { assignedAt: new Date() }
+          : {}),
         // Log de auditoría y clientFeedback
-        ...(isChangingToClientApproved && newAssignedToId
+        ...(isChangingToClientApproved && newAssignedCommunityId
           ? {
               // Si cambió a CLIENT_APPROVED, agregar log de auditoría
               clientFeedback: validatedData.clientFeedback !== undefined
@@ -690,12 +728,12 @@ export async function updateTask(
 
     // Notificaciones específicas para CLIENT_APPROVED o reasignación estándar
     try {
-      if (isChangingToClientApproved && newAssignedToId) {
+      if (isChangingToClientApproved && newAssignedCommunityId) {
         // AUTOMATIZACIÓN: Notificaciones específicas cuando cambia a CLIENT_APPROVED
         // Notificar al Community Manager
-        if (newAssignedToId !== sessionUserId) {
+        if (newAssignedCommunityId !== sessionUserId) {
           await sendNotification({
-            userId: newAssignedToId,
+            userId: newAssignedCommunityId,
             message: `✅ Tarea lista para publicar: "${taskBefore.title}" ha sido aprobada por el cliente y se te ha asignado.`,
             type: "ASSIGNED",
             createdBy: sessionUserId || undefined,
@@ -703,7 +741,7 @@ export async function updateTask(
         }
 
         // Notificar al Editor previo (si existe y es diferente del CM)
-        if (previousEditorId && previousEditorId !== newAssignedToId && previousEditorId !== sessionUserId) {
+        if (previousEditorId && previousEditorId !== newAssignedCommunityId && previousEditorId !== sessionUserId) {
           await sendNotification({
             userId: previousEditorId,
             message: `👍 ¡Buen trabajo! Tu tarea "${taskBefore.title}" ha sido aprobada por el cliente.`,
@@ -711,14 +749,24 @@ export async function updateTask(
             createdBy: sessionUserId || undefined,
           });
         }
-      } else if (assignedToIdChanged && newAssignedToId && newAssignedToId !== sessionUserId) {
-        // Notificación estándar para otras reasignaciones
-        await sendNotification({
-          userId: newAssignedToId,
-          message: `Se te ha reasignado la tarea: "${taskBefore.title}"${taskBefore.client ? ` para ${taskBefore.client.name}` : ""}`,
-          type: "ASSIGNED",
-          createdBy: sessionUserId || undefined,
-        });
+      } else {
+        // Notificaciones estándar para otras reasignaciones
+        if (assignedEditorIdChanged && newAssignedEditorId && newAssignedEditorId !== sessionUserId) {
+          await sendNotification({
+            userId: newAssignedEditorId,
+            message: `Se te ha asignado la tarea como Editor: "${taskBefore.title}"${taskBefore.client ? ` para ${taskBefore.client.name}` : ""}`,
+            type: "ASSIGNED",
+            createdBy: sessionUserId || undefined,
+          });
+        }
+        if (assignedCommunityIdChanged && newAssignedCommunityId && newAssignedCommunityId !== sessionUserId) {
+          await sendNotification({
+            userId: newAssignedCommunityId,
+            message: `Se te ha asignado la tarea como Community: "${taskBefore.title}"${taskBefore.client ? ` para ${taskBefore.client.name}` : ""}`,
+            type: "ASSIGNED",
+            createdBy: sessionUserId || undefined,
+          });
+        }
       }
     } catch (error) {
       console.error("❌ Error al enviar notificaciones:", error);
@@ -761,8 +809,14 @@ export async function updateTask(
     if (previousEditorId) {
       affectedUserIds.push(previousEditorId);
     }
-    if (newAssignedToId) {
-      affectedUserIds.push(newAssignedToId);
+    if (previousCommunityId) {
+      affectedUserIds.push(previousCommunityId);
+    }
+    if (newAssignedEditorId) {
+      affectedUserIds.push(newAssignedEditorId);
+    }
+    if (newAssignedCommunityId) {
+      affectedUserIds.push(newAssignedCommunityId);
     }
     if (sessionUserId && !affectedUserIds.includes(sessionUserId)) {
       affectedUserIds.push(sessionUserId);
@@ -819,17 +873,72 @@ export async function deleteTask(id: string): Promise<ApiResponse<void>> {
 }
 
 /**
- * Server Action para obtener las métricas de una tarea
+ * Obtiene la configuración de métricas habilitadas para un cliente
+ * Retorna un array con los nombres de los campos de métricas que el cliente tiene configurados
+ * Si no hay configuración, retorna todas las métricas por defecto
+ */
+export async function getEnabledMetricsForClient(clientId: string): Promise<string[]> {
+  try {
+    const client = await db.client.findUnique({
+      where: { id: clientId },
+      select: { metricsConfig: true },
+    });
+
+    if (!client?.metricsConfig) {
+      // Si no hay configuración, retornar todas las métricas por defecto
+      return [
+        "metaViews", "metaLikes", "metaShares", "metaComments", "metaSaves", "metaReach",
+        "ttViews", "ttLikes", "ttShares", "ttComments", "ttSaves",
+        "totalBudgetSpent", "notes",
+        "conversions", "salesCount", "revenue", "conversionSource"
+      ];
+    }
+
+    try {
+      const config = JSON.parse(client.metricsConfig);
+      return config.enabledMetrics || [];
+    } catch {
+      return [];
+    }
+  } catch (error) {
+    console.error("❌ Error al obtener configuración de métricas:", error);
+    return [];
+  }
+}
+
+/**
+ * Server Action para obtener las métricas de una tarea junto con la configuración del cliente
  */
 export async function getTaskMetrics(
   taskId: string
-): Promise<ApiResponse<TaskMetrics | null>> {
+): Promise<ApiResponse<{ metrics: TaskMetrics | null; enabledMetrics: string[]; clientId: string } | null>> {
   try {
+    // Obtener la tarea para saber a qué cliente pertenece
+    const task = await db.contentTask.findUnique({
+      where: { id: taskId },
+      select: { clientId: true },
+    });
+
+    if (!task) {
+      return { success: true, data: null };
+    }
+
+    // Obtener las métricas de la tarea
     const metrics = await db.taskMetrics.findUnique({
       where: { taskId },
     });
 
-    return { success: true, data: metrics };
+    // Obtener las métricas habilitadas para el cliente
+    const enabledMetrics = await getEnabledMetricsForClient(task.clientId);
+
+    return { 
+      success: true, 
+      data: {
+        metrics,
+        enabledMetrics,
+        clientId: task.clientId
+      }
+    };
   } catch (error) {
     return {
       success: false,
@@ -842,15 +951,13 @@ export async function getTaskMetrics(
 /**
  * Server Action para actualizar o crear métricas de una tarea
  * Valida permisos: EDITOR solo puede editar métricas de sus tareas asignadas
+ * Soporta tanto formato estático (campos fijos) como dinámico (basado en configuración del cliente)
  */
 export async function updateTaskMetrics(
   input: unknown
 ): Promise<ApiResponse<TaskMetrics>> {
   try {
-    // 1. Validar con Zod
-    const validatedData = updateTaskMetricsSchema.parse(input);
-
-    // 2. Obtener sesión y verificar permisos
+    // 1. Obtener sesión y verificar permisos primero
     const { auth } = await import("@/auth");
     const session = await auth();
     const sessionUserId = session?.user?.id;
@@ -863,12 +970,27 @@ export async function updateTaskMetrics(
       };
     }
 
+    // 2. Intentar validar como formato dinámico primero
+    let validatedData: any;
+    let isDynamicFormat = false;
+    
+    try {
+      const dynamicData = dynamicTaskMetricsSchema.parse(input);
+      validatedData = dynamicData;
+      isDynamicFormat = true;
+    } catch (dynamicError) {
+      // Si falla, intentar con el formato estático tradicional
+      validatedData = updateTaskMetricsSchema.parse(input);
+    }
+
     // 3. Verificar que la tarea existe y obtener información
     const task = await db.contentTask.findUnique({
       where: { id: validatedData.taskId },
       select: {
         id: true,
-        assignedToId: true,
+        assignedEditorId: true,
+        assignedCommunityId: true,
+        clientId: true,
       },
     });
 
@@ -879,9 +1001,11 @@ export async function updateTaskMetrics(
       };
     }
 
-    // 4. Validar permisos: EDITOR solo puede editar métricas de sus tareas asignadas
+    // 4. Validar permisos: EDITOR solo puede editar métricas de sus tareas asignadas (como editor o community)
     if (userRole === "EDITOR") {
-      if (task.assignedToId !== sessionUserId) {
+      const isAssignedAsEditor = task.assignedEditorId === sessionUserId;
+      const isAssignedAsCommunity = task.assignedCommunityId === sessionUserId;
+      if (!isAssignedAsEditor && !isAssignedAsCommunity) {
         return {
           success: false,
           error: "No tienes permisos para editar las métricas de esta tarea",
@@ -890,69 +1014,37 @@ export async function updateTaskMetrics(
     }
     // ADMIN puede editar cualquier tarea
 
-    // 5. Calcular todos los KPIs avanzados
-    // ER Meta: ((Likes + Comments + Shares + Saves) / Reach) * 100
-    const metaTotalEngagement = validatedData.metaLikes + validatedData.metaComments + validatedData.metaShares + validatedData.metaSaves;
-    const erMeta = validatedData.metaReach > 0 ? (metaTotalEngagement / validatedData.metaReach) * 100 : 0;
+    // 5. Preparar datos para upsert
+    let metricsData: any = { taskId: validatedData.taskId };
 
-    // ER TikTok: ((Likes + Comments + Shares + Saves) / Views) * 100
-    const ttTotalEngagement = validatedData.ttLikes + validatedData.ttComments + validatedData.ttShares + validatedData.ttSaves;
-    const erTikTok = validatedData.ttViews > 0 ? (ttTotalEngagement / validatedData.ttViews) * 100 : 0;
-
-    // Total Brand Awareness: Reach Meta + Views TikTok
-    const totalBrandAwareness = validatedData.metaReach + validatedData.ttViews;
-
-    // Global Social Proof: Suma total de Likes y Comentarios
-    const globalSocialProof = validatedData.metaLikes + validatedData.metaComments + validatedData.ttLikes + validatedData.ttComments;
-
-    // Virality Index: (Total Shares / Total Views) * 100
-    const totalShares = validatedData.metaShares + validatedData.ttShares;
-    const totalViews = validatedData.metaViews + validatedData.ttViews;
-    const viralityIndex = totalViews > 0 ? (totalShares / totalViews) * 100 : 0;
-
-    // Efficiency Score: Promedio ponderado (60% Meta, 40% TikTok)
-    const efficiencyScore = erMeta > 0 && erTikTok > 0
-      ? erMeta * 0.6 + erTikTok * 0.4
-      : erMeta > 0 ? erMeta : erTikTok;
-
-    // 6. Actualizar o crear métricas (upsert)
-    const metrics = await db.taskMetrics.upsert({
-      where: { taskId: validatedData.taskId },
-      update: {
-        metaViews: validatedData.metaViews,
-        metaLikes: validatedData.metaLikes,
-        metaShares: validatedData.metaShares,
-        metaComments: validatedData.metaComments,
-        metaSaves: validatedData.metaSaves,
-        metaReach: validatedData.metaReach,
-        ttViews: validatedData.ttViews,
-        ttLikes: validatedData.ttLikes,
-        ttShares: validatedData.ttShares,
-        ttComments: validatedData.ttComments,
-        ttSaves: validatedData.ttSaves,
-        totalBudgetSpent: validatedData.totalBudgetSpent,
-        notes: validatedData.notes,
-        conversions: validatedData.conversions,
-        salesCount: validatedData.salesCount,
-        revenue: validatedData.revenue,
-        conversionSource: validatedData.conversionSource,
-        erMeta,
-        erTikTok,
-        totalBrandAwareness,
-        globalSocialProof,
-        viralityIndex,
-        efficiencyScore,
-        cpa: validatedData.totalBudgetSpent && validatedData.salesCount > 0
-          ? validatedData.totalBudgetSpent / validatedData.salesCount
-          : 0,
-        roas: validatedData.totalBudgetSpent && validatedData.totalBudgetSpent > 0
-          ? validatedData.revenue / validatedData.totalBudgetSpent
-          : 0,
-        conversionRate: (validatedData.metaReach + validatedData.ttViews) > 0
-          ? (validatedData.conversions / (validatedData.metaReach + validatedData.ttViews)) * 100
-          : 0,
-      },
-      create: {
+    if (isDynamicFormat) {
+      // Formato dinámico: procesar el objeto de métricas
+      const metrics = validatedData.metrics;
+      
+      // Mapear métricas dinámicas al formato del modelo TaskMetrics
+      metricsData = {
+        taskId: validatedData.taskId,
+        metaViews: metrics.metaViews ?? 0,
+        metaLikes: metrics.metaLikes ?? 0,
+        metaShares: metrics.metaShares ?? 0,
+        metaComments: metrics.metaComments ?? 0,
+        metaSaves: metrics.metaSaves ?? 0,
+        metaReach: metrics.metaReach ?? 0,
+        ttViews: metrics.ttViews ?? 0,
+        ttLikes: metrics.ttLikes ?? 0,
+        ttShares: metrics.ttShares ?? 0,
+        ttComments: metrics.ttComments ?? 0,
+        ttSaves: metrics.ttSaves ?? 0,
+        totalBudgetSpent: metrics.totalBudgetSpent ?? null,
+        notes: metrics.notes ?? null,
+        conversions: metrics.conversions ?? 0,
+        salesCount: metrics.salesCount ?? 0,
+        revenue: metrics.revenue ?? 0.0,
+        conversionSource: metrics.conversionSource ?? null,
+      };
+    } else {
+      // Formato estático tradicional
+      metricsData = {
         taskId: validatedData.taskId,
         metaViews: validatedData.metaViews,
         metaLikes: validatedData.metaLikes,
@@ -971,28 +1063,79 @@ export async function updateTaskMetrics(
         salesCount: validatedData.salesCount,
         revenue: validatedData.revenue,
         conversionSource: validatedData.conversionSource,
+      };
+    }
+
+    // 6. Calcular todos los KPIs avanzados
+    // ER Meta: ((Likes + Comments + Shares + Saves) / Reach) * 100
+    const metaTotalEngagement = metricsData.metaLikes + metricsData.metaComments + metricsData.metaShares + metricsData.metaSaves;
+    const erMeta = metricsData.metaReach > 0 ? (metaTotalEngagement / metricsData.metaReach) * 100 : 0;
+
+    // ER TikTok: ((Likes + Comments + Shares + Saves) / Views) * 100
+    const ttTotalEngagement = metricsData.ttLikes + metricsData.ttComments + metricsData.ttShares + metricsData.ttSaves;
+    const erTikTok = metricsData.ttViews > 0 ? (ttTotalEngagement / metricsData.ttViews) * 100 : 0;
+
+    // Total Brand Awareness: Reach Meta + Views TikTok
+    const totalBrandAwareness = metricsData.metaReach + metricsData.ttViews;
+
+    // Global Social Proof: Suma total de Likes y Comentarios
+    const globalSocialProof = metricsData.metaLikes + metricsData.metaComments + metricsData.ttLikes + metricsData.ttComments;
+
+    // Virality Index: (Total Shares / Total Views) * 100
+    const totalShares = metricsData.metaShares + metricsData.ttShares;
+    const totalViews = metricsData.metaViews + metricsData.ttViews;
+    const viralityIndex = totalViews > 0 ? (totalShares / totalViews) * 100 : 0;
+
+    // Efficiency Score: Promedio ponderado (60% Meta, 40% TikTok)
+    const efficiencyScore = erMeta > 0 && erTikTok > 0
+      ? erMeta * 0.6 + erTikTok * 0.4
+      : erMeta > 0 ? erMeta : erTikTok;
+
+    // 7. Actualizar o crear métricas (upsert)
+    const metrics = await db.taskMetrics.upsert({
+      where: { taskId: metricsData.taskId },
+      update: {
+        ...metricsData,
         erMeta,
         erTikTok,
         totalBrandAwareness,
         globalSocialProof,
         viralityIndex,
         efficiencyScore,
-        cpa: validatedData.totalBudgetSpent && validatedData.salesCount > 0
-          ? validatedData.totalBudgetSpent / validatedData.salesCount
+        cpa: metricsData.totalBudgetSpent && metricsData.salesCount > 0
+          ? metricsData.totalBudgetSpent / metricsData.salesCount
           : 0,
-        roas: validatedData.totalBudgetSpent && validatedData.totalBudgetSpent > 0
-          ? validatedData.revenue / validatedData.totalBudgetSpent
+        roas: metricsData.totalBudgetSpent && metricsData.totalBudgetSpent > 0
+          ? metricsData.revenue / metricsData.totalBudgetSpent
           : 0,
-        conversionRate: (validatedData.metaReach + validatedData.ttViews) > 0
-          ? (validatedData.conversions / (validatedData.metaReach + validatedData.ttViews)) * 100
+        conversionRate: (metricsData.metaReach + metricsData.ttViews) > 0
+          ? (metricsData.conversions / (metricsData.metaReach + metricsData.ttViews)) * 100
+          : 0,
+      },
+      create: {
+        ...metricsData,
+        erMeta,
+        erTikTok,
+        totalBrandAwareness,
+        globalSocialProof,
+        viralityIndex,
+        efficiencyScore,
+        cpa: metricsData.totalBudgetSpent && metricsData.salesCount > 0
+          ? metricsData.totalBudgetSpent / metricsData.salesCount
+          : 0,
+        roas: metricsData.totalBudgetSpent && metricsData.totalBudgetSpent > 0
+          ? metricsData.revenue / metricsData.totalBudgetSpent
+          : 0,
+        conversionRate: (metricsData.metaReach + metricsData.ttViews) > 0
+          ? (metricsData.conversions / (metricsData.metaReach + metricsData.ttViews)) * 100
           : 0,
       },
     });
 
-    // 7. Revalidar rutas
+    // 8. Revalidar rutas
     revalidatePath("/content");
     revalidatePath("/content/dashboard");
-    revalidatePath(`/clients/${task.id}`);
+    revalidatePath(`/clients/${task.clientId}`);
 
     return { success: true, data: metrics };
   } catch (error) {

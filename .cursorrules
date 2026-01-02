@@ -53,3 +53,12 @@ Your goal is to build a scalable, maintainable, and secure agency management sys
 - **Command Execution:**
   - Always verify you are in the Project Root (where `package.json` exists) before running commands.
   - If the terminal is in the wrong folder, use `cd "D:\Users\Stuart\Documents\Portafolio\Trabajos\Totem\Totem OS\Totem OS"` first.
+  
+## 9. Reglas de Tipado Estricto:
+
+NUNCA inventes interfaces manuales para modelos de base de datos. Usa siempre Prisma.XGetPayload o importa los tipos generados.
+
+Al acceder a propiedades opcionales de Prisma (campos con ?), SIEMPRE implementa un fallback con ?? o Optional Chaining ?..
+
+Antes de finalizar una respuesta, verifica que no haya variables importadas sin usar.
+

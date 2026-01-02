@@ -51,7 +51,7 @@ export default async function SharedReportPage({
   const feedbacksResult = await getClientFeedbacks(client.id);
   const currentFeedback = feedbacksResult.success && feedbacksResult.data
     ? feedbacksResult.data.find(
-        (f) => f.month === reportData.month && f.year === reportData.year
+        (f) => Number(f.month) === Number(reportData.month) && Number(f.year) === Number(reportData.year)
       )
     : null;
 
@@ -70,7 +70,7 @@ export default async function SharedReportPage({
     "Noviembre",
     "Diciembre",
   ];
-  const monthName = monthNames[reportData.month - 1] || format(new Date(reportData.year, reportData.month - 1), "MMMM");
+  const monthName = monthNames[Number(reportData.month) - 1] || format(new Date(Number(reportData.year), Number(reportData.month) - 1), "MMMM");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -131,7 +131,7 @@ export default async function SharedReportPage({
         {/* Sección de Aprobación y Comentarios */}
         <ReportApprovalSection
           clientId={client.id}
-          month={reportData.month}
+          month={Number(reportData.month)}
           year={reportData.year}
           monthName={monthName}
           isApproved={currentFeedback?.approved || false}

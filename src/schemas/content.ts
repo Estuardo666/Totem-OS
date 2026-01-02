@@ -30,7 +30,8 @@ export const contentTaskSchema = z.object({
   coverImageUrl: z.string().optional().nullable(),
   audioBriefUrl: z.string().optional().nullable(),
   clientId: z.string().cuid(),
-  assignedToId: z.string().cuid().optional(),
+  assignedEditorId: z.string().cuid().optional(),
+  assignedCommunityId: z.string().cuid().optional(),
   shootId: z.string().cuid().optional(),
 });
 
@@ -165,6 +166,19 @@ export const updateTaskMetricsSchema = taskMetricsSchema
       conversionSource: data.conversionSource ?? null,
     };
   });
+
+// Schema para métricas dinámicas (enviadas desde el formulario)
+export const dynamicTaskMetricsSchema = z.object({
+  taskId: z.string().cuid(),
+  metrics: z.record(z.union([
+    z.number().int().min(0).default(0),
+    z.number().min(0).default(0),
+    z.string().optional().nullable(),
+    z.enum(["WhatsApp", "Web", "DM", "Link en Bio", "Local Físico", "Otro"]).optional().nullable()
+  ]))
+});
+
+export type DynamicTaskMetricsInput = z.infer<typeof dynamicTaskMetricsSchema>;
 
 export type TaskMetrics = z.infer<typeof taskMetricsSchema>;
 export type UpdateTaskMetricsInput = z.infer<typeof updateTaskMetricsSchema>;

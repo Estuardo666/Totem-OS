@@ -2,7 +2,6 @@
 
 import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
-import type { User } from "@prisma/client";
 import { auth } from "@/auth";
 import { createTransactionSchema } from "@/schemas/finance";
 import { revalidatePath } from "next/cache";
@@ -26,10 +25,6 @@ export interface UserSettlement {
   status: "PENDING" | "PAID";
   transferId?: string; // ID del InternalTransfer si existe
 }
-
-const WEEKLY_CAPACITY_ADMIN = 15;
-const WEEKLY_CAPACITY_EDITOR = 10;
-const WEEKLY_CAPACITY_VIEWER = 5;
 
 /**
  * Calcula la liquidación mensual de la agencia
@@ -90,7 +85,7 @@ export async function calculateMonthlySettlement(
       },
     });
     const operationalExpenses = editors.reduce(
-      (sum, e) => sum + e.baseSalary,
+      (sum, e) => sum + (e.baseSalary ?? 0),
       0
     );
 
@@ -172,11 +167,10 @@ export async function getUserSettlements(
       users.map(async (user) => {
         let amount = 0;
         let type: "SALARIO" | "HONORARIOS" = "SALARIO";
-        let transferId: string | undefined;
 
         if (user.role === "EDITOR") {
           // Salario fijo para editores
-          amount = user.baseSalary;
+          amount = user.baseSalary ?? 0;
           type = "SALARIO";
         } else if (user.role === "ADMIN") {
           // Honorarios para socios (50% de utilidad cada uno)
@@ -260,7 +254,6 @@ export async function createOrUpdateTransfer(
   status: "PENDING" | "PAID" = "PENDING"
 ): Promise<ApiResponse<{ id: string }>> {
   try {
-    const now = new Date();
     const transfer = await db.internalTransfer.upsert({
       where: {
         userId_month_year_type: {

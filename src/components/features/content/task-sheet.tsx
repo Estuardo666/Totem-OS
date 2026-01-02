@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { subHours } from "date-fns";
-import { Loader2, Trash2, Copy, Check, Image, FileText, Palette, ExternalLink, MessageSquare, Brain, TrendingUp, X, Download } from "lucide-react";
+import { Loader2, Trash2, Copy, Check, Image, FileText, Palette, ExternalLink, MessageSquare, Brain, TrendingUp, X, Download, Sparkles } from "lucide-react";
 import { updateContentTaskSchema, createContentTaskSchema, type UpdateContentTaskInput, type CreateContentTaskInput, updateTaskMetricsSchema, type UpdateTaskMetricsInput } from "@/schemas/content";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
-import { updateTask, deleteTask, createTask, getTaskMetrics, updateTaskMetrics } from "@/actions/content-actions";
+import { updateTask, deleteTask, createTask, getTaskMetrics, updateTaskMetrics, getEnabledMetricsForClient } from "@/actions/content-actions";
 import type { TaskMetrics } from "@prisma/client";
 import type { UserWithTaskCount } from "@/actions/user.actions";
 import { useToast } from "@/components/ui/use-toast";
@@ -62,6 +62,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { calculateBrandLoyalty, calculateInvestmentEfficiency, formatCurrency } from "@/lib/metrics-calculations";
 import { cn } from "@/lib/utils";
 import { AiContentAssistant } from "@/components/features/ai/ai-content-assistant";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TaskSheetProps {
   task: ContentTaskWithClient | null;
@@ -80,6 +86,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<TaskMetrics | null>(null);
+  const [enabledMetrics, setEnabledMetrics] = useState<string[]>([]);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
   const [isSavingMetrics, setIsSavingMetrics] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
@@ -94,7 +101,9 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
       type: task?.type || "REEL",
       status: task?.status || "IDEA",
       clientId: task?.clientId || "",
-      assignedToId: task?.assignedToId || undefined,
+      assignedEditorId: task?.assignedEditorId || undefined,
+      assignedCommunityId: task?.assignedCommunityId || undefined,
+      priority: (task as any)?.priority || "MEDIUM",
       dueDate: task?.dueDate
         ? typeof task.dueDate === "string"
           ? task.dueDate.split("T")[0]
@@ -111,115 +120,64 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
     },
   });
 
-  // Formulario de métricas
-  const metricsForm = useForm<UpdateTaskMetricsInput>({
+  // Formulario de métricas (ahora usa un objeto genérico para valores dinámicos)
+  const metricsForm = useForm<any>({
     resolver: zodResolver(updateTaskMetricsSchema),
     defaultValues: {
       taskId: task?.id || "",
-      // Meta
-      metaViews: 0,
-      metaLikes: 0,
-      metaShares: 0,
-      metaComments: 0,
-      metaSaves: 0,
-      metaReach: 0,
-      // TikTok
-      ttViews: 0,
-      ttLikes: 0,
-      ttShares: 0,
-      ttComments: 0,
-      ttSaves: 0,
-      // Globales
-      totalBudgetSpent: null,
-      notes: null,
-      // Business Impact
-      conversions: 0,
-      salesCount: 0,
-      revenue: 0.0,
-      conversionSource: null,
     },
   });
 
-  // Cargar métricas cuando se abre una tarea existente
+  // Cargar métricas y configuración del cliente cuando se abre una tarea existente
   useEffect(() => {
     if (task && open) {
       setIsLoadingMetrics(true);
       getTaskMetrics(task.id).then((result) => {
         if (result.success && result.data) {
-          setMetrics(result.data);
-          metricsForm.reset({
-            taskId: task.id,
-            // Meta
-            metaViews: result.data.metaViews || 0,
-            metaLikes: result.data.metaLikes || 0,
-            metaShares: result.data.metaShares || 0,
-            metaComments: result.data.metaComments || 0,
-            metaSaves: result.data.metaSaves || 0,
-            metaReach: result.data.metaReach || 0,
-            // TikTok
-            ttViews: result.data.ttViews || 0,
-            ttLikes: result.data.ttLikes || 0,
-            ttShares: result.data.ttShares || 0,
-            ttComments: result.data.ttComments || 0,
-            ttSaves: result.data.ttSaves || 0,
-            // Globales
-            totalBudgetSpent: result.data.totalBudgetSpent || null,
-            notes: result.data.notes || null,
-            // Business Impact
-            conversions: result.data.conversions || 0,
-            salesCount: result.data.salesCount || 0,
-            revenue: result.data.revenue || 0.0,
-            conversionSource: result.data.conversionSource || null,
-          });
+          const { metrics: metricsData, enabledMetrics: enabled } = result.data;
+          setMetrics(metricsData);
+          setEnabledMetrics(enabled);
+          
+          // Construir valores por defecto basados en las métricas habilitadas
+          const defaultValues: any = { taskId: task.id };
+          
+          // Valores de métricas existentes o 0 por defecto
+          if (metricsData) {
+            enabled.forEach((metricName) => {
+              if (metricsData.hasOwnProperty(metricName)) {
+                defaultValues[metricName] = metricsData[metricName as keyof TaskMetrics] || 0;
+              } else {
+                defaultValues[metricName] = 0;
+              }
+            });
+          } else {
+            // Si no hay métricas guardadas, inicializar con 0
+            enabled.forEach((metricName) => {
+              defaultValues[metricName] = 0;
+            });
+          }
+          
+          metricsForm.reset(defaultValues);
         } else {
-          // Si no hay métricas, inicializar con valores por defecto
-          setMetrics(null);
-          metricsForm.reset({
-            taskId: task.id,
-            metaViews: 0,
-            metaLikes: 0,
-            metaShares: 0,
-            metaComments: 0,
-            metaSaves: 0,
-            metaReach: 0,
-            ttViews: 0,
-            ttLikes: 0,
-            ttShares: 0,
-            ttComments: 0,
-            ttSaves: 0,
-            totalBudgetSpent: null,
-            notes: null,
-            conversions: 0,
-            salesCount: 0,
-            revenue: 0.0,
-            conversionSource: null,
+          // Si no hay datos, cargar solo las métricas habilitadas del cliente
+          getEnabledMetricsForClient(task.clientId).then((enabled) => {
+            setEnabledMetrics(enabled);
+            setMetrics(null);
+            
+            const defaultValues: any = { taskId: task.id };
+            enabled.forEach((metricName) => {
+              defaultValues[metricName] = 0;
+            });
+            metricsForm.reset(defaultValues);
           });
         }
         setIsLoadingMetrics(false);
       });
     } else if (!task) {
-      // Resetear métricas para nueva tarea
+      // Resetear para nueva tarea
       setMetrics(null);
-      metricsForm.reset({
-        taskId: "",
-        metaViews: 0,
-        metaLikes: 0,
-        metaShares: 0,
-        metaComments: 0,
-        metaSaves: 0,
-        metaReach: 0,
-        ttViews: 0,
-        ttLikes: 0,
-        ttShares: 0,
-        ttComments: 0,
-        ttSaves: 0,
-        totalBudgetSpent: null,
-        notes: null,
-        conversions: 0,
-        salesCount: 0,
-        revenue: 0.0,
-        conversionSource: null,
-      });
+      setEnabledMetrics([]);
+      metricsForm.reset({ taskId: "" });
     }
   }, [task, open, metricsForm]);
 
@@ -232,7 +190,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
         status: task.status,
         priority: (task as any).priority || "MEDIUM",
         clientId: task.clientId,
-        assignedToId: task.assignedToId || undefined,
+        assignedEditorId: task.assignedEditorId || undefined,
+        assignedCommunityId: task.assignedCommunityId || undefined,
         dueDate: task.dueDate
           ? typeof task.dueDate === "string"
             ? task.dueDate.split("T")[0]
@@ -261,7 +220,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
         status: "IDEA",
         priority: "MEDIUM",
         clientId: "",
-        assignedToId: undefined,
+        assignedEditorId: undefined,
+        assignedCommunityId: undefined,
         dueDate: undefined,
         scheduledAt: scheduledAtValue,
         postCopy: undefined,
@@ -388,15 +348,21 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
     }
   };
 
-  const onMetricsSubmit = async (data: UpdateTaskMetricsInput) => {
+  const onMetricsSubmit = async (data: any) => {
     if (!task) return;
 
     setIsSavingMetrics(true);
 
     try {
+      // Construir el objeto de métricas con solo los campos habilitados
+      const metricsData: any = {};
+      enabledMetrics.forEach((metricName) => {
+        metricsData[metricName] = data[metricName] ?? 0;
+      });
+
       const result = await updateTaskMetrics({
-        ...data,
         taskId: task.id,
+        metrics: metricsData,
       });
 
       if (result.success) {
@@ -428,20 +394,36 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
   };
 
   const handleCopySummary = async () => {
-    if (!task) return;
+    if (!task || !metrics) return;
 
-    const metricsData = metricsForm.getValues();
     const isReelOrStory = task.type === "REEL" || task.type === "STORY";
     
-    // Construir resumen con métricas de ambas plataformas
+    // Construir resumen con las métricas disponibles
     let summary = `*Resultados de ${task.title}:*\n\n`;
     
-    if (metricsData.metaReach > 0 || metricsData.metaViews > 0) {
-      summary += `*Meta (IG/FB):* 🚀 ${metricsData.metaViews || 0} vistas, ❤️ ${metricsData.metaLikes || 0} likes, 💬 ${metricsData.metaComments || 0} comentarios, ✈️ ${metricsData.metaShares || 0} compartidos${isReelOrStory ? `, 💾 ${metricsData.metaSaves || 0} guardados` : ""}, 👁️ ${metricsData.metaReach || 0} alcance\n`;
+    // Métricas Meta (si existen)
+    if ((metrics.metaReach > 0 || metrics.metaViews > 0) && enabledMetrics.includes("metaViews")) {
+      summary += `*Meta (IG/FB):* 🚀 ${metrics.metaViews || 0} vistas, ❤️ ${metrics.metaLikes || 0} likes, 💬 ${metrics.metaComments || 0} comentarios, ✈️ ${metrics.metaShares || 0} compartidos${isReelOrStory && enabledMetrics.includes("metaSaves") ? `, 💾 ${metrics.metaSaves || 0} guardados` : ""}${enabledMetrics.includes("metaReach") ? `, 👁️ ${metrics.metaReach || 0} alcance` : ""}\n`;
     }
     
-    if (metricsData.ttViews > 0) {
-      summary += `*TikTok:* 🚀 ${metricsData.ttViews || 0} vistas, ❤️ ${metricsData.ttLikes || 0} likes, 💬 ${metricsData.ttComments || 0} comentarios, ✈️ ${metricsData.ttShares || 0} compartidos${isReelOrStory ? `, 💾 ${metricsData.ttSaves || 0} guardados` : ""}\n`;
+    // Métricas TikTok (si existen)
+    if (metrics.ttViews > 0 && enabledMetrics.includes("ttViews")) {
+      summary += `*TikTok:* 🚀 ${metrics.ttViews || 0} vistas, ❤️ ${metrics.ttLikes || 0} likes, 💬 ${metrics.ttComments || 0} comentarios, ✈️ ${metrics.ttShares || 0} compartidos${isReelOrStory && enabledMetrics.includes("ttSaves") ? `, 💾 ${metrics.ttSaves || 0} guardados` : ""}\n`;
+    }
+
+    // Métricas de business impact (si existen)
+    if (enabledMetrics.includes("conversions") && metrics.conversions > 0) {
+      summary += `\n*Impacto de Negocio:*\n`;
+      summary += `🔄 Conversiones: ${metrics.conversions}\n`;
+      if (enabledMetrics.includes("salesCount") && metrics.salesCount > 0) {
+        summary += `💰 Ventas: ${metrics.salesCount}\n`;
+      }
+      if (enabledMetrics.includes("revenue") && metrics.revenue > 0) {
+        summary += `💵 Ingresos: $${metrics.revenue.toFixed(2)}\n`;
+      }
+      if (enabledMetrics.includes("conversionSource") && metrics.conversionSource) {
+        summary += `📍 Fuente: ${metrics.conversionSource}\n`;
+      }
     }
 
     try {
@@ -461,74 +443,97 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
     }
   };
 
-  // Observar los valores del formulario de métricas en tiempo real
-  const watchedMetrics = useWatch({
-    control: metricsForm.control,
-    defaultValue: {
-      metaViews: 0,
-      metaLikes: 0,
-      metaShares: 0,
-      metaComments: 0,
-      metaSaves: 0,
-      metaReach: 0,
-      ttViews: 0,
-      ttLikes: 0,
-      ttShares: 0,
-      ttComments: 0,
-      ttSaves: 0,
-    },
-  });
-
-  // Calcular métricas en tiempo real basándose en los valores del formulario
-  const currentMetrics = useMemo(() => {
-    if (!task) return null;
-    
-    const metaViews = watchedMetrics.metaViews || 0;
-    const metaLikes = watchedMetrics.metaLikes || 0;
-    const metaComments = watchedMetrics.metaComments || 0;
-    const metaShares = watchedMetrics.metaShares || 0;
-    const metaSaves = watchedMetrics.metaSaves || 0;
-    const metaReach = watchedMetrics.metaReach || 0;
-    
-    const ttViews = watchedMetrics.ttViews || 0;
-    const ttLikes = watchedMetrics.ttLikes || 0;
-    const ttComments = watchedMetrics.ttComments || 0;
-    const ttShares = watchedMetrics.ttShares || 0;
-    const ttSaves = watchedMetrics.ttSaves || 0;
-    
-    // Calcular ER Meta
-    const metaTotalEngagement = metaLikes + metaComments + metaShares + metaSaves;
-    const erMeta = metaReach > 0 ? (metaTotalEngagement / metaReach) * 100 : 0;
-    
-    // Calcular ER TikTok
-    const ttTotalEngagement = ttLikes + ttComments + ttShares + ttSaves;
-    const erTikTok = ttViews > 0 ? (ttTotalEngagement / ttViews) * 100 : 0;
-    
-    return {
-      metaViews,
-      metaLikes,
-      metaComments,
-      metaShares,
-      metaSaves,
-      metaReach,
-      ttViews,
-      ttLikes,
-      ttComments,
-      ttShares,
-      ttSaves,
-      erMeta,
-      erTikTok,
-    } as TaskMetrics & { erMeta: number; erTikTok: number };
-  }, [watchedMetrics, task]);
-
-  // Usar métricas actuales del formulario o las guardadas
-  const displayMetrics = currentMetrics || metrics;
+  // Usar métricas guardadas (el cálculo se hace en el backend)
+  const displayMetrics = metrics;
 
   // Si es una nueva tarea y no hay initialScheduledAt, no mostrar el sheet
   if (!task && !initialScheduledAt && !open) return null;
 
+  // Función helper para obtener el color del círculo de prioridad
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "LOW":
+        return "bg-white border border-gray-300";
+      case "MEDIUM":
+        return "bg-green-500";
+      case "HIGH":
+        return "bg-orange-500";
+      case "URGENT":
+        return "bg-red-500";
+      default:
+        return "bg-gray-300";
+    }
+  };
+
+  // Función helper para obtener el texto de prioridad
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case "LOW":
+        return "Baja";
+      case "MEDIUM":
+        return "Media";
+      case "HIGH":
+        return "Alta";
+      case "URGENT":
+        return "Urgente";
+      default:
+        return priority;
+    }
+  };
+
+  // Función helper para obtener las iniciales de un usuario
+  const getUserInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Función helper para verificar si el brandDNA está completo
+  const isBrandDNAComplete = (brandDNAString: string): boolean => {
+    try {
+      const brandDNA = JSON.parse(brandDNAString);
+      const requiredFields = ["businessDescription", "toneOfVoice", "audience"];
+      
+      return requiredFields.every(field => {
+        const value = brandDNA[field];
+        return value && typeof value === "string" && value.trim().length > 0;
+      });
+    } catch {
+      return false;
+    }
+  };
+
+  // Función helper para obtener el error del brandDNA
+  const getBrandDNAError = (brandDNAString: string): string => {
+    try {
+      const brandDNA = JSON.parse(brandDNAString);
+      const missingFields: string[] = [];
+      
+      if (!brandDNA.businessDescription || brandDNA.businessDescription.trim().length === 0) {
+        missingFields.push("Descripción del negocio");
+      }
+      if (!brandDNA.toneOfVoice || brandDNA.toneOfVoice.trim().length === 0) {
+        missingFields.push("Tono de voz");
+      }
+      if (!brandDNA.audience || brandDNA.audience.trim().length === 0) {
+        missingFields.push("Audiencia objetivo");
+      }
+      
+      if (missingFields.length > 0) {
+        return `Faltan campos en el ADN de marca: ${missingFields.join(", ")}`;
+      }
+      
+      return "ADN de marca completo";
+    } catch {
+      return "ADN de marca inválido o corrupto";
+    }
+  };
+
   return (
-    <>
+    <TooltipProvider>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent 
           className="w-full sm:max-w-2xl overflow-y-auto"
@@ -543,505 +548,266 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
             </SheetDescription>
           </SheetHeader>
 
-          {!isNewTask ? (
-            <Tabs defaultValue="details" className="mt-6">
-              <TabsList className={cn(
-                "grid w-full",
-                task.status === "PUBLISHED" ? "grid-cols-2" : "grid-cols-1"
-              )}>
-                <TabsTrigger value="details">Detalles</TabsTrigger>
-                {task.status === "PUBLISHED" && (
-                  <TabsTrigger value="metrics">Métricas</TabsTrigger>
-                )}
-              </TabsList>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="details">Detalles</TabsTrigger>
+              <TabsTrigger value="creative">Recursos Creativos</TabsTrigger>
+              <TabsTrigger value="metrics">Métricas</TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="details" className="mt-6">
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="flex flex-col h-full relative"
-                  >
-              <div className="flex-1 overflow-y-auto py-4 px-1 space-y-6">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Título</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Título de la tarea"
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Campo de Cliente solo para nuevas tareas */}
-                {isNewTask && clients.length > 0 && (
+            {/* Tab Detalles */}
+            <TabsContent value="details" className="mt-6">
                   <FormField
                     control={form.control}
-                    name="clientId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cliente</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        disabled={isPending}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona un cliente" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {clients.map((client) => (
-                            <SelectItem key={client.id} value={client.id}>
-                              {client.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                )}
-
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel>Tipo de Contenido</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        disabled={isPending}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona el tipo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="REEL">Reel</SelectItem>
-                          <SelectItem value="FLYER">Flyer</SelectItem>
-                          <SelectItem value="STORY">Story</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="priority"
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>Prioridad</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value || "MEDIUM"}
-                        disabled={isPending}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona la prioridad" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="LOW">Baja</SelectItem>
-                          <SelectItem value="MEDIUM">Media</SelectItem>
-                          <SelectItem value="HIGH">Alta</SelectItem>
-                          <SelectItem value="URGENT">Urgente</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="assignedToId"
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>Asignar a</FormLabel>
-                      <Select
-                        onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
-                        value={field.value || "none"}
-                        disabled={isPending}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona un usuario (opcional)" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">Sin asignar</SelectItem>
-                          {users.map((user) => {
-                            const taskCount = user._count?.tasks || 0;
-                            
-                            // Lógica de colores según carga de trabajo
-                            const getBadgeColor = (count: number) => {
-                              if (count === 0) {
-                                return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-                              }
-                              if (count >= 10) {
-                                return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-                              }
-                              if (count >= 5) {
-                                return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
-                              }
-                              return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-                            };
-
-                            return (
-                              <SelectItem key={user.id} value={user.id}>
-                                <div className="flex justify-between items-center w-full">
-                                  <span>{user.name}</span>
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-xs rounded-full px-2 py-0.5 ${getBadgeColor(taskCount)}`}
-                                  >
-                                    {taskCount}
-                                  </Badge>
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="scheduledAt"
-                  render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className={task?.status === "CLIENT_APPROVED" ? "text-orange-600 font-semibold" : ""}>
-                      Fecha Programada de Publicación
-                      {task?.status === "CLIENT_APPROVED" && (
-                        <span className="ml-2 text-xs text-orange-600">⚠️ No olvides programarla</span>
-                      )}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="datetime-local"
-                        value={field.value || ""}
-                        onChange={(e) => {
-                          field.onChange(e.target.value || undefined);
-                          // Calcular automáticamente la fecha de entrega cuando cambia la fecha programada
-                          if (e.target.value) {
-                            const scheduledDate = new Date(e.target.value);
-                            const calculatedDueDate = subHours(scheduledDate, 24);
-                            form.setValue("dueDate", calculatedDueDate.toISOString().split("T")[0]);
-                          } else {
-                            form.setValue("dueDate", undefined);
-                          }
-                        }}
-                        disabled={isPending}
-                        className={task?.status === "CLIENT_APPROVED" ? "border-orange-300 focus:border-orange-500 focus:ring-orange-500" : ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                    <p className="text-xs text-muted-foreground">
-                      La fecha de entrega se calculará automáticamente (24 horas antes de la publicación)
-                    </p>
-                  </FormItem>
-                )}
-              />
-
-                <Separator className="my-6" />
-
-                {/* Sección de Recursos Creativos */}
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">Recursos Creativos</h3>
-                  </div>
-
-                  {/* Campo de Copy */}
-                  <FormField
-                    control={form.control}
-                    name="postCopy"
+                    name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <div className="flex items-center justify-between">
-                          <FormLabel>Copy del Post</FormLabel>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={async () => {
-                            const copyText = form.getValues("postCopy");
-                            if (!copyText) {
-                              toast({
-                                variant: "destructive",
-                                title: "Sin contenido",
-                                description: "No hay texto para copiar",
-                              });
-                              return;
-                            }
-
-                            try {
-                              await navigator.clipboard.writeText(copyText);
-                              setCopiedPostCopy(true);
-                              toast({
-                                title: "Copiado 📋",
-                                description: "El texto se ha copiado al portapapeles",
-                                duration: 2000,
-                              });
-                              setTimeout(() => setCopiedPostCopy(false), 2000);
-                            } catch (error) {
-                              toast({
-                                variant: "destructive",
-                                title: "Error",
-                                description: "No se pudo copiar el texto",
-                              });
-                            }
-                          }}
-                          disabled={!field.value || isPending}
-                        >
-                          {copiedPostCopy ? (
-                            <Check className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                      <FormControl>
-                        <div className="relative">
-                          <Textarea
-                            placeholder="Escribe el texto del post aquí..."
+                        <FormLabel>Título</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Título de la tarea"
                             {...field}
                             disabled={isPending}
-                            className="min-h-[120px] resize-y"
                           />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                      <p className="text-xs text-muted-foreground">
-                        Usa el botón de copiar para copiar el texto al portapapeles
-                      </p>
-                      
-                      {/* IA Content Assistant */}
-                      {task && (() => {
-                        // Extraer y validar ADN de marca del cliente
-                        let hasCompleteBrandDNA = false;
-                        let brandDNAError = "";
-
-                        // Debug: Log completo del cliente para diagnóstico
-                        console.log("[AI Debug] Client Data:", {
-                          clientId: task.client.id,
-                          clientName: task.client.name,
-                          brandDNA: task.client.brandDNA,
-                          brandDNAType: typeof task.client.brandDNA,
-                          brandDNAExists: !!task.client.brandDNA,
-                          fullClientKeys: Object.keys(task.client),
-                        });
-
-                        // Extraer brandDNA del string JSON almacenado en la base de datos
-                        let parsedBrandDNA: {
-                          businessDescription?: string;
-                          toneOfVoice?: string;
-                          audience?: string;
-                          values?: string;
-                          prohibitedTopics?: string;
-                        } = {};
-
-                        const brandDNAString = task.client.brandDNA;
-                        
-                        // Verificar si brandDNA existe y es un string válido
-                        if (brandDNAString && typeof brandDNAString === "string" && brandDNAString.trim() !== "" && brandDNAString !== "null") {
-                          try {
-                            parsedBrandDNA = JSON.parse(brandDNAString);
-                            console.log("[AI Assistant] ✅ BrandDNA parseado correctamente:", parsedBrandDNA);
-                          } catch (error) {
-                            console.error("[AI Assistant] ❌ Error al parsear brandDNA:", error, brandDNAString);
-                            hasCompleteBrandDNA = false;
-                            brandDNAError = `Error al leer el ADN de marca del cliente: ${error instanceof Error ? error.message : "Error desconocido"}. Por favor, verifica la configuración del cliente.`;
-                          }
-                        } else {
-                          console.log("[AI Assistant] ⚠️ No brandDNA encontrado o vacío. Value:", brandDNAString);
-                          hasCompleteBrandDNA = false;
-                          brandDNAError = "El cliente no tiene ADN de marca configurado. Por favor, completa la información en el perfil del cliente (pestaña 'Estrategia de Marca') antes de usar las funciones de IA.";
-                        }
-
-                        // Validar que los campos requeridos estén presentes y no vacíos
-                        if (Object.keys(parsedBrandDNA).length > 0) {
-                          const businessDesc = (parsedBrandDNA.businessDescription || "").trim();
-                          const toneOfVoice = (parsedBrandDNA.toneOfVoice || "").trim();
-                          const audience = (parsedBrandDNA.audience || "").trim();
-                          
-                          console.log("[AI Assistant] Validación de campos:", {
-                            businessDesc: businessDesc.length > 0 ? `✅ (${businessDesc.length} chars)` : "❌ vacío",
-                            toneOfVoice: toneOfVoice.length > 0 ? `✅ (${toneOfVoice})` : "❌ vacío",
-                            audience: audience.length > 0 ? `✅ (${audience.length} chars)` : "❌ vacío",
-                          });
-                          
-                          const hasBusinessDescription = businessDesc.length > 0;
-                          const hasToneOfVoice = toneOfVoice.length > 0;
-                          const hasAudience = audience.length > 0;
-
-                          hasCompleteBrandDNA = hasBusinessDescription && hasToneOfVoice && hasAudience;
-
-                          if (!hasCompleteBrandDNA) {
-                            const missingFields: string[] = [];
-                            if (!hasBusinessDescription) missingFields.push("Descripción del negocio");
-                            if (!hasToneOfVoice) missingFields.push("Tono de voz");
-                            if (!hasAudience) missingFields.push("Audiencia objetivo");
-                            brandDNAError = `El ADN de marca del cliente no está completo. Faltan: ${missingFields.join(", ")}. Por favor, completa esta información en el perfil del cliente (pestaña "Estrategia de Marca") antes de usar las funciones de IA.`;
-                          } else {
-                            console.log("[AI Assistant] ✅✅✅ BrandDNA completo y válido - Listo para usar IA");
-                          }
-                        }
-
-                        return (
-                          <div className="mt-4 pt-4 border-t">
-                            <AiContentAssistant
-                              taskId={task.id}
-                              currentCopy={field.value}
-                              currentScript={form.getValues("postCopy")} // Asumiendo que script es el mismo campo por ahora
-                              onInsertCopy={(content) => {
-                                // Actualizar el valor del formulario sin disparar validación ni re-renders innecesarios
-                                form.setValue("postCopy", content, {
-                                  shouldDirty: true,
-                                  shouldTouch: true,
-                                  shouldValidate: false,
-                                });
-                                // Enfocar el textarea después de insertar
-                                setTimeout(() => {
-                                  const textarea = document.querySelector(
-                                    'textarea[name="postCopy"]'
-                                  ) as HTMLTextAreaElement;
-                                  if (textarea) {
-                                    textarea.focus();
-                                    // Mover el cursor al final del texto
-                                    const length = textarea.value.length;
-                                    textarea.setSelectionRange(length, length);
-                                  }
-                                }, 100);
-                              }}
-                              hasCompleteBrandDNA={hasCompleteBrandDNA}
-                              brandDNAError={brandDNAError}
-                            />
-                          </div>
-                        );
-                      })()}
-                    </FormItem>
-                  )}
-                />
-
-                {/* Campo de Imagen de Portada */}
-                <FormField
-                  control={form.control}
-                  name="coverImageUrl"
-                  render={({ field }) => {
-                    // Verificar si hay un valor válido
-                    const hasImage = !!field.value && field.value !== "";
-                    
-                    return (
-                      <FormItem>
-                        <FormLabel>Imagen de Portada</FormLabel>
-                        <FormControl>
-                          {hasImage ? (
-                          <div className="relative rounded-lg border border-input overflow-hidden">
-                            <div className="relative w-full h-64">
-                              <NextImage
-                                src={field.value}
-                                alt="Imagen de portada"
-                                fill
-                                className="object-cover"
-                              />
-                              <div className="absolute top-2 right-2 flex gap-2">
-                                <Button
-                                  type="button"
-                                  variant="secondary"
-                                  size="icon"
-                                  className="h-8 w-8 bg-background/80 backdrop-blur-sm"
-                                  asChild
-                                >
-                                  <Link href={field.value} target="_blank" rel="noopener noreferrer">
-                                    <Download className="h-4 w-4" />
-                                  </Link>
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="icon"
-                                  className="h-8 w-8 bg-background/80 backdrop-blur-sm"
-                                  onClick={() => {
-                                    // Establecer el valor a una cadena vacía para que React Hook Form lo maneje correctamente
-                                    // El esquema Zod convertirá esto a null en el servidor
-                                    field.onChange("");
-                                    toast({
-                                      title: "Imagen eliminada",
-                                      description: "Guarda cambios para confirmar.",
-                                    });
-                                  }}
-                                  disabled={isPending}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex justify-center bg-gray-50">
-                            <UploadButton
-                              endpoint="brandAsset"
-                              appearance={{
-                                button: "bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-                                allowedContent: "hidden"
-                              }}
-                              content={{ button: "Subir Portada" }}
-                              onClientUploadComplete={(res) => {
-                                console.log("✅ Archivos: ", res);
-                                if (res && res[0]) {
-                                  const newUrl = res[0].ufsUrl || res[0].url; // Usa ufsUrl, con fallback a url
-                                  // Actualiza el estado local "en caliente" para mostrar la nueva imagen inmediatamente
-                                  form.setValue("coverImageUrl", newUrl, {
-                                    shouldDirty: true,
-                                    shouldTouch: true,
-                                    shouldValidate: true
-                                  });
-                                  toast({
-                                    title: "Nueva imagen lista",
-                                    description: "La imagen se ha subido correctamente",
-                                  });
-                                }
-                              }}
-                              onUploadError={(error: Error) => {
-                                console.error("❌ Error subiendo:", error);
-                                toast({
-                                  variant: "destructive",
-                                  title: "Error al subir",
-                                  description: `Error: ${error.message}`,
-                                });
-                              }}
-                            />
-                          </div>
-                        )}
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      );
-                    }}
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
 
-                  {/* Campo de Nota de Voz (Totem Voice) */}
+                  {/* Cliente solo para nuevas tareas */}
+                  {isNewTask && clients.length > 0 && (
+                    <FormField
+                      control={form.control}
+                      name="clientId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cliente</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={isPending}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona un cliente" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {clients.map((client) => (
+                                <SelectItem key={client.id} value={client.id}>
+                                  {client.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {/* Fila 1: Tipo y Prioridad */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tipo de Contenido</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={isPending}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona el tipo" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="REEL">Reel</SelectItem>
+                              <SelectItem value="FLYER">Flyer</SelectItem>
+                              <SelectItem value="STORY">Story</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="priority"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Prioridad</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || "MEDIUM"}
+                            disabled={isPending}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona la prioridad" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {(["LOW", "MEDIUM", "HIGH", "URGENT"] as const).map((priority) => (
+                                <SelectItem key={priority} value={priority}>
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={cn(
+                                        "h-3 w-3 rounded-full",
+                                        getPriorityColor(priority)
+                                      )}
+                                    />
+                                    <span>{getPriorityLabel(priority)}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Fila 2: Editor y Community */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="assignedEditorId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Editor Asignado</FormLabel>
+                          <Select
+                            onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
+                            value={field.value || "none"}
+                            disabled={isPending}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona un editor (opcional)" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">Sin asignar</SelectItem>
+                              {users.map((user) => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  <div className="flex items-center gap-2">
+                                    {user.image ? (
+                                      <Image
+                                        src={user.image}
+                                        alt={user.name}
+                                        width={20}
+                                        height={20}
+                                        className="rounded-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold">
+                                        {getUserInitials(user.name)}
+                                      </div>
+                                    )}
+                                    <span>{user.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="assignedCommunityId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Community Asignado</FormLabel>
+                          <Select
+                            onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
+                            value={field.value || "none"}
+                            disabled={isPending}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona un community (opcional)" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">Sin asignar</SelectItem>
+                              {users.map((user) => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  <div className="flex items-center gap-2">
+                                    {user.image ? (
+                                      <Image
+                                        src={user.image}
+                                        alt={user.name}
+                                        width={20}
+                                        height={20}
+                                        className="rounded-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold">
+                                        {getUserInitials(user.name)}
+                                      </div>
+                                    )}
+                                    <span>{user.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="scheduledAt"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className={task?.status === "CLIENT_APPROVED" ? "text-orange-600 font-semibold" : ""}>
+                          Fecha Programada de Publicación
+                          {task?.status === "CLIENT_APPROVED" && (
+                            <span className="ml-2 text-xs text-orange-600">⚠️ No olvides programarla</span>
+                          )}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="datetime-local"
+                            value={field.value || ""}
+                            onChange={(e) => {
+                              field.onChange(e.target.value || undefined);
+                              // Calcular automáticamente la fecha de entrega cuando cambia la fecha programada
+                              if (e.target.value) {
+                                const scheduledDate = new Date(e.target.value);
+                                const calculatedDueDate = subHours(scheduledDate, 24);
+                                form.setValue("dueDate", calculatedDueDate.toISOString().split("T")[0]);
+                              } else {
+                                form.setValue("dueDate", undefined);
+                              }
+                            }}
+                            disabled={isPending}
+                            className={task?.status === "CLIENT_APPROVED" ? "border-orange-300 focus:border-orange-500 focus:ring-orange-500" : ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                        <p className="text-xs text-muted-foreground">
+                          La fecha de entrega se calculará automáticamente (24 horas antes de la publicación)
+                        </p>
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Nota de Voz en Detalles */}
                   <FormField
                     control={form.control}
                     name="audioBriefUrl"
@@ -1096,14 +862,378 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                       );
                     }}
                   />
-                </div>
-              </div>
+            </TabsContent>
 
-              <div className="sticky bottom-0 left-0 right-0 bg-background pt-4 border-t flex justify-end gap-4 z-10">
+            {/* Tab Recursos Creativos */}
+            <TabsContent value="creative" className="mt-6">
+                  {/* Copy con IA */}
+                  <FormField
+                    control={form.control}
+                    name="postCopy"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>Copy del Post</FormLabel>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={async () => {
+                              const copyText = form.getValues("postCopy");
+                              if (!copyText) {
+                                toast({
+                                  variant: "destructive",
+                                  title: "Sin contenido",
+                                  description: "No hay texto para copiar",
+                                });
+                                return;
+                              }
+
+                              try {
+                                await navigator.clipboard.writeText(copyText);
+                                setCopiedPostCopy(true);
+                                toast({
+                                  title: "Copiado 📋",
+                                  description: "El texto se ha copiado al portapapeles",
+                                  duration: 2000,
+                                });
+                                setTimeout(() => setCopiedPostCopy(false), 2000);
+                              } catch (error) {
+                                toast({
+                                  variant: "destructive",
+                                  title: "Error",
+                                  description: "No se pudo copiar el texto",
+                                });
+                              }
+                            }}
+                            disabled={!field.value || isPending}
+                          >
+                            {copiedPostCopy ? (
+                              <Check className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                        <FormControl>
+                          <div className="relative">
+                            <Textarea
+                              placeholder="Escribe el texto del post aquí..."
+                              {...field}
+                              disabled={isPending}
+                              className="min-h-[120px] resize-y"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                        <p className="text-xs text-muted-foreground">
+                          Usa el botón de copiar para copiar el texto al portapapeles
+                        </p>
+                        
+                        {/* IA Content Assistant */}
+                        {task ? (
+                          <AiContentAssistant
+                            taskId={task.id}
+                            currentCopy={field.value}
+                            onInsertCopy={(content) => {
+                              // Actualizar el valor del formulario sin disparar validación ni re-renders innecesarios
+                              form.setValue("postCopy", content, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: false,
+                              });
+                              // Enfocar el textarea después de insertar
+                              setTimeout(() => {
+                                const textarea = document.querySelector(
+                                  'textarea[name="postCopy"]'
+                                ) as HTMLTextAreaElement;
+                                if (textarea) {
+                                  textarea.focus();
+                                  // Mover el cursor al final del texto
+                                  const length = textarea.value.length;
+                                  textarea.setSelectionRange(length, length);
+                                }
+                              }, 100);
+                            }}
+                            hasCompleteBrandDNA={task.client.brandDNA ? isBrandDNAComplete(task.client.brandDNA) : false}
+                            brandDNAError={task.client.brandDNA ? getBrandDNAError(task.client.brandDNA) : "El cliente no tiene configurado el ADN de Marca"}
+                          />
+                        ) : (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-block w-full">
+                                <Button 
+                                  type="button"
+                                  variant="outline" 
+                                  className="w-full opacity-50 cursor-not-allowed"
+                                  disabled={true}
+                                >
+                                  <Sparkles className="h-4 w-4 mr-2" />
+                                  Generar con IA
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Configura el ADN de Marca en el perfil del cliente para habilitar la IA</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Imagen de Portada */}
+                  <FormField
+                    control={form.control}
+                    name="coverImageUrl"
+                    render={({ field }) => {
+                      const hasImage = !!field.value && field.value !== "";
+                      return (
+                        <FormItem>
+                          <FormLabel>Imagen de Portada</FormLabel>
+                          <FormControl>
+                            {hasImage ? (
+                              <div className="relative rounded-lg border border-input overflow-hidden">
+                                <div className="relative w-full h-64">
+                                  <NextImage
+                                    src={field.value}
+                                    alt="Imagen de portada"
+                                    fill
+                                    className="object-cover"
+                                  />
+                                  <div className="absolute top-2 right-2 flex gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      size="icon"
+                                      className="h-8 w-8 bg-background/80 backdrop-blur-sm"
+                                      asChild
+                                    >
+                                      <Link href={field.value} target="_blank" rel="noopener noreferrer">
+                                        <Download className="h-4 w-4" />
+                                      </Link>
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="icon"
+                                      className="h-8 w-8 bg-background/80 backdrop-blur-sm"
+                                      onClick={() => {
+                                        field.onChange("");
+                                        toast({
+                                          title: "Imagen eliminada",
+                                          description: "Guarda cambios para confirmar.",
+                                        });
+                                      }}
+                                      disabled={isPending}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex justify-center bg-gray-50">
+                                <UploadButton
+                                  endpoint="brandAsset"
+                                  appearance={{
+                                    button: "bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+                                    allowedContent: "hidden"
+                                  }}
+                                  content={{ button: "Subir Portada" }}
+                                  onClientUploadComplete={(res) => {
+                                    console.log("✅ Archivos: ", res);
+                                    if (res && res[0]) {
+                                      const newUrl = res[0].ufsUrl || res[0].url;
+                                      form.setValue("coverImageUrl", newUrl, {
+                                        shouldDirty: true,
+                                        shouldTouch: true,
+                                        shouldValidate: true
+                                      });
+                                      toast({
+                                        title: "Nueva imagen lista",
+                                        description: "La imagen se ha subido correctamente",
+                                      });
+                                    }
+                                  }}
+                                  onUploadError={(error: Error) => {
+                                    console.error("❌ Error subiendo:", error);
+                                    toast({
+                                      variant: "destructive",
+                                      title: "Error al subir",
+                                      description: `Error: ${error.message}`,
+                                    });
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
+                  />
+            </TabsContent>
+
+            {/* Tab Métricas */}
+            <TabsContent value="metrics" className="mt-6">
+              {isLoadingMetrics ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : (
+                <>
+                  {enabledMetrics.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        Este cliente no tiene métricas configuradas en su perfil.
+                      </p>
+                    </div>
+                  ) : (
+                    <Form {...metricsForm}>
+                      <form 
+                        onSubmit={metricsForm.handleSubmit(onMetricsSubmit)} 
+                        className="space-y-6"
+                      >
+                        {/* Grid de 2 columnas para inputs de métricas */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {enabledMetrics.map((metricName) => {
+                            // Mapear nombres amigables para las métricas
+                            const metricLabels: Record<string, string> = {
+                              metaViews: "Vistas Meta",
+                              metaLikes: "Likes Meta",
+                              metaShares: "Shares Meta",
+                              metaComments: "Comentarios Meta",
+                              metaSaves: "Guardados Meta",
+                              metaReach: "Alcance Meta",
+                              ttViews: "Vistas TikTok",
+                              ttLikes: "Likes TikTok",
+                              ttShares: "Shares TikTok",
+                              ttComments: "Comentarios TikTok",
+                              ttSaves: "Guardados TikTok",
+                              totalBudgetSpent: "Presupuesto Gastado",
+                              notes: "Notas",
+                              conversions: "Conversiones",
+                              salesCount: "Ventas",
+                              revenue: "Ingresos",
+                              conversionSource: "Fuente de Conversión",
+                            };
+
+                            const label = metricLabels[metricName] || metricName;
+
+                            // Determinar el tipo de input
+                            const isNumber = [
+                              "metaViews", "metaLikes", "metaShares", "metaComments", "metaSaves", "metaReach",
+                              "ttViews", "ttLikes", "ttShares", "ttComments", "ttSaves",
+                              "totalBudgetSpent", "conversions", "salesCount", "revenue"
+                            ].includes(metricName);
+
+                            const isSelect = metricName === "conversionSource";
+
+                            return (
+                              <FormField
+                                key={metricName}
+                                control={metricsForm.control}
+                                name={metricName}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>{label}</FormLabel>
+                                    <FormControl>
+                                      {isSelect ? (
+                                        <Select
+                                          onValueChange={field.onChange}
+                                          value={field.value || ""}
+                                          disabled={isSavingMetrics}
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Selecciona fuente" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                                            <SelectItem value="Web">Web</SelectItem>
+                                            <SelectItem value="DM">DM</SelectItem>
+                                            <SelectItem value="Link en Bio">Link en Bio</SelectItem>
+                                            <SelectItem value="Local Físico">Local Físico</SelectItem>
+                                            <SelectItem value="Otro">Otro</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      ) : isNumber ? (
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          step={metricName === "revenue" || metricName === "totalBudgetSpent" ? "0.01" : "1"}
+                                          placeholder="0"
+                                          {...field}
+                                          onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (value === "") {
+                                              field.onChange(0);
+                                            } else {
+                                              const numValue = metricName === "revenue" || metricName === "totalBudgetSpent" 
+                                                ? parseFloat(value) 
+                                                : parseInt(value);
+                                              field.onChange(isNaN(numValue) ? 0 : numValue);
+                                            }
+                                          }}
+                                          value={field.value || ""}
+                                          disabled={isSavingMetrics}
+                                        />
+                                      ) : (
+                                        <Input
+                                          type="text"
+                                          placeholder="Escribe aquí..."
+                                          {...field}
+                                          value={field.value || ""}
+                                          disabled={isSavingMetrics}
+                                        />
+                                      )}
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            );
+                          })}
+                        </div>
+
+                        {/* Botón Guardar Métricas - Estilo corregido */}
+                        <Button
+                          type="submit"
+                          disabled={isSavingMetrics}
+                          className="w-full bg-user-color text-white hover:bg-user-color/90"
+                          style={{ backgroundColor: 'var(--user-color, #2563eb)' }}
+                        >
+                          {isSavingMetrics ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Guardando...
+                            </>
+                          ) : (
+                            "Guardar Métricas"
+                          )}
+                        </Button>
+                      </form>
+                    </Form>
+                  )}
+                </>
+              )}
+
+              {/* Análisis de Valor */}
+              {task && displayMetrics && enabledMetrics.length > 0 && (
+                <div className="mt-8 border-t pt-6">
+                  {/* Cards de análisis */}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+
+              {/* Botón de guardar fijo - Siempre visible */}
+              <div className="flex gap-4 pt-6 border-t mt-6">
                 <Button
                   type="submit"
                   disabled={isPending}
-                  className="min-w-[120px]"
+                  className="flex-1"
                 >
                   {isPending ? (
                     <>
@@ -1114,919 +1244,9 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     isNewTask ? "Crear Tarea" : "Guardar Cambios"
                   )}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isPending}
-                >
-                  Cancelar
-                </Button>
               </div>
-                  </form>
-                </Form>
-              </TabsContent>
-
-          <TabsContent value="metrics" className="mt-6">
-            {isLoadingMetrics ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
-              </div>
-            ) : (
-              <Form {...metricsForm}>
-                <form
-                  onSubmit={metricsForm.handleSubmit(onMetricsSubmit)}
-                  className="space-y-6"
-                >
-                  <Tabs defaultValue="meta" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="meta" className="flex items-center gap-2">
-                        <span className="text-blue-600">Meta</span>
-                        <span className="text-xs text-muted-foreground">(IG/FB)</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="tiktok" className="flex items-center gap-2">
-                        <span className="text-black dark:text-white">TikTok</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="business" className="flex items-center gap-2">
-                        <span className="text-green-600">Business Impact</span>
-                      </TabsTrigger>
-                    </TabsList>
-
-                    {/* Tab Meta */}
-                    <TabsContent value="meta" className="space-y-4 mt-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-blue-600">
-                          Métricas Meta (Instagram/Facebook)
-                        </h3>
-                      </div>
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="metaViews"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Vistas</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                value={field.value || ""}
-                                disabled={isSavingMetrics}
-                              />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              Ve a 'Ver Estadísticas' en tu publicación y busca 'Vistas'.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="metaLikes"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Likes</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                value={field.value || ""}
-                                disabled={isSavingMetrics}
-                              />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              Ve a 'Ver Estadísticas' y busca 'Me gusta'.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="metaComments"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Comentarios</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                value={field.value || ""}
-                                disabled={isSavingMetrics}
-                              />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              Ve a 'Ver Estadísticas' y busca 'Comentarios'.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="metaShares"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Compartidos</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                value={field.value || ""}
-                                disabled={isSavingMetrics}
-                              />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              Ve a 'Ver Estadísticas' y busca 'Compartidos'.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {task?.type === "REEL" && (
-                        <FormField
-                          control={metricsForm.control}
-                          name="metaSaves"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Guardados</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  placeholder="0"
-                                  {...field}
-                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                  value={field.value || ""}
-                                  disabled={isSavingMetrics}
-                                />
-                              </FormControl>
-                              <p className="text-xs text-muted-foreground">
-                                Ve a 'Ver Estadísticas' y busca 'Guardados'.
-                              </p>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="metaReach"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Alcance</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                value={field.value || ""}
-                                disabled={isSavingMetrics}
-                              />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              Ve a 'Ver Estadísticas' y busca 'Cuentas alcanzadas'.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </TabsContent>
-
-                    {/* Tab TikTok */}
-                    <TabsContent value="tiktok" className="space-y-4 mt-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold">
-                          Métricas TikTok
-                        </h3>
-                      </div>
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="ttViews"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Vistas</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                value={field.value || ""}
-                                disabled={isSavingMetrics}
-                              />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              Busca el número de vistas en las estadísticas del video.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="ttLikes"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Likes</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                value={field.value || ""}
-                                disabled={isSavingMetrics}
-                              />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              Busca el número de likes en las estadísticas del video.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="ttComments"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Comentarios</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                value={field.value || ""}
-                                disabled={isSavingMetrics}
-                              />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              Busca el número de comentarios en las estadísticas del video.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="ttShares"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Compartidos</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                value={field.value || ""}
-                                disabled={isSavingMetrics}
-                              />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              Busca el número de compartidos en las estadísticas del video.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {task?.type === "REEL" && (
-                        <FormField
-                          control={metricsForm.control}
-                          name="ttSaves"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Guardados</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  placeholder="0"
-                                  {...field}
-                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                  value={field.value || ""}
-                                  disabled={isSavingMetrics}
-                                />
-                              </FormControl>
-                              <p className="text-xs text-muted-foreground">
-                                Busca el icono de la cinta en las estadísticas del video.
-                              </p>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-                    </TabsContent>
-
-                    {/* Tab Business Impact */}
-                    <TabsContent value="business" className="space-y-4 mt-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-green-600">
-                          Business Impact - Conversión y Ventas
-                        </h3>
-                      </div>
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="conversions"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Conversiones / Leads</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                value={field.value || ""}
-                                disabled={isSavingMetrics}
-                              />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              Número de personas que preguntaron o se interesaron (leads).
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="salesCount"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Ventas Cerradas</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                value={field.value || ""}
-                                disabled={isSavingMetrics}
-                              />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              Cuántos efectivamente compraron o cerraron venta.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="revenue"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Ingresos (Revenue)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="0.00"
-                                {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                                value={field.value || ""}
-                                disabled={isSavingMetrics}
-                              />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">
-                              Dinero total generado por esta pieza de contenido.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={metricsForm.control}
-                        name="conversionSource"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Origen de Conversión</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value || ""}
-                              disabled={isSavingMetrics}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecciona el origen" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="WhatsApp">WhatsApp</SelectItem>
-                                <SelectItem value="Web">Web</SelectItem>
-                                <SelectItem value="DM">DM (Direct Message)</SelectItem>
-                                <SelectItem value="Link en Bio">Link en Bio</SelectItem>
-                                <SelectItem value="Local Físico">Local Físico</SelectItem>
-                                <SelectItem value="Otro">Otro</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <p className="text-xs text-muted-foreground">
-                              ¿De dónde provinieron las conversiones?
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </TabsContent>
-                  </Tabs>
-
-                  {/* Campos globales */}
-                  <Separator />
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold">Información Adicional</h3>
-                    
-                    <FormField
-                      control={metricsForm.control}
-                      name="totalBudgetSpent"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Presupuesto Gastado (opcional)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              {...field}
-                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
-                              value={field.value ?? ""}
-                              disabled={isSavingMetrics}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={metricsForm.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Notas (opcional)</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Notas adicionales sobre estas métricas..."
-                              {...field}
-                              value={field.value || ""}
-                              disabled={isSavingMetrics}
-                              className="min-h-[80px]"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="flex gap-4 pt-4">
-                    <Button
-                      type="submit"
-                      disabled={isSavingMetrics}
-                      className="flex-1"
-                    >
-                      {isSavingMetrics ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Guardando...
-                        </>
-                      ) : (
-                        "Guardar Métricas"
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            )}
-
-            {/* Análisis de Valor */}
-            {task && displayMetrics && (
-              <div className="mt-8 border-t pt-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Brain className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Análisis de Valor</h3>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Métricas calculadas por Totem OS para evaluar el rendimiento de tu contenido
-                </p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Card de ER Meta */}
-                  {((displayMetrics as any)?.metaReach > 0 || (displayMetrics as any)?.metaViews > 0) && (
-                    <Card className="border-l-4 border-l-blue-600">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <TrendingUp className="h-4 w-4 text-blue-600" />
-                          ER Meta
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <p className="text-3xl font-bold text-blue-600">
-                            {((displayMetrics as any)?.erMeta || 0).toFixed(2)}%
-                          </p>
-                          <CardDescription className="text-sm text-muted-foreground">
-                            Engagement Rate Meta (IG/FB)
-                          </CardDescription>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Card de ER TikTok */}
-                  {((displayMetrics as any)?.ttViews > 0) && (
-                    <Card className="border-l-4 border-l-black dark:border-l-white">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <TrendingUp className="h-4 w-4" />
-                          ER TikTok
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <p className="text-3xl font-bold">
-                            {((displayMetrics as any)?.erTikTok || 0).toFixed(2)}%
-                          </p>
-                          <CardDescription className="text-sm text-muted-foreground">
-                            Engagement Rate TikTok
-                          </CardDescription>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Card de Lealtad de Marca */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Brain className="h-4 w-4" />
-                        Lealtad de Marca
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <p className="text-3xl font-bold">
-                          {calculateBrandLoyalty(displayMetrics).toFixed(2)}%
-                        </p>
-                        <CardDescription className="text-sm text-muted-foreground">
-                          Su marca no solo se ve, se recomienda y se guarda
-                        </CardDescription>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Card de Eficiencia de Inversión */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4" />
-                        Eficiencia de Inversión
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {(() => {
-                          const efficiency = calculateInvestmentEfficiency(
-                            displayMetrics,
-                            task.client.monthlyRate || 0
-                          );
-                          return (
-                            <>
-                              <p className="text-3xl font-bold">
-                                {formatCurrency(efficiency)}
-                              </p>
-                              <CardDescription className="text-sm text-muted-foreground">
-                                Cada interacción con un cliente potencial le costó{" "}
-                                {formatCurrency(efficiency)}
-                              </CardDescription>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-          ) : (
-            <>
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="flex flex-col h-full relative"
-                >
-                  <div className="flex-1 overflow-y-auto py-4 px-1 space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Título</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Título de la tarea"
-                            {...field}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Campo de Cliente solo para nuevas tareas */}
-                  {isNewTask && clients.length > 0 && (
-                    <FormField
-                      control={form.control}
-                      name="clientId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cliente</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            disabled={isPending}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un cliente" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {clients.map((client) => (
-                                <SelectItem key={client.id} value={client.id}>
-                                  {client.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <FormField
-                      control={form.control}
-                      name="type"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Tipo de Contenido</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            disabled={isPending}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona el tipo" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="REEL">Reel</SelectItem>
-                              <SelectItem value="FLYER">Flyer</SelectItem>
-                              <SelectItem value="STORY">Story</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="assignedToId"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Asignar a</FormLabel>
-                        <Select
-                          onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
-                          value={field.value || "none"}
-                          disabled={isPending}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona un usuario (opcional)" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">Sin asignar</SelectItem>
-                            {users.map((user) => (
-                              <SelectItem key={user.id} value={user.id}>
-                                {user.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="scheduledAt"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={task?.status === "CLIENT_APPROVED" ? "text-orange-600 font-semibold" : ""}>
-                          Fecha Programada de Publicación
-                          {task?.status === "CLIENT_APPROVED" && (
-                            <span className="ml-2 text-xs text-orange-600">⚠️ No olvides programarla</span>
-                          )}
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="datetime-local"
-                            value={field.value || ""}
-                            onChange={(e) => {
-                              field.onChange(e.target.value || undefined);
-                              // Calcular automáticamente la fecha de entrega cuando cambia la fecha programada
-                              if (e.target.value) {
-                                const scheduledDate = new Date(e.target.value);
-                                const calculatedDueDate = subHours(scheduledDate, 24);
-                                form.setValue("dueDate", calculatedDueDate.toISOString().split("T")[0]);
-                              } else {
-                                form.setValue("dueDate", undefined);
-                              }
-                            }}
-                            disabled={isPending}
-                            className={task?.status === "CLIENT_APPROVED" ? "border-orange-300 focus:border-orange-500 focus:ring-orange-500" : ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                        <p className="text-xs text-muted-foreground">
-                          La fecha de entrega se calculará automáticamente (24 horas antes de la publicación)
-                        </p>
-                      </FormItem>
-                    )}
-                  />
-
-                  </div>
-
-                  <div className="sticky bottom-0 left-0 right-0 bg-background pt-4 border-t flex justify-end gap-4 z-10">
-                    <Button
-                      type="submit"
-                      disabled={isPending}
-                      className="min-w-[120px]"
-                    >
-                      {isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {isNewTask ? "Creando..." : "Guardando..."}
-                        </>
-                      ) : (
-                        isNewTask ? "Crear Tarea" : "Guardar Cambios"
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => onOpenChange(false)}
-                      disabled={isPending}
-                    >
-                      Cancelar
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </>
-          )}
-
-          {/* Recursos del Cliente - Solo para tareas existentes */}
-          {task && task.client.brandAssets && task.client.brandAssets.length > 0 && (
-            <div className="mt-8 border-t pt-6">
-              <h3 className="text-sm font-semibold mb-4">Recursos del Cliente</h3>
-              <div className="grid grid-cols-1 gap-3">
-                {task.client.brandAssets.map((asset) => {
-                  const getFileIcon = () => {
-                    switch (asset.fileType) {
-                      case "image":
-                        return <Image className="h-4 w-4" />;
-                      case "pdf":
-                        return <FileText className="h-4 w-4" />;
-                      default:
-                        return <FileText className="h-4 w-4" />;
-                    }
-                  };
-
-                  const getFileCategory = (fileName: string): "Logo" | "Paleta" | "Documento" => {
-                    const lowerName = fileName.toLowerCase();
-                    if (lowerName.includes("logo") || lowerName.includes("brand")) {
-                      return "Logo";
-                    }
-                    if (lowerName.includes("color") || lowerName.includes("palette") || lowerName.includes("paleta")) {
-                      return "Paleta";
-                    }
-                    return "Documento";
-                  };
-
-                  const category = getFileCategory(asset.name);
-                  const isCopied = copiedUrl === asset.url;
-
-                  return (
-                    <div
-                      key={asset.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="flex-shrink-0">
-                          {getFileIcon()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{asset.name}</p>
-                          <Badge variant="secondary" className="text-xs mt-1">
-                            {category === "Logo" && <Palette className="h-3 w-3 mr-1" />}
-                            {category}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(asset.url);
-                              setCopiedUrl(asset.url);
-                              toast({
-                                title: "URL copiada",
-                                description: "La URL del archivo ha sido copiada al portapapeles.",
-                              });
-                              setTimeout(() => setCopiedUrl(null), 2000);
-                            } catch (error) {
-                              toast({
-                                variant: "destructive",
-                                title: "Error al copiar URL",
-                                description: "No se pudo copiar la URL al portapapeles.",
-                              });
-                            }
-                          }}
-                          className="h-8 w-8 p-0"
-                        >
-                          {isCopied ? (
-                            <Check className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(asset.url, "_blank")}
-                          className="h-8 w-8 p-0"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+            </form>
+          </Form>
 
           {/* Botón de eliminar - Solo para tareas existentes */}
           {!isNewTask && (
@@ -2079,7 +1299,6 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
           )}
         </SheetContent>
       </Sheet>
-    </>
+    </TooltipProvider>
   );
 }
-
