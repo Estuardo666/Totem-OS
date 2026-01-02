@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { UploadButton } from "@uploadthing/react";
-import { Image, FileText, Trash2, ExternalLink, Loader2, Copy, Check, Download, Palette } from "lucide-react";
+import { Image as ImageIcon, FileText, Trash2, ExternalLink, Loader2, Copy, Check, Download, Palette } from "lucide-react";
 import type { BrandAsset } from "@prisma/client";
+import Image from "next/image";
 // @ts-expect-error - TypeScript no detecta el uso en callback inline, pero sí se usa
 import { addBrandAsset, deleteBrandAsset } from "@/actions/client-actions";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
@@ -89,7 +90,7 @@ export function BrandKit({ assets, clientId }: BrandKitProps) {
   const getFileIcon = (fileType: string) => {
     switch (fileType) {
       case "image":
-        return <Image className="h-5 w-5" />;
+        return <ImageIcon className="h-5 w-5" />;
       case "pdf":
         return <FileText className="h-5 w-5" />;
       default:
@@ -227,7 +228,7 @@ export function BrandKit({ assets, clientId }: BrandKitProps) {
                           }
                           className="text-xs"
                         >
-                          {category === "Logo" && <Image className="mr-1 h-3 w-3" />}
+                          {category === "Logo" && <ImageIcon className="mr-1 h-3 w-3" />}
                           {category === "Paleta" && <Palette className="mr-1 h-3 w-3" />}
                           {category === "Documento" && <FileText className="mr-1 h-3 w-3" />}
                           {category}
@@ -271,10 +272,11 @@ export function BrandKit({ assets, clientId }: BrandKitProps) {
                 <CardContent className="flex-1 flex flex-col space-y-3">
                   <div className="relative aspect-square w-full overflow-hidden rounded-md border bg-muted">
                     {asset.fileType === "image" ? (
-                      <img
+                      <Image
                         src={asset.url}
                         alt={asset.name}
-                        className="h-full w-full object-contain"
+                        fill
+                        className="object-contain"
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center">

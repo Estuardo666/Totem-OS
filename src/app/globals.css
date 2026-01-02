@@ -129,6 +129,16 @@
     }
   }
 
+  /* Animación Aurora para botones IA */
+  @keyframes gradient {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
   .animate-gradient-xy {
     background-size: 200% 200%;
     animation: gradient-xy 15s ease infinite;
@@ -137,6 +147,11 @@
   .animate-gradient-xy-reverse {
     background-size: 200% 200%;
     animation: gradient-xy-reverse 20s ease infinite;
+  }
+
+  .animate-gradient {
+    background-size: 200% auto;
+    animation: gradient 3s ease infinite;
   }
 
   .animate-shimmer {

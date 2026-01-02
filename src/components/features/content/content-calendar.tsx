@@ -15,7 +15,7 @@ import {
   subMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Video, Image, Camera, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Video, Image as ImageIconLucide, Camera, CheckCircle2 } from "lucide-react";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,7 +49,7 @@ const getTypeIcon = (type: string) => {
     case "REEL":
       return <Video className="h-3 w-3" />;
     case "FLYER":
-      return <Image className="h-3 w-3" />;
+      return <ImageIconLucide className="h-3 w-3" />;
     case "STORY":
       return <Camera className="h-3 w-3" />;
     default:

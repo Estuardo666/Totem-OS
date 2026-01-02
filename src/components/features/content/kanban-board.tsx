@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format, isToday, differenceInHours } from "date-fns";
 import Pusher from "pusher-js";
-import { Video, Image, Camera, ImageIcon, CheckCircle2, Sparkles } from "lucide-react";
+import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2, Sparkles } from "lucide-react";
 import {
   DragDropContext,
   Droppable,
@@ -47,7 +47,7 @@ function getTypeIcon(type: string) {
     case "STORY":
       return <Camera className="h-4 w-4" />;
     case "FLYER":
-      return <Image className="h-4 w-4" />;
+      return <ImageIconLucide className="h-4 w-4" />;
     default:
       return null;
   }
@@ -347,7 +347,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
       channel.unsubscribe();
       // NO desconectar pusher completamente para mantener la conexión estable
     };
-  }, []); // Dependencias vacías para que solo se ejecute una vez
+  }, [toast]); // Agregar toast como dependencia
 
   // Función para reorganizar las tareas localmente
   const reorderTasks = (

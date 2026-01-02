@@ -288,8 +288,12 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
 /**
  * Server Action para obtener tareas pendientes del usuario logueado
  * Retorna el conteo de tareas asignadas al usuario
- * Regla especial para COMMUNITY (specialty): solo cuenta tareas con estado CLIENT_APPROVED
- * Regla para EDITOR: cuenta todas las tareas excepto PUBLISHED/CANCELADO
+ * 
+ * REGLAS DE NEGOCIO CRÍTICAS:
+ * - EDITOR: Solo cuenta tareas en estados IDEA, RECORDED, EDITING, REVIEW_CLIENT
+ *   NO cuenta CLIENT_APPROVED, APPROVED, PUBLISHED
+ * - COMMUNITY (specialty): Solo cuenta tareas en estado CLIENT_APPROVED
+ *   NO cuenta estados previos ni PUBLICADO
  */
 export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
   try {
@@ -323,8 +327,9 @@ export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
     }
 
     // Para EDITOR o cualquier otro usuario, contar tareas asignadas como editor
-    // Estados válidos: todos excepto PUBLISHED
-    const validStatuses = ["IDEA", "RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT", "CLIENT_APPROVED", "APPROVED"];
+    // Estados válidos: IDEA, RECORDED, EDITING, REVIEW_CLIENT
+    // NO incluir: CLIENT_APPROVED, APPROVED, PUBLISHED
+    const validStatuses = ["IDEA", "RECORDED", "EDITING", "REVIEW_CLIENT"];
     
     const count = await db.contentTask.count({
       where: {
@@ -673,6 +678,7 @@ export async function updateTask(
       data: {
         ...(validatedData.title && { title: validatedData.title }),
         ...(validatedData.type && { type: validatedData.type }),
+        ...(validatedData.priority && { priority: validatedData.priority }),
         ...(validatedData.dueDate !== undefined && {
           dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
         }),

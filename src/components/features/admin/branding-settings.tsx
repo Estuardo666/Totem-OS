@@ -8,6 +8,7 @@ import { Loader2, Save, Image as ImageIcon, X, Palette } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { updateBrandSettings, getBrandSettings, updateLoginBackground, getLoginBackground } from "@/actions/admin-actions";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
+import Image from "next/image";
 
 export function BrandingSettings() {
   const [isLoading, setIsLoading] = useState(true);
@@ -162,10 +163,11 @@ export function BrandingSettings() {
             {logoLightUrl ? (
               <div className="flex flex-col gap-3">
                 <div className="relative w-full h-32 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                  <img
+                  <Image
                     src={logoLightUrl}
                     alt="Logo modo claro"
-                    className="max-w-full max-h-full object-contain"
+                    fill
+                    className="object-contain"
                   />
                 </div>
               </div>
@@ -226,10 +228,11 @@ export function BrandingSettings() {
             {logoDarkUrl ? (
               <div className="flex flex-col gap-3">
                 <div className="relative w-full h-32 bg-gray-900 border-2 border-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
-                  <img
+                  <Image
                     src={logoDarkUrl}
                     alt="Logo modo oscuro"
-                    className="max-w-full max-h-full object-contain"
+                    fill
+                    className="object-contain"
                   />
                 </div>
               </div>
@@ -293,10 +296,11 @@ export function BrandingSettings() {
             {backgroundUrl ? (
               <div className="flex flex-col gap-3">
                 <div className="relative w-full h-32 border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                  <img
+                  <Image
                     src={backgroundUrl}
                     alt="Background del login"
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 </div>
               </div>
