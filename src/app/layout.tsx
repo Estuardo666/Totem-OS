@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "@/components/ui/toaster";
 import { NextAuthSessionProvider } from "@/components/providers/session-provider";
 import UploadThingProviderWrapper from "@/components/providers/uploadthing-provider";
@@ -36,6 +37,7 @@ export default function RootLayout({
           </ThemeProvider>
         </NextAuthSessionProvider>
         <Toaster />
+        <SpeedInsights />
       </body>
     </html>
   );
