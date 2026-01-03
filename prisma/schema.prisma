@@ -25,7 +25,7 @@ generator client {
 
 // 🔧 DESARROLLO LOCAL (SQLite) - ACTIVO
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
