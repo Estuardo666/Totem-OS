@@ -841,6 +841,131 @@ export async function updateTask(
 }
 
 /**
+ * Server Action para publicar una tarea rápidamente (Quick Publish)
+ * Actualiza el estado a PUBLISHED y establece publishedAt
+ * Retorna el resultado para manejo de UI (animaciones, confetti)
+ */
+export async function quickPublishTask(taskId: string): Promise<ApiResponse<ContentTask>> {
+  try {
+    // 1. Verificar que la tarea existe y obtener información previa
+    const task = await db.contentTask.findUnique({
+      where: { id: taskId },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        clientId: true,
+        assignedEditorId: true,
+        assignedCommunityId: true,
+        client: {
+          select: { name: true },
+        },
+      },
+    });
+
+    if (!task) {
+      return {
+        success: false,
+        error: "Tarea no encontrada",
+      };
+    }
+
+    // 2. Verificar si ya está publicada
+    if (task.status === "PUBLISHED") {
+      return {
+        success: false,
+        error: "Esta tarea ya está publicada",
+      };
+    }
+
+    // 3. Obtener sesión para auditoría
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    const sessionUserId = session?.user?.id;
+
+    // 4. Actualizar la tarea a PUBLISHED
+    const updatedTask = await db.contentTask.update({
+      where: { id: taskId },
+      data: {
+        status: "PUBLISHED",
+        publishedAt: new Date(),
+      },
+    });
+
+    // 5. Notificar al editor y community manager
+    try {
+      const affectedUserIds: string[] = [];
+      
+      if (task.assignedEditorId && task.assignedEditorId !== sessionUserId) {
+        affectedUserIds.push(task.assignedEditorId);
+        await sendNotification({
+          userId: task.assignedEditorId,
+          message: `🚀 ¡Publicado! La tarea "${task.title}" ha sido publicada exitosamente.`,
+          type: "STATUS_CHANGE",
+          createdBy: sessionUserId || undefined,
+        });
+      }
+
+      if (task.assignedCommunityId && task.assignedCommunityId !== sessionUserId) {
+        affectedUserIds.push(task.assignedCommunityId);
+        await sendNotification({
+          userId: task.assignedCommunityId,
+          message: `🚀 ¡Publicado! La tarea "${task.title}" ha sido publicada exitosamente.`,
+          type: "STATUS_CHANGE",
+          createdBy: sessionUserId || undefined,
+        });
+      }
+
+      // Disparar eventos de actualización del dashboard
+      if (affectedUserIds.length > 0) {
+        await triggerDashboardUpdate(affectedUserIds);
+      }
+    } catch (notificationError) {
+      console.error("❌ Error al enviar notificaciones:", notificationError);
+    }
+
+    // 6. Verificar cumplimiento del contrato y crear transacción automática
+    try {
+      const { checkAndCreateAutomaticTransaction } = await import("@/lib/finance-logic");
+      const result = await checkAndCreateAutomaticTransaction(task.clientId);
+      
+      if (result.created) {
+        console.log(`✅ Cobro automático creado para cliente ${task.clientId}`);
+      }
+    } catch (financeError) {
+      console.error("❌ Error en lógica financiera:", financeError);
+    }
+
+    // 7. Revalidar rutas
+    revalidatePath("/content");
+    revalidatePath("/content/dashboard");
+    revalidatePath("/");
+    revalidatePath("/finance");
+
+    // 8. Disparar evento de Pusher para actualización en tiempo real
+    try {
+      await pusherServer.trigger("kanban-channel", "update-event", {
+        message: `Tarea "${task.title}" publicada rápidamente`,
+        taskId: taskId,
+        action: "quick_published",
+        timestamp: new Date().toISOString(),
+      });
+      console.log("✅ Evento Quick Publish enviado a Pusher");
+    } catch (pusherError) {
+      console.error("❌ Error al enviar evento Pusher:", pusherError);
+    }
+
+    return { success: true, data: updatedTask };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Error al publicar tarea",
+    };
+  }
+}
+
+/**
  * Server Action para eliminar una tarea de contenido
  */
 export async function deleteTask(id: string): Promise<ApiResponse<void>> {

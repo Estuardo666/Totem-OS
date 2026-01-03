@@ -46,22 +46,22 @@ export default async function ContentPage() {
             Visualiza y gestiona todas tus tareas de contenido
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <Button asChild variant="outline" className="w-full md:w-auto">
             <Link href="/content/shoots">
               <Video className="mr-2 h-4 w-4" />
               Plan de Rodaje
             </Link>
           </Button>
           {isAdmin && (
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="w-full md:w-auto">
               <Link href="/content/generator">
                 <Wand2 className="mr-2 h-4 w-4" />
                 Generador de Estrategias
               </Link>
             </Button>
           )}
-          <Button asChild>
+          <Button asChild className="w-full md:w-auto">
             <Link href="/content/new">
               <Plus className="mr-2 h-4 w-4" />
               Nueva Tarea

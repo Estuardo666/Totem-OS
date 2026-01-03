@@ -25,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { TaskMetrics } from "@prisma/client";
 import { calculateMonthlyEngagement, calculateMonthlyEfficiency, formatCurrency } from "@/lib/metrics-calculations";
-import { TrendingUp, Brain } from "lucide-react";
+import { TrendingUp, Brain, BarChart3 } from "lucide-react";
 
 interface TaskWithMetrics {
   id: string;
@@ -143,21 +143,23 @@ export default async function ClientDetailPage({
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto px-4 md:px-6">
       <div className="mb-6">
         <ClientHeader client={client} users={users} />
       </div>
 
       <Tabs defaultValue="summary" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="summary">Resumen</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="metrics">Métricas & Rendimiento</TabsTrigger>
-          <TabsTrigger value="strategy">Estrategia de Marca</TabsTrigger>
-          <TabsTrigger value="brand-kit">Brand Kit</TabsTrigger>
-          <TabsTrigger value="vault">Bóveda</TabsTrigger>
-          <TabsTrigger value="account">Estado de Cuenta</TabsTrigger>
-        </TabsList>
+        <div className="sticky top-[64px] z-30 w-full bg-background/95 backdrop-blur py-2 border-b border-border/50">
+          <TabsList className="inline-flex w-full items-center justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide px-1">
+            <TabsTrigger value="summary" className="flex-shrink-0 px-6">Resumen</TabsTrigger>
+            <TabsTrigger value="performance" className="flex-shrink-0 px-6">Performance</TabsTrigger>
+            <TabsTrigger value="metrics" className="flex-shrink-0 px-6">Métricas & Rendimiento</TabsTrigger>
+            <TabsTrigger value="strategy" className="flex-shrink-0 px-6">Estrategia de Marca</TabsTrigger>
+            <TabsTrigger value="brand-kit" className="flex-shrink-0 px-6">Brand Kit</TabsTrigger>
+            <TabsTrigger value="vault" className="flex-shrink-0 px-6">Bóveda</TabsTrigger>
+            <TabsTrigger value="account" className="flex-shrink-0 px-6">Estado de Cuenta</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="performance" className="mt-6 space-y-6">
           {globalMetricsResult.success && globalMetricsResult.data && recentTasks.length > 0 ? (
@@ -213,10 +215,15 @@ export default async function ClientDetailPage({
             </>
           ) : (
             <Card>
-              <CardContent className="py-12">
-                <p className="text-muted-foreground text-center">
-                  {globalMetricsResult.error || "Cargando métricas de performance..."}
-                </p>
+              <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
+                <BarChart3 className="h-16 w-16 text-muted-foreground/30" />
+                <div className="text-center space-y-2">
+                  <h3 className="font-semibold text-lg">Sin datos de performance</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Aún no hay tareas publicadas o métricas sincronizadas para este cliente.
+                  </p>
+                </div>
+                <SyncMetricsButton clientId={client.id} />
               </CardContent>
             </Card>
           )}

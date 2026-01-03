@@ -25,7 +25,7 @@ generator client {
 
 // 🔧 DESARROLLO LOCAL (SQLite) - ACTIVO
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -44,10 +44,14 @@ model User {
   lastName      String?
   email         String    @unique
   emailVerified DateTime?
-  image         String?
+  image         String? // URL de la foto de perfil
   password      String? // Opcional: solo para usuarios con credenciales (no Google)
-  role          String    @default("EDITOR") // "ADMIN", "EDITOR", "VIEWER"
-  specialty     String? // "EDITOR", "COMMUNITY" - Especialidad del usuario (para asignación de clientes)
+  
+  // Legacy: Campo string para compatibilidad
+  roleLegacy    String   @default("EDITOR") @map("role") // "ADMIN", "EDITOR"
+  
+  // Campo de texto para especialidad (se llena desde la tabla Specialty)
+  specialty     String? // Ej: "Community Manager", "Diseñador Gráfico"
   salaryType    String    @default("MONTHLY") // "HOURLY", "MONTHLY", "PROFIT_SHARE" (default MONTHLY, admins suelen usar PROFIT_SHARE)
   baseSalary    Float? // Sueldo mensual fijo (opcional)
   profitSharePercent Float? // Porcentaje de participación en ganancias (opcional, para socios, ej: 50.0)
@@ -83,7 +87,28 @@ model User {
   updatedAt DateTime @updatedAt
 
   @@index([email])
-  @@index([role])
+  @@index([roleLegacy])
+}
+
+// ============================================================================
+// MODELO DE ROLES - NUEVO SISTEMA DE PERMISOS
+// ============================================================================
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique // Ej: "Admin", "Editor"
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ESPECIALIDADES (Catálogo dinámico para el campo specialty en User)
+model Specialty {
+  id    String @id @default(cuid())
+  name  String @unique
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Modelos de Auth.js

@@ -50,16 +50,11 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
   };
 
   return (
-    <Card
-      className="border-l-4"
-      style={{
-        borderLeftColor: client.color || "#000000",
-      }}
-    >
-      <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+    <Card className="border-none shadow-sm">
+      <CardContent className="flex flex-col gap-4 p-4 md:p-6 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">{client.name}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold">{client.name}</h1>
             {client.hasPendingFeedback && (
               <div className="relative">
                 <Bell className="h-5 w-5 text-red-600" />
@@ -67,7 +62,7 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge
               variant={getStatusVariant(client.status)}
               className={
@@ -87,7 +82,7 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <ShareReportButton
             clientId={client.id}
             shareToken={currentShareToken}
@@ -95,11 +90,13 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
               setCurrentShareToken(token);
               router.refresh();
             }}
+            className="w-full sm:w-auto"
           />
           <Button
             variant="default"
             size="sm"
             asChild
+            className="w-full sm:w-auto"
           >
             <Link 
               href={`/clients/${client.id}/report`}
@@ -114,6 +111,7 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
             variant="outline"
             size="sm"
             onClick={() => setIsEditDialogOpen(true)}
+            className="w-full sm:w-auto"
           >
             <Edit className="h-4 w-4 mr-2" />
             Editar Cliente

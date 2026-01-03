@@ -244,8 +244,8 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-semibold">{shooting.title}</h3>
+                          <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-semibold text-sm md:text-base">{shooting.title}</h3>
                             <Badge
                               variant={
                                 shooting.status === "COMPLETED"
@@ -254,6 +254,7 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
                                   ? "destructive"
                                   : "secondary"
                               }
+                              className="text-xs md:text-sm"
                             >
                               {shooting.status === "SCHEDULED"
                                 ? "Programado"

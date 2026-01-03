@@ -55,6 +55,27 @@ export async function fetchPageMetrics(
   accessToken: string,
   days: number = 28
 ): Promise<PageMetricsResponse> {
+  // Timeout de seguridad para evitar bloqueos infinitos
+  const TIMEOUT_MS = 10000; // 10 segundos
+
+  // Helper para fetch con timeout
+  const fetchWithTimeout = async (url: string): Promise<Response> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Meta API Timeout: La solicitud tardó demasiado');
+      }
+      throw error;
+    }
+  };
+
   // 1. Calcular fechas de forma segura (Meta no acepta fechas futuras o presentes para period=day)
   // Until debe ser anteayer (2 días antes) para asegurar que pedimos datos cerrados y disponibles
   const today = new Date();
@@ -71,11 +92,12 @@ export async function fetchPageMetrics(
   console.log(`🔍 [Meta Fetch] Intentando obtener métricas para Page ID: ${pageId}`);
   console.log(`📅 [Meta Fetch] Rango de fechas: ${sinceDate.toISOString().split('T')[0]} hasta ${today.toISOString().split('T')[0]} (${days} días)`);
   console.log(`📊 [Meta Fetch] Timestamps: since=${since}, until=${until}`);
+  console.log(`⏱️ [Meta Fetch] Timeout configurado: ${TIMEOUT_MS}ms`);
 
   try {
     // PRIMERO: Verificar que el token tenga permisos y que la página sea accesible
     const pageInfoUrl = `https://graph.facebook.com/v21.0/${pageId}?fields=name,access_token&access_token=${accessToken}`;
-    const pageInfoRes = await fetch(pageInfoUrl);
+    const pageInfoRes = await fetchWithTimeout(pageInfoUrl);
     const pageInfo = await pageInfoRes.json();
 
     if (pageInfo.error) {
@@ -113,8 +135,8 @@ export async function fetchPageMetrics(
     console.log("   Fans:", fansUrl.replace(tokenToUse, "***"));
 
     const [impRes, fansRes] = await Promise.all([
-      fetch(impressionsUrl),
-      fetch(fansUrl)
+      fetchWithTimeout(impressionsUrl),
+      fetchWithTimeout(fansUrl)
     ]);
 
     const impData = await impRes.json();
@@ -199,6 +221,12 @@ export async function fetchPageMetrics(
     // Re-lanzar errores específicos
     if (error instanceof TokenExpiredError || error instanceof InsufficientPermissionsError) {
       throw error;
+    }
+
+    // Manejar timeout explícitamente
+    if (error instanceof Error && error.message.includes('Meta API Timeout')) {
+      console.error("⏱️ [Meta Service Timeout]:", error.message);
+      throw new Error("Meta API Timeout: La solicitud a Meta API tardó demasiado. Por favor, inténtalo de nuevo.");
     }
 
     console.error("🚨 [Meta Service Critical]:", error);

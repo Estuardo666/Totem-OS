@@ -13,15 +13,18 @@ interface MetricsOverviewProps {
  * Componente que muestra un resumen de KPIs principales de Facebook
  */
 export function MetricsOverview({ impressions, engagements, fans }: MetricsOverviewProps) {
-  // Formatear números con separadores de miles
-  const formatNumber = (num: number): string => {
+  // Formatear números con separadores de miles (programación defensiva)
+  const formatNumber = (num: number | undefined | null): string => {
+    if (num === undefined || num === null || isNaN(num)) {
+      return "0";
+    }
     return new Intl.NumberFormat("es-ES").format(Math.round(num));
   };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {/* Alcance/Impresiones */}
-      <Card className="border shadow-sm">
+      <Card className="border shadow-sm h-full">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
             <Eye className="h-4 w-4" />
@@ -35,7 +38,7 @@ export function MetricsOverview({ impressions, engagements, fans }: MetricsOverv
       </Card>
 
       {/* Engagement */}
-      <Card className="border shadow-sm">
+      <Card className="border shadow-sm h-full">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
             <Heart className="h-4 w-4" />
@@ -49,7 +52,7 @@ export function MetricsOverview({ impressions, engagements, fans }: MetricsOverv
       </Card>
 
       {/* Comunidad/Seguidores */}
-      <Card className="border shadow-sm">
+      <Card className="border shadow-sm h-full">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
             <Users className="h-4 w-4" />

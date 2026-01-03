@@ -21,7 +21,7 @@ export function ConditionalLayout({
   
   // Para todas las demás rutas, mostrar dashboard layout con sidebar
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background overflow-x-hidden">
       {/* Sidebar solo visible en desktop - Flotante con margin */}
       <div className="hidden md:block fixed left-0 top-0 h-full z-30">
         <Sidebar />
@@ -29,14 +29,14 @@ export function ConditionalLayout({
 
       {/* Contenido principal con margen para el sidebar */}
       {/* Sidebar tiene w-64 (256px) + m-4 izquierdo (16px) = 272px total */}
-      <main className="flex-1 md:pl-[272px] w-full">
+      <main className="flex-1 md:pl-[272px] w-full overflow-x-hidden">
         {/* Navbar móvil visible solo en móvil */}
         <div className="md:hidden sticky top-0 z-40">
           <Navbar />
         </div>
 
         {/* Contenido de la página */}
-        <div className="p-4 md:px-4 md:py-4">
+        <div className="p-4 md:px-4 md:py-4 overflow-x-hidden">
           {children}
         </div>
       </main>

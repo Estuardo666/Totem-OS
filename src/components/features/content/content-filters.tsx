@@ -131,8 +131,8 @@ export function ContentFilters({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div>
+      <div className="flex flex-col gap-2 md:grid md:grid-cols-2 lg:grid-cols-4">
+        <div className="w-full">
           <Select
             value={selectedClientId}
             onValueChange={(value) => {
@@ -155,7 +155,7 @@ export function ContentFilters({
             </SelectContent>
           </Select>
         </div>
-        <div>
+        <div className="w-full">
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Filtrar por mes" />
@@ -189,7 +189,7 @@ export function ContentFilters({
           </Select>
         </div>
         {viewMode === "all" && (
-          <div>
+          <div className="w-full">
             <Select value={selectedUserId} onValueChange={setSelectedUserId}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Filtrar por usuario" />
@@ -206,7 +206,7 @@ export function ContentFilters({
             </Select>
           </div>
         )}
-        <div>
+        <div className="w-full">
           <Select value={selectedType} onValueChange={setSelectedType}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Filtrar por tipo" />

@@ -57,9 +57,50 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      // Clases personalizadas para scrollbar (esencial para Trello Mobile)
+      keyframes: {
+        "hide-scrollbar": {
+          "0%, 100%": { opacity: "0" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "fade-in-up": {
+          "0%": { opacity: "0", transform: "translateY(10px) scale(0.95)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "fade-out-slide": {
+          "0%": { opacity: "1", transform: "translateX(0) scale(1)" },
+          "100%": { opacity: "0", transform: "translateX(20px) scale(0.85)" },
+        },
+      },
+      animation: {
+        "hide-scrollbar": "hide-scrollbar 0.5s linear",
+        "fade-in": "fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "fade-in-up": "fade-in-up 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "fade-out-slide": "fade-out-slide 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+      },
     },
   },
-  plugins: [tailwindcssAnimate],
+  plugins: [
+    tailwindcssAnimate,
+    // Plugin para ocultar scrollbars manteniendo la funcionalidad
+    function({ addUtilities }: any) {
+      addUtilities({
+        ".scrollbar-hide": {
+          "-ms-overflow-style": "none",  /* IE and Edge */
+          "scrollbar-width": "none",  /* Firefox */
+          "&::-webkit-scrollbar": {
+            display: "none",  /* Chrome, Safari, Opera */
+          },
+        },
+        ".scrollbar-hide::-webkit-scrollbar": {
+          display: "none",
+        },
+      });
+    },
+  ],
 };
 
 export default config;

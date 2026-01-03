@@ -48,7 +48,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           image: user.image,
-          role: user.role, // Incluir el rol en el objeto de usuario
+          role: user.roleLegacy, // Incluir el rol legacy en el objeto de usuario
         };
       },
     }),
@@ -76,7 +76,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 name: user.name || "",
                 image: user.image || null,
                 emailVerified: new Date(),
-                role: "EDITOR", // Rol por defecto
+                roleLegacy: "EDITOR", // Rol por defecto (Legacy)
               },
             });
             console.log("✅ Usuario creado en Prisma:", user.email, "ID:", dbUser.id);
@@ -152,10 +152,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { role: true },
+            select: { roleLegacy: true },
           });
           if (dbUser) {
-            token.role = dbUser.role;
+            token.role = dbUser.roleLegacy;
           }
         } catch (error) {
           console.error("Error al obtener rol del usuario:", error);

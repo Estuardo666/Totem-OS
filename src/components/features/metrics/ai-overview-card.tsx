@@ -6,7 +6,7 @@ import { generateClientPerformanceOverview } from "@/actions/metrics-actions";
 import { AiOverviewSkeleton } from "./ai-overview-skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -146,6 +146,7 @@ interface AiOverviewCardProps {
   initialOverview?: string | null;
   initialOverviewDate?: Date | null;
   userRole?: "ADMIN" | "EDITOR" | "VIEWER";
+  hasMetrics?: boolean;
 }
 
 export function AiOverviewCard({
@@ -153,6 +154,7 @@ export function AiOverviewCard({
   initialOverview,
   initialOverviewDate,
   userRole,
+  hasMetrics = true,
 }: AiOverviewCardProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -161,10 +163,22 @@ export function AiOverviewCard({
     initialOverviewDate ? new Date(initialOverviewDate) : null
   );
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const canGenerate = userRole === "ADMIN" || userRole === "EDITOR";
 
   const handleGenerate = () => {
+    setError(null);
+
+    if (!hasMetrics) {
+      toast({
+        variant: "destructive",
+        title: "Datos insuficientes",
+        description: "No hay suficientes datos para generar el análisis.",
+      });
+      return;
+    }
+
     if (!canGenerate) {
       toast({
         variant: "destructive",
@@ -186,6 +200,7 @@ export function AiOverviewCard({
             description: "El análisis de performance ha sido generado exitosamente.",
           });
         } else {
+          setError(result.error || "No se pudo generar el análisis.");
           toast({
             variant: "destructive",
             title: "Error",
@@ -194,6 +209,7 @@ export function AiOverviewCard({
         }
       } catch (error) {
         console.error("Error al generar análisis:", error);
+        setError("Error de conexión. Inténtalo de nuevo.");
         toast({
           variant: "destructive",
           title: "Error",
@@ -228,7 +244,7 @@ export function AiOverviewCard({
           {canGenerate && (
             <Button
               onClick={handleGenerate}
-              disabled={isLoading}
+              disabled={isLoading || !hasMetrics}
               variant="outline"
               size="sm"
               className="shrink-0"
@@ -252,6 +268,20 @@ export function AiOverviewCard({
       <CardContent className="relative z-10">
         {isLoading ? (
           <AiOverviewSkeleton />
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+            <AlertCircle className="h-10 w-10 text-destructive" />
+            <p className="text-sm text-destructive font-medium">{error}</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleGenerate}
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reintentar
+            </Button>
+          </div>
         ) : overview ? (
           <div className="prose prose-sm dark:prose-invert max-w-none">
             {renderMarkdown(overview)}
@@ -260,8 +290,10 @@ export function AiOverviewCard({
           <div className="text-center py-8 text-muted-foreground">
             <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p className="text-sm">
-              {canGenerate
+              {canGenerate && hasMetrics
                 ? "Haz clic en 'Generar Análisis' para obtener un análisis estratégico de las métricas del mes."
+                : !hasMetrics
+                ? "No hay suficientes datos métricos disponibles para generar el análisis."
                 : "No hay análisis disponible. Contacta a un administrador para generar uno."}
             </p>
           </div>

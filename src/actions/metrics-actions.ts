@@ -777,10 +777,13 @@ export async function syncClientMetrics(
   clientId: string,
   days: number = 28
 ): Promise<ApiResponse<{ count: number }>> {
+  console.log("[Meta Sync] Iniciando sincronización para cliente:", clientId);
+  
   try {
     // 1. Validar sesión y permisos
     const session = await auth();
     if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
+      console.log("[Meta Sync] ❌ No autorizado:", session?.user?.role);
       return {
         success: false,
         error: "No autorizado. Solo ADMIN y EDITOR pueden sincronizar métricas.",
@@ -799,6 +802,7 @@ export async function syncClientMetrics(
     });
 
     if (!client) {
+      console.log("[Meta Sync] ❌ Cliente no encontrado");
       return {
         success: false,
         error: "Cliente no encontrado",
@@ -806,13 +810,17 @@ export async function syncClientMetrics(
     }
 
     if (!client.facebookPageId || !client.pageAccessToken) {
+      console.log("[Meta Sync] ❌ Sin credenciales de Facebook");
       return {
         success: false,
         error: "El cliente no tiene una página de Facebook vinculada. Por favor, vincula una página en la sección de Integraciones.",
       };
     }
 
+    console.log("[Meta Sync] 📋 Cliente:", client.name, "| Page ID:", client.facebookPageId);
+
     // 3. Obtener métricas de la API de Meta
+    console.log("[Meta Sync] 🚀 Llamando a API de Meta...");
     let metricsData;
     try {
       metricsData = await fetchPageMetrics(
@@ -820,20 +828,29 @@ export async function syncClientMetrics(
         client.pageAccessToken,
         days
       );
+      console.log("[Meta Sync] ✅ Datos recibidos:", metricsData?.data?.length || 0, "métricas");
     } catch (error) {
       // Manejar errores específicos de token
       if (error instanceof TokenExpiredError) {
+        console.log("[Meta Sync] ❌ Token caducado:", error.message);
         return {
           success: false,
           error: error.message,
         };
       }
       if (error instanceof InsufficientPermissionsError) {
+        console.log("[Meta Sync] ❌ Permisos insuficientes:", error.message);
         return {
           success: false,
           error: error.message,
         };
       }
+      // Manejar timeout
+      if (error instanceof Error && error.message.includes('Meta API Timeout')) {
+        console.log("[Meta Sync] ⏱️ Timeout:", error.message);
+        throw error;
+      }
+      console.log("[Meta Sync] ❌ Error inesperado:", error);
       throw error;
     }
 

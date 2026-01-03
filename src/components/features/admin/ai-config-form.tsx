@@ -298,8 +298,7 @@ export function AiConfigForm() {
               <h3 className="text-sm font-semibold">API Keys</h3>
               <div className="rounded-lg bg-muted p-3">
                 <p className="text-xs text-muted-foreground">
-                  <p className="text-xs text-muted-foreground"><strong>Seguridad:</strong> Las API Keys se almacenan de forma segura en el servidor y solo se usan dentro de funciones "use server". Nunca se utilizan directamente en el navegador para hacer llamadas a APIs externas.</p>
-                  Nunca se utilizan directamente en el navegador para hacer llamadas a APIs externas.
+                  <strong>Seguridad:</strong> Las API Keys se almacenan de forma segura en el servidor y solo se usan dentro de funciones "use server". Nunca se utilizan directamente en el navegador para hacer llamadas a APIs externas.
                 </p>
               </div>
 
