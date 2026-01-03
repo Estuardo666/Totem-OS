@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Chrome, Loader2 } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
 
 interface SignUpFormProps {
   callbackUrl?: string;
@@ -25,10 +26,13 @@ export function SignUpForm({ callbackUrl = "/" }: SignUpFormProps) {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
   });
+
+  const passwordValue = watch("password");
 
   const onSubmit = async (data: RegisterInput) => {
     setIsLoading(true);
@@ -133,12 +137,13 @@ export function SignUpForm({ callbackUrl = "/" }: SignUpFormProps) {
 
         <div className="space-y-2">
           <Label htmlFor="password">Contraseña</Label>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             placeholder="••••••••"
             {...register("password")}
             disabled={isLoading}
+            showStrengthMeter={true}
+            value={passwordValue}
           />
           {errors.password && (
             <p className="text-sm text-destructive">
@@ -183,4 +188,3 @@ export function SignUpForm({ callbackUrl = "/" }: SignUpFormProps) {
     </div>
   );
 }
-

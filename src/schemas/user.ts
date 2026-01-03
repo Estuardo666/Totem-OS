@@ -7,15 +7,16 @@ export const userSchema = z.object({
   lastName: z.string().optional(),
   email: z.string().email("Email inválido"),
   password: z.string().optional(),
-  role: z.enum(["ADMIN", "EDITOR"]),
-  specialty: z.enum(["EDITOR", "COMMUNITY"]).optional().nullable(),
-  baseSalary: z.number().min(0, "El salario base debe ser mayor o igual a 0"),
+  // Campos Legacy actualizados
+  roleLegacy: z.enum(["ADMIN", "EDITOR"]).optional(),
+  specialty: z.string().optional().nullable(), // String libre para nombre de especialidad
+  baseSalary: z.number().min(0, "El salario base debe ser mayor o igual a 0").optional(),
 });
 
 export const createUserSchema = userSchema.omit({ id: true });
 export const updateUserSchema = userSchema.partial();
 
-// Schema para registro de usuarios
+// Schema para registro de usuarios (público)
 export const registerSchema = z.object({
   firstName: z.string().min(1, "El nombre es requerido"),
   lastName: z.string().min(1, "El apellido es requerido"),
@@ -35,6 +36,3 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;
-
-
-

@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Users, Layers, Plus, RefreshCw } from "lucide-react";
 import { SyncButton } from "@/components/features/admin/users/sync-button";
+import { FixRolesButton } from "@/components/features/admin/users/fix-roles-button";
 
 export default async function AdminUsersPage() {
   const session = await auth();
@@ -62,10 +63,13 @@ export default async function AdminUsersPage() {
                   {users.length} {users.length === 1 ? "usuario" : "usuarios"} registrados
                 </CardDescription>
               </div>
-              <UserSheet
-                mode="create"
-                trigger={<Button><Plus className="h-4 w-4 mr-2" />Nuevo Usuario</Button>}
-              />
+              <div className="flex gap-2">
+                <FixRolesButton />
+                <UserSheet
+                  mode="create"
+                  trigger={<Button><Plus className="h-4 w-4 mr-2" />Nuevo Usuario</Button>}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <UsersDataTable users={users} />

@@ -21,7 +21,8 @@ async function main() {
     create: {
       email: "admin@totem.com",
       name: "Stuart Admin",
-      role: "ADMIN",
+      roleLegacy: "ADMIN",
+      specialty: null,
       image: "https://avatar.vercel.sh/stuart",
     },
   });

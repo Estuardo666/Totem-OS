@@ -158,3 +158,44 @@ export async function deleteUser(userId: string): Promise<ApiResponse<{ success:
     return { success: false, error: error instanceof Error ? error.message : "Error" };
   }
 }
+
+/**
+ * CORRECCIÓN DE DATOS: Normaliza roles legacy
+ * Esta función corrige usuarios que tengan "CLIENTE" o valores incorrectos en roleLegacy
+ * y los establece a "EDITOR" por defecto.
+ */
+export async function fixUserRoles(): Promise<ApiResponse<{ updated: number }>> {
+  try {
+    const session = await auth();
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return { success: false, error: "No autorizado." };
+    }
+
+    // Buscar usuarios con roles inválidos
+    // Asumimos que "CLIENTE" es el valor incorrecto que quieres corregir
+    const usersToFix = await db.user.findMany({
+      where: {
+        roleLegacy: {
+          notIn: ["ADMIN", "EDITOR"]
+        }
+      }
+    });
+
+    if (usersToFix.length === 0) {
+      return { success: true, data: { updated: 0 }, message: "No se encontraron usuarios con roles inválidos." };
+    }
+
+    // Actualizar cada usuario inválido a EDITOR
+    for (const user of usersToFix) {
+      await db.user.update({
+        where: { id: user.id },
+        data: { roleLegacy: "EDITOR" }
+      });
+    }
+
+    revalidatePath("/admin/users");
+    return { success: true, data: { updated: usersToFix.length } };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Error" };
+  }
+}

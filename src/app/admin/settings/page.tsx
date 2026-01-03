@@ -24,7 +24,7 @@ async function SettingsContent() {
       id: true,
       name: true,
       email: true,
-      role: true,
+      roleLegacy: true,
       primaryColor: true,
       darkMode: true,
       soundNotifications: true,
@@ -56,7 +56,7 @@ async function SettingsContent() {
       </div>
 
       {/* Configuración de IA - Solo para ADMIN */}
-      {user.role === "ADMIN" && (
+      {user.roleLegacy === "ADMIN" && (
         <div className="mt-6 space-y-6">
           <BrandingSettings />
           <AiConfigForm />

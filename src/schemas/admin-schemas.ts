@@ -38,7 +38,8 @@ export type UserCreateInput = z.infer<typeof userCreateSchema>;
 export const userUpdateSchema = z.object({
   name: z.string().min(1, "El nombre es requerido").optional(),
   email: z.string().email("Email inválido").optional(),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").optional(),
+  // Permite string vacío para que el formulario no falle al dejar el campo vacío
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").optional().or(z.literal("")),
   
   // Campos Legacy
   roleLegacy: z.enum(["ADMIN", "EDITOR"]).optional(),

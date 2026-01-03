@@ -77,6 +77,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 image: user.image || null,
                 emailVerified: new Date(),
                 roleLegacy: "EDITOR", // Rol por defecto (Legacy)
+                specialty: null, // Especialidad nula por defecto
               },
             });
             console.log("✅ Usuario creado en Prisma:", user.email, "ID:", dbUser.id);

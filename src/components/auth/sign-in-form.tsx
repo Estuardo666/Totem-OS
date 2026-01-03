@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Chrome, Loader2 } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const signInSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -85,9 +86,8 @@ export function SignInForm({ callbackUrl = "/" }: SignInFormProps) {
 
         <div className="space-y-2">
           <Label htmlFor="password">Contraseña</Label>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             placeholder="••••••••"
             {...register("password")}
             disabled={isLoading}
@@ -135,4 +135,3 @@ export function SignInForm({ callbackUrl = "/" }: SignInFormProps) {
     </div>
   );
 }
-

@@ -95,7 +95,7 @@ export async function updateUserAdmin(
     // 3. Verificar que el usuario a actualizar existe
     const targetUser = await db.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true },
+      select: { id: true, roleLegacy: true },
     });
 
     if (!targetUser) {
@@ -106,7 +106,9 @@ export async function updateUserAdmin(
     }
 
     // 4. Prevenir que un ADMIN se quite el rol de ADMIN a sí mismo
-    if (currentUserId === userId && validatedData.role && validatedData.role !== "ADMIN") {
+    // Nota: validatedData.role no existe en el schema actual, pero mantenemos la lógica por si se añade
+    // Asumimos que validatedData.roleLegacy es el campo a comprobar
+    if (currentUserId === userId && validatedData.roleLegacy && validatedData.roleLegacy !== "ADMIN") {
       return {
         success: false,
         error: "No puedes quitarte el rol de ADMIN a ti mismo",
@@ -119,7 +121,7 @@ export async function updateUserAdmin(
       data: {
         ...(validatedData.name !== undefined && { name: validatedData.name }),
         ...(validatedData.email !== undefined && { email: validatedData.email }),
-        ...(validatedData.role !== undefined && { role: validatedData.role }),
+        ...(validatedData.roleLegacy !== undefined && { roleLegacy: validatedData.roleLegacy }),
         ...(validatedData.specialty !== undefined && { specialty: validatedData.specialty ?? null }),
         ...(validatedData.baseSalary !== undefined && { baseSalary: validatedData.baseSalary }),
       },
@@ -297,7 +299,8 @@ export async function registerUser(
         name: `${validatedData.firstName} ${validatedData.lastName}`,
         email: validatedData.email,
         password: hashedPassword,
-        role: "EDITOR", // Por defecto EDITOR, puede cambiarse después
+        roleLegacy: "EDITOR", // Por defecto EDITOR
+        specialty: null, // Sin especialidad inicial
         baseSalary: 0,
       },
     });
