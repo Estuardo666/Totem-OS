@@ -155,11 +155,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             where: { id: token.id as string },
             select: { roleLegacy: true },
           });
-          if (dbUser) {
+          // Fuerza el valor por defecto "EDITOR" si no existe o es inválido
+          if (dbUser && dbUser.roleLegacy) {
             token.role = dbUser.roleLegacy;
+          } else {
+            token.role = "EDITOR";
           }
         } catch (error) {
           console.error("Error al obtener rol del usuario:", error);
+          // En caso de error, asegurar que el rol sea EDITOR
+          token.role = "EDITOR";
         }
       }
       
@@ -168,7 +173,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user && token) {
         session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        session.user.role = token.role as string; // Compatibilidad
+        session.user.roleLegacy = token.role as string; // Explícito
         session.user.email = token.email as string;
         session.user.name = token.name as string;
         session.user.image = token.image as string;
