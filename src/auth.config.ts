@@ -25,5 +25,29 @@ export const authConfig = {
   secret: process.env.AUTH_SECRET,
   trustHost: true, // Necesario para desarrollo local y algunos entornos
   debug: process.env.NODE_ENV === "development",
+  
+  // Callbacks para sincronizar el rol
+  callbacks: {
+    async jwt({ token, user, account }) {
+      // Si es un inicio de sesión (user viene del provider)
+      if (user) {
+        // Copiar el rol del usuario al token
+        // El provider (Google o Credentials) debe pasar 'role' en el objeto user
+        if (user.role) {
+          token.role = user.role;
+        }
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // Pasar el rol del token a la sesión
+      if (session.user && token) {
+        // Compatibilidad: 'role' contiene el valor actual
+        session.user.role = token.role as string;
+        // Explícito: 'roleLegacy' también contiene el valor
+        session.user.roleLegacy = token.role as string;
+      }
+      return session;
+    },
+  },
 } satisfies NextAuthConfig;
-

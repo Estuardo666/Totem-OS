@@ -16,7 +16,8 @@ export default auth((req) => {
   const isAuth = !!req.auth;
   const isAuthPage = req.nextUrl.pathname.startsWith("/sign-in") || req.nextUrl.pathname.startsWith("/sign-up");
   const isPublicReport = req.nextUrl.pathname.startsWith("/reports/share");
-  const userRole = req.auth?.user?.role;
+  // Intentar leer roleLegacy primero, luego role como fallback
+  const userRole = req.auth?.user?.roleLegacy || req.auth?.user?.role;
   const isEditor = userRole === "EDITOR";
 
   // Debug logging (desactivar en producción)
