@@ -61,13 +61,14 @@ export function SignUpForm({ callbackUrl = "/" }: SignUpFormProps) {
           title: "Cuenta creada",
           description: "Pero no se pudo iniciar sesión automáticamente. Por favor, inicia sesión manualmente.",
         });
-        router.push("/sign-in");
+        window.location.href = "/sign-in";
       } else if (signInResult?.ok) {
         toast({
           title: "¡Bienvenido!",
           description: "Tu cuenta ha sido creada exitosamente",
         });
-        router.push(callbackUrl);
+        // Forzar refresco completo de la sesión
+        window.location.href = callbackUrl || "/dashboard";
       }
     } catch (error) {
       toast({

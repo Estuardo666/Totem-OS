@@ -270,7 +270,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                 {user.name || "Usuario"}
               </span>
               <span className="text-xs text-muted-foreground truncate">
-                {userRole === "ADMIN" ? "Administrador" : userRole === "USER" ? "Usuario" : "Cliente"}
+                {userRole === "ADMIN" ? "Administrador" : userRole === "USER" ? "Usuario" : "EDITOR"}
               </span>
             </div>
 

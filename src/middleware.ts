@@ -17,7 +17,8 @@ export default auth((req) => {
   const isAuthPage = req.nextUrl.pathname.startsWith("/sign-in") || req.nextUrl.pathname.startsWith("/sign-up");
   const isPublicReport = req.nextUrl.pathname.startsWith("/reports/share");
   // Intentar leer roleLegacy primero, luego role como fallback
-  const userRole = req.auth?.user?.roleLegacy || req.auth?.user?.role;
+  // Si ambos son null/undefined, asumir EDITOR para no bloquear el acceso
+  const userRole = req.auth?.user?.roleLegacy || req.auth?.user?.role || "EDITOR";
   const isEditor = userRole === "EDITOR";
 
   // Debug logging (desactivar en producción)

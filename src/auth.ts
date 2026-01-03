@@ -54,7 +54,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       // Verificar que el usuario tenga email
       if (!user.email) {
         return false;
@@ -130,21 +130,42 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           // Actualizar el user.id con el ID de Prisma para que el JWT tenga el ID correcto
           user.id = dbUser.id;
+          // Asegurar que el rol esté en el objeto user para el callback jwt
+          user.role = dbUser.roleLegacy || "EDITOR";
         } catch (error) {
           console.error("❌ Error al crear/actualizar usuario:", error);
           // Continuar con el login aunque haya error
         }
       }
 
+      // Para credentials, asegurar que el rol esté disponible
+      if (account?.provider === "credentials" && user.email) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            select: { roleLegacy: true },
+          });
+          // Asegurar que el rol esté en el objeto user para el callback jwt
+          user.role = dbUser?.roleLegacy || "EDITOR";
+        } catch (error) {
+          console.error("❌ Error al obtener rol para credentials:", error);
+          user.role = "EDITOR";
+        }
+      }
+
       return true;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       // Cuando el usuario inicia sesión por primera vez
       if (user) {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
         token.image = user.image;
+        // Si el usuario trae rol del provider, úsalo
+        if (user.role) {
+          token.role = user.role;
+        }
       }
       
       // Siempre obtener el rol actualizado desde la base de datos
