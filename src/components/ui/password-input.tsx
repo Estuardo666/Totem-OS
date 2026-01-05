@@ -15,20 +15,48 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
   ({ className, value, showStrengthMeter = false, onStrengthChange, ...props }, ref) => {
     const [isVisible, setIsVisible] = React.useState(false);
     const [strength, setStrength] = React.useState(checkPasswordStrength(""));
+    const [internalValue, setInternalValue] = React.useState("");
 
-    // Asegurar que el valor sea siempre un string (evita el error de controlled/uncontrolled)
-    const stringValue = value ? String(value) : "";
+    // Usar un ref interno para leer el valor del input cuando no es controlado
+    const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+    // Combinar refs (el externo y el interno)
+    React.useImperativeHandle(ref, () => inputRef.current!);
+
+    // Determinar el valor actual para el strength meter
+    const currentValue = value !== undefined ? String(value) : internalValue;
 
     // Actualizar fortaleza cuando cambia el valor
     React.useEffect(() => {
-      const result = checkPasswordStrength(stringValue);
+      const result = checkPasswordStrength(currentValue);
       setStrength(result);
       if (onStrengthChange) {
         onStrengthChange(result.score);
       }
-    }, [stringValue, onStrengthChange]);
+    }, [currentValue, onStrengthChange]);
 
     const toggleVisibility = () => setIsVisible((prev) => !prev);
+
+    // Handler para actualizar el valor interno cuando el componente no es controlado
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (value === undefined) {
+        setInternalValue(e.target.value);
+      }
+      // Llamar al onChange original si existe
+      if (props.onChange) {
+        props.onChange(e);
+      }
+    };
+
+    // Props del Input: solo incluir value si está definido (componente controlado)
+    const inputProps: React.InputHTMLAttributes<HTMLInputElement> = {
+      ...props,
+      onChange: handleChange,
+    };
+
+    if (value !== undefined) {
+      inputProps.value = String(value);
+    }
 
     return (
       <div className="space-y-2">
@@ -36,9 +64,8 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
           <Input
             type={isVisible ? "text" : "password"}
             className={cn("pr-10", className)}
-            ref={ref}
-            value={stringValue} // Siempre string
-            {...props}
+            ref={inputRef}
+            {...inputProps}
           />
           <Button
             type="button"
@@ -56,7 +83,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
           </Button>
         </div>
 
-        {showStrengthMeter && stringValue.length > 0 && (
+        {showStrengthMeter && currentValue.length > 0 && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Fortaleza: {strength.label}</span>
