@@ -23,17 +23,17 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// 🔧 DESARROLLO LOCAL (SQLite) - ACTIVO
+// 🔧 PRODUCCIÓN/NUBE (PostgreSQL Neon) - ACTIVO
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Connection Pooling
+  directUrl = env("DATABASE_URL_UNPOOLED") // Direct connection
 }
 
-// 🔧 PRODUCCIÓN/NUBE (PostgreSQL Neon) - COMENTADO
+// 🔧 DESARROLLO LOCAL (SQLite) - COMENTADO
 // datasource db {
-//   provider  = "postgresql"
-//   url       = env("POSTGRES_PRISMA_URL") // Connection Pooling
-//   directUrl = env("POSTGRES_URL_NON_POOLING") // Direct connection
+//   provider = "sqlite"
+//   url      = env("DATABASE_URL")
 // }
 
 // USUARIOS Y EQUIPO (compatible con Auth.js)
