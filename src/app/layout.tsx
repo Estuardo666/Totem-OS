@@ -10,6 +10,7 @@ import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "@/app/api/uploadthing/core";
 import { ConditionalLayout } from "@/components/layouts/conditional-layout";
 import { GoogleMapsScript } from "@/components/providers/google-maps-script";
+import { PwaServiceWorker } from "@/components/providers/pwa-service-worker";
 import { getBrandSettings } from "@/actions/admin-actions";
 import "./globals.css";
 
@@ -22,6 +23,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Totem OS - Sistema Operativo Interno",
     description: "Sistema operativo interno para agencia de marketing digital",
+    manifest: "/manifest.json",
+    themeColor: "#5f40ff",
     icons: {
       icon: faviconUrl,
       shortcut: faviconUrl,
@@ -45,6 +48,7 @@ export default function RootLayout({
       <body className="font-google-sans overflow-x-hidden">
         <ThemeScript />
         <GoogleMapsScript />
+        <PwaServiceWorker />
         <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
         <NextAuthSessionProvider>
           <ThemeProvider>
