@@ -25,8 +25,10 @@ export default async function NewContentTaskPage() {
     );
   }
 
+  const activeClients = clientsResult.data.filter((client) => client.status !== "INACTIVE");
+
   // Si no hay clientes, mostrar mensaje
-  if (clientsResult.data.length === 0) {
+  if (activeClients.length === 0) {
     return (
       <div className="container mx-auto p-6 max-w-2xl">
         <Card>
@@ -57,7 +59,7 @@ export default async function NewContentTaskPage() {
         </CardHeader>
         <CardContent>
           <TaskForm
-            clients={clientsResult.data}
+            clients={activeClients}
             users={usersResult.success ? usersResult.data ?? [] : []}
           />
         </CardContent>

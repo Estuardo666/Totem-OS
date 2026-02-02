@@ -26,7 +26,7 @@ async function getCommunityManagerId(clientId: string): Promise<string | null> {
 
     // 2. Si no hay communityId, buscar el primer ADMIN como fallback
     const adminUser = await db.user.findFirst({
-      where: { role: "ADMIN" },
+      where: { roleLegacy: "ADMIN" },
       select: { id: true },
     });
 
@@ -234,12 +234,19 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
       (userRole === "EDITOR" && sessionUserId) || 
       (userRole === "ADMIN" && showOnlyMine && sessionUserId)
         ? { 
+            client: {
+              status: { not: "INACTIVE" },
+            },
             OR: [
               { assignedEditorId: sessionUserId },
               { assignedCommunityId: sessionUserId }
             ]
           }
-        : {};
+        : {
+            client: {
+              status: { not: "INACTIVE" },
+            },
+          };
 
     const tasks = await db.contentTask.findMany({
       where: whereClause,
@@ -321,6 +328,9 @@ export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
         where: {
           assignedCommunityId: sessionUserId,
           status: "CLIENT_APPROVED",
+          client: {
+            status: { not: "INACTIVE" },
+          },
         },
       });
       return { success: true, data: count };
@@ -336,6 +346,9 @@ export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
         assignedEditorId: sessionUserId,
         status: {
           in: validStatuses,
+        },
+        client: {
+          status: { not: "INACTIVE" },
         },
       },
     });

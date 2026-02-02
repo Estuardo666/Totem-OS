@@ -133,14 +133,18 @@ export function ClientList({ clients }: ClientListProps) {
                 className={
                   client.status === "ACTIVE"
                     ? "bg-green-500 hover:bg-green-600 text-white border-transparent"
-                    : "bg-gray-500 hover:bg-gray-600 text-white border-transparent"
+                    : client.status === "INACTIVE"
+                      ? "bg-slate-400 hover:bg-slate-500 text-white border-transparent"
+                      : "bg-gray-500 hover:bg-gray-600 text-white border-transparent"
                 }
               >
                 {client.status === "ACTIVE"
                   ? "Activo"
                   : client.status === "PAUSED"
                     ? "Pausado"
-                    : "En Deuda"}
+                    : client.status === "INACTIVE"
+                      ? "Inactivo"
+                      : "En Deuda"}
               </Badge>
             </div>
 

@@ -77,7 +77,7 @@ export function EditClientDialog({
     resolver: zodResolver(updateClientSchema),
     defaultValues: {
       name: client.name,
-      status: client.status as "ACTIVE" | "PAUSED" | "DEBT",
+      status: client.status as "ACTIVE" | "PAUSED" | "DEBT" | "INACTIVE",
       color: client.color || "#000000",
       monthlyReels: client.monthlyReels ?? 0,
       monthlyFlyers: client.monthlyFlyers ?? 0,
@@ -94,7 +94,7 @@ export function EditClientDialog({
     if (client && open) {
       form.reset({
         name: client.name,
-        status: client.status as "ACTIVE" | "PAUSED" | "DEBT",
+        status: client.status as "ACTIVE" | "PAUSED" | "DEBT" | "INACTIVE",
         color: client.color || "#000000",
         monthlyReels: client.monthlyReels ?? 0,
         monthlyFlyers: client.monthlyFlyers ?? 0,
@@ -203,6 +203,7 @@ export function EditClientDialog({
                       <SelectItem value="ACTIVE">Activo</SelectItem>
                       <SelectItem value="PAUSED">Pausado</SelectItem>
                       <SelectItem value="DEBT">En Deuda</SelectItem>
+                      <SelectItem value="INACTIVE">Inactivo</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

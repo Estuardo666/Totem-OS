@@ -43,7 +43,7 @@ const contactEmailsSchema = z.preprocess(
 export const clientSchema = z.object({
   id: z.string().cuid().optional(),
   name: z.string().min(1, "El nombre del cliente es requerido"),
-  status: z.enum(["ACTIVE", "PAUSED", "DEBT"]).default("ACTIVE"),
+  status: z.enum(["ACTIVE", "PAUSED", "DEBT", "INACTIVE"]).default("ACTIVE"),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Debe ser un color HEX válido").default("#000000"),
   brandKit: brandKitSchema.optional(),
   vault: vaultSchema.optional(),

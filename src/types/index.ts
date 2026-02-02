@@ -3,7 +3,7 @@
 
 export type UserRole = "ADMIN" | "EDITOR";
 
-export type ClientStatus = "ACTIVE" | "PAUSED" | "DEBT";
+export type ClientStatus = "ACTIVE" | "PAUSED" | "DEBT" | "INACTIVE";
 
 export type ContentTaskType = "REEL" | "FLYER" | "STORY";
 

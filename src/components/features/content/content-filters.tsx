@@ -152,11 +152,13 @@ export function ContentFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los clientes</SelectItem>
-              {clients.map((client) => (
-                <SelectItem key={client.id} value={client.id}>
-                  {client.name}
-                </SelectItem>
-              ))}
+              {clients
+                .filter((client) => client.status !== "INACTIVE")
+                .map((client) => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>

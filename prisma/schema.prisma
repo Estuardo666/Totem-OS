@@ -158,7 +158,7 @@ model Client {
   name   String
   email  String?
   contactEmails String? // JSON array de correos adicionales (usados para Calendar)
-  status String @default("ACTIVE") // ACTIVE, PAUSED, DEBT
+  status String @default("ACTIVE") // ACTIVE, PAUSED, DEBT, INACTIVE
   color  String @default("#000000") // Color de marca del cliente
 
   // JSON Blobs para flexibilidad (almacenados como String en SQLite)

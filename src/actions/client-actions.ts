@@ -1015,4 +1015,79 @@ export async function updateClientMetricsConfig(
   }
 }
 
+/**
+ * Server Action para eliminar un cliente y toda su información relacionada
+ */
+export async function deleteClient(
+  clientId: string
+): Promise<ApiResponse<void>> {
+  try {
+    const client = await db.client.findUnique({
+      where: { id: clientId },
+      select: { id: true, name: true },
+    });
+
+    if (!client) {
+      return { success: false, error: "Cliente no encontrado" };
+    }
+
+    const [clientTasks, clientAssets] = await Promise.all([
+      db.contentTask.findMany({
+        where: { clientId },
+        select: { id: true },
+      }),
+      db.brandAsset.findMany({
+        where: { clientId },
+        select: { fileKey: true },
+      }),
+    ]);
+
+    if (clientAssets.length > 0) {
+      try {
+        const { UTApi } = await import("uploadthing/server");
+        const utapi = new UTApi();
+        await utapi.deleteFiles(clientAssets.map((asset) => asset.fileKey));
+      } catch (error) {
+        console.error("Error al eliminar assets del cliente:", error);
+      }
+    }
+
+    const taskIds = clientTasks.map((task) => task.id);
+    const timeEntryWhere = taskIds.length
+      ? { OR: [{ clientId }, { taskId: { in: taskIds } }] }
+      : { clientId };
+
+    await db.$transaction([
+      db.timeEntry.deleteMany({
+        where: timeEntryWhere,
+      }),
+      db.transaction.deleteMany({
+        where: {
+          OR: [{ relatedClientId: clientId }, { clientId }],
+        },
+      }),
+      db.expense.deleteMany({
+        where: { clientId },
+      }),
+      db.client.delete({
+        where: { id: clientId },
+      }),
+    ]);
+
+    revalidatePath("/clients");
+    revalidatePath("/content");
+    revalidatePath("/finance");
+    revalidatePath("/finance/receivables");
+    revalidatePath("/");
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Error al eliminar cliente",
+    };
+  }
+}
+
 

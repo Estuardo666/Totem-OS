@@ -20,6 +20,7 @@ export function ContentFactoryWrapper({
   clients,
   users,
 }: ContentFactoryWrapperProps) {
+  const activeClients = clients.filter((client) => client.status !== "INACTIVE");
   const [filteredTasks, setFilteredTasks] = useState<ContentTaskWithClient[]>(tasks);
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"kanban" | "calendar">("kanban");
@@ -28,12 +29,12 @@ export function ContentFactoryWrapper({
     <div className="space-y-4">
       <ContentFilters
         tasks={tasks}
-        clients={clients}
+        clients={activeClients}
         users={users}
         onFilterChange={setFilteredTasks}
         onClientChange={setSelectedClientId}
       />
-      <MonthlyProgress selectedClientId={selectedClientId} clients={clients} />
+      <MonthlyProgress selectedClientId={selectedClientId} clients={activeClients} />
       
       <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "kanban" | "calendar")}>
         <TabsList className="grid w-full max-w-[400px] grid-cols-2">
@@ -45,7 +46,7 @@ export function ContentFactoryWrapper({
           <KanbanBoard 
             tasks={filteredTasks} 
             users={users} 
-            clients={clients.map(c => ({ id: c.id, name: c.name }))}
+            clients={activeClients.map(c => ({ id: c.id, name: c.name }))}
           />
         </TabsContent>
         
@@ -53,7 +54,7 @@ export function ContentFactoryWrapper({
           <ContentCalendar 
             tasks={filteredTasks} 
             users={users} 
-            clients={clients.map(c => ({ id: c.id, name: c.name }))}
+            clients={activeClients.map(c => ({ id: c.id, name: c.name }))}
           />
         </TabsContent>
       </Tabs>

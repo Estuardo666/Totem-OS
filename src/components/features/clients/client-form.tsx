@@ -142,6 +142,8 @@ export function ClientForm({ users }: ClientFormProps) {
                 <SelectContent>
                   <SelectItem value="ACTIVE">Activo</SelectItem>
                   <SelectItem value="PAUSED">Pausado</SelectItem>
+                  <SelectItem value="DEBT">En Deuda</SelectItem>
+                  <SelectItem value="INACTIVE">Inactivo</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

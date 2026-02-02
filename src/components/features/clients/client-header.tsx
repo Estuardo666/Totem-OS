@@ -1,15 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Client, User } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Edit, FileText, Bell } from "lucide-react";
+import { Edit, FileText, Bell, Trash2 } from "lucide-react";
 import { EditClientDialog } from "./edit-client-dialog";
 import { ShareReportButton } from "./share-report-button";
+import { deleteClient } from "@/actions/client-actions";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ClientHeaderProps {
   client: Client & { hasPendingFeedback?: boolean };
@@ -19,6 +32,8 @@ interface ClientHeaderProps {
 export function ClientHeader({ client, users }: ClientHeaderProps) {
   const router = useRouter();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleting, startDeleteTransition] = useTransition();
+  const { toast } = useToast();
   const [currentShareToken, setCurrentShareToken] = useState<string | null>(
     (client as any).shareToken || null
   );
@@ -40,9 +55,32 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
         return "Pausado";
       case "DEBT":
         return "En Deuda";
+      case "INACTIVE":
+        return "Inactivo";
       default:
         return status;
     }
+  };
+
+  const handleDelete = () => {
+    startDeleteTransition(async () => {
+      const result = await deleteClient(client.id);
+      if (result.success) {
+        toast({
+          title: "Cliente eliminado",
+          description: "Se eliminó el cliente y toda su información asociada.",
+        });
+        router.push("/clients");
+        router.refresh();
+        return;
+      }
+
+      toast({
+        variant: "destructive",
+        title: "Error al eliminar",
+        description: result.error || "No se pudo eliminar el cliente.",
+      });
+    });
   };
 
   const getStatusVariant = (status: string) => {
@@ -53,6 +91,8 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
         return "secondary";
       case "DEBT":
         return "destructive";
+      case "INACTIVE":
+        return "secondary";
       default:
         return "secondary";
     }
@@ -79,6 +119,8 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
                   ? "w-fit bg-green-500 hover:bg-green-600 text-white border-transparent"
                   : client.status === "PAUSED"
                     ? "w-fit bg-gray-500 hover:bg-gray-600 text-white border-transparent"
+                    : client.status === "INACTIVE"
+                      ? "w-fit bg-slate-400 hover:bg-slate-500 text-white border-transparent"
                     : "w-fit"
               }
             >
@@ -134,6 +176,37 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
             <Edit className="h-4 w-4 mr-2" />
             Editar Cliente
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full sm:w-auto"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Eliminar
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta acción eliminará todas las tareas, finanzas y datos asociados a
+                  <strong className="text-foreground"> {client.name}</strong>. No se puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isDeleting ? "Eliminando..." : "Eliminar"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </CardContent>
 
