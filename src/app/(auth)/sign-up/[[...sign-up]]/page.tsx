@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPublicBrandSettings } from "@/actions/admin-actions";
+import { getPublicBrandSettings, getLoginBackground } from "@/actions/admin-actions";
 
 /**
  * Componente asíncrono para el branding
@@ -57,6 +57,29 @@ async function BrandingHeader() {
   );
 }
 
+/**
+ * Componente para el background dinámico
+ */
+async function DynamicBackground() {
+  const backgroundSettings = await getLoginBackground();
+  
+  if (backgroundSettings.success && backgroundSettings.data?.backgroundUrl) {
+    return (
+      <div 
+        className="fixed inset-0 -z-10"
+        style={{
+          backgroundImage: `url(${backgroundSettings.data.backgroundUrl})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      />
+    );
+  }
+  
+  return null;
+}
+
 export default async function SignUpPage({
   searchParams,
 }: {
@@ -66,7 +89,12 @@ export default async function SignUpPage({
   const callbackUrl = params?.callbackUrl || "/";
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 w-full">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 w-full relative">
+      {/* Background dinámico */}
+      <Suspense fallback={null}>
+        <DynamicBackground />
+      </Suspense>
+      
       {/* Suspense para el branding - página renderiza inmediatamente */}
       <Suspense fallback={<Skeleton className="h-20 w-48 mb-8 rounded-lg" />}>
         <BrandingHeader />

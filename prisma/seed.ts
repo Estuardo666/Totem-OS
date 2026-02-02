@@ -28,28 +28,43 @@ async function main() {
   });
   console.log(`👤 Usuario admin: ${admin.email}`);
 
-  // 3. Definir exactamente 5 Clientes Dummy
+  // 3. Definir clientes desde la tabla mensual (imagen)
   const clientsData = [
-    { name: "Audisens", color: "#2563eb", monthlyReels: 3, monthlyFlyers: 1, monthlyRate: 500 },
-    { name: "TransCity", color: "#16a34a", monthlyReels: 3, monthlyFlyers: 1, monthlyRate: 600 },
-    { name: "Arevalo Moda", color: "#dc2626", monthlyReels: 3, monthlyFlyers: 1, monthlyRate: 450 },
-    { name: "7 Pingas", color: "#d97706", monthlyReels: 3, monthlyFlyers: 1, monthlyRate: 400 },
-    { name: "La Choricería", color: "#9333ea", monthlyReels: 3, monthlyFlyers: 1, monthlyRate: 350 },
+    { name: "Washington", monthlyRate: 270, monthlyReels: 6, monthlyShoots: 0 },
+    { name: "Acunar", monthlyRate: 100, monthlyReels: 3, monthlyShoots: 0 },
+    { name: "Kinti nuevo", monthlyRate: 0, monthlyReels: 0, monthlyShoots: 1 },
+    { name: "Telux nuevo", monthlyRate: 120, monthlyReels: 3, monthlyShoots: 2 },
+    { name: "Audisens", monthlyRate: 140, monthlyReels: 3, monthlyShoots: 2 },
+    { name: "EUROpeek", monthlyRate: 140, monthlyReels: 3, monthlyShoots: 2 },
+    { name: "Ruth", monthlyRate: 180, monthlyReels: 6, monthlyShoots: 0 },
+    { name: "Pauly", monthlyRate: 120, monthlyReels: 3, monthlyShoots: 2 },
+    { name: "Arevalo", monthlyRate: 120, monthlyReels: 3, monthlyShoots: 2 },
+    { name: "Optica", monthlyRate: 120, monthlyReels: 3, monthlyShoots: 2 },
+    { name: "Lomas", monthlyRate: 0, monthlyReels: 0, monthlyShoots: 0 },
+    { name: "Alegra nuevo", monthlyRate: 140, monthlyReels: 3, monthlyShoots: 2 },
+    { name: "Amaca", monthlyRate: 120, monthlyReels: 3, monthlyShoots: 2 },
+    { name: "Kathy", monthlyRate: 120, monthlyReels: 3, monthlyShoots: 2 },
+    { name: "Germania", monthlyRate: 120, monthlyReels: 3, monthlyShoots: 1 },
+    { name: "PlayHouse", monthlyRate: 150, monthlyReels: 3, monthlyShoots: 2 },
+    { name: "Gypsum", monthlyRate: 140, monthlyReels: 3, monthlyShoots: 2 },
+    { name: "Gaby", monthlyRate: 100, monthlyReels: 3, monthlyShoots: 0 },
+    { name: "Paola Inga", monthlyRate: 120, monthlyReels: 3, monthlyShoots: 2 },
   ];
 
   const today = new Date();
   const startOfCurrentMonth = startOfMonth(today);
 
-  // 4. Crear exactamente 5 Clientes
+  // 4. Crear clientes
   const createdClients = [];
   for (const clientData of clientsData) {
     const client = await prisma.client.create({
       data: {
         name: clientData.name,
-        color: clientData.color,
+        color: "#2563eb",
         status: "ACTIVE",
         monthlyReels: clientData.monthlyReels,
-        monthlyFlyers: clientData.monthlyFlyers,
+        monthlyFlyers: 0,
+        monthlyShoots: clientData.monthlyShoots,
         monthlyRate: clientData.monthlyRate,
         hasPendingFeedback: false,
       },
@@ -93,9 +108,57 @@ async function main() {
     console.log(`  ✓ Tarea ${i + 1}/10: "${taskTemplate.title}" para ${client.name}`);
   }
 
+  // Crear gastos de ejemplo para reembolsos (almuerzos, transporte, software)
+  console.log("\n📝 Creando gastos de ejemplo para reembolsos...");
+  const sampleExpenses = [
+    { description: "Almuerzo equipo Nimbus", amount: 85000, category: "OFFICE", paidByUserId: admin.id },
+    { description: "Uber para rodaje Aura", amount: 45000, category: "EQUIPMENT", paidByUserId: admin.id },
+    { description: "Licencia Adobe Creative Cloud", amount: 299900, category: "SOFTWARE", paidByUserId: admin.id },
+    { description: "Cafetería oficina", amount: 35000, category: "OFFICE", paidByUserId: admin.id },
+    { description: "Gasolina producción", amount: 120000, category: "EQUIPMENT", paidByUserId: admin.id },
+  ];
+
+  for (const expense of sampleExpenses) {
+    await prisma.expense.create({
+      data: {
+        description: expense.description,
+        amount: expense.amount,
+        category: expense.category,
+        reimbursed: false,
+        date: new Date(),
+        paidByUserId: expense.paidByUserId,
+      },
+    });
+    console.log(`  ✓ Gasto creado: ${expense.description} - $${expense.amount.toLocaleString()}`);
+  }
+
+  // Crear honorarios de ejemplo
+  console.log("\n💰 Creando honorarios de ejemplo...");
+  const honorariosTransactions = [
+    { description: "Honorarios edición video Aura", amount: 500000, type: "HONORARIOS", userId: admin.id },
+    { description: "Honorarios estrategia digital Nimbus", amount: 350000, type: "HONORARIOS", userId: admin.id },
+    { description: "Honorarios producción fotos Stellar", amount: 280000, type: "HONORARIOS", userId: admin.id },
+  ];
+
+  for (const honorario of honorariosTransactions) {
+    await prisma.transaction.create({
+      data: {
+        description: honorario.description,
+        amount: honorario.amount,
+        type: honorario.type,
+        category: "HONORARIOS",
+        status: "PAID",
+        userId: honorario.userId,
+      },
+    });
+    console.log(`  ✓ Honorario creado: ${honorario.description} - $${honorario.amount.toLocaleString()}`);
+  }
+
   console.log("\n✅ Seeding completado:");
   console.log(`   - ${createdClients.length} clientes creados`);
   console.log(`   - 10 tareas creadas`);
+  console.log(`   - ${sampleExpenses.length} gastos de reembolso creados`);
+  console.log(`   - ${honorariosTransactions.length} honorarios creados`);
   console.log(`   - Usuario admin: ${admin.email}`);
 }
 

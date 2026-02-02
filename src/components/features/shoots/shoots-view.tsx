@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Video, MapPin, Users, FileText, Mic, ExternalLink, Edit, X, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Video, MapPin, Users, FileText, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -16,13 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { ShootingForm } from "./shooting-form";
 import { ShootingDetail } from "./shooting-detail";
 import { cancelShooting } from "@/actions/shooting-actions";
@@ -46,6 +38,11 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingShooting, setEditingShooting] = useState<ShootWithRelations | null>(null);
+
+  const handleCreated = (shooting: ShootWithRelations) => {
+    setSelectedShooting(shooting);
+    setIsDetailOpen(true);
+  };
 
   const handleNewShooting = () => {
     setEditingShooting(null);
@@ -320,6 +317,7 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
         }}
         clients={clients}
         shooting={editingShooting}
+        onCreated={handleCreated}
       />
     </div>
   );

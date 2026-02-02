@@ -25,7 +25,7 @@ generator client {
 
 // 🔧 DESARROLLO LOCAL (SQLite) - ACTIVO
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -82,6 +82,8 @@ model User {
   notifications     Notification[]     // Notificaciones recibidas
   voiceNotes        VoiceNote[]        // Notas de voz personales
   timeEntries       TimeEntry[]        // Registros de tiempo trabajado
+  googleCalendarToken GoogleCalendarToken? // Token de Google Calendar
+  financeAlertsAssigned FinanceAlert[] @relation("FinanceAlertAssigned")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -154,6 +156,8 @@ model VerificationToken {
 model Client {
   id     String @id @default(cuid())
   name   String
+  email  String?
+  contactEmails String? // JSON array de correos adicionales (usados para Calendar)
   status String @default("ACTIVE") // ACTIVE, PAUSED, DEBT
   color  String @default("#000000") // Color de marca del cliente
 
@@ -167,7 +171,9 @@ model Client {
   // Contrato mensual de entregables
   monthlyReels  Int   @default(0) // Cantidad de Reels contratados al mes
   monthlyFlyers Int   @default(0) // Cantidad de Flyers contratados al mes
+  monthlyShoots Int   @default(0) // Cantidad de rodajes/sesiones contratadas al mes
   monthlyRate   Float @default(0) // Tarifa mensual del plan (para cobro automático)
+  paymentDay    Int?  // Día del mes para cobro (1-31)
   logo          String? // URL del logotipo del cliente
 
   // Asignación por Cliente
@@ -281,6 +287,8 @@ model Shoot {
   endTime       DateTime // Fecha y hora de finalización
   address       String? // Dirección escrita
   mapLink       String? // Link de Google Maps
+  googleEventId   String? // ID del evento en Google Calendar
+  googleEventLink String? // Link al evento en Google Calendar
   scriptUrl     String? // Archivo del guión (PDF/Word)
   audioBriefUrl String? // Nota de voz
   notes         String? // Notas adicionales del rodaje
@@ -414,6 +422,7 @@ model BrandAsset {
   url      String
   fileKey  String @unique
   fileType String // "image", "pdf", "document"
+  fileSize Int?   // Tamaño del archivo en bytes
 
   clientId String
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -423,6 +432,7 @@ model BrandAsset {
 
   @@index([clientId])
   @@index([fileType])
+  @@index([fileSize])
 }
 
 // FEEDBACK DE CLIENTES
@@ -552,6 +562,45 @@ model Notification {
   @@index([createdAt])
 }
 
+// ALERTAS FINANCIERAS
+model FinanceAlert {
+  id          String   @id @default(cuid())
+  type        String   // CASH_FLOW, BUDGET, PROFITABILITY, CLIENT_RISK, ANOMALY, OPTIMIZATION
+  severity    String   // LOW, MEDIUM, HIGH, CRITICAL
+  status      String   @default("ACTIVE") // ACTIVE, ACKNOWLEDGED, RESOLVED
+  title       String
+  message     String
+  fingerprint String   @unique // Evita duplicados por período/regla
+  metadata    String?  // JSON string con datos de contexto
+
+  assignedToId String? // Usuario responsable (opcional)
+  assignedTo   User?    @relation("FinanceAlertAssigned", fields: [assignedToId], references: [id], onDelete: SetNull)
+  resolvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([severity])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model FinanceAlertRule {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  enabled     Boolean  @default(true)
+  severity    String   @default("MEDIUM")
+  config      String   // JSON string con umbrales y parámetros
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled])
+}
+
 // CONFIGURACIÓN GLOBAL DEL SISTEMA
 model GlobalConfig {
   id    String   @id @default(cuid())
@@ -616,4 +665,20 @@ model TimeEntry {
   @@index([status])
   @@index([clientId])
   @@index([taskId])
+}
+
+// GOOGLE CALENDAR INTEGRATION
+model GoogleCalendarToken {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  scope        String   // Scopes autorizados
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
 }

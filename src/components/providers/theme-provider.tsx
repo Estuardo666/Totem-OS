@@ -26,8 +26,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         // Sincronizar darkMode con la clase .dark
         if (user.darkMode) {
           htmlElement.classList.add("dark");
+          localStorage.setItem('theme', 'dark');
         } else {
           htmlElement.classList.remove("dark");
+          localStorage.setItem('theme', 'light');
         }
 
         // Sincronizar primaryColor con la variable CSS --primary

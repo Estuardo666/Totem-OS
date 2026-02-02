@@ -165,6 +165,8 @@ export function TransactionList({ transactions }: TransactionListProps) {
       filtered = filtered.filter((t) => t.type === "INCOME");
     } else if (typeFilter === "expense") {
       filtered = filtered.filter((t) => t.type === "EXPENSE");
+    } else if (typeFilter === "honorarios") {
+      filtered = filtered.filter((t) => t.type === "HONORARIOS");
     }
 
     return filtered;
@@ -372,6 +374,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
               <SelectItem value="all">Todos los tipos</SelectItem>
               <SelectItem value="income">Ingresos</SelectItem>
               <SelectItem value="expense">Gastos</SelectItem>
+              <SelectItem value="honorarios">Honorarios</SelectItem>
               <SelectItem value="reimbursement">Reembolsos</SelectItem>
             </SelectContent>
           </Select>
@@ -447,14 +450,27 @@ export function TransactionList({ transactions }: TransactionListProps) {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={transaction.type === "INCOME" ? "default" : "secondary"}
+                        variant={
+                          transaction.type === "INCOME" 
+                            ? "default" 
+                            : transaction.type === "HONORARIOS"
+                            ? "outline"
+                            : "secondary"
+                        }
                         className={
                           transaction.type === "INCOME"
                             ? "bg-green-500 hover:bg-green-600 text-white"
+                            : transaction.type === "HONORARIOS"
+                            ? "bg-blue-500 hover:bg-blue-600 text-white"
                             : "bg-red-500 hover:bg-red-600 text-white"
                         }
                       >
-                        {transaction.type === "INCOME" ? "Ingreso" : "Gasto"}
+                        {transaction.type === "INCOME" 
+                          ? "Ingreso" 
+                          : transaction.type === "HONORARIOS"
+                          ? "Honorarios"
+                          : "Gasto"
+                        }
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -473,11 +489,13 @@ export function TransactionList({ transactions }: TransactionListProps) {
                       className={`text-right font-semibold ${
                         transaction.type === "INCOME"
                           ? "text-green-600"
+                          : transaction.type === "HONORARIOS"
+                          ? "text-red-600"
                           : "text-red-600"
                       }`}
                     >
                       <div className="flex items-center justify-end gap-1">
-                        {transaction.type === "EXPENSE" ? (
+                        {transaction.type === "EXPENSE" || transaction.type === "HONORARIOS" ? (
                           <Minus className="h-4 w-4 text-red-600" />
                         ) : (
                           <Plus className="h-4 w-4 text-green-600" />

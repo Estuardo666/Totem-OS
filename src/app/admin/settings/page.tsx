@@ -4,6 +4,8 @@ import { AppearanceForm } from "@/components/features/settings/appearance-form";
 import { NotificationSettings } from "@/components/features/settings/notification-settings";
 import { AiConfigForm } from "@/components/features/admin/ai-config-form";
 import { BrandingSettings } from "@/components/features/admin/branding-settings";
+import { GoogleCalendarSettings } from "@/components/features/admin/google-calendar-settings";
+import { GoogleCalendarSuccessToast } from "@/components/features/admin/google-calendar-success-toast";
 import { SettingsSkeleton } from "@/components/features/settings/settings-skeleton";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -36,8 +38,14 @@ async function SettingsContent() {
     redirect("/sign-in");
   }
 
+  // ✅ Verificar rol de ADMIN para acceder a configuración de admin
+  if (user.roleLegacy !== "ADMIN") {
+    redirect("/");
+  }
+
   return (
     <div className="space-y-6 p-4 md:p-6">
+      <GoogleCalendarSuccessToast />
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Configuración</h1>
         <p className="text-muted-foreground mt-2 text-sm">
@@ -53,6 +61,7 @@ async function SettingsContent() {
         <NotificationSettings
           soundNotifications={user.soundNotifications ?? true}
         />
+        <GoogleCalendarSettings />
       </div>
 
       {/* Configuración de IA - Solo para ADMIN */}

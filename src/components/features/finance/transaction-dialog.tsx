@@ -53,13 +53,16 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
-export function TransactionDialog() {
+interface TransactionDialogProps {
+  children: React.ReactNode;
+}
+
+export function TransactionDialog({ children }: TransactionDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { data: session } = useSession();
   const userRole = session?.user?.role;
   const isAdmin = userRole === "ADMIN";
-  const isEditor = userRole === "EDITOR";
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
@@ -240,10 +243,7 @@ export function TransactionDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full justify-start">
-          <Plus className="mr-2 h-4 w-4" />
-          Nueva Transacción
-        </Button>
+        {children}
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -253,14 +253,15 @@ export function TransactionDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue={isEditor ? "expense" : "income"} className="w-full">
-          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-3" : isEditor ? "grid-cols-1" : "grid-cols-2"}`}>
-            {!isEditor && <TabsTrigger value="income">Ingreso</TabsTrigger>}
+        <Tabs defaultValue={isAdmin ? "income" : "expense"} className="w-full">
+          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
+            {isAdmin && <TabsTrigger value="income">Ingreso</TabsTrigger>}
             <TabsTrigger value="expense">Gasto</TabsTrigger>
             {isAdmin && <TabsTrigger value="honorarios">Honorarios</TabsTrigger>}
           </TabsList>
 
-          {/* Tab de Ingreso */}
+          {/* Tab de Ingreso - Solo visible para ADMIN */}
+          {isAdmin && (
           <TabsContent value="income">
             <Form {...incomeForm}>
               <form
@@ -402,6 +403,7 @@ export function TransactionDialog() {
               </form>
             </Form>
           </TabsContent>
+          )}
 
           {/* Tab de Gasto */}
           <TabsContent value="expense">

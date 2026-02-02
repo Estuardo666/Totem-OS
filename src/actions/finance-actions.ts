@@ -12,9 +12,15 @@ export interface FinancialStats {
   totalIncome: number;
   totalExpenses: number;
   netProfit: number;
+  incomeDeltaPct?: number;
+  expensesDeltaPct?: number;
+  netProfitDeltaPct?: number;
+  marginDeltaPct?: number;
+  pendingReimbursementsDeltaPct?: number;
+  honorariosDeltaPct?: number;
   recentTransactions: Array<{
     id: string;
-    type: "INCOME" | "EXPENSE";
+    type: "INCOME" | "EXPENSE" | "HONORARIOS";
     amount: number;
     description: string;
     date: Date;
@@ -24,6 +30,7 @@ export interface FinancialStats {
     sourceType?: "INVOICE" | "EXPENSE" | "TRANSACTION"; // Tipo de origen de la transacción
     assignedToName?: string; // Para reembolsos
     assignedToId?: string; // Para reembolsos
+    userId?: string; // Para honorarios/propietario
   }>;
   // Campos específicos para EDITOR
   pendingReimbursements?: number; // Gastos pendientes de reembolso
@@ -50,10 +57,50 @@ export interface GlobalProfitabilityStats {
   };
 }
 
+export interface StrategicClientPlan {
+  id: string;
+  name: string;
+  status: string;
+  monthlyRate: number;
+  monthlyReels: number;
+  monthlyShoots: number;
+}
+
+export async function getStrategicClientPlans(): Promise<ApiResponse<StrategicClientPlan[]>> {
+  try {
+    const session = await auth();
+    const userId = session?.user?.id;
+    const userRole = session?.user?.role;
+    const isEditor = userRole === "EDITOR";
+
+    const clients = await db.client.findMany({
+      where: {
+        ...(isEditor && userId ? { editorId: userId } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        monthlyRate: true,
+        monthlyReels: true,
+        monthlyShoots: true,
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return { success: true, data: clients };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al cargar planes de clientes",
+    };
+  }
+}
+
 /**
  * Server Action para obtener estadísticas financieras
  * Calcula ingresos, gastos, beneficio neto y últimas transacciones
- * Si el usuario es EDITOR, filtra solo sus transacciones
+ * Si el usuario no es ADMIN, filtra solo sus transacciones
  */
 export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> {
   try {
@@ -61,16 +108,18 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
     const session = await auth();
     const userId = session?.user?.id;
     const userRole = session?.user?.role;
-    const isEditor = userRole === "EDITOR";
+    const isAdmin = userRole === "ADMIN";
 
     // Obtener el mes actual para calcular ingresos del mes
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
     // Obtener todas las facturas pagadas del mes actual
-    // EDITOR no ve facturas (solo ADMIN)
-    const paidInvoicesThisMonth = isEditor ? [] : await db.invoice.findMany({
+    // Non-ADMIN no ve facturas (solo ADMIN)
+    const paidInvoicesThisMonth = isAdmin ? await db.invoice.findMany({
       where: {
         status: "PAID",
         generatedAt: {
@@ -81,15 +130,28 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
       include: {
         client: true,
       },
-    });
+    }) : [];
+
+    const paidInvoicesPrevMonth = isAdmin ? await db.invoice.findMany({
+      where: {
+        status: "PAID",
+        generatedAt: {
+          gte: prevMonthStart,
+          lte: prevMonthEnd,
+        },
+      },
+      include: {
+        client: true,
+      },
+    }) : [];
 
     // Obtener todas las transacciones pagadas del mes actual
-    // EDITOR solo ve honorarios recibidos
+    // Non-ADMIN solo ve honorarios recibidos
     const paidTransactionsThisMonth = await db.transaction.findMany({
       where: {
-        type: isEditor ? "HONORARIOS" : "INCOME",
+        type: !isAdmin ? "HONORARIOS" : "INCOME",
         status: "PAID",
-        ...(isEditor && userId ? { userId: userId } : {}),
+        ...(!isAdmin && userId ? { userId: userId } : {}),
         createdAt: {
           gte: monthStart,
           lte: monthEnd,
@@ -97,28 +159,55 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
       },
     });
 
+    const paidTransactionsPrevMonth = await db.transaction.findMany({
+      where: {
+        type: !isAdmin ? "HONORARIOS" : "INCOME",
+        status: "PAID",
+        ...(!isAdmin && userId ? { userId: userId } : {}),
+        createdAt: {
+          gte: prevMonthStart,
+          lte: prevMonthEnd,
+        },
+      },
+    });
+
     // Calcular ingresos totales del mes (solo PAID del mes actual)
-    // Para EDITOR: solo honorarios recibidos
+    // Para Non-ADMIN: solo honorarios recibidos
     const totalIncome = 
       paidInvoicesThisMonth.reduce((sum, invoice) => sum + invoice.amount, 0) +
       paidTransactionsThisMonth.reduce((sum, transaction) => sum + transaction.amount, 0);
 
+    const prevTotalIncome =
+      paidInvoicesPrevMonth.reduce((sum, invoice) => sum + invoice.amount, 0) +
+      paidTransactionsPrevMonth.reduce((sum, transaction) => sum + transaction.amount, 0);
+
     // Obtener gastos pagados del mes actual (del modelo Expense)
-    // EDITOR solo ve sus propios gastos
+    // Non-ADMIN solo ve sus propios gastos
+    // INCLUIR gastos no reembolsados también
     const paidExpensesThisMonth = await db.expense.findMany({
       where: {
         date: {
           gte: monthStart,
           lte: monthEnd,
         },
-        reimbursed: true, // Solo gastos reembolsados (pagados)
-        ...(isEditor && userId ? { paidByUserId: userId } : {}),
+        // REMOVIDO: reimbursed: true, // Ahora incluye todos los gastos del mes
+        ...(!isAdmin && userId ? { paidByUserId: userId } : {}),
+      },
+    });
+
+    const paidExpensesPrevMonth = await db.expense.findMany({
+      where: {
+        date: {
+          gte: prevMonthStart,
+          lte: prevMonthEnd,
+        },
+        ...(!isAdmin && userId ? { paidByUserId: userId } : {}),
       },
     });
 
     // Obtener transacciones HONORARIOS pagadas del mes actual (restan de la utilidad)
-    // EDITOR no ve honorarios de otros usuarios
-    const paidHonorariosThisMonth = isEditor ? [] : await db.transaction.findMany({
+    // Non-ADMIN no ve honorarios de otros usuarios
+    const paidHonorariosThisMonth = isAdmin ? await db.transaction.findMany({
       where: {
         type: "HONORARIOS",
         status: "PAID",
@@ -127,18 +216,48 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
           lte: monthEnd,
         },
       },
-    });
+    }) : [];
+
+    const paidHonorariosPrevMonth = isAdmin ? await db.transaction.findMany({
+      where: {
+        type: "HONORARIOS",
+        status: "PAID",
+        createdAt: {
+          gte: prevMonthStart,
+          lte: prevMonthEnd,
+        },
+      },
+    }) : [];
 
     // Obtener transacciones de tipo EXPENSE pagadas del mes actual
-    // EDITOR solo ve sus propios gastos
+    // Non-ADMIN solo ve sus propios gastos
     const paidExpenseTransactionsThisMonth = await db.transaction.findMany({
       where: {
         type: "EXPENSE",
         status: "PAID",
-        ...(isEditor && userId ? { assignedToId: userId } : {}),
+        ...(!isAdmin && userId ? { assignedToId: userId } : {}),
         createdAt: {
           gte: monthStart,
           lte: monthEnd,
+        },
+      },
+      include: {
+        assignedTo: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    const paidExpenseTransactionsPrevMonth = await db.transaction.findMany({
+      where: {
+        type: "EXPENSE",
+        status: "PAID",
+        ...(!isAdmin && userId ? { assignedToId: userId } : {}),
+        createdAt: {
+          gte: prevMonthStart,
+          lte: prevMonthEnd,
         },
       },
       include: {
@@ -156,28 +275,78 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
       paidExpenseTransactionsThisMonth.reduce((sum, transaction) => sum + transaction.amount, 0) +
       paidHonorariosThisMonth.reduce((sum, transaction) => sum + transaction.amount, 0);
 
+    const prevTotalExpenses =
+      paidExpensesPrevMonth.reduce((sum, expense) => sum + expense.amount, 0) +
+      paidExpenseTransactionsPrevMonth.reduce((sum, transaction) => sum + transaction.amount, 0) +
+      paidHonorariosPrevMonth.reduce((sum, transaction) => sum + transaction.amount, 0);
+
     // Calcular Balance Neto (Ingresos Pagados - Gastos Pagados)
     // Para EDITOR: Honorarios recibidos - Gastos pagados
     const netProfit = totalIncome - totalExpenses;
+    const prevNetProfit = prevTotalIncome - prevTotalExpenses;
 
-    // Si es EDITOR, calcular estadísticas específicas
+    const calculateDeltaPct = (current: number, previous: number) => {
+      if (previous === 0) return current === 0 ? 0 : 100;
+      return ((current - previous) / Math.abs(previous)) * 100;
+    };
+
+    const incomeDeltaPct = calculateDeltaPct(totalIncome, prevTotalIncome);
+    const expensesDeltaPct = calculateDeltaPct(totalExpenses, prevTotalExpenses);
+    const netProfitDeltaPct = calculateDeltaPct(netProfit, prevNetProfit);
+    const currentMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
+    const prevMargin = prevTotalIncome > 0 ? (prevNetProfit / prevTotalIncome) * 100 : 0;
+    const marginDeltaPct = calculateDeltaPct(currentMargin, prevMargin);
+
+    // Si es usuario autenticado, calcular estadísticas específicas
     let pendingReimbursements: number | undefined;
     let honorariosReceived: number | undefined;
+    let pendingReimbursementsDeltaPct = 0;
+    let honorariosDeltaPct = 0;
 
-    if (isEditor && userId) {
-      // Gastos pendientes de reembolso (EXPENSE con status PENDING donde assignedToId == userId)
+    if (userId) {
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - 7);
+      const prevWeekStart = new Date();
+      prevWeekStart.setDate(prevWeekStart.getDate() - 14);
+      const prevWeekEnd = new Date();
+      prevWeekEnd.setDate(prevWeekEnd.getDate() - 7);
+
+        // Gastos pendientes de reembolso (EXPENSE con status PENDING)
       const pendingExpenseTransactions = await db.transaction.findMany({
         where: {
           type: "EXPENSE",
           status: "PENDING",
-          assignedToId: userId,
+          ...(userId ? { assignedToId: userId } : {}),
+        },
+      });
+
+      const pendingExpenseTransactionsPrevWeek = await db.transaction.findMany({
+        where: {
+          type: "EXPENSE",
+          status: "PENDING",
+          ...(userId ? { assignedToId: userId } : {}),
+          createdAt: {
+            gte: prevWeekStart,
+            lte: prevWeekEnd,
+          },
         },
       });
 
       const pendingExpenses = await db.expense.findMany({
         where: {
-          paidByUserId: userId,
           reimbursed: false,
+          ...(userId ? { paidByUserId: userId } : {}),
+        },
+      });
+
+      const pendingExpensesPrevWeek = await db.expense.findMany({
+        where: {
+          reimbursed: false,
+          ...(userId ? { paidByUserId: userId } : {}),
+          date: {
+            gte: prevWeekStart,
+            lte: prevWeekEnd,
+          },
         },
       });
 
@@ -185,12 +354,16 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
         pendingExpenseTransactions.reduce((sum, t) => sum + t.amount, 0) +
         pendingExpenses.reduce((sum, e) => sum + e.amount, 0);
 
-      // Honorarios recibidos en el mes actual (HONORARIOS con status PAID donde userId == userId)
+      const pendingReimbursementsPrevWeek =
+        pendingExpenseTransactionsPrevWeek.reduce((sum, t) => sum + t.amount, 0) +
+        pendingExpensesPrevWeek.reduce((sum, e) => sum + e.amount, 0);
+
+      // Honorarios pagados en el mes actual (HONORARIOS con status PAID)
       const honorariosThisMonth = await db.transaction.findMany({
         where: {
           type: "HONORARIOS",
           status: "PAID",
-          userId: userId,
+          ...(userId ? { userId } : {}),
           createdAt: {
             gte: monthStart,
             lte: monthEnd,
@@ -198,44 +371,82 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
         },
       });
 
+      const honorariosPrevMonth = await db.transaction.findMany({
+        where: {
+          type: "HONORARIOS",
+          status: "PAID",
+          ...(userId ? { userId } : {}),
+          createdAt: {
+            gte: prevMonthStart,
+            lte: prevMonthEnd,
+          },
+        },
+      });
+
       honorariosReceived = honorariosThisMonth.reduce((sum, t) => sum + t.amount, 0);
+      const honorariosPrev = honorariosPrevMonth.reduce((sum, t) => sum + t.amount, 0);
+      pendingReimbursementsDeltaPct = calculateDeltaPct(
+        pendingReimbursements,
+        pendingReimbursementsPrevWeek
+      );
+      honorariosDeltaPct = calculateDeltaPct(honorariosReceived, honorariosPrev);
     }
 
     // Obtener todas las transacciones mezcladas (incluyendo el nuevo modelo Transaction)
-    // Si es EDITOR, filtrar solo sus transacciones
-    const allInvoices = isEditor ? [] : await db.invoice.findMany({
-      include: {
-        client: true,
-      },
-      orderBy: {
-        generatedAt: "desc",
-      },
-    });
+    // Non-ADMIN solo ve sus transacciones
+    const allInvoices = isAdmin
+      ? await db.invoice.findMany({
+          include: {
+            client: true,
+          },
+          orderBy: {
+            generatedAt: "desc",
+          },
+        })
+      : [];
+
+    const expenseWhereClause = isAdmin
+      ? {}
+      : {
+          ...(userId ? { paidByUserId: userId } : { id: undefined }),
+        };
 
     const allExpenses = await db.expense.findMany({
-      where: isEditor && userId ? {
-        paidByUserId: userId, // Solo gastos creados por el EDITOR
-      } : undefined,
+      where: expenseWhereClause,
       include: {
+        client: true,
         paidByUser: {
           select: {
             name: true,
           },
         },
-        client: true,
       },
       orderBy: {
         date: "desc",
       },
     });
 
+    const transactionWhereClause = isAdmin
+      ? {}
+      : {
+          OR: [
+            userId
+              ? {
+                  type: "EXPENSE",
+                  assignedToId: userId,
+                }
+              : undefined,
+            userId
+              ? {
+                  type: "HONORARIOS",
+                  userId,
+                }
+              : undefined,
+          ].filter(Boolean) as any,
+        };
+
     const allTransactions = await db.transaction.findMany({
-      where: isEditor && userId ? {
-        OR: [
-          { assignedToId: userId }, // Gastos asignados al EDITOR
-          { userId: userId, type: "HONORARIOS" }, // Honorarios recibidos por el EDITOR
-        ],
-      } : undefined,
+      where: transactionWhereClause,
       include: {
         relatedClient: true,
         assignedTo: {
@@ -250,20 +461,23 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
     });
 
     // Mezclar y ordenar transacciones
-    const transactions = [
-      ...allInvoices.map((invoice) => ({
-        id: invoice.id,
-        type: "INCOME" as const,
-        amount: invoice.amount,
-        description: `Factura - ${invoice.client.name}`,
-        date: invoice.generatedAt,
-        clientName: invoice.client.name,
-        status: invoice.status,
-        category: undefined as string | undefined,
-        sourceType: "INVOICE" as const,
-        assignedToName: undefined as string | undefined,
-        assignedToId: undefined as string | undefined,
-      })),
+    // Para non-ADMIN: solo mostrar transacciones personales del usuario
+    const baseTransactions = [
+      ...(isAdmin
+        ? allInvoices.map((invoice) => ({
+            id: invoice.id,
+            type: "INCOME" as const,
+            amount: invoice.amount,
+            description: `Factura - ${invoice.client.name}`,
+            date: invoice.generatedAt,
+            clientName: invoice.client.name,
+            status: invoice.status,
+            category: undefined as string | undefined,
+            sourceType: "INVOICE" as const,
+            assignedToName: undefined as string | undefined,
+            assignedToId: undefined as string | undefined,
+          }))
+        : []),
       ...allExpenses.map((expense) => ({
         id: expense.id,
         type: "EXPENSE" as const,
@@ -276,21 +490,51 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
         sourceType: "EXPENSE" as const,
         assignedToName: expense.paidByUser?.name,
         assignedToId: expense.paidByUserId ?? undefined,
+        userId: expense.paidByUserId ?? undefined,
       })),
       ...allTransactions.map((transaction) => ({
         id: transaction.id,
-        type: transaction.type as "INCOME" | "EXPENSE",
+        type: transaction.type as "INCOME" | "EXPENSE" | "HONORARIOS",
         amount: transaction.amount,
         description: transaction.description || "Transacción",
         date: transaction.createdAt,
         clientName: transaction.relatedClient?.name,
         status: transaction.status,
-        category: transaction.category,
+        category: transaction.category ?? undefined,
         sourceType: "TRANSACTION" as const,
         assignedToName: transaction.assignedTo?.name,
-        assignedToId: transaction.assignedToId ?? undefined,
+        assignedToId:
+          transaction.type === "HONORARIOS"
+            ? transaction.userId ?? transaction.assignedToId ?? undefined
+            : transaction.assignedToId ?? undefined,
+        userId: transaction.userId ?? undefined,
       })),
-    ].sort((a, b) => b.date.getTime() - a.date.getTime()) as FinancialStats["recentTransactions"];
+    ];
+
+    const transactions = baseTransactions
+      .filter((t) => {
+        // If ADMIN, show all transactions
+        if (isAdmin) {
+          return true;
+        }
+
+        // For non-ADMIN users, filter their personal transactions only
+        if (userId) {
+          if (t.type === "INCOME") {
+            return false;
+          }
+
+          const ownerId = t.assignedToId ?? t.userId;
+          const recipientId = t.userId ?? t.assignedToId;
+          const isUserExpense = t.type === "EXPENSE" && ownerId === userId;
+          const isHonorario = t.type === "HONORARIOS" && recipientId === userId;
+
+          return isUserExpense || isHonorario;
+        }
+
+        return true;
+      })
+      .sort((a, b) => b.date.getTime() - a.date.getTime()) as FinancialStats["recentTransactions"];
 
     return {
       success: true,
@@ -298,10 +542,16 @@ export async function getFinancialStats(): Promise<ApiResponse<FinancialStats>> 
         totalIncome,
         totalExpenses,
         netProfit,
+        incomeDeltaPct,
+        expensesDeltaPct,
+        netProfitDeltaPct,
+        marginDeltaPct,
         recentTransactions: transactions,
-        ...(isEditor && {
+        ...(userId && {
           pendingReimbursements,
           honorariosReceived,
+          pendingReimbursementsDeltaPct,
+          honorariosDeltaPct,
         }),
       },
     };
@@ -1251,6 +1501,8 @@ export async function getExpensesStats(filters?: {
     // Obtener sesión del usuario logueado
     const session = await auth();
     const userId = session?.user?.id;
+    const userRole = session?.user?.role;
+    const isAdmin = userRole === "ADMIN";
 
     if (!userId) {
       return {
@@ -1274,8 +1526,8 @@ export async function getExpensesStats(filters?: {
     // Filtro por usuario - SOLO mostrar gastos del usuario logueado
     if (filters?.userId && filters.userId !== "all") {
       expenseWhere.paidByUserId = filters.userId;
-    } else {
-      // Solo mostrar gastos asignados al usuario logueado (no incluir null)
+    } else if (!isAdmin) {
+      // Solo mostrar gastos asignados al usuario logueado si no es ADMIN
       expenseWhere.paidByUserId = userId;
     }
 
@@ -1314,8 +1566,8 @@ export async function getExpensesStats(filters?: {
     // Filtro por usuario - SOLO mostrar transacciones del usuario logueado
     if (filters?.userId && filters.userId !== "all") {
       transactionWhere.assignedToId = filters.userId;
-    } else {
-      // Solo mostrar transacciones asignadas al usuario logueado (no incluir null)
+    } else if (!isAdmin) {
+      // Solo mostrar transacciones asignadas al usuario logueado si no es ADMIN
       transactionWhere.assignedToId = userId;
     }
 

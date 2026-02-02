@@ -15,7 +15,7 @@ import { FixRolesButton } from "@/components/features/admin/users/fix-roles-butt
 
 export default async function AdminUsersPage() {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") redirect("/");
+  if (!session || session.user.roleLegacy !== "ADMIN") redirect("/");
 
   // 1. Sincronizar legacy antes de cargar
   await syncLegacySpecialties();

@@ -14,6 +14,11 @@ export default async function AdminNotificationsPage() {
     redirect("/sign-in");
   }
 
+  // Verificar rol de ADMIN
+  if (session.user.roleLegacy !== "ADMIN") {
+    redirect("/");
+  }
+
   // Obtener todas las notificaciones del usuario
   const notificationsResult = await getUserNotifications();
 

@@ -10,8 +10,8 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 220 90% 24%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
@@ -66,6 +66,65 @@
   body {
     @apply bg-background text-foreground;
     transition: color 300ms ease, background-color 300ms ease;
+  }
+
+  /* Google Sans Font */
+  .font-google-sans {
+    font-family: "Google Sans", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+    font-variation-settings: "GRAD" 0;
+  }
+
+  /* Cancel button hover with red border - more specific targeting */
+  button[data-variant="cancel"]:hover:not([toast-close]) {
+    border-color: #ef4444 !important;
+    border-width: 2px !important;
+    box-shadow: 0 0 0 1px #ef4444 !important;
+  }
+
+  /* Target any button with cancel in class but exclude toast close */
+  button[class*="cancel"]:hover:not([toast-close]) {
+    border-color: #ef4444 !important;
+    border-width: 2px !important;
+  }
+
+  /* Alternative: target buttons with Cancel text using attribute selector but exclude toast close */
+  button[title*="Cancel"]:hover:not([toast-close]),
+  button[aria-label*="Cancel"]:hover:not([toast-close]) {
+    border-color: #ef4444 !important;
+    border-width: 2px !important;
+  }
+
+  /* Exclude toast components entirely from cancel button styling */
+  [data-radix-toast-component] button:hover,
+  [data-radix-toast] button:hover,
+  [toast-close]:hover {
+    border-color: inherit !important;
+    border-width: inherit !important;
+    box-shadow: none !important;
+  }
+
+  /* macOS-style hover effects for toasts */
+  [data-radix-toast] {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  [data-radix-toast]:hover {
+    transform: scale(1.02);
+    box-shadow: 
+      0 10px 25px -3px rgba(0, 0, 0, 0.1),
+      0 4px 6px -2px rgba(0, 0, 0, 0.05),
+      0 0 0 1px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(20px);
+  }
+
+  /* Toast close button macOS-style hover */
+  [toast-close]:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+    border-radius: 6px;
+    transform: scale(1.1);
   }
 }
 

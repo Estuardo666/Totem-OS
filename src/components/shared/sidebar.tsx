@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Users, Clapperboard, Wallet, LogOut, Wand2, LayoutDashboard, Layout, Video, ChevronDown, ChevronRight, Settings, Plug, Clock } from "lucide-react";
+import { Users, Clapperboard, Wallet, LogOut, Wand2, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getBrandSettings } from "@/actions/admin-actions";
@@ -73,6 +73,21 @@ const navItems: (NavItem | NavItemWithChildren)[] = [
         icon: Wallet,
       },
       {
+        href: "/finance/personal",
+        label: "Dashboard personal",
+        icon: Wallet,
+      },
+      {
+        href: "/finance/transactions",
+        label: "Transacciones",
+        icon: Wallet,
+      },
+      {
+        href: "/finance/alerts",
+        label: "Alertas",
+        icon: Wallet,
+      },
+      {
         href: "/finance/settlement",
         label: "Liquidación Interna",
         icon: Wallet,
@@ -113,7 +128,13 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
       (path) => pathname === path || pathname?.startsWith(`${path}/`)
     );
     
-    const financePaths = ["/finance", "/finance/settlement"];
+    const financePaths = [
+      "/finance",
+      "/finance/personal",
+      "/finance/transactions",
+      "/finance/alerts",
+      "/finance/settlement",
+    ];
     const isFinanceActive = financePaths.some(
       (path) => pathname === path || pathname?.startsWith(`${path}/`)
     );
@@ -337,7 +358,15 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   )}
                 >
                   <div className="ml-4 space-y-1 border-l-2 border-muted pl-2 pt-1">
-                    {item.children.map((child) => {
+                    {(item.href === "/finance"
+                      ? item.children.filter((child) =>
+                          child.href === "/finance" ? isAdmin :
+                          child.href === "/finance/alerts" ? isAdmin :
+                          child.href === "/finance/settlement" ? isAdmin :
+                          true
+                        )
+                      : item.children
+                    ).map((child) => {
                       const ChildIcon = child.icon;
                       const childIsActive = isChildActive(child);
 

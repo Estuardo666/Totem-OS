@@ -23,6 +23,23 @@ export const brandDNASchema = z.object({
   values: z.string().optional(),
 });
 
+const contactEmailsSchema = z.preprocess(
+  (value) => {
+    if (typeof value === "string") {
+      const emails = value
+        .split(/[\s,;]+/)
+        .map((email) => email.trim())
+        .filter(Boolean);
+      return emails.length ? emails : [];
+    }
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return undefined;
+  },
+  z.array(z.string().email("Email inválido")).optional()
+);
+
 export const clientSchema = z.object({
   id: z.string().cuid().optional(),
   name: z.string().min(1, "El nombre del cliente es requerido"),
@@ -34,11 +51,20 @@ export const clientSchema = z.object({
   brandDNA: brandDNASchema.optional(),
   monthlyReels: z.number().int().min(0).default(0),
   monthlyFlyers: z.number().int().min(0).default(0),
+  monthlyShoots: z.number().int().min(0).default(0),
   monthlyRate: z.number().min(0).default(0),
+  paymentDay: z
+    .number()
+    .int()
+    .min(1, "El día de pago debe ser entre 1 y 31")
+    .max(31, "El día de pago debe ser entre 1 y 31")
+    .optional()
+    .nullable(),
   logo: z.string().url("Debe ser una URL válida").optional().nullable(),
   lastPostDate: z.date().optional(),
   editorId: z.string().cuid().optional().nullable(),
   communityId: z.string().cuid().optional().nullable(),
+  contactEmails: contactEmailsSchema,
 });
 
 export const createClientSchema = clientSchema.omit({ id: true });

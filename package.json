@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
+    "@googlemaps/google-maps-services-js": "^3.4.2",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^3.9.0",
     "@prisma/client": "^5.19.0",
@@ -43,6 +44,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.0.0",
+    "googleapis": "^171.0.0",
     "lucide-react": "^0.446.0",
     "next": "^15.0.0",
     "next-auth": "^5.0.0-beta.30",

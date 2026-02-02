@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { startOfMonth, endOfMonth } from "date-fns";
 import { sendNotification } from "@/actions/notification-actions";
 
 /**
@@ -33,6 +33,98 @@ export async function countPublishedTasksByType(
   });
 
   return count;
+}
+
+export async function createMonthlyPaymentTransactions(): Promise<{
+  created: number;
+  skipped: number;
+  errors: Array<{ clientId: string; error: string }>;
+}> {
+  const now = new Date();
+  const monthStart = startOfMonth(now);
+  const monthEnd = endOfMonth(now);
+  const monthEndWithTime = new Date(monthEnd);
+  monthEndWithTime.setHours(23, 59, 59, 999);
+  const lastDayOfMonth = monthEnd.getDate();
+
+  const clients = await db.client.findMany({
+    where: {
+      paymentDay: { not: null },
+    },
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      monthlyRate: true,
+      paymentDay: true,
+    },
+  });
+
+  let created = 0;
+  let skipped = 0;
+  const errors: Array<{ clientId: string; error: string }> = [];
+
+  for (const client of clients) {
+    try {
+      const paymentDay = client.paymentDay ?? null;
+      if (!paymentDay || client.monthlyRate <= 0) {
+        skipped++;
+        continue;
+      }
+
+      if (client.status === "PAUSED") {
+        skipped++;
+        continue;
+      }
+
+      const scheduledDay = Math.min(paymentDay, lastDayOfMonth);
+      const scheduledDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        scheduledDay
+      );
+
+      const existingTransaction = await db.transaction.findFirst({
+        where: {
+          relatedClientId: client.id,
+          type: "INCOME",
+          description: {
+            contains: "Cobro mensual programado",
+          },
+          createdAt: {
+            gte: monthStart,
+            lte: monthEndWithTime,
+          },
+        },
+      });
+
+      if (existingTransaction) {
+        skipped++;
+        continue;
+      }
+
+      await db.transaction.create({
+        data: {
+          amount: client.monthlyRate,
+          type: "INCOME",
+          status: "PENDING",
+          description: `Cobro mensual programado - ${client.name} (día ${scheduledDay})`,
+          relatedClientId: client.id,
+          clientId: client.id,
+          createdAt: scheduledDate,
+        },
+      });
+
+      created++;
+    } catch (error) {
+      errors.push({
+        clientId: client.id,
+        error: error instanceof Error ? error.message : "Error desconocido",
+      });
+    }
+  }
+
+  return { created, skipped, errors };
 }
 
 /**

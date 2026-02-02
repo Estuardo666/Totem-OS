@@ -6,9 +6,13 @@ import type { ApiResponse } from "@/types";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Shoot, User, ContentTask, Client } from "@prisma/client";
+import { GoogleCalendarService } from "@/lib/google-calendar";
 import { sendNotification } from "./notification-actions";
 
-export type ShootWithRelations = Shoot & {
+export type ShootWithRelations = (Shoot & {
+  googleEventId?: string | null;
+  googleEventLink?: string | null;
+}) & {
   client: Client;
   crew: User[];
   tasks: (ContentTask & { client: Client })[];
@@ -26,6 +30,7 @@ export interface CreateShootingInput {
   clientId: string;
   crewIds: string[];
   taskIds: string[];
+  createCalendarEvent?: boolean;
 }
 
 export interface UpdateShootingInput {
@@ -42,7 +47,19 @@ export interface UpdateShootingInput {
   crewIds?: string[];
   taskIds?: string[];
   status?: "SCHEDULED" | "COMPLETED" | "CANCELED";
+  createCalendarEvent?: boolean;
 }
+
+const extractGmailEmails = (contactEmails?: string | null): string[] => {
+  if (!contactEmails) return [];
+  try {
+    const parsed = JSON.parse(contactEmails) as string[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((email) => email.toLowerCase().endsWith("@gmail.com"));
+  } catch {
+    return [];
+  }
+};
 
 /**
  * Crea un nuevo rodaje con validaciones de horario y solapamiento
@@ -98,7 +115,7 @@ export async function createShooting(
     }
 
     // Crear el rodaje
-    const shooting = await db.shoot.create({
+    let shooting = (await db.shoot.create({
       data: {
         title: input.title,
         startTime: input.startTime,
@@ -126,7 +143,53 @@ export async function createShooting(
           },
         },
       },
-    });
+    })) as ShootWithRelations;
+
+    // Crear evento en Google Calendar (opcional)
+    let calendarError: string | null = null;
+    if (input.createCalendarEvent !== false || shooting.googleEventId) {
+      try {
+        const crewWithEmails = await db.user.findMany({
+          where: { id: { in: input.crewIds } },
+          select: { id: true, name: true, email: true },
+        });
+
+        const clientEmails = extractGmailEmails((client as any)?.contactEmails);
+        const event = await GoogleCalendarService.createEvent(sessionUserId, {
+          title: input.title,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          address: input.address || undefined,
+          mapLink: input.mapLink || undefined,
+          notes: input.notes || undefined,
+          client: { name: client.name, emails: clientEmails },
+          crew: crewWithEmails
+            .filter((c) => !!c.email)
+            .map((c) => ({ name: c.name, email: c.email as string })),
+        });
+
+        const shootingWithEvent = (await db.shoot.update({
+          where: { id: shooting.id },
+          data: {
+            googleEventId: event.id,
+            googleEventLink: event.htmlLink,
+          } as any,
+          include: {
+            client: true,
+            crew: true,
+            tasks: {
+              include: { client: true },
+            },
+          },
+        })) as ShootWithRelations;
+
+        shooting = shootingWithEvent;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Error al crear evento de Calendar";
+        calendarError = message;
+        console.error("Error creando evento de Calendar:", error);
+      }
+    }
 
     // Enviar notificaciones a los miembros del crew
     const startTimeStr = format(input.startTime, "dd/MM/yyyy HH:mm", { locale: es });
@@ -143,7 +206,9 @@ export async function createShooting(
     revalidatePath("/content/shoots");
     revalidatePath("/content");
 
-    return { success: true, data: shooting };
+    return { success: true, data: shooting, calendarError } as ApiResponse<ShootWithRelations> & {
+      calendarError: string | null;
+    };
   } catch (error) {
     return {
       success: false,
@@ -255,7 +320,7 @@ export async function updateShooting(
     }
 
     // Actualizar el rodaje
-    const shooting = await db.shoot.update({
+    let shooting = (await db.shoot.update({
       where: { id: input.id },
       data: updateData,
       include: {
@@ -267,13 +332,88 @@ export async function updateShooting(
           },
         },
       },
-    });
+    })) as ShootWithRelations;
+
+    // Sincronizar con Google Calendar si corresponde
+    let calendarError: string | null = null;
+    if (input.createCalendarEvent !== false || shooting.googleEventId) {
+      try {
+        const crewWithEmails = await db.user.findMany({
+          where: { id: { in: input.crewIds ?? shooting.crew.map((c) => c.id) } },
+          select: { id: true, name: true, email: true },
+        });
+
+        const shootingClientEmails = extractGmailEmails(
+          (shooting.client as any)?.contactEmails
+        );
+        const shootingEventId = (shooting as any)?.googleEventId as string | undefined;
+        if (shootingEventId) {
+          const event = await GoogleCalendarService.updateEvent(sessionUserId, shootingEventId, {
+            title: shooting.title,
+            startTime: shooting.startTime,
+            endTime: shooting.endTime,
+            address: shooting.address || undefined,
+            mapLink: shooting.mapLink || undefined,
+            notes: shooting.notes || undefined,
+            client: { name: shooting.client.name, emails: shootingClientEmails },
+            crew: crewWithEmails
+              .filter((c) => !!c.email)
+              .map((c) => ({ name: c.name, email: c.email as string })),
+          });
+
+          shooting = (await db.shoot.update({
+            where: { id: shooting.id },
+            data: {
+              googleEventId: event.id,
+              googleEventLink: event.htmlLink,
+            } as any,
+            include: {
+              client: true,
+              crew: true,
+              tasks: { include: { client: true } },
+            },
+          })) as ShootWithRelations;
+        } else {
+          const event = await GoogleCalendarService.createEvent(sessionUserId, {
+            title: shooting.title,
+            startTime: shooting.startTime,
+            endTime: shooting.endTime,
+            address: shooting.address || undefined,
+            mapLink: shooting.mapLink || undefined,
+            notes: shooting.notes || undefined,
+            client: { name: shooting.client.name, emails: shootingClientEmails },
+            crew: crewWithEmails
+              .filter((c) => !!c.email)
+              .map((c) => ({ name: c.name, email: c.email as string })),
+          });
+
+          shooting = (await db.shoot.update({
+            where: { id: shooting.id },
+            data: {
+              googleEventId: event.id,
+              googleEventLink: event.htmlLink,
+            } as any,
+            include: {
+              client: true,
+              crew: true,
+              tasks: { include: { client: true } },
+            },
+          })) as ShootWithRelations;
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Error al actualizar evento de Calendar";
+        calendarError = message;
+        console.error("Error sincronizando evento de Calendar:", error);
+      }
+    }
 
     // Revalidar rutas
     revalidatePath("/content/shoots");
     revalidatePath("/content");
 
-    return { success: true, data: shooting };
+    return { success: true, data: shooting, calendarError } as ApiResponse<ShootWithRelations> & {
+      calendarError: string | null;
+    };
   } catch (error) {
     return {
       success: false,

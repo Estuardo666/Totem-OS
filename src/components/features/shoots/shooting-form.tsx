@@ -25,7 +25,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { UploadButton } from "@uploadthing/react";
+import { UploadButton } from "@/utils/uploadthing";
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { AudioRecorder } from "@/components/ui/audio-recorder";
 import { useToast } from "@/components/ui/use-toast";
 import { createShooting, updateShooting, type CreateShootingInput, type UpdateShootingInput } from "@/actions/shooting-actions";
@@ -39,9 +40,10 @@ interface ShootingFormProps {
   onOpenChange: (open: boolean) => void;
   clients: Client[];
   shooting?: ShootWithRelations | null;
+  onCreated?: (shooting: ShootWithRelations) => void;
 }
 
-export function ShootingForm({ open, onOpenChange, clients, shooting }: ShootingFormProps) {
+export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated }: ShootingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -58,6 +60,8 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
   const [notes, setNotes] = useState("");
   const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([]);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [createCalendarEvent, setCreateCalendarEvent] = useState(true);
+  const [isCalendarConnected, setIsCalendarConnected] = useState(false);
   
   const [users, setUsers] = useState<User[]>([]);
   const [availableTasks, setAvailableTasks] = useState<ContentTask[]>([]);
@@ -69,6 +73,16 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
         setUsers(result.data);
       }
     });
+
+    // Verificar estado de Google Calendar
+    fetch('/api/google-calendar/status')
+      .then(res => res.json())
+      .then(data => {
+        setIsCalendarConnected(data.connected);
+      })
+      .catch(error => {
+        console.error('Error verificando Google Calendar:', error);
+      });
   }, []);
 
   // Cargar tareas cuando se selecciona un cliente
@@ -104,6 +118,7 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
       setNotes(shooting.notes || "");
       setSelectedCrewIds(shooting.crew.map((u) => u.id));
       setSelectedTaskIds(shooting.tasks.map((t) => t.id));
+      setCreateCalendarEvent(Boolean(shooting.googleEventId));
     } else {
       // Reset form
       setTitle("");
@@ -118,6 +133,7 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
       setNotes("");
       setSelectedCrewIds([]);
       setSelectedTaskIds([]);
+      setCreateCalendarEvent(true);
     }
   }, [shooting, open]);
 
@@ -162,6 +178,7 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
             clientId,
             crewIds: selectedCrewIds,
             taskIds: selectedTaskIds,
+            createCalendarEvent,
           };
 
           const result = await updateShooting(updateData);
@@ -170,6 +187,14 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
               title: "Rodaje actualizado",
               description: "El rodaje se ha actualizado correctamente",
             });
+            const calendarError = (result as { calendarError?: string | null }).calendarError;
+            if (createCalendarEvent && calendarError) {
+              toast({
+                variant: "destructive",
+                title: "Google Calendar",
+                description: calendarError,
+              });
+            }
             onOpenChange(false);
             router.refresh();
           } else {
@@ -193,6 +218,7 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
             clientId,
             crewIds: selectedCrewIds,
             taskIds: selectedTaskIds,
+            createCalendarEvent,
           };
 
           const result = await createShooting(createData);
@@ -201,7 +227,18 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
               title: "Rodaje creado",
               description: "El rodaje se ha creado correctamente",
             });
+            const calendarError = (result as { calendarError?: string | null }).calendarError;
+            if (createCalendarEvent && calendarError) {
+              toast({
+                variant: "destructive",
+                title: "Google Calendar",
+                description: calendarError,
+              });
+            }
             onOpenChange(false);
+            if (result.data) {
+              onCreated?.(result.data as ShootWithRelations);
+            }
             router.refresh();
           } else {
             toast({
@@ -235,6 +272,25 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
         ? prev.filter((id) => id !== taskId)
         : [...prev, taskId]
     );
+  };
+
+  const handleAddressSelect = (address: string, place: PlaceDetails) => {
+    setAddress(address);
+    // Generar Google Maps link si hay URL disponible
+    if (place.url) {
+      setMapLink(place.url);
+    } else if (place.geometry) {
+      // Generar link basado en coordenadas
+      const { lat, lng } = place.geometry.location;
+      const latVal = typeof lat === "function" ? lat() : lat;
+      const lngVal = typeof lng === "function" ? lng() : lng;
+      setMapLink(`https://maps.google.com/?q=${latVal},${lngVal}`);
+    }
+  };
+
+  const handleAddressClear = () => {
+    setAddress("");
+    setMapLink("");
   };
 
   return (
@@ -272,7 +328,23 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
                 <SelectContent>
                   {clients.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
-                      {client.name}
+                      <div className="flex items-center gap-2">
+                        {(client as any).logo ? (
+                          <img
+                            src={(client as any).logo}
+                            alt={client.name}
+                            className="h-4 w-4 object-contain"
+                          />
+                        ) : (
+                          <div 
+                            className="h-4 w-4 rounded flex items-center justify-center text-white text-xs font-medium"
+                            style={{ backgroundColor: client.color || "#000000" }}
+                          >
+                            {client.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <span>{client.name}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -342,13 +414,14 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
             </div>
             <div>
               <Label htmlFor="address">Dirección</Label>
-              <Textarea
-                id="address"
+              <GooglePlacesAutocomplete
+                onAddressSelect={handleAddressSelect}
+                onClear={handleAddressClear}
+                onInputChange={setAddress}
+                placeholder="Buscar dirección..."
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Ej: Calle Principal 123, Ciudad"
-                disabled={isPending}
-                rows={2}
+                disabled={false}
+                className="mt-1"
               />
             </div>
             <div>
@@ -362,6 +435,48 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
                 disabled={isPending}
               />
             </div>
+          </div>
+
+          {/* Google Calendar */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Label>Google Calendar</Label>
+            </div>
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="createCalendarEvent"
+                  checked={createCalendarEvent}
+                  onCheckedChange={(checked) => setCreateCalendarEvent(checked as boolean)}
+                  disabled={!isCalendarConnected || isPending}
+                />
+                <Label htmlFor="createCalendarEvent" className="text-sm">
+                  Crear evento en Google Calendar
+                </Label>
+              </div>
+              {!isCalendarConnected ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push("/admin/settings")}
+                  disabled={isPending}
+                >
+                  Ir a configuración
+                </Button>
+              ) : (
+                <Badge variant="secondary" className="text-xs">
+                  Conectado
+                </Badge>
+              )}
+            </div>
+            {!isCalendarConnected && (
+              <p className="text-xs text-muted-foreground">
+                Google Calendar no está conectado. Ve a configuración para conectarlo y habilitar la creación automática
+                de eventos.
+              </p>
+            )}
           </div>
 
           {/* Equipo (Crew) */}
@@ -472,15 +587,17 @@ export function ShootingForm({ open, onOpenChange, clients, shooting }: Shooting
               </div>
             ) : (
               <UploadButton
-                endpoint="documentUploader"
-                onClientUploadComplete={(res) => {
+                endpoint="brandAsset"
+                onClientUploadComplete={(res: Array<{ url?: string; ufsUrl?: string }>) => {
                   if (res && res[0]) {
                     const url = res[0].ufsUrl || res[0].url;
-                    setScriptUrl(url);
-                    toast({
-                      title: "Guión subido",
-                      description: "El archivo se ha subido correctamente",
-                    });
+                    if (url) {
+                      setScriptUrl(url);
+                      toast({
+                        title: "Guión subido",
+                        description: "El archivo se ha subido correctamente",
+                      });
+                    }
                   }
                 }}
                 onUploadError={(error: Error) => {

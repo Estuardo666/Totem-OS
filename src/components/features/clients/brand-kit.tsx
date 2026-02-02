@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { UploadButton } from "@uploadthing/react";
-import { Image as ImageIcon, FileText, Trash2, ExternalLink, Loader2, Copy, Check, Download, Palette } from "lucide-react";
+import { Image as ImageIcon, FileText, Trash2, ExternalLink, Loader2, Copy, Check, Download, Palette, Search } from "lucide-react";
 import type { BrandAsset } from "@prisma/client";
 import Image from "next/image";
 // @ts-expect-error - TypeScript no detecta el uso en callback inline, pero sí se usa
@@ -13,6 +13,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useDebounce } from "@/hooks/use-debounce";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +39,11 @@ export function BrandKit({ assets, clientId }: BrandKitProps) {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const [sortKey, setSortKey] = useState<"name" | "createdAt" | "fileType" | "fileSize">("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   void setIsUploading; // Forzar referencia para TypeScript (se usa en callback inline)
 
 
@@ -109,6 +117,34 @@ export function BrandKit({ assets, clientId }: BrandKitProps) {
     return "Documento";
   };
 
+  // Filter assets based on search term
+  const filteredAssets = [...assets]
+    .filter(asset =>
+      debouncedSearchTerm.length < 3 ||
+      asset.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      getFileCategory(asset.name).toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortKey) {
+        case "name":
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case "createdAt":
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case "fileType":
+          comparison = a.fileType.localeCompare(b.fileType);
+          break;
+        case "fileSize":
+          comparison = ((a as any).fileSize || 0) - ((b as any).fileSize || 0);
+          break;
+      }
+      
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+
   const handleDownload = (url: string, fileName: string) => {
     const link = document.createElement("a");
     link.href = url;
@@ -129,9 +165,15 @@ export function BrandKit({ assets, clientId }: BrandKitProps) {
           )}
           <UploadButton<OurFileRouter>
             endpoint="brandAsset"
-            onClientUploadComplete={async (res) => {
+            onUploadBegin={(files) => {
               setIsUploading(true);
-
+              // Handle different possible formats of files parameter
+              const fileNames = Array.isArray(files) 
+                ? files.map(f => f.name || f)
+                : files ? [files.name || files] : [];
+              setUploadingFiles(fileNames);
+            }}
+            onClientUploadComplete={async (res) => {
               try {
                 for (const file of res) {
                   // Determinar el tipo de archivo
@@ -148,6 +190,7 @@ export function BrandKit({ assets, clientId }: BrandKitProps) {
                     fileKey: file.key,
                     fileType,
                     clientId,
+                    fileSize: file.size,
                   });
 
                   if (!result.success) {
@@ -176,6 +219,7 @@ export function BrandKit({ assets, clientId }: BrandKitProps) {
                 });
               } finally {
                 setIsUploading(false);
+                setUploadingFiles([]);
               }
             }}
             onUploadError={(error: Error) => {
@@ -184,6 +228,8 @@ export function BrandKit({ assets, clientId }: BrandKitProps) {
                 title: "Error al subir archivo",
                 description: error.message,
               });
+              setIsUploading(false);
+              setUploadingFiles([]);
             }}
             appearance={{
               allowedContent: "hidden",
@@ -196,20 +242,85 @@ export function BrandKit({ assets, clientId }: BrandKitProps) {
         </div>
       </div>
 
-      {assets.length === 0 ? (
+      {/* Search and Sort Controls */}
+      <div className="flex gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar archivos (mínimo 3 caracteres)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Select value={sortKey} onValueChange={(value: "name" | "createdAt" | "fileType" | "fileSize") => setSortKey(value)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Ordenar por" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Nombre</SelectItem>
+              <SelectItem value="createdAt">Fecha</SelectItem>
+              <SelectItem value="fileType">Tipo</SelectItem>
+              <SelectItem value="fileSize">Tamaño</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortOrder} onValueChange={(value: "asc" | "desc") => setSortOrder(value)}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="asc">A-Z</SelectItem>
+              <SelectItem value="desc">Z-A</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Upload Progress Indicator */}
+      {isUploading && uploadingFiles.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <div>
+                <p className="text-sm font-medium text-blue-900">
+                  Subiendo {uploadingFiles.length} archivo{uploadingFiles.length > 1 ? 's' : ''}
+                </p>
+                <p className="text-xs text-blue-700">
+                  {uploadingFiles.map((name, index) => (
+                    <span key={index}>
+                      {name}
+                      {index < uploadingFiles.length - 1 && ', '}
+                    </span>
+                  ))}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {filteredAssets.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <p className="text-muted-foreground text-center text-lg">
-              No hay archivos en el Brand Kit
+              {debouncedSearchTerm.length >= 3 
+                ? "No se encontraron archivos que coincidan con la búsqueda"
+                : "No hay archivos en el Brand Kit"
+              }
             </p>
             <p className="text-muted-foreground mt-2 text-center text-sm">
-              Sube logos, imágenes, PDFs y otros recursos de marca
+              {debouncedSearchTerm.length >= 3 
+                ? `Intenta con otros términos para "${debouncedSearchTerm}"`
+                : "Sube logos, imágenes, PDFs y otros recursos de marca"
+              }
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {assets.map((asset) => {
+          {filteredAssets.map((asset) => {
             const category = getFileCategory(asset.name);
             return (
               <Card key={asset.id} className="flex flex-col">

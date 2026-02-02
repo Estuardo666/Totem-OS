@@ -42,6 +42,13 @@ export default auth((req) => {
     return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/sign-in"));
   }
 
+  // Bloquear acceso a rutas de administrador para no ADMIN
+  const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
+  if (isAdminRoute && userRole !== "ADMIN") {
+    console.log(`[Middleware] Acceso denegado a ruta de admin: ${req.nextUrl.pathname}, rol: ${userRole}`);
+    return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/"));
+  }
+
   // Bloquear acceso a /finance/settlement para EDITOR
   if (isEditor && req.nextUrl.pathname === "/finance/settlement") {
     return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/finance"));

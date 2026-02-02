@@ -22,6 +22,15 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
   const [currentShareToken, setCurrentShareToken] = useState<string | null>(
     (client as any).shareToken || null
   );
+  const contactEmails = (() => {
+    if (!(client as any).contactEmails) return [] as string[];
+    try {
+      const parsed = JSON.parse((client as any).contactEmails) as string[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [] as string[];
+    }
+  })();
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -81,6 +90,16 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
               </Badge>
             )}
           </div>
+          {contactEmails.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Correos electrónicos:</span>
+              {contactEmails.map((email) => (
+                <span key={email} className="rounded-full border px-2 py-0.5 text-xs">
+                  {email}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <ShareReportButton
@@ -90,7 +109,6 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
               setCurrentShareToken(token);
               router.refresh();
             }}
-            className="w-full sm:w-auto"
           />
           <Button
             variant="default"

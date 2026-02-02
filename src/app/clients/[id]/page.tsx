@@ -21,7 +21,9 @@ import { SyncMetricsButton } from "@/components/features/metrics/sync-metrics-bu
 import { MetricsOverview } from "@/components/features/metrics/metrics-overview";
 import { MetricsChart } from "@/components/features/metrics/metrics-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Link from "next/link";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { TaskMetrics } from "@prisma/client";
 import { calculateMonthlyEngagement, calculateMonthlyEfficiency, formatCurrency } from "@/lib/metrics-calculations";
@@ -68,6 +70,27 @@ export default async function ClientDetailPage({
 }: ClientDetailPageProps) {
   const { id } = await params;
   const session = await auth();
+  
+  // Check if user is authenticated and is ADMIN
+  if (!session?.user?.id || session.user.role !== "ADMIN") {
+    // Redirect non-admin users to the general clients dashboard
+    return (
+      <div className="container mx-auto px-4 md:px-6">
+        <div className="flex flex-col items-center justify-center py-12">
+          <h2 className="text-2xl font-bold mb-4">Acceso Restringido</h2>
+          <p className="text-muted-foreground text-center mb-6">
+            Solo los administradores pueden ver la información detallada de los clientes.
+          </p>
+          <Button asChild>
+            <Link href="/clients">
+              Ver Dashboard General
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  
   const [result, usersResult, profitabilityResult, globalMetricsResult, recentTasksResult, facebookMetricsResult] = await Promise.all([
     getClientById(id),
     getUsers(),

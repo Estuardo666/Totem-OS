@@ -24,6 +24,10 @@ export async function createClient(
         name: validatedData.name,
         status: validatedData.status,
         color: validatedData.color || "#000000",
+        contactEmails:
+          validatedData.contactEmails && validatedData.contactEmails.length > 0
+            ? JSON.stringify(validatedData.contactEmails)
+            : null,
         // Los campos JSON se guardan como String en SQLite
         brandKit: validatedData.brandKit
           ? JSON.stringify(validatedData.brandKit)
@@ -36,10 +40,13 @@ export async function createClient(
           : null,
         monthlyReels: validatedData.monthlyReels ?? 0,
         monthlyFlyers: validatedData.monthlyFlyers ?? 0,
+        monthlyShoots: validatedData.monthlyShoots ?? 0,
         monthlyRate: validatedData.monthlyRate ?? 0,
+        paymentDay: validatedData.paymentDay ?? null,
         lastPostDate: validatedData.lastPostDate ?? null,
         editorId: validatedData.editorId ?? null,
         communityId: validatedData.communityId ?? null,
+        logo: validatedData.logo ?? null,
       },
     });
 
@@ -77,6 +84,12 @@ export async function updateClient(
         ...(validatedData.name !== undefined && { name: validatedData.name }),
         ...(validatedData.status !== undefined && { status: validatedData.status }),
         ...(validatedData.color !== undefined && { color: validatedData.color }),
+        ...(validatedData.contactEmails !== undefined && {
+          contactEmails:
+            validatedData.contactEmails && validatedData.contactEmails.length > 0
+              ? JSON.stringify(validatedData.contactEmails)
+              : null,
+        }),
         ...(validatedData.brandKit !== undefined && {
           brandKit: validatedData.brandKit
             ? JSON.stringify(validatedData.brandKit)
@@ -87,19 +100,21 @@ export async function updateClient(
             ? JSON.stringify(validatedData.vault)
             : null,
         }),
-        ...(validatedData.planConfig !== undefined && {
-          planConfig: validatedData.planConfig
-            ? JSON.stringify(validatedData.planConfig)
-            : null,
-        }),
+        ...(validatedData.logo !== undefined && { logo: validatedData.logo }),
         ...(validatedData.monthlyReels !== undefined && {
           monthlyReels: validatedData.monthlyReels,
         }),
         ...(validatedData.monthlyFlyers !== undefined && {
           monthlyFlyers: validatedData.monthlyFlyers,
         }),
+        ...(validatedData.monthlyShoots !== undefined && {
+          monthlyShoots: validatedData.monthlyShoots,
+        }),
         ...(validatedData.monthlyRate !== undefined && {
           monthlyRate: validatedData.monthlyRate,
+        }),
+        ...(validatedData.paymentDay !== undefined && {
+          paymentDay: validatedData.paymentDay,
         }),
         ...(validatedData.lastPostDate !== undefined && {
           lastPostDate: validatedData.lastPostDate ?? null,
@@ -849,6 +864,7 @@ export async function addBrandAsset(
     fileKey: string;
     fileType: string;
     clientId: string;
+    fileSize?: number;
   }
 ): Promise<ApiResponse<BrandAsset>> {
   try {
@@ -858,8 +874,9 @@ export async function addBrandAsset(
         url: input.url,
         fileKey: input.fileKey,
         fileType: input.fileType,
+        fileSize: input.fileSize,
         clientId: input.clientId,
-      },
+      } as any,
     });
 
     revalidatePath(`/clients/${input.clientId}`);

@@ -51,6 +51,10 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
+        gray: {
+          750: "rgb(31 41 55)", // Slightly lighter than gray-800
+          800: "rgb(17 24 39)", // Dark input background
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -28,7 +28,7 @@ export async function updateGlobalAiConfig(
   try {
     // 1. Validar sesión y permisos
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || session.user.roleLegacy !== "ADMIN") {
       return {
         success: false,
         error: "No autorizado. Solo los administradores pueden configurar IA.",
@@ -167,7 +167,7 @@ export async function getGlobalAiConfig(): Promise<
   try {
     // 1. Validar sesión y permisos
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || session.user.roleLegacy !== "ADMIN") {
       return {
         success: false,
         error: "No autorizado",
@@ -393,7 +393,7 @@ export async function getBrandSettings(): Promise<
   try {
     // 1. Validar sesión y permisos
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || session.user.roleLegacy !== "ADMIN") {
       return {
         success: false,
         error: "No autorizado. Solo los administradores pueden ver la configuración de marca.",
@@ -465,7 +465,7 @@ export async function updateBrandSettings(
   try {
     // 1. Validar sesión y permisos
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || session.user.roleLegacy !== "ADMIN") {
       return {
         success: false,
         error: "No autorizado. Solo los administradores pueden actualizar la configuración de marca.",
@@ -599,7 +599,7 @@ export async function getLoginBackground(): Promise<
   try {
     // 1. Validar sesión y permisos
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || session.user.roleLegacy !== "ADMIN") {
       return {
         success: false,
         error: "No autorizado. Solo los administradores pueden ver el background del login.",
@@ -666,7 +666,7 @@ export async function updateLoginBackground(
   try {
     // 1. Validar sesión y permisos
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || session.user.roleLegacy !== "ADMIN") {
       return {
         success: false,
         error: "No autorizado. Solo los administradores pueden actualizar el background del login.",
@@ -722,7 +722,7 @@ export async function testAIConnection(
   try {
     // 1. Validar sesión y permisos
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || session.user.roleLegacy !== "ADMIN") {
       return {
         success: false,
         error: "No autorizado. Solo los administradores pueden probar conexiones.",

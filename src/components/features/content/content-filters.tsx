@@ -80,8 +80,13 @@ export function ContentFilters({
       const endDate = endOfMonth(new Date(year, month - 1));
 
       filtered = filtered.filter((task) => {
-        if (!task.dueDate) return false;
-        const taskDate = new Date(task.dueDate);
+        const referenceDate =
+          task.status === "PUBLISHED"
+            ? task.publishedAt
+            : task.dueDate ?? task.scheduledAt;
+
+        if (!referenceDate) return false;
+        const taskDate = new Date(referenceDate);
         return taskDate >= startDate && taskDate <= endDate;
       });
     }
@@ -156,7 +161,10 @@ export function ContentFilters({
           </Select>
         </div>
         <div className="w-full">
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <Select 
+            value={selectedMonth} 
+            onValueChange={setSelectedMonth}
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Filtrar por mes" />
             </SelectTrigger>

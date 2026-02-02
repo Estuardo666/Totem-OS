@@ -43,6 +43,10 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
   const [selectedTask, setSelectedTask] = useState<ContentTaskWithClient | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
+
   // useOptimistic para actualizaciones instantáneas
   const [optimisticTasks, setOptimisticTasks] = useOptimistic(
     tasks,
@@ -269,7 +273,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
     setTasks((prev) =>
       prev.map((t) => 
         t.id === taskId 
-          ? { ...t, status: "PUBLISHED", publishedAt: new Date().toISOString() } 
+          ? { ...t, status: "PUBLISHED", publishedAt: new Date() } 
           : t
       )
     );

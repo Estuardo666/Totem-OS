@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
+import { z } from "zod";
 import {
   updateClientSchema,
-  type UpdateClientInput,
 } from "@/schemas/client";
 import type { Client } from "@prisma/client";
 import { updateClient } from "@/actions/client-actions";
@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { ShareReportButton } from "./share-report-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ColorPicker } from "./color-picker";
+import { UploadButton } from "@/utils/uploadthing";
+import { X } from "lucide-react";
 import type { User } from "@prisma/client";
 
 interface EditClientDialogProps {
@@ -53,12 +56,24 @@ export function EditClientDialog({
   onOpenChange,
   users,
 }: EditClientDialogProps) {
+  type UpdateClientFormInput = z.input<typeof updateClientSchema>;
+  const contactEmailsValue = (() => {
+    if (!(client as any).contactEmails) return "";
+    try {
+      const parsed = JSON.parse((client as any).contactEmails) as string[];
+      return Array.isArray(parsed) ? parsed.join(", ") : "";
+    } catch {
+      return "";
+    }
+  })();
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [currentShareToken, setCurrentShareToken] = useState<string | null>(client.shareToken);
+  const [logoUrl, setLogoUrl] = useState<string | null>((client as any).logo || null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const form = useForm<UpdateClientInput>({
+  const form = useForm<UpdateClientFormInput>({
     resolver: zodResolver(updateClientSchema),
     defaultValues: {
       name: client.name,
@@ -67,8 +82,10 @@ export function EditClientDialog({
       monthlyReels: client.monthlyReels ?? 0,
       monthlyFlyers: client.monthlyFlyers ?? 0,
       monthlyRate: client.monthlyRate ?? 0,
+      paymentDay: (client as any).paymentDay ?? null,
       editorId: (client as any).editorId || null,
       communityId: (client as any).communityId || null,
+      contactEmails: contactEmailsValue,
     },
   });
 
@@ -82,16 +99,24 @@ export function EditClientDialog({
         monthlyReels: client.monthlyReels ?? 0,
         monthlyFlyers: client.monthlyFlyers ?? 0,
         monthlyRate: client.monthlyRate ?? 0,
+        paymentDay: (client as any).paymentDay ?? null,
         editorId: (client as any).editorId || null,
         communityId: (client as any).communityId || null,
+        contactEmails: contactEmailsValue,
       });
     }
   }, [client, open, form]);
 
-  const onSubmit = async (data: UpdateClientInput) => {
+  const onSubmit = async (data: UpdateClientFormInput) => {
     startTransition(async () => {
       try {
-        const result = await updateClient(client.id, data);
+        // Include logo URL in the data
+        const clientData = {
+          ...data,
+          logo: logoUrl,
+        };
+        
+        const result = await updateClient(client.id, clientData);
 
         if (result.success) {
           toast({
@@ -203,6 +228,66 @@ export function EditClientDialog({
               )}
             />
 
+            <div>
+              <FormLabel>Logotipo del Cliente</FormLabel>
+              <div className="mt-2">
+                {logoUrl ? (
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-20 h-20 border rounded-lg overflow-hidden bg-white">
+                      <img
+                        src={logoUrl}
+                        alt="Logo del cliente"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLogoUrl(null)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Eliminar
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {isUploading && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                    <UploadButton
+                      endpoint="imageUploader"
+                      onClientUploadComplete={(res) => {
+                        if (res && res.length > 0) {
+                          setLogoUrl(res[0].url);
+                          setIsUploading(false);
+                          toast({
+                            title: "Logo subido",
+                            description: "El logo se ha subido correctamente.",
+                          });
+                        }
+                      }}
+                      onUploadProgress={() => {
+                        setIsUploading(true);
+                      }}
+                      onUploadError={(error: Error) => {
+                        setIsUploading(false);
+                        toast({
+                          variant: "destructive",
+                          title: "Error al subir logo",
+                          description: error.message,
+                        });
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Sube el logotipo del cliente. Se usará en reportes y materiales.
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -251,6 +336,32 @@ export function EditClientDialog({
 
             <FormField
               control={form.control}
+              name="contactEmails"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Correos electrónicos</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="correo1@gmail.com, correo2@gmail.com"
+                      value={typeof field.value === "string" ? field.value : ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                      disabled={isPending}
+                      className="min-h-[90px]"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  <p className="text-xs text-muted-foreground">
+                    Separa con comas o saltos de línea. Solo @gmail.com se sincronizan en Google Calendar.
+                  </p>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="monthlyRate"
               render={({ field }) => (
                 <FormItem>
@@ -270,6 +381,34 @@ export function EditClientDialog({
                   <FormMessage />
                   <p className="text-sm text-muted-foreground">
                     Monto que se cobrará automáticamente cuando se cumpla el plan mensual
+                  </p>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="paymentDay"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Fecha de pago (día del mes)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="31"
+                      placeholder="Ej: 15"
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value ? parseInt(value, 10) : null);
+                      }}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  <p className="text-sm text-muted-foreground">
+                    Día fijo en que se generará la transacción mensual (1-31).
                   </p>
                 </FormItem>
               )}

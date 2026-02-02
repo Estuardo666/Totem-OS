@@ -172,34 +172,42 @@ export function BrandingSettings() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                {isUploadingLight && (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                )}
-                <UploadButton<OurFileRouter>
-                  endpoint="brandLogo"
-                  onClientUploadComplete={(res) => {
-                    if (res && res.length > 0) {
-                      setLogoLightUrl(res[0].url);
+              <div className="flex flex-col gap-2">
+                <div className="text-xs text-red-500 bg-red-50 p-2 rounded">
+                  Debug: logoLightUrl is {logoLightUrl ? 'set' : 'null'}, isUploadingLight: {isUploadingLight.toString()}
+                </div>
+                <div className="flex items-center gap-2">
+                  {isUploadingLight && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                  <UploadButton<OurFileRouter>
+                    endpoint="brandLogo"
+                    onUploadBegin={() => {
+                      console.log("Upload begin");
+                      setIsUploadingLight(true);
+                    }}
+                    onClientUploadComplete={(res) => {
+                      console.log("Upload complete:", res);
+                      if (res && res.length > 0) {
+                        setLogoLightUrl(res[0].url);
+                        setIsUploadingLight(false);
+                        toast({
+                          title: "Logo subido",
+                          description: "El logo modo claro se ha subido correctamente. No olvides guardar los cambios.",
+                        });
+                      }
+                    }}
+                    onUploadError={(error: Error) => {
+                      console.error("Upload error:", error);
                       setIsUploadingLight(false);
                       toast({
-                        title: "Logo subido",
-                        description: "El logo modo claro se ha subido correctamente. No olvides guardar los cambios.",
+                        variant: "destructive",
+                        title: "Error al subir logo",
+                        description: error.message,
                       });
-                    }
-                  }}
-                  onUploadProgress={() => {
-                    setIsUploadingLight(true);
-                  }}
-                  onUploadError={(error: Error) => {
-                    setIsUploadingLight(false);
-                    toast({
-                      variant: "destructive",
-                      title: "Error al subir logo",
-                      description: error.message,
-                    });
-                  }}
-                />
+                    }}
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -237,34 +245,42 @@ export function BrandingSettings() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                {isUploadingDark && (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                )}
-                <UploadButton<OurFileRouter>
-                  endpoint="brandLogo"
-                  onClientUploadComplete={(res) => {
-                    if (res && res.length > 0) {
-                      setLogoDarkUrl(res[0].url);
+              <div className="flex flex-col gap-2">
+                <div className="text-xs text-red-500 bg-red-50 p-2 rounded">
+                  Debug: logoDarkUrl is {logoDarkUrl ? 'set' : 'null'}, isUploadingDark: {isUploadingDark.toString()}
+                </div>
+                <div className="flex items-center gap-2">
+                  {isUploadingDark && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                  <UploadButton<OurFileRouter>
+                    endpoint="brandLogo"
+                    onUploadBegin={() => {
+                      console.log("Upload begin");
+                      setIsUploadingDark(true);
+                    }}
+                    onClientUploadComplete={(res) => {
+                      console.log("Upload complete:", res);
+                      if (res && res.length > 0) {
+                        setLogoDarkUrl(res[0].url);
+                        setIsUploadingDark(false);
+                        toast({
+                          title: "Logo subido",
+                          description: "El logo modo oscuro se ha subido correctamente. No olvides guardar los cambios.",
+                        });
+                      }
+                    }}
+                    onUploadError={(error: Error) => {
+                      console.error("Upload error:", error);
                       setIsUploadingDark(false);
                       toast({
-                        title: "Logo subido",
-                        description: "El logo modo oscuro se ha subido correctamente. No olvides guardar los cambios.",
+                        variant: "destructive",
+                        title: "Error al subir logo",
+                        description: error.message,
                       });
-                    }
-                  }}
-                  onUploadProgress={() => {
-                    setIsUploadingDark(true);
-                  }}
-                  onUploadError={(error: Error) => {
-                    setIsUploadingDark(false);
-                    toast({
-                      variant: "destructive",
-                      title: "Error al subir logo",
-                      description: error.message,
-                    });
-                  }}
-                />
+                    }}
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -305,34 +321,42 @@ export function BrandingSettings() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                {isUploadingBackground && (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                )}
-                <UploadButton<OurFileRouter>
-                  endpoint="loginBackground"
-                  onClientUploadComplete={(res) => {
-                    if (res && res.length > 0) {
-                      setBackgroundUrl(res[0].url);
+              <div className="flex flex-col gap-2">
+                <div className="text-xs text-red-500 bg-red-50 p-2 rounded">
+                  Debug: backgroundUrl is {backgroundUrl ? 'set' : 'null'}, isUploadingBackground: {isUploadingBackground.toString()}
+                </div>
+                <div className="flex items-center gap-2">
+                  {isUploadingBackground && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                  <UploadButton<OurFileRouter>
+                    endpoint="loginBackground"
+                    onUploadBegin={() => {
+                      console.log("Upload begin");
+                      setIsUploadingBackground(true);
+                    }}
+                    onClientUploadComplete={(res) => {
+                      console.log("Upload complete:", res);
+                      if (res && res.length > 0) {
+                        setBackgroundUrl(res[0].url);
+                        setIsUploadingBackground(false);
+                        toast({
+                          title: "Background subido",
+                          description: "El background se ha subido correctamente. No olvides guardar los cambios.",
+                        });
+                      }
+                    }}
+                    onUploadError={(error: Error) => {
+                      console.error("Upload error:", error);
                       setIsUploadingBackground(false);
                       toast({
-                        title: "Background subido",
-                        description: "El background se ha subido correctamente. No olvides guardar los cambios.",
+                        variant: "destructive",
+                        title: "Error al subir background",
+                        description: error.message,
                       });
-                    }
-                  }}
-                  onUploadProgress={() => {
-                    setIsUploadingBackground(true);
-                  }}
-                  onUploadError={(error: Error) => {
-                    setIsUploadingBackground(false);
-                    toast({
-                      variant: "destructive",
-                      title: "Error al subir background",
-                      description: error.message,
-                    });
-                  }}
-                />
+                    }}
+                  />
+                </div>
               </div>
             )}
           </div>

@@ -18,8 +18,9 @@ async function IntegrationsContent() {
 
   const user = userResult.data;
 
-  // Solo ADMIN y EDITOR pueden ver esta página
-  if (user.role !== "ADMIN" && user.role !== "EDITOR") {
+  // Solo ADMIN puede ver esta página
+  const userRole = user.roleLegacy;
+  if (userRole !== "ADMIN") {
     redirect("/");
   }
 

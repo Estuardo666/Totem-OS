@@ -2,18 +2,18 @@
 
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { MapPin, Users, FileText, Mic, ExternalLink, Edit, X, Video, Calendar } from "lucide-react";
+import { MapPin, Users, FileText, Mic, ExternalLink, Edit, X, Video, Calendar, Send, Link as LinkIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/components/ui/use-toast";
 import type { ShootWithRelations } from "@/actions/shooting-actions";
 
 interface ShootingDetailProps {
@@ -31,7 +31,55 @@ export function ShootingDetail({
   onEdit,
   onCancel,
 }: ShootingDetailProps) {
+  const { toast } = useToast();
   if (!shooting) return null;
+
+  const getCalendarShareLink = (link?: string | null) => {
+    if (!link) return null;
+    try {
+      const url = new URL(link);
+      const eid = url.searchParams.get("eid");
+      if (eid) {
+        return `https://calendar.google.com/calendar/event?eid=${eid}`;
+      }
+      return link;
+    } catch {
+      return link;
+    }
+  };
+
+  const calendarShareLink = getCalendarShareLink(shooting.googleEventLink);
+  const startDate = new Date(shooting.startTime);
+  const endDate = new Date(shooting.endTime);
+  const shareText = calendarShareLink
+    ? `Rodaje ${shooting.title} ${format(startDate, "EEEE, d MMM", { locale: es })} • ${format(startDate, "h:mm a", { locale: es })}–${format(endDate, "h:mm a", { locale: es })}\nVer detalles y confirmar asistencia ${calendarShareLink}`
+    : null;
+
+  const handleShareInvitation = async () => {
+    if (!shareText) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: shareText });
+        return;
+      } catch (error) {
+        console.warn("Share cancelado", error);
+      }
+    }
+    await navigator.clipboard.writeText(shareText);
+    toast({
+      title: "Invitación copiada",
+      description: "Puedes pegarla en WhatsApp, correo o donde quieras",
+    });
+  };
+
+  const handleCopyLink = async () => {
+    if (!calendarShareLink) return;
+    await navigator.clipboard.writeText(calendarShareLink);
+    toast({
+      title: "Enlace copiado",
+      description: "El enlace del evento se copió al portapapeles",
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -74,9 +122,18 @@ export function ShootingDetail({
           </div>
 
           {/* Cliente */}
-          <div>
-            <p className="text-sm font-medium mb-1">Cliente</p>
-            <p className="text-sm text-muted-foreground">{shooting.client.name}</p>
+          <div className="flex items-start gap-3">
+            {(shooting.client as any)?.logo && (
+              <img
+                src={(shooting.client as any).logo}
+                alt={shooting.client.name}
+                className="h-6 w-6 object-contain mt-0.5"
+              />
+            )}
+            <div>
+              <p className="text-sm font-medium mb-1">Cliente</p>
+              <p className="text-sm text-muted-foreground">{shooting.client.name}</p>
+            </div>
           </div>
 
           {/* Ubicación */}
@@ -226,6 +283,22 @@ export function ShootingDetail({
                 <Button onClick={onEdit}>
                   <Edit className="mr-2 h-4 w-4" />
                   Editar
+                </Button>
+              </div>
+            </>
+          )}
+
+          {calendarShareLink && (
+            <>
+              <Separator />
+              <div className="flex w-full gap-3">
+                <Button variant="outline" onClick={handleShareInvitation} className="flex-1">
+                  <Send className="mr-2 h-4 w-4" />
+                  Enviar invitación
+                </Button>
+                <Button onClick={handleCopyLink} className="flex-1">
+                  <LinkIcon className="mr-2 h-4 w-4" />
+                  Copiar enlace
                 </Button>
               </div>
             </>
