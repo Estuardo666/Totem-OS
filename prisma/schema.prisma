@@ -25,7 +25,7 @@ generator client {
 
 // 🔧 PRODUCCIÓN/NUBE (PostgreSQL Neon) - ACTIVO
 datasource db {
-  provider  = "postgresql"
+  provider  = "sqlite"
   url       = env("DATABASE_URL") // Connection Pooling
   directUrl = env("DATABASE_URL_UNPOOLED") // Direct connection
 }

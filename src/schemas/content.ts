@@ -54,6 +54,24 @@ export const createContentTaskSchema = contentTaskSchema
   });
 export const updateContentTaskSchema = contentTaskSchema.partial();
 
+const batchTaskItemSchema = createContentTaskSchema.pick({
+  title: true,
+  type: true,
+  clientId: true,
+  scheduledAt: true,
+  dueDate: true,
+  assignedEditorId: true,
+  assignedCommunityId: true,
+  priority: true,
+  status: true,
+});
+
+export const batchCreateContentTasksSchema = z.object({
+  tasks: z
+    .array(batchTaskItemSchema)
+    .min(1, "Debes incluir al menos una tarea para crear en lote"),
+});
+
 export const shootSchema = z.object({
   id: z.string().cuid().optional(),
   startTime: z.union([z.date(), z.string()]).transform((val) => {

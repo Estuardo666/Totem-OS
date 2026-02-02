@@ -26,9 +26,24 @@ export async function generateMetadata(): Promise<Metadata> {
     manifest: "/manifest.json",
     themeColor: "#5f40ff",
     icons: {
-      icon: faviconUrl,
-      shortcut: faviconUrl,
-      apple: faviconUrl,
+      icon: [
+        { url: faviconUrl },
+        { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+        { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+      ],
+      shortcut: [{ url: faviconUrl }],
+      apple: [
+        { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+        { url: faviconUrl },
+      ],
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: "Totem OS",
+    },
+    formatDetection: {
+      telephone: false,
     },
   };
 }
