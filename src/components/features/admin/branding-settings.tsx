@@ -15,9 +15,11 @@ export function BrandingSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [logoLightUrl, setLogoLightUrl] = useState<string | null>(null);
   const [logoDarkUrl, setLogoDarkUrl] = useState<string | null>(null);
+  const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
   const [isUploadingLight, setIsUploadingLight] = useState(false);
   const [isUploadingDark, setIsUploadingDark] = useState(false);
+  const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
   const [isUploadingBackground, setIsUploadingBackground] = useState(false);
   const { toast } = useToast();
 
@@ -37,6 +39,7 @@ export function BrandingSettings() {
         if (brandResult.success && brandResult.data) {
           setLogoLightUrl(brandResult.data.logoLight);
           setLogoDarkUrl(brandResult.data.logoDark);
+          setFaviconUrl(brandResult.data.favicon);
         }
 
         if (backgroundResult.success && backgroundResult.data) {
@@ -71,6 +74,7 @@ export function BrandingSettings() {
         updateBrandSettings({
           logoLight: logoLightUrl || undefined,
           logoDark: logoDarkUrl || undefined,
+          favicon: faviconUrl || undefined,
         }),
         updateLoginBackground({
           backgroundUrl: backgroundUrl || undefined,
@@ -101,11 +105,13 @@ export function BrandingSettings() {
     }
   };
 
-  const handleRemoveLogo = (type: "light" | "dark") => {
+  const handleRemoveLogo = (type: "light" | "dark" | "favicon") => {
     if (type === "light") {
       setLogoLightUrl(null);
-    } else {
+    } else if (type === "dark") {
       setLogoDarkUrl(null);
+    } else if (type === "favicon") {
+      setFaviconUrl(null);
     }
   };
 
@@ -137,8 +143,8 @@ export function BrandingSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Grid de 3 columnas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Grid de 4 columnas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Logo Modo Claro - Columna 1 */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -285,7 +291,74 @@ export function BrandingSettings() {
             )}
           </div>
 
-          {/* Background del Login - Columna 3 */}
+          {/* Favicon - Columna 3 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Favicon</label>
+              {faviconUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveLogo("favicon")}
+                  className="h-8 text-destructive hover:text-destructive"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Eliminar
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Icono del navegador (32x32px recomendado)
+            </p>
+
+            {faviconUrl ? (
+              <div className="flex flex-col gap-3">
+                <div className="relative w-full h-32 border-2 border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
+                  <Image
+                    src={faviconUrl}
+                    alt="Favicon"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  {isUploadingFavicon && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                  <UploadButton<OurFileRouter>
+                    endpoint="favicon"
+                    onUploadBegin={() => {
+                      setIsUploadingFavicon(true);
+                    }}
+                    onClientUploadComplete={(res) => {
+                      if (res && res.length > 0) {
+                        setFaviconUrl(res[0].url);
+                        setIsUploadingFavicon(false);
+                        toast({
+                          title: "Favicon subido",
+                          description: "El favicon se ha subido correctamente. No olvides guardar los cambios.",
+                        });
+                      }
+                    }}
+                    onUploadError={(error: Error) => {
+                      setIsUploadingFavicon(false);
+                      toast({
+                        variant: "destructive",
+                        title: "Error al subir favicon",
+                        description: error.message,
+                      });
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Background del Login - Columna 4 */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium flex items-center gap-2">

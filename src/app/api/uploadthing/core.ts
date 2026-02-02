@@ -30,6 +30,13 @@ export const ourFileRouter = {
       console.log("Archivo:", file.url);
       return { uploadedBy: metadata.userId };
     }),
+  favicon: f({ image: { maxFileSize: "2MB", maxFileCount: 1 } })
+    .middleware(authMiddleware)
+    .onUploadComplete(({ metadata, file }) => {
+      console.log("Favicon upload complete para usuario:", metadata.userId);
+      console.log("Archivo:", file.url);
+      return { uploadedBy: metadata.userId };
+    }),
   loginBackground: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
     .middleware(authMiddleware)
     .onUploadComplete(({ metadata, file }) => {

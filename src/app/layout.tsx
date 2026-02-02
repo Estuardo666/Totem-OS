@@ -10,12 +10,25 @@ import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "@/app/api/uploadthing/core";
 import { ConditionalLayout } from "@/components/layouts/conditional-layout";
 import { GoogleMapsScript } from "@/components/providers/google-maps-script";
+import { getBrandSettings } from "@/actions/admin-actions";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "Totem OS - Sistema Operativo Interno",
-  description: "Sistema operativo interno para agencia de marketing digital",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const brandResult = await getBrandSettings();
+  const faviconUrl = brandResult.success && brandResult.data?.favicon 
+    ? brandResult.data.favicon 
+    : "/favicon.ico";
+
+  return {
+    title: "Totem OS - Sistema Operativo Interno",
+    description: "Sistema operativo interno para agencia de marketing digital",
+    icons: {
+      icon: faviconUrl,
+      shortcut: faviconUrl,
+      apple: faviconUrl,
+    },
+  };
+}
 
 export default function RootLayout({
   children,

@@ -388,6 +388,7 @@ export async function getBrandSettings(): Promise<
   ApiResponse<{
     logoLight: string | null;
     logoDark: string | null;
+    favicon: string | null;
   }>
 > {
   try {
@@ -411,6 +412,7 @@ export async function getBrandSettings(): Promise<
         data: {
           logoLight: null,
           logoDark: null,
+          favicon: null,
         },
       };
     }
@@ -420,6 +422,7 @@ export async function getBrandSettings(): Promise<
       const parsed = JSON.parse(brandSettings.value) as {
         logoLight?: string;
         logoDark?: string;
+        favicon?: string;
       };
 
       return {
@@ -427,6 +430,7 @@ export async function getBrandSettings(): Promise<
         data: {
           logoLight: parsed.logoLight || null,
           logoDark: parsed.logoDark || null,
+          favicon: parsed.favicon || null,
         },
       };
     } catch (parseError) {
@@ -436,6 +440,7 @@ export async function getBrandSettings(): Promise<
         data: {
           logoLight: null,
           logoDark: null,
+          favicon: null,
         },
       };
     }
@@ -453,6 +458,7 @@ export async function getBrandSettings(): Promise<
 const updateBrandSettingsSchema = z.object({
   logoLight: z.string().url().optional(),
   logoDark: z.string().url().optional(),
+  favicon: z.string().url().optional(),
 });
 
 /**
@@ -480,12 +486,13 @@ export async function updateBrandSettings(
       where: { key: "brand_settings" },
     });
 
-    let currentSettings: { logoLight?: string; logoDark?: string } = {};
+    let currentSettings: { logoLight?: string; logoDark?: string; favicon?: string } = {};
     if (existing) {
       try {
         currentSettings = JSON.parse(existing.value) as {
           logoLight?: string;
           logoDark?: string;
+          favicon?: string;
         };
       } catch (parseError) {
         console.error("Error al parsear brand_settings existente:", parseError);
@@ -500,6 +507,9 @@ export async function updateBrandSettings(
       }),
       ...(validatedData.logoDark !== undefined && {
         logoDark: validatedData.logoDark,
+      }),
+      ...(validatedData.favicon !== undefined && {
+        favicon: validatedData.favicon,
       }),
     };
 
