@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { pusherServer } from "@/lib/pusher";
-import { createContentTaskSchema, updateContentTaskSchema, updateTaskMetricsSchema, dynamicTaskMetricsSchema } from "@/schemas/content";
+import { createContentTaskSchema, updateContentTaskSchema, updateTaskMetricsSchema, dynamicTaskMetricsSchema, batchCreateContentTasksSchema } from "@/schemas/content";
 import type { ApiResponse } from "@/types";
 import type { ContentTask, Client, TaskMetrics } from "@prisma/client";
 import { sendNotification } from "./notification-actions";
@@ -80,135 +80,163 @@ export type ContentTaskWithClient = ContentTask & {
   };
 };
 
+async function persistTask(validatedData: ReturnType<typeof createContentTaskSchema.parse>) {
+  const client = await db.client.findUnique({
+    where: { id: validatedData.clientId },
+    select: { editorId: true, communityId: true, name: true },
+  });
+
+  const assignedEditorId = validatedData.assignedEditorId ?? client?.editorId ?? null;
+  const assignedCommunityId = validatedData.assignedCommunityId ?? client?.communityId ?? null;
+
+  const task = await db.contentTask.create({
+    data: {
+      title: validatedData.title,
+      type: validatedData.type,
+      status: validatedData.status ?? "IDEA",
+      dueDate: validatedData.dueDate ?? null,
+      scheduledAt: validatedData.scheduledAt ?? null,
+      clientId: validatedData.clientId,
+      assignedEditorId,
+      assignedCommunityId,
+      assignedAt: (assignedEditorId || assignedCommunityId) ? new Date() : null,
+      shootId: validatedData.shootId ?? null,
+      reviewToken: validatedData.reviewToken ?? null,
+      clientFeedback: validatedData.clientFeedback ?? null,
+      publishedAt: validatedData.publishedAt ?? null,
+      postCopy: validatedData.postCopy ?? null,
+      coverImageUrl: validatedData.coverImageUrl ?? null,
+      audioBriefUrl: validatedData.audioBriefUrl ?? null,
+    },
+  });
+
+  return { task, clientName: client?.name ?? null, assignedEditorId, assignedCommunityId };
+}
+
+async function notifyAndRevalidate({
+  task,
+  clientName,
+  assignedEditorId,
+  assignedCommunityId,
+}: {
+  task: ContentTask;
+  clientName: string | null;
+  assignedEditorId: string | null;
+  assignedCommunityId: string | null;
+}) {
+  const { auth } = await import("@/auth");
+  const session = await auth();
+  const sessionUserId = session?.user?.id;
+
+  if (assignedEditorId && assignedEditorId !== sessionUserId) {
+    try {
+      await sendNotification({
+        userId: assignedEditorId,
+        message: `Se te ha asignado una nueva tarea como Editor: "${task.title}"${clientName ? ` para ${clientName}` : ""}`,
+        type: "ASSIGNED",
+        createdBy: sessionUserId || undefined,
+      });
+    } catch (error) {
+      console.error("❌ Error al enviar notificación de asignación (Editor):", error);
+    }
+  }
+
+  if (assignedCommunityId && assignedCommunityId !== sessionUserId) {
+    try {
+      await sendNotification({
+        userId: assignedCommunityId,
+        message: `Se te ha asignado una nueva tarea como Community: "${task.title}"${clientName ? ` para ${clientName}` : ""}`,
+        type: "ASSIGNED",
+        createdBy: sessionUserId || undefined,
+      });
+    } catch (error) {
+      console.error("❌ Error al enviar notificación de asignación (Community):", error);
+    }
+  }
+
+  revalidatePath("/content");
+  revalidatePath("/content/dashboard");
+  revalidatePath("/");
+
+  try {
+    await pusherServer.trigger("kanban-channel", "update-event", {
+      message: "refresh",
+      taskId: task.id,
+      action: "created",
+      timestamp: new Date().toISOString(),
+    });
+    console.log("✅ Evento Kanban enviado a Pusher correctamente");
+  } catch (error) {
+    console.error("❌ ERROR CRÍTICO AL ENVIAR A PUSHER (Kanban):", error);
+  }
+
+  const affectedUserIds: string[] = [];
+  if (assignedEditorId) affectedUserIds.push(assignedEditorId);
+  if (assignedCommunityId) affectedUserIds.push(assignedCommunityId);
+  if (sessionUserId) affectedUserIds.push(sessionUserId);
+  await triggerDashboardUpdate(affectedUserIds);
+}
+
 /**
  * Server Action para crear una tarea de contenido
- * Valida con Zod, guarda en Prisma y revalida la ruta
  */
 export async function createTask(
   input: unknown
 ): Promise<ApiResponse<ContentTask>> {
   try {
-    // 1. Validar con Zod
     const validatedData = createContentTaskSchema.parse(input);
-
-    // 2. Obtener el cliente para verificar si tiene editorId y communityId asignados
-    const client = await db.client.findUnique({
-      where: { id: validatedData.clientId },
-      select: { editorId: true, communityId: true },
+    const { task, clientName, assignedEditorId, assignedCommunityId } = await persistTask(validatedData);
+    await notifyAndRevalidate({
+      task,
+      clientName,
+      assignedEditorId,
+      assignedCommunityId,
     });
-
-    // 3. Si no se especifica assignedEditorId pero el cliente tiene editorId, asignar automáticamente
-    const assignedEditorId = validatedData.assignedEditorId ?? client?.editorId ?? null;
-    // Si no se especifica assignedCommunityId pero el cliente tiene communityId, asignar automáticamente
-    const assignedCommunityId = validatedData.assignedCommunityId ?? client?.communityId ?? null;
-
-    // 4. Operación de DB
-    const task = await db.contentTask.create({
-      data: {
-        title: validatedData.title,
-        type: validatedData.type,
-        status: validatedData.status ?? "IDEA", // Default a IDEA si no se proporciona
-        dueDate: validatedData.dueDate ?? null,
-        scheduledAt: validatedData.scheduledAt ?? null,
-        clientId: validatedData.clientId,
-        assignedEditorId: assignedEditorId,
-        assignedCommunityId: assignedCommunityId,
-        assignedAt: (assignedEditorId || assignedCommunityId) ? new Date() : null, // Marcar fecha de asignación si se asigna al crear
-        shootId: validatedData.shootId ?? null,
-        // Campos opcionales que no se incluyen en el formulario inicial
-        reviewToken: validatedData.reviewToken ?? null,
-        clientFeedback: validatedData.clientFeedback ?? null,
-        publishedAt: validatedData.publishedAt ?? null,
-        // Recursos creativos
-        postCopy: validatedData.postCopy ?? null,
-        coverImageUrl: validatedData.coverImageUrl ?? null,
-        audioBriefUrl: validatedData.audioBriefUrl ?? null,
-      },
-    });
-
-    // 3. Obtener sesión para notificaciones
-    const { auth } = await import("@/auth");
-    const session = await auth();
-    const sessionUserId = session?.user?.id;
-
-    // 4. Enviar notificaciones si se asignó a alguien
-    const clientInfo = await db.client.findUnique({
-      where: { id: validatedData.clientId },
-      select: { name: true },
-    });
-
-    // Notificar al editor si se asignó
-    if (assignedEditorId && assignedEditorId !== sessionUserId) {
-      try {
-        await sendNotification({
-          userId: assignedEditorId,
-          message: `Se te ha asignado una nueva tarea como Editor: "${task.title}"${clientInfo ? ` para ${clientInfo.name}` : ""}`,
-          type: "ASSIGNED",
-          createdBy: sessionUserId || undefined,
-        });
-      } catch (error) {
-        console.error("❌ Error al enviar notificación de asignación (Editor):", error);
-      }
-    }
-
-    // Notificar al community manager si se asignó
-    if (assignedCommunityId && assignedCommunityId !== sessionUserId) {
-      try {
-        await sendNotification({
-          userId: assignedCommunityId,
-          message: `Se te ha asignado una nueva tarea como Community: "${task.title}"${clientInfo ? ` para ${clientInfo.name}` : ""}`,
-          type: "ASSIGNED",
-          createdBy: sessionUserId || undefined,
-        });
-      } catch (error) {
-        console.error("❌ Error al enviar notificación de asignación (Community):", error);
-      }
-    }
-
-    // 5. Revalidar las rutas
-    revalidatePath("/content");
-    revalidatePath("/content/dashboard");
-    revalidatePath("/"); // Dashboard para actualizar contadores
-
-    // 6. Disparar eventos de Pusher para actualización en tiempo real
-    // Disparar evento para el Kanban
-    try {
-      await pusherServer.trigger('kanban-channel', 'update-event', {
-        message: 'refresh',
-        taskId: task.id,
-        action: 'created',
-        timestamp: new Date().toISOString(),
-      });
-      console.log("✅ Evento Kanban enviado a Pusher correctamente");
-    } catch (error) {
-      console.error("❌ ERROR CRÍTICO AL ENVIAR A PUSHER (Kanban):", error);
-      // No fallar la operación si Pusher falla
-    }
-
-    // Disparar evento para actualizar dashboards de usuarios afectados
-    // Incluir a los usuarios asignados (si existen) y siempre al usuario que creó la tarea
-    const affectedUserIds: string[] = [];
-    if (assignedEditorId) {
-      affectedUserIds.push(assignedEditorId);
-    }
-    if (assignedCommunityId) {
-      affectedUserIds.push(assignedCommunityId);
-    }
-    // Siempre incluir al usuario que creó la tarea para actualizar su contador de tareas pendientes
-    if (sessionUserId) {
-      affectedUserIds.push(sessionUserId);
-    }
-
-    await triggerDashboardUpdate(affectedUserIds);
-
-    // 7. Retornar éxito
     return { success: true, data: task };
   } catch (error) {
-    // 5. Manejar errores
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : "Error al crear tarea",
+      error: error instanceof Error ? error.message : "Error al crear tarea",
+    };
+  }
+}
+
+export async function createTasksBatch(
+  input: unknown
+): Promise<ApiResponse<{ created: ContentTask[]; errors: string[] }>> {
+  try {
+    const { tasks } = batchCreateContentTasksSchema.parse(input);
+    const created: ContentTask[] = [];
+    const errors: string[] = [];
+
+    for (const taskInput of tasks) {
+      try {
+        const { task, clientName, assignedEditorId, assignedCommunityId } = await persistTask(taskInput);
+        created.push(task);
+        await notifyAndRevalidate({
+          task,
+          clientName,
+          assignedEditorId,
+          assignedCommunityId,
+        });
+      } catch (taskError) {
+        errors.push(
+          taskError instanceof Error
+            ? `${taskInput.title}: ${taskError.message}`
+            : `${taskInput.title}: Error desconocido`
+        );
+      }
+    }
+
+    return {
+      success: errors.length === 0,
+      data: { created, errors },
+      error: errors.length ? "Algunas tareas no se pudieron crear" : undefined,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al crear tareas en lote",
     };
   }
 }

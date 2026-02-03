@@ -125,6 +125,7 @@ export const updateShootSchema = shootSchema
 export type ContentTask = z.infer<typeof contentTaskSchema>;
 export type CreateContentTaskInput = z.infer<typeof createContentTaskSchema>;
 export type UpdateContentTaskInput = z.infer<typeof updateContentTaskSchema>;
+export type BatchCreateContentTasksInput = z.infer<typeof batchCreateContentTasksSchema>;
 export type Shoot = z.infer<typeof shootSchema>;
 export type CreateShootInput = z.infer<typeof createShootSchema>;
 export type UpdateShootInput = z.infer<typeof updateShootSchema>;

@@ -5,6 +5,7 @@ import { KanbanBoard } from "./kanban-board";
 import { ContentCalendar } from "./content-calendar";
 import { ContentFilters } from "./content-filters";
 import { MonthlyProgress } from "./monthly-progress";
+import { BulkTaskCreator } from "./bulk-task-creator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { Client, User } from "@prisma/client";
@@ -35,7 +36,8 @@ export function ContentFactoryWrapper({
         onClientChange={setSelectedClientId}
       />
       <MonthlyProgress selectedClientId={selectedClientId} clients={activeClients} />
-      
+      <BulkTaskCreator clients={activeClients} />
+
       <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "kanban" | "calendar")}>
         <TabsList className="grid w-full max-w-[400px] grid-cols-2">
           <TabsTrigger value="kanban">Tablero</TabsTrigger>
