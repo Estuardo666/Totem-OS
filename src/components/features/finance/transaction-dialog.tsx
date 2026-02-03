@@ -54,10 +54,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
 interface TransactionDialogProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  defaultTab?: "income" | "expense" | "honorarios";
 }
 
-export function TransactionDialog({ children }: TransactionDialogProps) {
+const formatDateValue = (value?: Date | string) => {
+  if (!value) return "";
+  if (typeof value === "string") return value.split("T")[0];
+  return value.toISOString().split("T")[0];
+};
+
+export function TransactionDialog({ children, defaultTab }: TransactionDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { data: session } = useSession();
@@ -240,10 +247,21 @@ export function TransactionDialog({ children }: TransactionDialogProps) {
     }
   };
 
+  const resolvedDefaultTab = !isAdmin && defaultTab === "honorarios"
+    ? "expense"
+    : defaultTab ?? (isAdmin ? "income" : "expense");
+
+  const triggerContent = children ?? (
+    <Button variant="outline" className="gap-2">
+      <Plus className="h-4 w-4" />
+      Nueva Transacción
+    </Button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {children}
+        {triggerContent}
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -253,7 +271,7 @@ export function TransactionDialog({ children }: TransactionDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue={isAdmin ? "income" : "expense"} className="w-full">
+        <Tabs defaultValue={resolvedDefaultTab} className="w-full">
           <TabsList className={`grid w-full ${isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
             {isAdmin && <TabsTrigger value="income">Ingreso</TabsTrigger>}
             <TabsTrigger value="expense">Gasto</TabsTrigger>
@@ -356,13 +374,7 @@ export function TransactionDialog({ children }: TransactionDialogProps) {
                       <FormControl>
                         <Input
                           type="date"
-                          value={
-                            field.value
-                              ? typeof field.value === "string"
-                                ? field.value.split("T")[0]
-                                : new Date(field.value).toISOString().split("T")[0]
-                              : ""
-                          }
+                          value={formatDateValue(field.value as Date | string | undefined)}
                           onChange={(e) => {
                             field.onChange(
                               e.target.value ? new Date(e.target.value) : undefined
@@ -529,13 +541,7 @@ export function TransactionDialog({ children }: TransactionDialogProps) {
                       <FormControl>
                         <Input
                           type="date"
-                          value={
-                            field.value
-                              ? typeof field.value === "string"
-                                ? field.value.split("T")[0]
-                                : new Date(field.value).toISOString().split("T")[0]
-                              : new Date().toISOString().split("T")[0]
-                          }
+                          value={formatDateValue(field.value as Date | string | undefined) || new Date().toISOString().split("T")[0]}
                           onChange={(e) => {
                             field.onChange(
                               e.target.value ? new Date(e.target.value) : new Date()

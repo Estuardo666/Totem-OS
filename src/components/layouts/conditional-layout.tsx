@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Navbar } from "@/components/shared/navbar";
+import { FloatingActionBar } from "@/components/shared/floating-action-bar";
 
 export function ConditionalLayout({
   children,
@@ -36,10 +37,11 @@ export function ConditionalLayout({
         </div>
 
         {/* Contenido de la página */}
-        <div className="p-4 md:px-4 md:py-4 overflow-x-hidden">
+        <div className="p-4 pb-24 md:px-4 md:py-4 overflow-x-hidden">
           {children}
         </div>
       </main>
+      <FloatingActionBar />
     </div>
   );
 }

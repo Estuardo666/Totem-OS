@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Video, MapPin, Users, FileText, Plus } from "lucide-react";
@@ -19,7 +19,7 @@ import { ShootingForm } from "./shooting-form";
 import { ShootingDetail } from "./shooting-detail";
 import { cancelShooting } from "@/actions/shooting-actions";
 import { useToast } from "@/components/ui/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ShootWithRelations } from "@/actions/shooting-actions";
 import type { Client } from "@prisma/client";
 
@@ -30,6 +30,7 @@ interface ShootsViewProps {
 
 export function ShootsView({ shootings: initialShootings, clients }: ShootsViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
@@ -38,6 +39,13 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingShooting, setEditingShooting] = useState<ShootWithRelations | null>(null);
+
+  useEffect(() => {
+    if (searchParams?.get("new") === "1") {
+      setEditingShooting(null);
+      setIsFormOpen(true);
+    }
+  }, [searchParams]);
 
   const handleCreated = (shooting: ShootWithRelations) => {
     setSelectedShooting(shooting);
