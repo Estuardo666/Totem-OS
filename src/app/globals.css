@@ -68,6 +68,23 @@
     transition: color 300ms ease, background-color 300ms ease;
   }
 
+  /* Normalizar inputs de fecha/hora en mobile */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"] {
+    @apply h-10 min-w-0 w-full rounded-md border border-input bg-background px-3 text-sm leading-tight;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.6);
+    opacity: 0.8;
+  }
+
   /* Google Sans Font */
   .font-google-sans {
     font-family: "Google Sans", sans-serif;
