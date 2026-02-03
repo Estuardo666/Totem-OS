@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "@/components/ui/toaster";
 import { NextAuthSessionProvider } from "@/components/providers/session-provider";
@@ -24,7 +24,6 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Totem OS - Sistema Operativo Interno",
     description: "Sistema operativo interno para agencia de marketing digital",
     manifest: "/manifest.json",
-    themeColor: "#5f40ff",
     icons: {
       icon: [
         { url: faviconUrl },
@@ -47,6 +46,10 @@ export async function generateMetadata(): Promise<Metadata> {
     },
   };
 }
+
+export const viewport: Viewport = {
+  themeColor: "#5f40ff",
+};
 
 export default function RootLayout({
   children,
