@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Users, Clapperboard, Wallet, LogOut, Wand2, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock } from "lucide-react";
+import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getBrandSettings } from "@/actions/admin-actions";
@@ -54,11 +54,6 @@ const navItems: (NavItem | NavItemWithChildren)[] = [
         href: "/content/shoots",
         label: "Rodajes",
         icon: Video,
-      },
-      {
-        href: "/content/generator",
-        label: "Generador",
-        icon: Wand2,
       },
     ],
   },
@@ -123,7 +118,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
   } | null>(null);
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
     // Inicializar con menús expandidos si alguna de sus rutas está activa
-    const contentFactoryPaths = ["/content/dashboard", "/content", "/content/shoots", "/content/generator"];
+    const contentFactoryPaths = ["/content/dashboard", "/content", "/content/shoots"];
     const isContentFactoryActive = contentFactoryPaths.some(
       (path) => pathname === path || pathname?.startsWith(`${path}/`)
     );
@@ -305,7 +300,10 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
 
       {/* Navegación */}
       <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
-        {navItems.map((item) => {
+        {navItems
+          // Chronos deshabilitado temporalmente (oculto, sin eliminar la definición)
+          .filter((item) => item.href !== "/chronos")
+          .map((item) => {
           const Icon = item.icon;
           const hasChildren = "children" in item && item.children;
           const isExpanded = hasChildren && expandedItems.includes(item.href);

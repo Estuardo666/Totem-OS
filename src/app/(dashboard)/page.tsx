@@ -1,8 +1,7 @@
 import { auth } from "@/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Zap, UserCog, FileText, DollarSign } from "lucide-react";
+import { Zap, FileText, Plus, Video } from "lucide-react";
 import { TodayScheduledTasks } from "@/components/features/content/today-scheduled-tasks";
 import { WorkloadPanel } from "@/components/features/content/workload-panel";
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
@@ -67,24 +66,24 @@ export default async function Home() {
           <CardContent>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
               <Button asChild variant="outline" className="justify-start">
-                <Link href="/admin/users">
-                  <UserCog className="mr-2 h-4 w-4" />
-                  Gestión de Usuarios
+                <Link href="/content">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Ver tareas
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="justify-start">
+                <Link href="/content?bulk=1">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Crear tareas en lote
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="justify-start">
+                <Link href="/content/shoots?new=1">
+                  <Video className="mr-2 h-4 w-4" />
+                  Crear rodaje
                 </Link>
               </Button>
               <TransactionDialog />
-              <Button asChild variant="outline" className="justify-start">
-                <Link href="/finance/settlement">
-                  <DollarSign className="mr-2 h-4 w-4" />
-                  Liquidación de Socios
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-start">
-                <Link href="/clients">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Reportes de Clientes
-                </Link>
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -103,9 +102,17 @@ export default async function Home() {
         </Suspense>
       </div>
 
-      {/* Widget: Notas de Voz Personales */}
-      <div className="mb-6">
-        <VoiceNotesWidget />
+      {/* Bloque de tres tarjetas (30% c/u en desktop): Mis Ideas, Tareas Prioritarias, Últimas Transacciones */}
+      <div className="grid grid-cols-1 gap-4 mb-8 lg:grid-cols-3">
+        <div className="w-full">
+          <VoiceNotesWidget />
+        </div>
+        <Suspense fallback={<CardSkeleton />}>
+          <PriorityTasks />
+        </Suspense>
+        <Suspense fallback={<CardSkeleton />}>
+          <RecentTransactions />
+        </Suspense>
       </div>
 
       {/* Widget: Hoy en Redes */}
@@ -125,19 +132,6 @@ export default async function Home() {
       <Suspense fallback={null}>
         <PendingFeedbacks />
       </Suspense>
-
-      {/* Sección Principal - Dos Columnas con Suspense */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        {/* Izquierda: Tareas Prioritarias */}
-        <Suspense fallback={<CardSkeleton />}>
-          <PriorityTasks />
-        </Suspense>
-
-        {/* Derecha: Últimas Transacciones */}
-        <Suspense fallback={<CardSkeleton />}>
-          <RecentTransactions />
-        </Suspense>
-      </div>
     </div>
   );
 }

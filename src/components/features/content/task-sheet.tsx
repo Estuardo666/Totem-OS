@@ -21,7 +21,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UploadButton } from "@uploadthing/react";
 import NextImage from "next/image";
 import Link from "next/link";
-import { AnimatedModal } from "@/components/ui/animated-modal";
 import {
   Dialog,
   DialogContent,
@@ -561,30 +560,25 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
   return (
     <TooltipProvider>
-      <AnimatedModal
-        open={open}
-        onOpenChange={onOpenChange}
-        title={isNewTask ? "Nueva Tarea" : "Editar Tarea"}
-        description={isNewTask ? "Crea una nueva tarea de contenido." : "Modifica los detalles de la tarea de contenido."}
-        className="w-[93vw] sm:w-[70vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh] p-0"
-      >
-        <div className="pl-12 pr-4 pt-12 pb-4 space-y-1 text-left md:text-center md:px-10 md:pt-10">
-          <h2 className="text-2xl md:text-3xl font-semibold leading-tight">
-            {isNewTask ? "Nueva Tarea" : "Editar Tarea"}
-          </h2>
-          <p className="text-base text-muted-foreground">
-            {isNewTask ? "Crea una nueva tarea de contenido." : "Modifica los detalles de la tarea de contenido."}
-          </p>
-        </div>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-lg sm:w-full translate-x-[-50%] translate-y-[-50%] gap-4 border border-black/5 dark:border-white/10 bg-white dark:bg-background/5 dark:backdrop-blur-xl rounded-[2.5rem] shadow-2xl duration-200 ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] overflow-hidden p-6 transition-[height,max-height] duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height] w-[93vw] sm:w-[70vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh]">
+          <DialogHeader className="pl-12 pr-4 pt-12 pb-4 space-y-1 text-left md:text-center md:px-10 md:pt-10">
+            <DialogTitle className="text-2xl md:text-3xl font-semibold leading-tight">
+              {isNewTask ? "Nueva Tarea" : "Editar Tarea"}
+            </DialogTitle>
+            <DialogDescription className="text-base text-muted-foreground">
+              {isNewTask ? "Crea una nueva tarea de contenido." : "Modifica los detalles de la tarea de contenido."}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="px-4 pb-4 md:px-10 md:pb-10 transition-[height,max-height] duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height]">
+          <div className="px-4 pb-4 md:px-10 md:pb-10 transition-[height,max-height] duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height]">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="details">Detalles</TabsTrigger>
-              <TabsTrigger value="creative">Recursos Creativos</TabsTrigger>
-              <TabsTrigger value="metrics">Métricas</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 h-12 items-center rounded-full bg-muted px-3 py-1 text-muted-foreground">
+              <TabsTrigger value="details" className="rounded-full">Detalles</TabsTrigger>
+              <TabsTrigger value="creative" className="rounded-full">Recursos Creativos</TabsTrigger>
+              <TabsTrigger value="metrics" className="rounded-full">Métricas</TabsTrigger>
             </TabsList>
 
             {/* Tab Detalles */}
@@ -614,7 +608,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                       control={form.control}
                       name="clientId"
                       render={({ field }) => (
-                        <FormItem className="mb-6 space-y-2">
+                        <FormItem className="mb-8 space-y-0.5">
                           <FormLabel className="text-sm font-medium leading-none">Cliente</FormLabel>
                           <Select
                             onValueChange={field.onChange}
@@ -671,12 +665,12 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                   )}
 
                   {/* Fila 1: Tipo y Prioridad */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-7 mt-[17px]">
                     <FormField
                       control={form.control}
                       name="type"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="space-y-0.5">
                           <FormLabel>Tipo de Contenido</FormLabel>
                           <Select
                             onValueChange={field.onChange}
@@ -703,7 +697,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                       control={form.control}
                       name="priority"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="space-y-0.5">
                           <FormLabel>Prioridad</FormLabel>
                           <Select
                             onValueChange={field.onChange}
@@ -738,12 +732,12 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                   </div>
 
                   {/* Fila 2: Editor y Community */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-7">
                     <FormField
                       control={form.control}
                       name="assignedEditorId"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="space-y-0.5">
                           <FormLabel>Editor Asignado</FormLabel>
                           <Select
                             onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
@@ -781,7 +775,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                       control={form.control}
                       name="assignedCommunityId"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="space-y-0.5">
                           <FormLabel>Community Asignado</FormLabel>
                           <Select
                             onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
@@ -819,7 +813,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     control={form.control}
                     name="scheduledAt"
                     render={({ field }) => (
-                      <FormItem className="space-y-2">
+                      <FormItem className="space-y-0.5 mt-4">
                         <FormLabel className={task?.status === "CLIENT_APPROVED" ? "text-orange-600 font-semibold" : ""}>
                           Fecha Programada de Publicación
                           {task?.status === "CLIENT_APPROVED" && (
@@ -1083,10 +1077,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     </div>
                   ) : (
                     <Form {...metricsForm}>
-                      <form 
-                        onSubmit={metricsForm.handleSubmit(onMetricsSubmit)} 
-                        className="space-y-6"
-                      >
+                      <div className="space-y-6">
                         {/* Grid de 2 columnas para inputs de métricas */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {enabledMetrics.map((metricName) => {
@@ -1190,7 +1181,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
                         {/* Botón Guardar Métricas - Estilo corregido */}
                         <Button
-                          type="submit"
+                          type="button"
+                          onClick={() => metricsForm.handleSubmit(onMetricsSubmit)()}
                           disabled={isSavingMetrics}
                           className="w-full bg-user-color text-white hover:bg-user-color/90"
                           style={{ backgroundColor: 'var(--user-color, #2563eb)' }}
@@ -1204,7 +1196,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                             "Guardar Métricas"
                           )}
                         </Button>
-                      </form>
+                      </div>
                     </Form>
                   )}
                 </>
@@ -1285,7 +1277,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
             </form>
           </Form>
         </div>
-      </AnimatedModal>
+      </DialogContent>
+    </Dialog>
     </TooltipProvider>
   );
 }

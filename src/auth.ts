@@ -174,13 +174,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { roleLegacy: true },
+            select: { roleLegacy: true, image: true },
           });
           // Fuerza el valor por defecto "EDITOR" si no existe o es inválido
           if (dbUser && dbUser.roleLegacy) {
             token.role = dbUser.roleLegacy;
           } else {
             token.role = "EDITOR";
+          }
+          // Sincronizar la imagen desde la base de datos
+          if (dbUser?.image) {
+            token.image = dbUser.image;
           }
         } catch (error) {
           console.error("Error al obtener rol del usuario:", error);

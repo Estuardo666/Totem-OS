@@ -58,6 +58,7 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|api/uploadthing).*)"],
+  // Excluir sw.js y assets públicos para evitar redirecciones en el registro del Service Worker
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|sw.js|manifest.json|apple-touch-icon.png|icons/.*|android-chrome-.*|mstile-.*|api/uploadthing).*)"],
 };
 

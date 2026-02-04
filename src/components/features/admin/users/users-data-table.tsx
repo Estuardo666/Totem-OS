@@ -112,7 +112,7 @@ export function UsersDataTable({ users }: UsersDataTableProps) {
               users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
-                    <Avatar className="h-10 w-10">
+                    <Avatar className="h-14 w-14">
                       <AvatarImage src={user.image || undefined} />
                       <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>

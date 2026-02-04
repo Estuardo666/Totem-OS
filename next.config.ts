@@ -18,6 +18,14 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "*.googleusercontent.com"
+      },
+      {
+        protocol: "https",
+        hostname: "*.ggpht.com"
+      },
+      {
+        protocol: "https",
         hostname: "avatars.githubusercontent.com"
       },
       {
@@ -31,6 +39,14 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "52ezad8kea.ufs.sh"
+      },
+      {
+        protocol: "https",
+        hostname: "*.ufs.sh"
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co"
       }
     ],
   },

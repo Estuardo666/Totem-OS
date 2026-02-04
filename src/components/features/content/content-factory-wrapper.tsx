@@ -37,9 +37,9 @@ export function ContentFactoryWrapper({
       <MonthlyProgress selectedClientId={selectedClientId} clients={activeClients} />
 
       <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "kanban" | "calendar")}>
-        <TabsList className="grid w-full max-w-[400px] grid-cols-2">
-          <TabsTrigger value="kanban">Tablero</TabsTrigger>
-          <TabsTrigger value="calendar">Calendario</TabsTrigger>
+        <TabsList className="grid w-full max-w-[400px] grid-cols-2 h-12 items-center rounded-full bg-muted px-3 py-1 text-muted-foreground">
+          <TabsTrigger value="kanban" className="rounded-full">Tablero</TabsTrigger>
+          <TabsTrigger value="calendar" className="rounded-full">Calendario</TabsTrigger>
         </TabsList>
         
         <TabsContent value="kanban" className="mt-4">

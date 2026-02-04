@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Mail } from "lucide-react";
-import type { User } from "@prisma/client";
 import { updateUserAdmin, type UserWithTaskCount } from "@/actions/user.actions";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -185,6 +185,25 @@ export function EditUserDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Foto de perfil */}
+            <div className="flex items-center gap-4">
+              <Avatar className="h-14 w-14">
+                <AvatarImage src={user.image || undefined} alt={user.name || "Avatar"} />
+                <AvatarFallback>
+                  {(user.name || "?")
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Foto de Perfil (opcional)</span>
+                <span>{user.image ? "Imagen cargada" : "Sin imagen"}</span>
+              </div>
+            </div>
+
             <FormField
               control={form.control}
               name="name"

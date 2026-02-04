@@ -89,7 +89,7 @@ export default async function SignUpPage({
   const callbackUrl = params?.callbackUrl || "/";
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 w-full relative">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 w-full relative dark">
       {/* Background dinámico */}
       <Suspense fallback={null}>
         <DynamicBackground />

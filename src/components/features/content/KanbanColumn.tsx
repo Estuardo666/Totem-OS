@@ -19,7 +19,7 @@ export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPubl
   return (
     <div className="flex flex-col min-w-[50vw] sm:min-w-[350px] md:min-w-0 md:w-full md:flex-1 snap-center flex-shrink-0 ml-0 mr-[5px] md:mr-0 px-0 md:px-0 h-full">
       {/* Column Container con fondo y borde - Padding reducido en desktop */}
-      <div className="flex flex-col h-full bg-slate-50/50 dark:bg-slate-90/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-800/70 rounded-xl border border-slate-200 dark:border-slate-600 overflow-hidden">
         {/* Header Sticky - Texto más compacto en desktop */}
         <div className="sticky top-0 z-30 w-full bg-white dark:bg-slate-900 py-2 px-2 md:py-2 md:px-2 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between rounded-t-xl">
           <h3 className="font-semibold text-xs md:text-sm truncate">

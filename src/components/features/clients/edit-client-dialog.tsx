@@ -42,6 +42,7 @@ import { ColorPicker } from "./color-picker";
 import { UploadButton } from "@/utils/uploadthing";
 import { X } from "lucide-react";
 import type { User } from "@prisma/client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface EditClientDialogProps {
   client: Client;
@@ -428,7 +429,7 @@ export function EditClientDialog({
                       disabled={isPending}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="justify-start">
                           <SelectValue placeholder="Selecciona un editor (opcional)" />
                         </SelectTrigger>
                       </FormControl>
@@ -436,7 +437,13 @@ export function EditClientDialog({
                         <SelectItem value="none">Sin asignar</SelectItem>
                         {users.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
-                            {user.name}
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={user.image || undefined} alt={user.name || ""} />
+                                <AvatarFallback>{user.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <span>{user.name}</span>
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -469,7 +476,13 @@ export function EditClientDialog({
                         <SelectItem value="none">Sin asignar</SelectItem>
                         {users.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
-                            {user.name}
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={user.image || undefined} alt={user.name || ""} />
+                                <AvatarFallback>{user.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <span>{user.name}</span>
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>

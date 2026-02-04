@@ -281,10 +281,10 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
         </DialogHeader>
 
         <Tabs defaultValue={resolvedDefaultTab} className="w-full">
-          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
-            {isAdmin && <TabsTrigger value="income">Ingreso</TabsTrigger>}
-            <TabsTrigger value="expense">Gasto</TabsTrigger>
-            {isAdmin && <TabsTrigger value="honorarios">Honorarios</TabsTrigger>}
+          <TabsList className={`grid w-full h-12 items-center rounded-full bg-muted px-3 py-1 text-muted-foreground ${isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
+            {isAdmin && <TabsTrigger value="income" className="rounded-full">Ingreso</TabsTrigger>}
+            <TabsTrigger value="expense" className="rounded-full">Gasto</TabsTrigger>
+            {isAdmin && <TabsTrigger value="honorarios" className="rounded-full">Honorarios</TabsTrigger>}
           </TabsList>
 
           {/* Tab de Ingreso - Solo visible para ADMIN */}

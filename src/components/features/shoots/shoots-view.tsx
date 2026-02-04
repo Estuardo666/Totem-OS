@@ -151,9 +151,9 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
 
       {/* Vistas */}
       <Tabs defaultValue="calendar" className="w-full">
-        <TabsList>
-          <TabsTrigger value="calendar">Calendario</TabsTrigger>
-          <TabsTrigger value="list">Lista</TabsTrigger>
+        <TabsList className="h-12 items-center rounded-full bg-muted px-3 py-1 text-muted-foreground">
+          <TabsTrigger value="calendar" className="rounded-full">Calendario</TabsTrigger>
+          <TabsTrigger value="list" className="rounded-full">Lista</TabsTrigger>
         </TabsList>
 
         <TabsContent value="calendar" className="mt-4">

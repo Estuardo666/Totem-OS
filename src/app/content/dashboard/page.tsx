@@ -64,14 +64,14 @@ export default async function ContentDashboardPage() {
       <ProductionRadar radar={radar} />
 
       {/* Grid Principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Columna Izquierda: Calendario (2/3 del ancho) */}
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+        {/* Columna Izquierda: Calendario amplio pero sin ocupar todo */}
+        <div className="lg:col-span-3">
           <HybridCalendar shoots={calendar.shoots} tasks={calendar.tasks} />
         </div>
 
-        {/* Columna Derecha: Stack vertical (1/3 del ancho) */}
-        <div className="space-y-6">
+        {/* Columna Derecha: Stack vertical más angosta */}
+        <div className="space-y-6 lg:col-span-1 lg:max-w-sm lg:w-full">
           <NextShootWidget shoots={nextShoots} />
           <ClientHealthList semaphore={semaphore} />
           <WarRoom warRoom={warRoom} />

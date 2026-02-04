@@ -44,6 +44,16 @@ export const ourFileRouter = {
       console.log("Archivo:", file.url);
       return { uploadedBy: metadata.userId };
     }),
+  audioUploader: f({
+    "audio/webm": { maxFileSize: "16MB", maxFileCount: 1 },
+    "audio/mpeg": { maxFileSize: "16MB", maxFileCount: 1 },
+  })
+    .middleware(authMiddleware)
+    .onUploadComplete(({ metadata, file }) => {
+      console.log("Audio upload complete para usuario:", metadata.userId);
+      console.log("Archivo:", file.url);
+      return { uploadedBy: metadata.userId };
+    }),
   brandAsset: f({ 
     image: { maxFileSize: "16MB", maxFileCount: 10 },
     pdf: { maxFileSize: "16MB", maxFileCount: 10 },
