@@ -3,7 +3,6 @@
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Navbar } from "@/components/shared/navbar";
-import { FloatingActionBar } from "@/components/shared/floating-action-bar";
 
 export function ConditionalLayout({
   children,
@@ -41,7 +40,6 @@ export function ConditionalLayout({
           {children}
         </div>
       </main>
-      <FloatingActionBar />
     </div>
   );
 }

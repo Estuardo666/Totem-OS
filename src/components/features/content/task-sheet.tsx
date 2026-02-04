@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { subHours } from "date-fns";
-import { Loader2, Trash2, Copy, Check, Image, FileText, Palette, ExternalLink, MessageSquare, Brain, TrendingUp, X, Download, Sparkles } from "lucide-react";
+import { Loader2, Trash2, Copy, Check, X, Download, Sparkles } from "lucide-react";
 import { updateContentTaskSchema, createContentTaskSchema, type UpdateContentTaskInput, type CreateContentTaskInput, updateTaskMetricsSchema, type UpdateTaskMetricsInput } from "@/schemas/content";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import { updateTask, deleteTask, createTask, getTaskMetrics, updateTaskMetrics, getEnabledMetricsForClient } from "@/actions/content-actions";
@@ -15,11 +15,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { UploadButton } from "@uploadthing/react";
 import NextImage from "next/image";
 import Link from "next/link";
-import { Separator } from "@/components/ui/separator";
 import { AudioRecorder } from "@/components/ui/audio-recorder";
 import {
   Sheet,
@@ -536,7 +534,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
     <TooltipProvider>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent 
-          className="w-full sm:max-w-2xl overflow-y-auto"
+          className="w-full sm:max-w-2xl overflow-y-auto px-6"
           onInteractOutside={(e) => e.preventDefault()}
         >
           <SheetHeader>
@@ -570,6 +568,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                             placeholder="Título de la tarea"
                             {...field}
                             disabled={isPending}
+                            className="text-2xl font-medium border-0 border-b-2 border-input rounded-none px-0 pb-2 bg-transparent focus:border-primary"
+                            style={{ fontSize: '1.5rem', fontWeight: '500' }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -700,7 +700,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                                 <SelectItem key={user.id} value={user.id}>
                                   <div className="flex items-center gap-2">
                                     {user.image ? (
-                                      <Image
+                                      <img
                                         src={user.image}
                                         alt={user.name}
                                         width={20}
@@ -745,7 +745,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                                 <SelectItem key={user.id} value={user.id}>
                                   <div className="flex items-center gap-2">
                                     {user.image ? (
-                                      <Image
+                                      <img
                                         src={user.image}
                                         alt={user.name}
                                         width={20}

@@ -295,7 +295,7 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto px-6">
         <SheetHeader>
           <SheetTitle>{shooting ? "Editar Rodaje" : "Nuevo Rodaje"}</SheetTitle>
           <SheetDescription>

@@ -173,7 +173,7 @@ export function ShootingDetail({
                 {shooting.crew.map((member) => (
                   <div
                     key={member.id}
-                    className="flex items-center gap-2 p-2 rounded-lg border bg-background"
+                    className="flex items-center gap-2 p-2 rounded-lg bg-background"
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={member.image || undefined} />
