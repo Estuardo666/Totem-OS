@@ -1,7 +1,6 @@
-const CACHE_NAME = "totem-os-v1";
+const CACHE_NAME = "totem-os-v2";
 const STATIC_ASSETS = [
   "/",
-  "/clients",
   "/content",
   "/finance",
   "/manifest.json",
@@ -37,6 +36,25 @@ self.addEventListener("fetch", (event) => {
 
   const protocol = new URL(event.request.url).protocol;
   if (!SUPPORTED_PROTOCOLS.includes(protocol)) {
+    return;
+  }
+
+  const isHtmlRequest = event.request.headers.get("accept")?.includes("text/html");
+  const isClientsRoute = new URL(event.request.url).pathname.startsWith("/clients");
+
+  if (isHtmlRequest || isClientsRoute) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          return response;
+        })
+        .catch(async () => {
+          const cachedResponse = await caches.match(event.request);
+          return cachedResponse ?? fetch(event.request);
+        })
+    );
     return;
   }
 
