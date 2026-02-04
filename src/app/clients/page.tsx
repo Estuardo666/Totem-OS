@@ -49,7 +49,7 @@ export default async function ClientsPage() {
         )}
       </div>
 
-      <ClientList clients={result.data} />
+      <ClientList clients={result.data} isAdmin={isAdmin} />
     </div>
   );
 }

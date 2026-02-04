@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useMemo, useState } from "react";
 import type { Client } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
@@ -14,7 +15,8 @@ import {
   CheckCircle2,
   Clock,
   Film,
-  Eye
+  Eye,
+  Search
 } from "lucide-react";
 import {
   Tooltip,
@@ -22,7 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useSession } from "next-auth/react";
+import { Input } from "@/components/ui/input";
 
 interface ClientListProps {
   clients: Array<Client & {
@@ -36,6 +38,7 @@ interface ClientListProps {
     lastPostTask?: { title: string; postCopy?: string };
     nextShootDetails?: { title: string; address?: string };
   }>;
+  isAdmin: boolean;
 }
 
 // Helper para convertir hex a rgba con opacidad
@@ -51,11 +54,20 @@ function formatDateNatural(date: Date): string {
   return format(date, "d 'de' MMMM 'a las' HH:mm", { locale: es });
 }
 
-export function ClientList({ clients }: ClientListProps) {
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "ADMIN";
+export function ClientList({ clients, isAdmin }: ClientListProps) {
+  const [query, setQuery] = useState("");
 
-  if (clients.length === 0) {
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredClients = useMemo(() => {
+    if (!normalizedQuery) return clients;
+    return clients.filter((client) =>
+      client.name.toLowerCase().startsWith(normalizedQuery)
+    );
+  }, [clients, normalizedQuery]);
+
+  const listIsEmpty = clients.length === 0;
+
+  if (listIsEmpty) {
     return (
       <div className="flex flex-col items-center justify-center py-12 rounded-lg border border-dashed">
         <p className="text-muted-foreground text-center text-lg">
@@ -70,17 +82,40 @@ export function ClientList({ clients }: ClientListProps) {
 
   return (
     <TooltipProvider>
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {clients.map((client, index) => {
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="w-full md:w-96 relative">
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar cliente..."
+            className="pl-10"
+          />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Mostrando {filteredClients.length} de {clients.length} clientes
+        </p>
+      </div>
+
+      {filteredClients.length === 0 ? (
+        <div className="rounded-lg border border-dashed py-12 text-center">
+          <p className="text-muted-foreground">
+            No encontramos clientes que comiencen con “{query}”.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {filteredClients.map((client, index) => {
         const userColor = client.color || "#000000";
         const monthlyReels = client.monthlyReels || 0;
         const monthlyFlyers = client.monthlyFlyers || 0;
         
         const clientCard = (
           <div
-            className={`h-full transition-all rounded-lg p-6 border-none ${isAdmin ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+            className={`h-full transition-all rounded-lg p-6 border-none ${isAdmin ? 'cursor-pointer' : 'cursor-not-allowed'} animate-fade-in`}
             style={{
               backgroundColor: hexToRgba(userColor, 0.05),
+              animationDelay: `${Math.min(index, 6) * 50}ms`,
             }}
             onMouseEnter={(e) => {
               if (isAdmin) {
@@ -268,6 +303,7 @@ export function ClientList({ clients }: ClientListProps) {
         );
       })}
       </div>
+      )}
     </TooltipProvider>
   );
 }

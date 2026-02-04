@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Edit, FileText, Bell, Trash2 } from "lucide-react";
+import Image from "next/image";
 import { EditClientDialog } from "./edit-client-dialog";
 import { ShareReportButton } from "./share-report-button";
 import { deleteClient } from "@/actions/client-actions";
@@ -23,6 +24,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+// Helper para convertir hex a rgba (copiado de client-list.tsx)
+const hexToRgba = (hex: string, alpha: number) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 interface ClientHeaderProps {
   client: Client & { hasPendingFeedback?: boolean };
@@ -103,6 +112,25 @@ export function ClientHeader({ client, users }: ClientHeaderProps) {
       <CardContent className="flex flex-col gap-4 p-4 md:p-6 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
+            {/* Logo/Avatar */}
+            <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-muted/50 flex items-center justify-center flex-shrink-0">
+              {client.logo ? (
+                <Image
+                  src={client.logo}
+                  alt={client.name}
+                  fill
+                  className="object-cover"
+                  sizes="48px"
+                />
+              ) : (
+                <div 
+                  className="h-full w-full rounded-lg flex items-center justify-center text-white font-bold text-xl"
+                  style={{ backgroundColor: hexToRgba(client.color || "#000000", 0.2) }}
+                >
+                  {client.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
             <h1 className="text-3xl md:text-4xl font-bold">{client.name}</h1>
             {client.hasPendingFeedback && (
               <div className="relative">
