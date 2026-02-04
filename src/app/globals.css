@@ -83,6 +83,24 @@
     appearance: none;
   }
 
+  /* Prevenir zoom en inputs de mobile - font-size mínimo 16px */
+  @media (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="search"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    input[type="month"],
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="time"]::-webkit-calendar-picker-indicator,
   input[type="datetime-local"]::-webkit-calendar-picker-indicator {

@@ -238,11 +238,11 @@ export class GoogleCalendarService {
         location: shootData.address || undefined,
         start: {
           dateTime: shootData.startTime.toISOString(),
-          timeZone: 'America/Guatemala', // Ajustar según tu zona horaria
+          timeZone: 'America/Guayaquil', // Zona horaria de Ecuador
         },
         end: {
           dateTime: shootData.endTime.toISOString(),
-          timeZone: 'America/Guatemala',
+          timeZone: 'America/Guayaquil',
         },
         attendees: attendees.length > 0 ? attendees : undefined,
         reminders: {
@@ -324,11 +324,11 @@ export class GoogleCalendarService {
         location: shootData.address || undefined,
         start: {
           dateTime: shootData.startTime.toISOString(),
-          timeZone: 'America/Guatemala',
+          timeZone: 'America/Guayaquil',
         },
         end: {
           dateTime: shootData.endTime.toISOString(),
-          timeZone: 'America/Guatemala',
+          timeZone: 'America/Guayaquil',
         },
         attendees: attendees.length > 0 ? attendees : undefined,
       };

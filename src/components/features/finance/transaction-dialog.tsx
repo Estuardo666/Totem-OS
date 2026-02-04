@@ -58,6 +58,15 @@ interface TransactionDialogProps {
   defaultTab?: "income" | "expense" | "honorarios";
 }
 
+// Función helper para obtener la fecha actual en zona horaria de Ecuador (America/Guayaquil)
+const getCurrentDateInEcuador = (): Date => {
+  const now = new Date();
+  // Obtener la fecha actual en zona horaria de Ecuador
+  const ecuadorDateString = now.toLocaleString("en-US", { timeZone: "America/Guayaquil" });
+  const ecuadorDate = new Date(ecuadorDateString);
+  return ecuadorDate;
+};
+
 const formatDateValue = (value?: Date | string) => {
   if (!value) return "";
   if (typeof value === "string") return value.split("T")[0];
@@ -95,7 +104,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
       description: "",
       amount: 0,
       category: "OTROS",
-      date: new Date(),
+      date: getCurrentDateInEcuador(),
       paidByUserId: undefined,
       paidByUserIds: [],
       clientId: undefined,
@@ -541,10 +550,10 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                       <FormControl>
                         <Input
                           type="date"
-                          value={formatDateValue(field.value as Date | string | undefined) || new Date().toISOString().split("T")[0]}
+                          value={formatDateValue(field.value as Date | string | undefined) || formatDateValue(getCurrentDateInEcuador())}
                           onChange={(e) => {
                             field.onChange(
-                              e.target.value ? new Date(e.target.value) : new Date()
+                              e.target.value ? new Date(e.target.value) : getCurrentDateInEcuador()
                             );
                           }}
                           disabled={isSubmitting}

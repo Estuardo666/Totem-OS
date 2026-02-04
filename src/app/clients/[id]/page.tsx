@@ -253,18 +253,20 @@ export default async function ClientDetailPage({
         </TabsContent>
 
         <TabsContent value="summary" className="mt-6 space-y-6">
-          <ContractFulfillment
-            clientId={client.id}
-            monthlyReels={client.monthlyReels}
-            monthlyFlyers={client.monthlyFlyers}
-          />
-          
-          {profitabilityResult.success && profitabilityResult.data && (
-            <ClientProfitability
-              income={profitabilityResult.data.income}
-              expenses={profitabilityResult.data.expenses}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ContractFulfillment
+              clientId={client.id}
+              monthlyReels={client.monthlyReels}
+              monthlyFlyers={client.monthlyFlyers}
             />
-          )}
+            
+            {profitabilityResult.success && profitabilityResult.data && (
+              <ClientProfitability
+                income={profitabilityResult.data.income}
+                expenses={profitabilityResult.data.expenses}
+              />
+            )}
+          </div>
 
           {/* Eficiencia Mensual */}
           {monthlyEngagement > 0 && client.monthlyRate > 0 && (
