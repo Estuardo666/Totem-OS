@@ -24,17 +24,17 @@ generator client {
 }
 
 // 🔧 PRODUCCIÓN/NUBE (PostgreSQL Neon) - ACTIVO
-datasource db {
+  datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL") // Connection Pooling
   directUrl = env("DATABASE_URL_UNPOOLED") // Direct connection
 }
 
 // 🔧 DESARROLLO LOCAL (SQLite) - COMENTADO
-// datasource db {
-//   provider = "sqlite"
-//   url      = env("DATABASE_URL")
-// }
+ //datasource db {
+ //  provider = "sqlite"
+ // url      = env("DATABASE_URL")
+//}
 
 // USUARIOS Y EQUIPO (compatible con Auth.js)
 model User {
