@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, MessageSquare, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,6 +43,17 @@ export function ReportApprovalSection({
   const [comment, setComment] = useState(existingComment || "");
   const [approved, setApproved] = useState(isApproved);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [approvalDateText, setApprovalDateText] = useState("");
+
+  useEffect(() => {
+    setApprovalDateText(
+      new Date().toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    );
+  }, []);
 
   const handleApprove = async () => {
     setIsApproving(true);
@@ -135,11 +146,7 @@ export function ReportApprovalSection({
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   Has aprobado este reporte el{" "}
-                  {new Date().toLocaleDateString("es-ES", {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  {approvalDateText}
                 </p>
               </div>
             ) : (

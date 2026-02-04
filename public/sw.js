@@ -30,8 +30,15 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+const SUPPORTED_PROTOCOLS = ["http:", "https:"];
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  const protocol = new URL(event.request.url).protocol;
+  if (!SUPPORTED_PROTOCOLS.includes(protocol)) {
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
