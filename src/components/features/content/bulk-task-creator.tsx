@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useTransition } from "react";
 import type { Client } from "@prisma/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +12,8 @@ import type { ContentTaskType } from "@/types";
 
 interface BulkTaskCreatorProps {
   clients: Client[];
+  variant?: "card" | "dialog";
+  showHeader?: boolean;
 }
 
 interface ParsedTaskRow {
@@ -35,6 +36,17 @@ const TYPE_LABELS: Record<string, ContentTaskType> = {
   FLYERS: "FLYER",
   STORY: "STORY",
   STORIES: "STORY",
+};
+
+const capitalizeFirst = (value?: string | null) => {
+  if (!value) return value ?? "";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+};
+
+const formatTypeLabel = (value?: string | null) => {
+  if (!value) return "-";
+  const lower = value.toString().toLowerCase();
+  return capitalizeFirst(lower);
 };
 
 const MONTH_LABELS: Record<string, number> = {
@@ -155,11 +167,14 @@ function parseDate(input: string | undefined): { scheduled: Date | undefined; du
   return { scheduled: undefined, due: undefined, error: "Formato de fecha inválido" };
 }
 
-export function BulkTaskCreator({ clients }: BulkTaskCreatorProps) {
+export function BulkTaskCreator({ clients, variant = "dialog", showHeader = false }: BulkTaskCreatorProps) {
   const [rawInput, setRawInput] = useState("");
   const [parsedRows, setParsedRows] = useState<ParsedTaskRow[]>([]);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+
+  const isDialog = variant === "dialog";
+  const shouldShowHeader = !isDialog && showHeader;
 
   const clientByName = useMemo(() => {
     const map = new Map<string, Client>();
@@ -169,7 +184,27 @@ export function BulkTaskCreator({ clients }: BulkTaskCreatorProps) {
     return map;
   }, [clients]);
 
+  const clientById = useMemo(() => {
+    const map = new Map<string, Client>();
+    clients.forEach((client) => {
+      map.set(client.id, client);
+    });
+    return map;
+  }, [clients]);
+
   const validRows = useMemo(() => parsedRows.filter((row) => !row.error && row.clientId && row.type && row.title && row.scheduledAt), [parsedRows]);
+
+  const currentClient = useMemo(() => {
+    const firstWithClient = parsedRows.find((row) => row.clientId);
+    if (!firstWithClient?.clientId) return null;
+    const client = clientById.get(firstWithClient.clientId);
+    return {
+      name: client?.name ?? firstWithClient.clientName,
+      logo: client?.logo,
+      color: client?.color,
+      initial: (client?.name ?? firstWithClient.clientName ?? "?").charAt(0).toUpperCase(),
+    };
+  }, [clientById, parsedRows]);
 
   const hasRows = parsedRows.length > 0;
 
@@ -255,7 +290,7 @@ export function BulkTaskCreator({ clients }: BulkTaskCreatorProps) {
       try {
         const payload = {
           tasks: validRows.map((row) => ({
-            title: row.title!,
+            title: capitalizeFirst(row.title!),
             type: row.type!,
             clientId: row.clientId!,
             scheduledAt: row.scheduledAt?.toISOString(),
@@ -292,60 +327,86 @@ export function BulkTaskCreator({ clients }: BulkTaskCreatorProps) {
     });
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Crear tareas en lote</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+  const body = (
+    <div className={isDialog ? "space-y-2.5" : "space-y-4"}>
+      <div className={isDialog ? "space-y-2.5" : "space-y-3"}>
+        <Textarea
+          value={rawInput}
+          onChange={(event) => setRawInput(event.target.value)}
+          placeholder={`Ejemplo:\nGermania\nReel,Nombre de la tarea, 03/02\nFlyer,Otra tarea, 15-02\nStory,Nueva campaña, 12 de febrero`}
+          className="min-h-[160px] bg-white border border-input focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0"
+        />
         <div className="space-y-2">
-          <Textarea
-            value={rawInput}
-            onChange={(event) => setRawInput(event.target.value)}
-            placeholder={`Ejemplo:\nGermania\nReel,Nombre de la tarea, 03/02\nFlyer,Otra tarea, 15-02\nStory,Nueva campaña, 12 de febrero`}
-            className="min-h-[160px]"
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={handleParse} disabled={isPending}>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleParse}
+              disabled={isPending}
+              className="w-full border-muted-foreground/30 hover:border-muted-foreground/40 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0"
+            >
               Analizar texto
             </Button>
-            <Button type="button" onClick={handleCreate} disabled={!validRows.length || isPending}>
+            <Button type="button" onClick={handleCreate} disabled={!hasRows || isPending} className="w-full">
               {isPending ? "Creando..." : `Crear ${validRows.length} tareas`}
             </Button>
-            {hasRows && (
-              <Badge variant="secondary">{validRows.length} válidas / {parsedRows.length} totales</Badge>
-            )}
           </div>
+          {hasRows && (
+            <Badge variant="secondary" className="w-full justify-center">
+              {validRows.length} válidas / {parsedRows.length} totales
+            </Badge>
+          )}
         </div>
+      </div>
 
-        {hasRows && (
-          <div className="overflow-x-auto">
-            <Table>
+      {hasRows && (
+        <div className="rounded-lg border bg-card">
+          <div className="max-h-[320px] overflow-y-auto overflow-x-hidden px-3 md:px-6">
+            {currentClient && (
+              <div className="flex flex-col items-center gap-2 px-3 py-3 text-center">
+                {currentClient.logo ? (
+                  <img src={currentClient.logo} alt={currentClient.name} className="h-9 w-9 rounded-lg object-cover" />
+                ) : (
+                  <div
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold uppercase text-white"
+                    style={{ backgroundColor: currentClient.color || "var(--primary)" }}
+                  >
+                    {currentClient.initial}
+                  </div>
+                )}
+                <div className="text-base font-semibold leading-tight">{currentClient.name}</div>
+              </div>
+            )}
+            <Table className="w-full text-sm md:text-base table-fixed">
               <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Título</TableHead>
-                  <TableHead>Fecha programada</TableHead>
-                  <TableHead>Estado</TableHead>
+                <TableRow className="[&_th]:py-0.5 [&_th]:px-1">
+                  <TableHead className="w-[18%] pl-1">Tipo</TableHead>
+                  <TableHead className="w-[42%]">Título</TableHead>
+                  <TableHead className="w-[20%]">Fecha</TableHead>
+                  <TableHead className="w-[20%]">Estado</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {parsedRows.map((row, index) => (
-                  <TableRow key={`${row.rawLine}-${index}`} className={row.error ? "bg-destructive/5" : ""}>
-                    <TableCell>{row.clientName}</TableCell>
-                    <TableCell>{row.type ?? row.typeLabel ?? "-"}</TableCell>
-                    <TableCell>{row.title ?? "-"}</TableCell>
-                    <TableCell>
+                  <TableRow
+                    key={`${row.rawLine}-${index}`}
+                    className={`${row.error ? "bg-destructive/5" : ""} animate-fade-in [&_td]:py-0.5 [&_td]:px-1`}
+                    style={{ animationDelay: `${index * 40}ms` }}
+                  >
+                    <TableCell className="whitespace-nowrap text-xs md:text-sm pl-2">{formatTypeLabel(row.type ?? row.typeLabel)}</TableCell>
+                    <TableCell className="whitespace-normal break-words font-semibold text-sm md:text-base leading-tight max-h-[2.6em] overflow-hidden" title={row.title ?? undefined}>
+                      {capitalizeFirst(row.title) ?? "-"}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-xs md:text-sm text-muted-foreground">
                       {row.scheduledAt
-                        ? row.scheduledAt.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" }) + " 20:00"
+                        ? row.scheduledAt.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" })
                         : "-"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap text-xs md:text-sm">
                       {row.error ? (
                         <Badge variant="destructive">{row.error}</Badge>
                       ) : (
-                        <Badge variant="secondary">Listo</Badge>
+                        <Badge className="bg-emerald-100 text-emerald-700">Listo</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -353,8 +414,28 @@ export function BulkTaskCreator({ clients }: BulkTaskCreatorProps) {
               </TableBody>
             </Table>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
+  );
+
+  if (isDialog) {
+    return (
+      <div className="space-y-3">
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border bg-card p-4 space-y-4">
+      {shouldShowHeader && (
+        <div className="space-y-1">
+          <h3 className="text-2xl font-semibold leading-none tracking-tight">Crear tareas en lote</h3>
+          <p className="text-sm text-muted-foreground">Pega un listado de tareas para crear múltiples tareas a la vez</p>
+        </div>
+      )}
+      {body}
+    </div>
   );
 }

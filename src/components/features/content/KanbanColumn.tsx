@@ -2,7 +2,7 @@
 
 import { Droppable, DroppableProvided, DroppableStateSnapshot } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { TaskCard } from "./TaskCard";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { ContentTaskStatus } from "@/types";
@@ -17,7 +17,7 @@ interface KanbanColumnProps {
 
 export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPublish }: KanbanColumnProps) {
   return (
-    <div className="flex flex-col min-w-[85vw] sm:min-w-[350px] md:min-w-0 md:w-full md:flex-1 snap-center flex-shrink-0 first:ml-4 last:mr-4 px-2 md:px-0 h-full">
+    <div className="flex flex-col min-w-[50vw] sm:min-w-[350px] md:min-w-0 md:w-full md:flex-1 snap-center flex-shrink-0 ml-0 mr-[5px] md:mr-0 px-0 md:px-0 h-full">
       {/* Column Container con fondo y borde - Padding reducido en desktop */}
       <div className="flex flex-col h-full bg-slate-50/50 dark:bg-slate-90/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* Header Sticky - Texto más compacto en desktop */}

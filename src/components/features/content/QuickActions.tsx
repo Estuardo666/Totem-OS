@@ -1,10 +1,16 @@
-"use client";
-
-import { Button } from "@/components/ui/button";
-import { Plus, Film, Layout, Video, Wand2 } from "lucide-react";
 import Link from "next/link";
+import type { Client } from "@prisma/client";
+import { Plus, Layout, Video } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BulkTaskDialog } from "./bulk-task-dialog";
 
-export function QuickActions() {
+interface QuickActionsProps {
+  clients: Client[];
+}
+
+export function QuickActions({ clients }: QuickActionsProps) {
+  const activeClients = clients.filter((client) => client.status !== "INACTIVE");
+
   return (
     <div className="flex flex-wrap gap-2">
       <Link href="/content">
@@ -25,12 +31,12 @@ export function QuickActions() {
           Nueva Tarea
         </Button>
       </Link>
-      <Link href="/content/generator">
-        <Button variant="outline" size="sm">
-          <Wand2 className="w-4 h-4 mr-2" />
-          Generador
-        </Button>
-      </Link>
+      <BulkTaskDialog
+        clients={activeClients}
+        label="Crear tareas en lote"
+        buttonVariant="outline"
+        buttonSize="sm"
+      />
     </div>
   );
 }

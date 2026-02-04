@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +12,7 @@ import type { ContentTaskWithClient } from "@/actions/content-actions";
 import { updateTask, deleteTask, createTask, getTaskMetrics, updateTaskMetrics, getEnabledMetricsForClient } from "@/actions/content-actions";
 import type { TaskMetrics } from "@prisma/client";
 import type { UserWithTaskCount } from "@/actions/user.actions";
+import type { ContentTaskStatus, ContentTaskType } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,12 +22,14 @@ import NextImage from "next/image";
 import Link from "next/link";
 import { AudioRecorder } from "@/components/ui/audio-recorder";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -42,19 +46,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   Tabs,
+  TabsContent,
   TabsList,
   TabsTrigger,
-  TabsContent,
 } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { calculateBrandLoyalty, calculateInvestmentEfficiency, formatCurrency } from "@/lib/metrics-calculations";
@@ -67,12 +62,90 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+const CONTENT_TASK_TYPES: readonly ContentTaskType[] = ["REEL", "FLYER", "STORY"];
+const CONTENT_TASK_STATUSES: readonly ContentTaskStatus[] = [
+  "IDEA",
+  "RECORDED",
+  "EDITING",
+  "REVIEW_INTERNAL",
+  "REVIEW_CLIENT",
+  "CLIENT_APPROVED",
+  "APPROVED",
+  "PUBLISHED",
+];
+const CONTENT_TASK_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
+
+type CreateTaskFormValues = z.input<typeof createContentTaskSchema>;
+type UpdateTaskFormValues = z.input<typeof updateContentTaskSchema>;
+type TaskFormValues = CreateTaskFormValues | UpdateTaskFormValues;
+type TaskPriority = TaskFormValues["priority"];
+
+const isContentTaskType = (value: unknown): value is ContentTaskType =>
+  typeof value === "string" && CONTENT_TASK_TYPES.includes(value as ContentTaskType);
+
+const isContentTaskStatus = (value: unknown): value is ContentTaskStatus =>
+  typeof value === "string" && CONTENT_TASK_STATUSES.includes(value as ContentTaskStatus);
+
+const isTaskPriority = (value: unknown): value is TaskPriority =>
+  typeof value === "string" && (CONTENT_TASK_PRIORITIES as readonly string[]).includes(value);
+
+const ensureTaskType = (value?: string | null): ContentTaskType =>
+  isContentTaskType(value) ? value : "REEL";
+
+const ensureTaskStatus = (value?: string | null): ContentTaskStatus =>
+  isContentTaskStatus(value) ? value : "IDEA";
+
+const ensureTaskPriority = (value?: string | null): TaskPriority =>
+  isTaskPriority(value) ? (value as TaskPriority) : "MEDIUM";
+
+const formatDateForInput = (value?: Date | string | null) => {
+  if (!value) return undefined;
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date?.getTime())) return undefined;
+  return date.toISOString().split("T")[0];
+};
+
+const formatDateTimeForInput = (value?: Date | string | null) => {
+  if (!value) return undefined;
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date?.getTime())) return undefined;
+  return date.toISOString().slice(0, 16);
+};
+
+const buildTaskFormValues = (
+  currentTask: ContentTaskWithClient | null,
+  initialScheduledAt?: Date | string
+): TaskFormValues => {
+  const scheduledValue = currentTask
+    ? formatDateTimeForInput(currentTask.scheduledAt)
+    : formatDateTimeForInput(initialScheduledAt);
+
+  return {
+    title: currentTask?.title ?? "",
+    type: currentTask ? ensureTaskType(currentTask.type) : "REEL",
+    status: currentTask ? ensureTaskStatus(currentTask.status) : "IDEA",
+    priority: ensureTaskPriority((currentTask as any)?.priority),
+    clientId: currentTask?.clientId ?? "",
+    assignedEditorId: currentTask?.assignedEditorId ?? undefined,
+    assignedCommunityId: currentTask?.assignedCommunityId ?? undefined,
+    dueDate: formatDateForInput(currentTask?.dueDate) ?? undefined,
+    scheduledAt: scheduledValue,
+    postCopy: currentTask?.postCopy ?? undefined,
+    coverImageUrl: currentTask?.coverImageUrl ?? undefined,
+    audioBriefUrl: currentTask?.audioBriefUrl ?? undefined,
+    shootId: undefined,
+    reviewToken: undefined,
+    clientFeedback: undefined,
+    publishedAt: undefined,
+  } as TaskFormValues;
+};
+
 interface TaskSheetProps {
   task: ContentTaskWithClient | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   users: UserWithTaskCount[];
-  clients?: Array<{ id: string; name: string }>;
+  clients?: Array<{ id: string; name: string; logo?: string | null; color?: string | null }>;
   initialScheduledAt?: Date | string;
 }
 
@@ -92,30 +165,9 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
   const isNewTask = !task;
   
-  const form = useForm<UpdateContentTaskInput | CreateContentTaskInput>({
+  const form = useForm<TaskFormValues>({
     resolver: zodResolver(isNewTask ? createContentTaskSchema : updateContentTaskSchema),
-    defaultValues: {
-      title: task?.title || "",
-      type: task?.type || "REEL",
-      status: task?.status || "IDEA",
-      clientId: task?.clientId || "",
-      assignedEditorId: task?.assignedEditorId || undefined,
-      assignedCommunityId: task?.assignedCommunityId || undefined,
-      priority: (task as any)?.priority || "MEDIUM",
-      dueDate: task?.dueDate
-        ? typeof task.dueDate === "string"
-          ? task.dueDate.split("T")[0]
-          : new Date(task.dueDate).toISOString().split("T")[0]
-        : undefined,
-      scheduledAt: task?.scheduledAt
-        ? typeof task.scheduledAt === "string"
-          ? new Date(task.scheduledAt).toISOString().slice(0, 16)
-          : new Date(task.scheduledAt).toISOString().slice(0, 16)
-        : undefined,
-      postCopy: task?.postCopy || undefined,
-      coverImageUrl: task?.coverImageUrl || undefined,
-      audioBriefUrl: task?.audioBriefUrl || undefined,
-    },
+    defaultValues: buildTaskFormValues(task, initialScheduledAt),
   });
 
   // Formulario de métricas (ahora usa un objeto genérico para valores dinámicos)
@@ -181,73 +233,31 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
   // Resetear el formulario cuando cambia la tarea o se abre para crear nueva
   useEffect(() => {
-    if (task) {
-      form.reset({
-        title: task.title,
-        type: task.type,
-        status: task.status,
-        priority: (task as any).priority || "MEDIUM",
-        clientId: task.clientId,
-        assignedEditorId: task.assignedEditorId || undefined,
-        assignedCommunityId: task.assignedCommunityId || undefined,
-        dueDate: task.dueDate
-          ? typeof task.dueDate === "string"
-            ? task.dueDate.split("T")[0]
-            : new Date(task.dueDate).toISOString().split("T")[0]
-          : undefined,
-        scheduledAt: task.scheduledAt
-          ? typeof task.scheduledAt === "string"
-            ? new Date(task.scheduledAt).toISOString().slice(0, 16)
-            : new Date(task.scheduledAt).toISOString().slice(0, 16)
-          : undefined,
-        postCopy: task.postCopy || undefined,
-        coverImageUrl: task.coverImageUrl || undefined,
-        audioBriefUrl: task.audioBriefUrl || undefined,
-      });
-    } else {
-      // Resetear para nueva tarea
-      const scheduledAtValue = initialScheduledAt
-        ? typeof initialScheduledAt === "string"
-          ? new Date(initialScheduledAt).toISOString().slice(0, 16)
-          : new Date(initialScheduledAt).toISOString().slice(0, 16)
-        : undefined;
-      
-      form.reset({
-        title: "",
-        type: "REEL",
-        status: "IDEA",
-        priority: "MEDIUM",
-        clientId: "",
-        assignedEditorId: undefined,
-        assignedCommunityId: undefined,
-        dueDate: undefined,
-        scheduledAt: scheduledAtValue,
-        postCopy: undefined,
-        coverImageUrl: undefined,
-        audioBriefUrl: undefined,
-      });
-    }
+    form.reset(buildTaskFormValues(task, initialScheduledAt));
   }, [task, form, initialScheduledAt]);
 
-  const onSubmit = async (data: UpdateContentTaskInput | CreateContentTaskInput) => {
+  const onSubmit = async (data: TaskFormValues) => {
     startTransition(async () => {
       try {
+        const schema = isNewTask ? createContentTaskSchema : updateContentTaskSchema;
+        const parsedData = schema.parse(data);
+
         // Calcular automáticamente la fecha de entrega: 24 horas antes de la fecha programada
         let calculatedDueDate: Date | undefined = undefined;
-        if (data.scheduledAt) {
-          const scheduledDate = typeof data.scheduledAt === "string" 
-            ? new Date(data.scheduledAt) 
-            : data.scheduledAt;
+        if (parsedData.scheduledAt) {
+          const scheduledDate = parsedData.scheduledAt instanceof Date
+            ? parsedData.scheduledAt
+            : new Date(parsedData.scheduledAt);
           calculatedDueDate = subHours(scheduledDate, 24);
-        } else if (task?.scheduledAt && !data.scheduledAt) {
+        } else if (task?.scheduledAt && !parsedData.scheduledAt) {
           // Si se elimina la fecha programada, mantener la fecha de entrega actual o eliminarla
           calculatedDueDate = task.dueDate ? new Date(task.dueDate) : undefined;
         }
 
         // Preparar los datos con la fecha de entrega calculada
         const taskData = {
-          ...data,
-          dueDate: calculatedDueDate !== undefined ? calculatedDueDate : data.dueDate,
+          ...parsedData,
+          dueDate: calculatedDueDate ?? parsedData.dueDate,
         };
 
         let result;
@@ -282,7 +292,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
             window.dispatchEvent(new CustomEvent("taskUpdated", {
               detail: {
                 taskId: task.id,
-                status: (data as UpdateContentTaskInput).status,
+                status: parsedData.status,
               },
             }));
             // La UI se actualizará automáticamente gracias a revalidatePath
@@ -532,22 +542,22 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
   return (
     <TooltipProvider>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent 
-          className="w-full sm:max-w-2xl overflow-y-auto px-6"
-          onInteractOutside={(e) => e.preventDefault()}
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent 
+          className="w-full sm:max-w-4xl overflow-y-auto max-h-[90vh] p-0"
         >
-          <SheetHeader>
-            <SheetTitle>{isNewTask ? "Nueva Tarea" : "Editar Tarea"}</SheetTitle>
-            <SheetDescription>
+          <DialogHeader className="px-6 pt-6 pb-0">
+            <DialogTitle>{isNewTask ? "Nueva Tarea" : "Editar Tarea"}</DialogTitle>
+            <DialogDescription>
               {isNewTask 
                 ? "Crea una nueva tarea de contenido." 
                 : "Modifica los detalles de la tarea de contenido."}
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <div className="px-6 pb-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <Tabs defaultValue="details" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="details">Detalles</TabsTrigger>
@@ -561,7 +571,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     control={form.control}
                     name="title"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="mb-6">
                         <FormLabel>Título</FormLabel>
                         <FormControl>
                           <Input
@@ -583,7 +593,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                       control={form.control}
                       name="clientId"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="mb-6">
                           <FormLabel>Cliente</FormLabel>
                           <Select
                             onValueChange={field.onChange}
@@ -598,7 +608,23 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                             <SelectContent>
                               {clients.map((client) => (
                                 <SelectItem key={client.id} value={client.id}>
-                                  {client.name}
+                                  <div className="flex items-center gap-2">
+                                    {client.logo ? (
+                                      <img
+                                        src={client.logo}
+                                        alt={client.name}
+                                        className="w-5 h-5 rounded object-cover"
+                                      />
+                                    ) : (
+                                      <div
+                                        className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium text-white"
+                                        style={{ backgroundColor: client.color || "var(--primary)" }}
+                                      >
+                                        {client.name.charAt(0).toUpperCase()}
+                                      </div>
+                                    )}
+                                    {client.name}
+                                  </div>
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -610,7 +636,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                   )}
 
                   {/* Fila 1: Tipo y Prioridad */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={form.control}
                       name="type"
@@ -1247,10 +1273,11 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
               </div>
             </form>
           </Form>
+          </div>
 
           {/* Botón de eliminar - Solo para tareas existentes */}
           {!isNewTask && (
-            <div className="mt-8 border-t pt-6">
+            <div className="mt-8 border-t pt-6 px-6">
               <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <DialogTrigger asChild>
                   <Button
@@ -1297,8 +1324,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
               </Dialog>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }

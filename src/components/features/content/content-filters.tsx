@@ -36,6 +36,7 @@ export function ContentFilters({
   const { data: session } = useSession();
   const userId = currentUserId || session?.user?.id;
   const userRole = session?.user?.role;
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   
   // Por defecto, si es EDITOR o VIEWER, mostrar solo sus tareas
   const [viewMode, setViewMode] = useState<"my-tasks" | "all">(
@@ -113,6 +114,138 @@ export function ContentFilters({
     onFilterChange(filteredTasks);
   }, [filteredTasks, onFilterChange]);
 
+  const FiltersGrid = (
+    <>
+      <div className="w-full">
+        <Select
+          value={selectedClientId}
+          onValueChange={(value) => {
+            setSelectedClientId(value);
+            if (onClientChange) {
+              onClientChange(value);
+            }
+          }}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Filtrar por cliente" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los clientes</SelectItem>
+            {clients
+              .filter((client) => client.status !== "INACTIVE")
+              .map((client) => (
+                <SelectItem key={client.id} value={client.id}>
+                  <div className="flex items-center gap-2">
+                    {(client as any).logo ? (
+                      <img
+                        src={(client as any).logo}
+                        alt={client.name}
+                        className="h-4 w-4 object-contain"
+                      />
+                    ) : (
+                      <div
+                        className="h-4 w-4 rounded flex items-center justify-center text-white text-xs font-medium"
+                        style={{ backgroundColor: client.color || "#000000" }}
+                      >
+                        {client.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .substring(0, 2)
+                          .toUpperCase()}
+                      </div>
+                    )}
+                    <span>{client.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="w-full">
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Filtrar por mes" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los meses</SelectItem>
+            {availableMonths.map((monthKey) => {
+              const [year, month] = monthKey.split("-").map(Number);
+              const monthNames = [
+                "Enero",
+                "Febrero",
+                "Marzo",
+                "Abril",
+                "Mayo",
+                "Junio",
+                "Julio",
+                "Agosto",
+                "Septiembre",
+                "Octubre",
+                "Noviembre",
+                "Diciembre",
+              ];
+              const monthName = `${monthNames[month - 1]} ${year}`;
+              return (
+                <SelectItem key={monthKey} value={monthKey}>
+                  {monthName}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+      </div>
+      {viewMode === "all" && (
+        <div className="w-full">
+          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Filtrar por usuario" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los usuarios</SelectItem>
+              <SelectItem value="unassigned">Sin asignar</SelectItem>
+              {users.map((user) => {
+                const initials = user.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .substring(0, 2)
+                  .toUpperCase();
+                return (
+                  <SelectItem key={user.id} value={user.id}>
+                    <div className="flex items-center gap-2">
+                      {user.image ? (
+                        <img src={user.image} alt={user.name} className="h-6 w-6 rounded-full object-cover" />
+                      ) : (
+                        <div className="h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
+                          {initials}
+                        </div>
+                      )}
+                      <span>{user.name}</span>
+                    </div>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      <div className="w-full">
+        <Select value={selectedType} onValueChange={setSelectedType}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Filtrar por tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los tipos</SelectItem>
+            <SelectItem value="REEL">Reel</SelectItem>
+            <SelectItem value="FLYER">Flyer</SelectItem>
+            <SelectItem value="STORY">Story</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </>
+  );
+
   return (
     <div className="space-y-4">
       {/* Filtro rápido: Mis Tareas / Todo el Equipo (solo visible para ADMIN) */}
@@ -136,99 +269,27 @@ export function ContentFilters({
         </div>
       )}
 
-      <div className="flex flex-col gap-2 md:grid md:grid-cols-2 lg:grid-cols-4">
-        <div className="w-full">
-          <Select
-            value={selectedClientId}
-            onValueChange={(value) => {
-              setSelectedClientId(value);
-              if (onClientChange) {
-                onClientChange(value);
-              }
-            }}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Filtrar por cliente" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los clientes</SelectItem>
-              {clients
-                .filter((client) => client.status !== "INACTIVE")
-                .map((client) => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+      <div className="md:hidden space-y-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-between"
+          onClick={() => setMobileFiltersOpen((prev) => !prev)}
+        >
+          <span>Filtros</span>
+          <span className="text-xs text-muted-foreground">{mobileFiltersOpen ? "Ocultar" : "Mostrar"}</span>
+        </Button>
+        <div
+          className={`overflow-hidden transition-all duration-200 ease-out ${
+            mobileFiltersOpen ? "max-h-[1200px] opacity-100" : "max-h-0 opacity-0 pointer-events-none"
+          }`}
+        >
+          <div className="grid grid-cols-1 gap-2 pt-2">{FiltersGrid}</div>
         </div>
-        <div className="w-full">
-          <Select 
-            value={selectedMonth} 
-            onValueChange={setSelectedMonth}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Filtrar por mes" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los meses</SelectItem>
-              {availableMonths.map((monthKey) => {
-                const [year, month] = monthKey.split("-").map(Number);
-                const monthNames = [
-                  "Enero",
-                  "Febrero",
-                  "Marzo",
-                  "Abril",
-                  "Mayo",
-                  "Junio",
-                  "Julio",
-                  "Agosto",
-                  "Septiembre",
-                  "Octubre",
-                  "Noviembre",
-                  "Diciembre",
-                ];
-                const monthName = `${monthNames[month - 1]} ${year}`;
-                return (
-                  <SelectItem key={monthKey} value={monthKey}>
-                    {monthName}
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </div>
-        {viewMode === "all" && (
-          <div className="w-full">
-            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Filtrar por usuario" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los usuarios</SelectItem>
-                <SelectItem value="unassigned">Sin asignar</SelectItem>
-                {users.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-        <div className="w-full">
-          <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Filtrar por tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los tipos</SelectItem>
-              <SelectItem value="REEL">Reel</SelectItem>
-              <SelectItem value="FLYER">Flyer</SelectItem>
-              <SelectItem value="STORY">Story</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      </div>
+
+      <div className="hidden md:block">
+        <div className="grid grid-cols-4 md:grid-cols-4 gap-3">{FiltersGrid}</div>
       </div>
     </div>
   );

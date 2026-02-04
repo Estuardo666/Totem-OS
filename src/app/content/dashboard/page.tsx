@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getContentDashboardData } from "@/actions/dashboard-actions";
+import { getClients } from "@/actions/client-actions";
 import { ProductionRadar } from "@/components/features/content/ProductionRadar";
 import { ClientHealthList } from "@/components/features/content/ClientHealthList";
 import { NextShootWidget } from "@/components/features/content/NextShootWidget";
@@ -17,7 +18,10 @@ export default async function ContentDashboardPage() {
     redirect("/sign-in");
   }
 
-  const dashboardResult = await getContentDashboardData();
+  const [dashboardResult, clientsResult] = await Promise.all([
+    getContentDashboardData(),
+    getClients(),
+  ]);
 
   if (!dashboardResult.success || !dashboardResult.data) {
     return (
@@ -34,6 +38,7 @@ export default async function ContentDashboardPage() {
   }
 
   const { radar, semaphore, nextShoots, warRoom, calendar } = dashboardResult.data;
+  const clients = clientsResult.success ? (clientsResult.data ?? []) : [];
 
   return (
     <div className="container mx-auto py-6 px-4 md:px-6 space-y-6">
@@ -52,7 +57,7 @@ export default async function ContentDashboardPage() {
             <DashboardRefresh />
           </div>
         </div>
-        <QuickActions />
+        <QuickActions clients={clients} />
       </div>
 
       {/* Radar de Producción (ancho completo) */}
