@@ -26,7 +26,7 @@ import { UploadButton } from "@uploadthing/react";
 import Image from "next/image";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
-import { AudioRecorder } from "@/components/ui/audio-recorder";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Form,
   FormControl,
@@ -207,15 +207,13 @@ export function TaskForm({ clients, users }: TaskFormProps) {
     }
   };
 
-  // Función helper para obtener las iniciales de un cliente
-  const getClientInitials = (name: string) => {
-    return name
+  const getUserInitials = (name: string) =>
+    name
       .split(" ")
       .map((word) => word[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
 
   // Función helper para verificar si el brandDNA está completo
   const isBrandDNAComplete = (brandDNA: any): boolean => {
@@ -298,24 +296,12 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                   {clients.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
                       <div className="flex items-center gap-2">
-                        {client.logo ? (
-                          <Image
-                            src={client.logo}
-                            alt={client.name}
-                            width={20}
-                            height={20}
-                            className="rounded object-cover"
-                          />
-                        ) : (
-                          <div
-                            className="h-5 w-5 rounded flex items-center justify-center text-xs font-semibold text-white"
-                            style={{
-                              backgroundColor: client.color ? `${client.color}80` : "#00000080",
-                            }}
-                          >
-                            {getClientInitials(client.name)}
-                          </div>
-                        )}
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={client.logo || undefined} alt={client.name} />
+                          <AvatarFallback className="bg-primary text-white text-xs font-medium">
+                            {client.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
                         <span>{client.name}</span>
                       </div>
                     </SelectItem>
@@ -415,19 +401,12 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                     {users.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         <div className="flex items-center gap-2">
-                          {user.image ? (
-                            <Image
-                              src={user.image}
-                              alt={user.name}
-                              width={20}
-                              height={20}
-                              className="rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold">
-                              {user.name[0]?.toUpperCase()}
-                            </div>
-                          )}
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={user.image || undefined} alt={user.name} />
+                            <AvatarFallback className="text-xs font-semibold">
+                              {getUserInitials(user.name)}
+                            </AvatarFallback>
+                          </Avatar>
                           <span>{user.name}</span>
                         </div>
                       </SelectItem>
@@ -460,19 +439,12 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                     {users.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         <div className="flex items-center gap-2">
-                          {user.image ? (
-                            <Image
-                              src={user.image}
-                              alt={user.name}
-                              width={20}
-                              height={20}
-                              className="rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold">
-                              {user.name[0]?.toUpperCase()}
-                            </div>
-                          )}
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={user.image || undefined} alt={user.name} />
+                            <AvatarFallback className="text-xs font-semibold">
+                              {getUserInitials(user.name)}
+                            </AvatarFallback>
+                          </Avatar>
                           <span>{user.name}</span>
                         </div>
                       </SelectItem>
@@ -673,61 +645,6 @@ export function TaskForm({ clients, users }: TaskFormProps) {
             }}
           />
 
-          {/* Campo de Nota de Voz (Totem Voice) */}
-          <FormField
-            control={form.control}
-            name="audioBriefUrl"
-            render={({ field }) => {
-              // Verificar si hay un valor válido
-              const hasAudio = !!field.value && field.value !== "";
-              
-              return (
-                <FormItem>
-                  <FormLabel>Nota de Voz (Totem Voice)</FormLabel>
-                  <FormControl>
-                    {hasAudio ? (
-                      <div className="space-y-3 rounded-lg border border-input bg-background p-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Nota de voz guardada</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              field.onChange("");
-                              toast({
-                                title: "Nota eliminada",
-                                description: "Guarda cambios para confirmar.",
-                              });
-                            }}
-                            disabled={isPending}
-                          >
-                            <X className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                        <audio controls src={field.value ?? ""} className="w-full" />
-                      </div>
-                    ) : (
-                      <AudioRecorder
-                        onUploadComplete={(url) => {
-                          field.onChange(url);
-                          toast({
-                            title: "Nota de voz guardada",
-                            description: "La nota de voz se ha agregado a la tarea",
-                          });
-                        }}
-                        disabled={isPending}
-                      />
-                    )}
-                  </FormControl>
-                  <FormMessage />
-                  <p className="text-xs text-muted-foreground">
-                    Graba una nota de voz con los detalles de la tarea
-                  </p>
-                </FormItem>
-              );
-            }}
-          />
         </div>
         </div>
 

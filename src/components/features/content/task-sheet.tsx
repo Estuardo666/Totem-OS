@@ -17,10 +17,10 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UploadButton } from "@uploadthing/react";
 import NextImage from "next/image";
 import Link from "next/link";
-import { AudioRecorder } from "@/components/ui/audio-recorder";
 import {
   Dialog,
   DialogContent,
@@ -98,6 +98,12 @@ const ensureTaskStatus = (value?: string | null): ContentTaskStatus =>
 const ensureTaskPriority = (value?: string | null): TaskPriority =>
   isTaskPriority(value) ? (value as TaskPriority) : "MEDIUM";
 
+const normalizeText = (text: string) =>
+  text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+
 const formatDateForInput = (value?: Date | string | null) => {
   if (!value) return undefined;
   const date = typeof value === "string" ? new Date(value) : value;
@@ -162,6 +168,14 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
   const [isSavingMetrics, setIsSavingMetrics] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [copiedPostCopy, setCopiedPostCopy] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
+
+  const sortedClients = [...clients].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+  const filteredClients = sortedClients.filter((client) => {
+    const search = normalizeText(clientSearch).trim();
+    if (!search) return true;
+    return normalizeText(client.name).startsWith(search);
+  });
 
   const isNewTask = !task;
   
@@ -169,6 +183,9 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
     resolver: zodResolver(isNewTask ? createContentTaskSchema : updateContentTaskSchema),
     defaultValues: buildTaskFormValues(task, initialScheduledAt),
   });
+
+  const selectedClientId = form.watch("clientId");
+  const selectedClient = filteredClients.find((c) => c.id === selectedClientId) || clients.find((c) => c.id === selectedClientId) || task?.client;
 
   // Formulario de métricas (ahora usa un objeto genérico para valores dinámicos)
   const metricsForm = useForm<any>({
@@ -234,6 +251,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
   // Resetear el formulario cuando cambia la tarea o se abre para crear nueva
   useEffect(() => {
     form.reset(buildTaskFormValues(task, initialScheduledAt));
+    setClientSearch("");
   }, [task, form, initialScheduledAt]);
 
   const onSubmit = async (data: TaskFormValues) => {
@@ -544,18 +562,22 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
     <TooltipProvider>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent 
-          className="w-full sm:max-w-4xl overflow-y-auto max-h-[90vh] p-0"
+          className="w-[70vw] sm:w-[62vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh] p-0 overflow-hidden"
         >
-          <DialogHeader className="px-6 pt-6 pb-0">
-            <DialogTitle>{isNewTask ? "Nueva Tarea" : "Editar Tarea"}</DialogTitle>
-            <DialogDescription>
-              {isNewTask 
-                ? "Crea una nueva tarea de contenido." 
-                : "Modifica los detalles de la tarea de contenido."}
-            </DialogDescription>
-          </DialogHeader>
+          <div className="px-8 pt-8 pb-4 md:px-10 md:pt-10">
+            <DialogHeader className="px-0 py-0 border-0 mb-0 space-y-1 text-left md:text-center">
+              <DialogTitle className="text-2xl md:text-3xl font-semibold leading-tight">
+                {isNewTask ? "Nueva Tarea" : "Editar Tarea"}
+              </DialogTitle>
+              <DialogDescription className="text-base text-muted-foreground">
+                {isNewTask 
+                  ? "Crea una nueva tarea de contenido." 
+                  : "Modifica los detalles de la tarea de contenido."}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
 
-          <div className="px-6 pb-6">
+          <div className="px-8 pb-8 md:px-10 md:pb-10">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <Tabs defaultValue="details" className="w-full">
@@ -587,43 +609,56 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     )}
                   />
 
-                  {/* Cliente solo para nuevas tareas */}
-                  {isNewTask && clients.length > 0 && (
+                  {clients.length > 0 && (
                     <FormField
                       control={form.control}
                       name="clientId"
                       render={({ field }) => (
-                        <FormItem className="mb-6">
-                          <FormLabel>Cliente</FormLabel>
+                        <FormItem className="mb-6 space-y-2">
+                          <FormLabel className="text-sm font-medium leading-none">Cliente</FormLabel>
                           <Select
                             onValueChange={field.onChange}
                             value={field.value}
-                            disabled={isPending}
+                            disabled={!isNewTask || isPending}
                           >
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un cliente" />
+                              <SelectTrigger className="justify-start">
+                                <div className="flex items-center gap-2 w-full truncate">
+                                  {selectedClient ? (
+                                    <>
+                                      <Avatar className="h-7 w-7">
+                                        <AvatarImage src={(selectedClient as any).logo || undefined} alt={(selectedClient as any).name} />
+                                        <AvatarFallback className="bg-primary text-white text-xs font-medium">
+                                          {(selectedClient as any).name?.slice(0, 2).toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="truncate">{(selectedClient as any).name}</span>
+                                    </>
+                                  ) : (
+                                    <SelectValue placeholder="Selecciona un cliente" />
+                                  )}
+                                </div>
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {clients.map((client) => (
+                              <div className="px-3 pt-3 pb-2" onKeyDown={(e) => e.stopPropagation()}>
+                                <Input
+                                  placeholder="Buscar cliente"
+                                  value={clientSearch}
+                                  onChange={(e) => setClientSearch(e.target.value)}
+                                  autoFocus
+                                />
+                              </div>
+                              {filteredClients.map((client) => (
                                 <SelectItem key={client.id} value={client.id}>
                                   <div className="flex items-center gap-2">
-                                    {client.logo ? (
-                                      <img
-                                        src={client.logo}
-                                        alt={client.name}
-                                        className="w-5 h-5 rounded object-cover"
-                                      />
-                                    ) : (
-                                      <div
-                                        className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium text-white"
-                                        style={{ backgroundColor: client.color || "var(--primary)" }}
-                                      >
-                                        {client.name.charAt(0).toUpperCase()}
-                                      </div>
-                                    )}
-                                    {client.name}
+                                    <Avatar className="h-7 w-7">
+                                      <AvatarImage src={client.logo || undefined} alt={client.name} />
+                                      <AvatarFallback className="bg-primary text-white text-xs font-medium">
+                                        {client.name.slice(0, 2).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span>{client.name}</span>
                                   </div>
                                 </SelectItem>
                               ))}
@@ -725,19 +760,12 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                               {users.map((user) => (
                                 <SelectItem key={user.id} value={user.id}>
                                   <div className="flex items-center gap-2">
-                                    {user.image ? (
-                                      <img
-                                        src={user.image}
-                                        alt={user.name}
-                                        width={20}
-                                        height={20}
-                                        className="rounded-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold">
+                                    <Avatar className="h-7 w-7">
+                                      <AvatarImage src={user.image || undefined} alt={user.name} />
+                                      <AvatarFallback className="text-xs font-semibold">
                                         {getUserInitials(user.name)}
-                                      </div>
-                                    )}
+                                      </AvatarFallback>
+                                    </Avatar>
                                     <span>{user.name}</span>
                                   </div>
                                 </SelectItem>
@@ -770,19 +798,12 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                               {users.map((user) => (
                                 <SelectItem key={user.id} value={user.id}>
                                   <div className="flex items-center gap-2">
-                                    {user.image ? (
-                                      <img
-                                        src={user.image}
-                                        alt={user.name}
-                                        width={20}
-                                        height={20}
-                                        className="rounded-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold">
+                                    <Avatar className="h-7 w-7">
+                                      <AvatarImage src={user.image || undefined} alt={user.name} />
+                                      <AvatarFallback className="text-xs font-semibold">
                                         {getUserInitials(user.name)}
-                                      </div>
-                                    )}
+                                      </AvatarFallback>
+                                    </Avatar>
                                     <span>{user.name}</span>
                                   </div>
                                 </SelectItem>
@@ -794,12 +815,11 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                       )}
                     />
                   </div>
-
                   <FormField
                     control={form.control}
                     name="scheduledAt"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="space-y-2">
                         <FormLabel className={task?.status === "CLIENT_APPROVED" ? "text-orange-600 font-semibold" : ""}>
                           Fecha Programada de Publicación
                           {task?.status === "CLIENT_APPROVED" && (
@@ -833,61 +853,6 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     )}
                   />
 
-                  {/* Nota de Voz en Detalles */}
-                  <FormField
-                    control={form.control}
-                    name="audioBriefUrl"
-                    render={({ field }) => {
-                      // Verificar si hay un valor válido
-                      const hasAudio = !!field.value && field.value !== "";
-                      
-                      return (
-                        <FormItem>
-                          <FormLabel>Nota de Voz (Totem Voice)</FormLabel>
-                          <FormControl>
-                            {hasAudio ? (
-                              <div className="space-y-3 rounded-lg border border-input bg-background p-4">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium">Nota de voz guardada</span>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => {
-                                      field.onChange("");
-                                      toast({
-                                        title: "Nota eliminada",
-                                        description: "Guarda cambios para confirmar.",
-                                      });
-                                    }}
-                                    disabled={isPending}
-                                  >
-                                    <X className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                </div>
-                                <audio controls src={field.value} className="w-full" />
-                              </div>
-                            ) : (
-                              <AudioRecorder
-                                onUploadComplete={(url) => {
-                                  field.onChange(url);
-                                  toast({
-                                    title: "Nota de voz guardada",
-                                    description: "La nota de voz se ha agregado a la tarea",
-                                  });
-                                }}
-                                disabled={isPending}
-                              />
-                            )}
-                          </FormControl>
-                          <FormMessage />
-                          <p className="text-xs text-muted-foreground">
-                            Graba una nota de voz con los detalles de la tarea
-                          </p>
-                        </FormItem>
-                      );
-                    }}
-                  />
             </TabsContent>
 
             {/* Tab Recursos Creativos */}
@@ -1254,12 +1219,12 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
             </TabsContent>
           </Tabs>
 
-              {/* Botón de guardar fijo - Siempre visible */}
-              <div className="flex gap-4 pt-6 border-t mt-6">
+              {/* Botones finales */}
+              <div className="flex flex-col gap-3 pt-6 border-t mt-6">
                 <Button
                   type="submit"
                   disabled={isPending}
-                  className="flex-1"
+                  className="w-full"
                 >
                   {isPending ? (
                     <>
@@ -1270,60 +1235,56 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     isNewTask ? "Crear Tarea" : "Guardar Cambios"
                   )}
                 </Button>
+
+                {!isNewTask && (
+                  <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full border-destructive text-destructive hover:bg-destructive/10"
+                        disabled={isDeleting || isPending}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {isDeleting ? "Eliminando..." : "Eliminar Tarea"}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>¿Estás seguro?</DialogTitle>
+                        <DialogDescription>
+                          Esta acción no se puede deshacer. La tarea será eliminada permanentemente.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowDeleteDialog(false)}
+                          disabled={isDeleting}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Eliminando...
+                            </>
+                          ) : (
+                            "Eliminar"
+                          )}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
             </form>
           </Form>
           </div>
-
-          {/* Botón de eliminar - Solo para tareas existentes */}
-          {!isNewTask && (
-            <div className="mt-8 border-t pt-6 px-6">
-              <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    disabled={isDeleting || isPending}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    {isDeleting ? "Eliminando..." : "Eliminar Tarea"}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>¿Estás seguro?</DialogTitle>
-                    <DialogDescription>
-                      Esta acción no se puede deshacer. La tarea será eliminada
-                      permanentemente.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowDeleteDialog(false)}
-                      disabled={isDeleting}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                    >
-                      {isDeleting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Eliminando...
-                        </>
-                      ) : (
-                        "Eliminar"
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
     </TooltipProvider>

@@ -20,8 +20,9 @@ import {
 export default async function ContentPage({
   searchParams,
 }: {
-  searchParams?: { bulk?: string | string[] };
+  searchParams: Promise<{ bulk?: string | string[] }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const session = await auth();
   const isAdmin = session?.user?.role === "ADMIN";
 
@@ -50,9 +51,9 @@ export default async function ContentPage({
   const clients = clientsResult.success ? (clientsResult.data ?? []) : [];
   const users = usersResult.success ? (usersResult.data ?? []) : [];
 
-  const bulkParam = Array.isArray(searchParams?.bulk)
-    ? searchParams?.bulk[0]
-    : searchParams?.bulk;
+  const bulkParam = Array.isArray(resolvedSearchParams?.bulk)
+    ? resolvedSearchParams?.bulk[0]
+    : resolvedSearchParams?.bulk;
   const shouldOpenBulkDialog = bulkParam === "1" || bulkParam === "true";
 
   return (

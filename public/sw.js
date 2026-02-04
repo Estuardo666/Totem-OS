@@ -39,6 +39,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.pathname.startsWith("/_next/") || requestUrl.pathname.startsWith("/icons/")) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   const isHtmlRequest = event.request.headers.get("accept")?.includes("text/html");
   const isClientsRoute = new URL(event.request.url).pathname.startsWith("/clients");
 
@@ -52,7 +58,7 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(async () => {
           const cachedResponse = await caches.match(event.request);
-          return cachedResponse ?? fetch(event.request);
+          return cachedResponse ?? Response.error();
         })
     );
     return;
@@ -63,16 +69,18 @@ self.addEventListener("fetch", (event) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200) {
+      return fetch(event.request)
+        .then((networkResponse) => {
+          if (!networkResponse || networkResponse.status !== 200) {
+            return networkResponse;
+          }
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
           return networkResponse;
-        }
-        const responseClone = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone);
-        });
-        return networkResponse;
-      });
+        })
+        .catch(() => cachedResponse ?? Response.error());
     })
   );
 });

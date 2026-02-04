@@ -3,18 +3,18 @@
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Loader2, X, Calendar, MapPin, Users, FileText, Mic } from "lucide-react";
+import { Loader2, X, Calendar, MapPin, Users, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -27,7 +27,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { UploadButton } from "@/utils/uploadthing";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
-import { AudioRecorder } from "@/components/ui/audio-recorder";
 import { useToast } from "@/components/ui/use-toast";
 import { createShooting, updateShooting, type CreateShootingInput, type UpdateShootingInput } from "@/actions/shooting-actions";
 import { getTasks } from "@/actions/content-actions";
@@ -58,6 +57,7 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
   const [scriptUrl, setScriptUrl] = useState("");
   const [audioBriefUrl, setAudioBriefUrl] = useState("");
   const [notes, setNotes] = useState("");
+  const [clientSearch, setClientSearch] = useState("");
   const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([]);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [createCalendarEvent, setCreateCalendarEvent] = useState(true);
@@ -65,6 +65,19 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
   
   const [users, setUsers] = useState<User[]>([]);
   const [availableTasks, setAvailableTasks] = useState<ContentTask[]>([]);
+
+  const normalizeText = (text: string) =>
+    text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "");
+
+  const sortedClients = [...clients].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+  const filteredClients = sortedClients.filter((client) => {
+    const search = normalizeText(clientSearch).trim();
+    if (!search) return true;
+    return normalizeText(client.name).startsWith(search);
+  });
 
   // Cargar usuarios al montar
   useEffect(() => {
@@ -294,18 +307,24 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto px-6">
-        <SheetHeader>
-          <SheetTitle>{shooting ? "Editar Rodaje" : "Nuevo Rodaje"}</SheetTitle>
-          <SheetDescription>
-            {shooting
-              ? "Actualiza la información del rodaje"
-              : "Crea un nuevo rodaje y asigna equipo y tareas"}
-          </SheetDescription>
-        </SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="w-[70vw] sm:w-[62vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh] p-0 overflow-hidden"
+      >
+        <div className="px-8 pt-8 pb-4 md:px-10 md:pt-10">
+          <DialogHeader className="px-0 py-0 border-0 mb-0 space-y-1 text-left md:text-center">
+            <DialogTitle className="text-2xl md:text-3xl font-semibold leading-tight">
+              {shooting ? "Editar Rodaje" : "Nuevo Rodaje"}
+            </DialogTitle>
+            <DialogDescription className="text-base text-muted-foreground">
+              {shooting
+                ? "Actualiza la información del rodaje"
+                : "Crea un nuevo rodaje y asigna equipo y tareas"}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="mt-6 space-y-6">
+        <div className="px-8 pb-8 md:px-10 md:pb-10 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)]">
           {/* Título y Cliente */}
           <div className="space-y-4">
             <div>
@@ -316,6 +335,8 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ej: Rodaje Producto X - Enero 2025"
                 disabled={isPending}
+                className="text-2xl font-medium border-0 border-b-2 border-input rounded-none px-0 pb-2 bg-transparent focus:border-primary"
+                style={{ fontSize: "1.5rem", fontWeight: "500" }}
               />
             </div>
 
@@ -326,23 +347,23 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
                   <SelectValue placeholder="Selecciona un cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map((client) => (
+                  <div className="px-3 pt-3 pb-2" onKeyDown={(e) => e.stopPropagation()}>
+                    <Input
+                      placeholder="Buscar cliente"
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  {filteredClients.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
                       <div className="flex items-center gap-2">
-                        {(client as any).logo ? (
-                          <img
-                            src={(client as any).logo}
-                            alt={client.name}
-                            className="h-4 w-4 object-contain"
-                          />
-                        ) : (
-                          <div 
-                            className="h-4 w-4 rounded flex items-center justify-center text-white text-xs font-medium"
-                            style={{ backgroundColor: client.color || "#000000" }}
-                          >
-                            {client.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                          </div>
-                        )}
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={(client as any).logo || undefined} alt={client.name} />
+                          <AvatarFallback className="bg-primary text-white text-xs font-medium">
+                            {client.name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
                         <span>{client.name}</span>
                       </div>
                     </SelectItem>
@@ -609,38 +630,6 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
                 }}
               />
             )}
-
-            <div className="flex items-center gap-2">
-              <Mic className="h-4 w-4 text-muted-foreground" />
-              <Label>Nota de Voz</Label>
-            </div>
-            {audioBriefUrl ? (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <audio controls src={audioBriefUrl} className="flex-1" />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setAudioBriefUrl("")}
-                    disabled={isPending}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <AudioRecorder
-                onUploadComplete={(url) => {
-                  setAudioBriefUrl(url);
-                  toast({
-                    title: "Nota de voz guardada",
-                    description: "La nota de voz se ha agregado al rodaje",
-                  });
-                }}
-                disabled={isPending}
-              />
-            )}
           </div>
 
           {/* Botones */}
@@ -665,8 +654,8 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
             </Button>
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 

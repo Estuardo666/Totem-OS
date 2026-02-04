@@ -121,24 +121,24 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish }: TaskCa
             `}
           >
             <Card
-              className={`relative max-w-full overflow-hidden border-l-2 md:border-l-4 ${
+              className={`relative max-w-full overflow-hidden border transition-all duration-200 ${
                 snapshot.isDragging
                   ? "cursor-grabbing shadow-lg ring-2 ring-primary z-50 scale-[1.02] opacity-95"
                   : "cursor-grab hover:shadow-md"
               } ${
                 task.status === "REVIEW_CLIENT" || task.status === "APPROVED" || task.status === "CLIENT_APPROVED"
-                  ? "border-l-2 md:border-l-4 border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 ring-1 ring-emerald-200 dark:ring-emerald-800"
+                  ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 ring-1 ring-emerald-200 dark:ring-emerald-800"
                   : ""
               } ${
                 task.status === "PUBLISHED" 
-                  ? "border-l-2 md:border-l-4 border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20" 
+                  ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20" 
                   : ""
               }`}
               style={{
-                borderLeftColor:
-                  task.status === "REVIEW_CLIENT" || task.status === "APPROVED" || task.status === "CLIENT_APPROVED"
+                borderColor:
+                  task.status === "REVIEW_CLIENT" || task.status === "APPROVED" || task.status === "CLIENT_APPROVED" || task.status === "PUBLISHED"
                     ? undefined
-                    : task.client.color || "#000000",
+                    : `${task.client.color || "#000000"}80`,
               }}
               onClick={(e) => {
                 // Si estamos publicando o arrastrando, no hacer nada
@@ -181,7 +181,7 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish }: TaskCa
                 </div>
               )}
 
-              <CardContent className="p-2 md:p-2">
+              <CardContent className="p-3">
                 {/* Para tareas publicadas: Vista compacta minimalista */}
                 {task.status === "PUBLISHED" ? (
                   <div className="flex items-center justify-between">
@@ -251,8 +251,9 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish }: TaskCa
 
                     {/* Fecha de entrega */}
                     {task.dueDate && (
-                      <div className="text-[9px] md:text-[10px] text-muted-foreground truncate mt-1">
-                        {format(new Date(task.dueDate), "dd/MM/yy")}
+                      <div className="text-[9px] md:text-[10px] text-muted-foreground truncate mt-1 flex items-center gap-1">
+                        <span>⏰</span>
+                        <span>{format(new Date(task.dueDate), "dd/MM/yy")}</span>
                       </div>
                     )}
 
