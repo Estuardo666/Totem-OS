@@ -102,7 +102,7 @@ export function ClientList({ clients }: ClientListProps) {
                     src={client.logo}
                     alt={client.name}
                     fill
-                    className="object-contain p-2"
+                    className="object-cover"
                     priority={index < 4}
                     sizes="64px"
                   />

@@ -68,6 +68,11 @@
     transition: color 300ms ease, background-color 300ms ease;
   }
 
+  /* Ajuste solicitado para la clase utilitaria p-2 */
+  .p-2 {
+    padding: 0.5rem 0 !important;
+  }
+
   /* Normalizar inputs de fecha/hora en mobile */
   input[type="date"],
   input[type="time"],

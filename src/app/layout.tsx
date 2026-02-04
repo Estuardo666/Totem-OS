@@ -1,4 +1,6 @@
+import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "@/components/ui/toaster";
 import { NextAuthSessionProvider } from "@/components/providers/session-provider";
@@ -12,6 +14,7 @@ import { ConditionalLayout } from "@/components/layouts/conditional-layout";
 import { GoogleMapsScript } from "@/components/providers/google-maps-script";
 import { PwaServiceWorker } from "@/components/providers/pwa-service-worker";
 import { getBrandSettings } from "@/actions/admin-actions";
+import { PRIMARY_COLOR_COOKIE, resolvePrimaryColor } from "@/lib/theme";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -51,13 +54,21 @@ export const viewport: Viewport = {
   themeColor: "#5f40ff",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const cookieColor = cookieStore.get(PRIMARY_COLOR_COOKIE)?.value;
+  const { hex: primaryColorHex, hsl: primaryColorHsl } = resolvePrimaryColor(cookieColor);
+  const htmlStyle: CSSProperties & Record<string, string> = {
+    "--primary-color": primaryColorHex,
+    "--primary": primaryColorHsl,
+  };
+
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning style={htmlStyle}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
