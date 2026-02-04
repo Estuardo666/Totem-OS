@@ -29,7 +29,7 @@ export function ConditionalLayout({
 
       {/* Contenido principal con margen para el sidebar */}
       {/* Sidebar tiene w-64 (256px) + m-4 izquierdo (16px) = 272px total */}
-      <main className="flex-1 md:pl-[272px] w-full overflow-x-hidden">
+      <main className="flex-1 md:pl-[272px] w-full overflow-x-hidden pt-16 md:pt-0">
         {/* Navbar móvil visible solo en móvil */}
         <div className="md:hidden sticky top-0 z-40">
           <Navbar />

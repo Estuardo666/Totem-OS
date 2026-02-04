@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UploadButton } from "@uploadthing/react";
 import NextImage from "next/image";
 import Link from "next/link";
+import { AnimatedModal } from "@/components/ui/animated-modal";
 import {
   Dialog,
   DialogContent,
@@ -391,7 +392,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
         metrics: metricsData,
       });
 
-      if (result.success) {
+      if (result.success && result.data) {
         setMetrics(result.data);
         toast({
           title: "Métricas guardadas",
@@ -560,24 +561,23 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
   return (
     <TooltipProvider>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent 
-          className="w-[70vw] sm:w-[62vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh] p-0 overflow-hidden"
-        >
-          <div className="px-8 pt-8 pb-4 md:px-10 md:pt-10">
-            <DialogHeader className="px-0 py-0 border-0 mb-0 space-y-1 text-left md:text-center">
-              <DialogTitle className="text-2xl md:text-3xl font-semibold leading-tight">
-                {isNewTask ? "Nueva Tarea" : "Editar Tarea"}
-              </DialogTitle>
-              <DialogDescription className="text-base text-muted-foreground">
-                {isNewTask 
-                  ? "Crea una nueva tarea de contenido." 
-                  : "Modifica los detalles de la tarea de contenido."}
-              </DialogDescription>
-            </DialogHeader>
-          </div>
+      <AnimatedModal
+        open={open}
+        onOpenChange={onOpenChange}
+        title={isNewTask ? "Nueva Tarea" : "Editar Tarea"}
+        description={isNewTask ? "Crea una nueva tarea de contenido." : "Modifica los detalles de la tarea de contenido."}
+        className="w-[93vw] sm:w-[70vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh] p-0"
+      >
+        <div className="pl-12 pr-4 pt-12 pb-4 space-y-1 text-left md:text-center md:px-10 md:pt-10">
+          <h2 className="text-2xl md:text-3xl font-semibold leading-tight">
+            {isNewTask ? "Nueva Tarea" : "Editar Tarea"}
+          </h2>
+          <p className="text-base text-muted-foreground">
+            {isNewTask ? "Crea una nueva tarea de contenido." : "Modifica los detalles de la tarea de contenido."}
+          </p>
+        </div>
 
-          <div className="px-8 pb-8 md:px-10 md:pb-10">
+        <div className="px-4 pb-4 md:px-10 md:pb-10 transition-[height,max-height] duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height]">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <Tabs defaultValue="details" className="w-full">
@@ -1284,9 +1284,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
               </div>
             </form>
           </Form>
-          </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </AnimatedModal>
     </TooltipProvider>
   );
 }

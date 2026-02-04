@@ -9,11 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/components/ui/use-toast";
 import { createTasksBatch } from "@/actions/content-actions";
 import type { ContentTaskType } from "@/types";
+import { CheckCircle } from "lucide-react";
 
 interface BulkTaskCreatorProps {
   clients: Client[];
   variant?: "card" | "dialog";
   showHeader?: boolean;
+  onSuccess?: () => void;
 }
 
 interface ParsedTaskRow {
@@ -167,7 +169,7 @@ function parseDate(input: string | undefined): { scheduled: Date | undefined; du
   return { scheduled: undefined, due: undefined, error: "Formato de fecha inválido" };
 }
 
-export function BulkTaskCreator({ clients, variant = "dialog", showHeader = false }: BulkTaskCreatorProps) {
+export function BulkTaskCreator({ clients, variant = "card", showHeader = true, onSuccess }: BulkTaskCreatorProps) {
   const [rawInput, setRawInput] = useState("");
   const [parsedRows, setParsedRows] = useState<ParsedTaskRow[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -304,12 +306,20 @@ export function BulkTaskCreator({ clients, variant = "dialog", showHeader = fals
         if (result.success) {
           toast({
             title: `${result.data?.created.length ?? 0} tareas creadas`,
-            description: result.data?.errors.length
-              ? `Algunas filas fallaron: ${result.data.errors.join("; ")}`
-              : "Se crearon todas las tareas exitosamente",
+            description: (
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span>
+                  {result.data?.errors.length
+                    ? `Algunas filas fallaron: ${result.data.errors.join("; ")}`
+                    : "Se crearon todas las tareas exitosamente"}
+                </span>
+              </div>
+            ),
           });
           setParsedRows([]);
           setRawInput("");
+          onSuccess?.();
         } else {
           toast({
             variant: "destructive",
@@ -334,7 +344,7 @@ export function BulkTaskCreator({ clients, variant = "dialog", showHeader = fals
           value={rawInput}
           onChange={(event) => setRawInput(event.target.value)}
           placeholder={`Ejemplo:\nGermania\nReel,Nombre de la tarea, 03/02\nFlyer,Otra tarea, 15-02\nStory,Nueva campaña, 12 de febrero`}
-          className="min-h-[160px] bg-white border border-input focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0"
+          className="min-h-[160px] border border-input focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0 bg-background text-foreground"
         />
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
@@ -361,7 +371,7 @@ export function BulkTaskCreator({ clients, variant = "dialog", showHeader = fals
 
       {hasRows && (
         <div className="rounded-lg border bg-card">
-          <div className="max-h-[320px] overflow-y-auto overflow-x-hidden px-3 md:px-6">
+          <div className="max-h-[320px] overflow-y-auto overflow-x-hidden px-3 md:px-6 transition-[height,max-height] duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height]">
             {currentClient && (
               <div className="flex flex-col items-center gap-2 px-3 py-3 text-center">
                 {currentClient.logo ? (

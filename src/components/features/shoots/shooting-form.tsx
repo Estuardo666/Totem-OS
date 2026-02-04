@@ -1,20 +1,13 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Loader2, X, Calendar, MapPin, Users, FileText } from "lucide-react";
+import { Loader2, X, Calendar, MapPin, Users, FileText, ChevronDown, ChevronUp, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -25,6 +18,12 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { AnimatedModal } from "@/components/ui/animated-modal";
 import { UploadButton } from "@/utils/uploadthing";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { useToast } from "@/components/ui/use-toast";
@@ -62,9 +61,17 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [createCalendarEvent, setCreateCalendarEvent] = useState(true);
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
+  const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   
   const [users, setUsers] = useState<User[]>([]);
   const [availableTasks, setAvailableTasks] = useState<ContentTask[]>([]);
+
+  const defaultCrewIds = useMemo(() => {
+    const paty = users.find((u) => u.email === "totemcisnemedia@gmail.com");
+    const stuart = users.find((u) => u.email === "estuarlito@gmail.com");
+    return [paty?.id, stuart?.id].filter(Boolean) as string[];
+  }, [users]);
 
   const normalizeText = (text: string) =>
     text
@@ -84,6 +91,13 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
     getUsers().then((result) => {
       if (result.success && result.data) {
         setUsers(result.data);
+        // Preseleccionar Paty y Stuart para nuevos rodajes
+        if (!shooting) {
+          const paty = result.data.find(u => u.email === "totemcisnemedia@gmail.com");
+          const stuart = result.data.find(u => u.email === "estuarlito@gmail.com");
+          const preselectedIds = [paty?.id, stuart?.id].filter(Boolean) as string[];
+          setSelectedCrewIds(preselectedIds);
+        }
       }
     });
 
@@ -133,9 +147,10 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
       setSelectedTaskIds(shooting.tasks.map((t) => t.id));
       setCreateCalendarEvent(Boolean(shooting.googleEventId));
     } else {
-      // Reset form
+      // Reset form con año actual
+      const currentYear = new Date().getFullYear();
       setTitle("");
-      setDate("");
+      setDate(`${currentYear}-01-01`);
       setStartTime("");
       setEndTime("");
       setClientId("");
@@ -144,11 +159,11 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
       setScriptUrl("");
       setAudioBriefUrl("");
       setNotes("");
-      setSelectedCrewIds([]);
+      setSelectedCrewIds(defaultCrewIds);
       setSelectedTaskIds([]);
       setCreateCalendarEvent(true);
     }
-  }, [shooting, open]);
+  }, [shooting, open, defaultCrewIds]);
 
   const handleSubmit = () => {
     if (!title || !date || !startTime || !endTime || !clientId) {
@@ -287,9 +302,21 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
     );
   };
 
+  const handleStartTimeChange = (time: string) => {
+    setStartTime(time);
+    // Auto-fill end time as start time + 1 hour
+    if (time) {
+      const [hours, minutes] = time.split(":").map(Number);
+      const endHour = (hours + 1) % 24;
+      const endTimeStr = `${endHour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+      setEndTime(endTimeStr);
+    } else {
+      setEndTime("");
+    }
+  };
+
   const handleAddressSelect = (address: string, place: PlaceDetails) => {
     setAddress(address);
-    // Generar Google Maps link si hay URL disponible
     if (place.url) {
       setMapLink(place.url);
     } else if (place.geometry) {
@@ -307,24 +334,28 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="w-[70vw] sm:w-[62vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh] p-0 overflow-hidden"
-      >
-        <div className="px-8 pt-8 pb-4 md:px-10 md:pt-10">
-          <DialogHeader className="px-0 py-0 border-0 mb-0 space-y-1 text-left md:text-center">
-            <DialogTitle className="text-2xl md:text-3xl font-semibold leading-tight">
-              {shooting ? "Editar Rodaje" : "Nuevo Rodaje"}
-            </DialogTitle>
-            <DialogDescription className="text-base text-muted-foreground">
-              {shooting
-                ? "Actualiza la información del rodaje"
-                : "Crea un nuevo rodaje y asigna equipo y tareas"}
-            </DialogDescription>
-          </DialogHeader>
-        </div>
+    <AnimatedModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={shooting ? "Editar Rodaje" : "Nuevo Rodaje"}
+      description={shooting ? "Actualiza la información del rodaje" : "Crea un nuevo rodaje y asigna equipo y tareas"}
+      className="w-[93vw] sm:w-[62vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh] p-0"
+    >
+      <div className="pl-12 pr-4 pt-12 pb-3 space-y-1 text-left md:text-center md:px-10 md:pt-10">
+        <h2 className="text-2xl md:text-3xl font-semibold leading-tight">
+          {shooting ? "Editar Rodaje" : "Nuevo Rodaje"}
+        </h2>
+        <p className="text-base text-muted-foreground">
+          {shooting ? "Actualiza la información del rodaje" : "Crea un nuevo rodaje y asigna equipo y tareas"}
+        </p>
+      </div>
 
-        <div className="px-8 pb-8 md:px-10 md:pb-10 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+      <div
+        ref={scrollAreaRef}
+        className="px-4 pb-4 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)] transition-[height,max-height] duration-600 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height]
+        scrollbar-track-transparent scrollbar-thumb-transparent hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40 hover:[&::-webkit-scrollbar-thumb]:transition hover:[&::-webkit-scrollbar-thumb]:duration-500 md:scrollbar-thin"
+        style={{ scrollbarGutter: "stable" }}
+      >
           {/* Título y Cliente */}
           <div className="space-y-4">
             <div>
@@ -341,7 +372,10 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
             </div>
 
             <div>
-              <Label htmlFor="client">Cliente *</Label>
+              <Label htmlFor="client" className="flex items-center gap-2 pb-3">
+                <UserIcon className="h-4 w-4" />
+                Cliente *
+              </Label>
               <Select value={clientId} onValueChange={setClientId} disabled={isPending}>
                 <SelectTrigger id="client">
                   <SelectValue placeholder="Selecciona un cliente" />
@@ -379,283 +413,303 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <Label>Fecha y Hora *</Label>
             </div>
-            <div>
-              <Label htmlFor="date">Fecha</Label>
-              <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                disabled={isPending}
-                className="mb-4"
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
-                <Label htmlFor="startTime">Hora de Inicio *</Label>
+                <Label htmlFor="date">Fecha</Label>
                 <Input
-                  id="startTime"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
                   disabled={isPending}
+                  className="w-full"
                 />
               </div>
-              <div>
-                <Label htmlFor="endTime">Hora de Fin *</Label>
-                <Input
-                  id="endTime"
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  disabled={isPending}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Notas */}
-          <div className="space-y-4">
-            <Label htmlFor="notes">Notas</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Notas adicionales sobre el rodaje..."
-              disabled={isPending}
-              rows={3}
-            />
-          </div>
-
-          {/* Ubicación */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <Label>Ubicación</Label>
-            </div>
-            <div>
-              <Label htmlFor="address">Dirección</Label>
-              <GooglePlacesAutocomplete
-                onAddressSelect={handleAddressSelect}
-                onClear={handleAddressClear}
-                onInputChange={setAddress}
-                placeholder="Buscar dirección..."
-                value={address}
-                disabled={false}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="mapLink">Link de Google Maps</Label>
-              <Input
-                id="mapLink"
-                type="url"
-                value={mapLink}
-                onChange={(e) => setMapLink(e.target.value)}
-                placeholder="https://maps.google.com/..."
-                disabled={isPending}
-              />
-            </div>
-          </div>
-
-          {/* Google Calendar */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <Label>Google Calendar</Label>
-            </div>
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="createCalendarEvent"
-                  checked={createCalendarEvent}
-                  onCheckedChange={(checked) => setCreateCalendarEvent(checked as boolean)}
-                  disabled={!isCalendarConnected || isPending}
-                />
-                <Label htmlFor="createCalendarEvent" className="text-sm">
-                  Crear evento en Google Calendar
-                </Label>
-              </div>
-              {!isCalendarConnected ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push("/admin/settings")}
-                  disabled={isPending}
-                >
-                  Ir a configuración
-                </Button>
-              ) : (
-                <Badge variant="secondary" className="text-xs">
-                  Conectado
-                </Badge>
-              )}
-            </div>
-            {!isCalendarConnected && (
-              <p className="text-xs text-muted-foreground">
-                Google Calendar no está conectado. Ve a configuración para conectarlo y habilitar la creación automática
-                de eventos.
-              </p>
-            )}
-          </div>
-
-          {/* Equipo (Crew) */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <Label>Equipo (Crew)</Label>
-            </div>
-            <div className="border rounded-lg p-4 max-h-48 overflow-y-auto">
-              {users.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Cargando usuarios...</p>
-              ) : (
-                <div className="space-y-2">
-                  {users.map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer"
-                      onClick={() => toggleCrew(user.id)}
-                    >
-                      <Checkbox
-                        checked={selectedCrewIds.includes(user.id)}
-                        onCheckedChange={() => toggleCrew(user.id)}
-                      />
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.image || undefined} />
-                        <AvatarFallback>
-                          {user.name
-                            ?.split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .toUpperCase()
-                            .slice(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm font-medium">{user.name}</span>
-                    </div>
-                  ))}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="startTime">Hora de Inicio *</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => handleStartTimeChange(e.target.value)}
+                    disabled={isPending}
+                  />
                 </div>
-              )}
+                <div>
+                  <Label htmlFor="endTime">Hora de Fin *</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    disabled={isPending}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Botones 50/50 */}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending}
+                className="w-full"
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleSubmit} disabled={isPending} className="w-full">
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {shooting ? "Actualizando..." : "Creando..."}
+                  </>
+                ) : (
+                  shooting ? "Actualizar" : "Crear"
+                )}
+              </Button>
             </div>
           </div>
 
-          {/* Tareas a Grabar */}
-          <div className="space-y-4">
-            <Label>Tareas a Grabar</Label>
-            {!clientId ? (
-              <p className="text-sm text-muted-foreground">
-                Selecciona un cliente para ver sus tareas activas
-              </p>
-            ) : availableTasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No hay tareas activas para este cliente
-              </p>
-            ) : (
-              <div className="border rounded-lg p-4 max-h-48 overflow-y-auto">
-                <div className="space-y-2">
-                  {availableTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer"
-                      onClick={() => toggleTask(task.id)}
-                    >
+          {/* Más opciones - Acordion */}
+          <Collapsible open={moreOptionsOpen} onOpenChange={setMoreOptionsOpen}>
+            <CollapsibleTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full justify-between font-bold bg-muted hover:bg-muted/80"
+              >
+                <span>Más opciones</span>
+                {moreOptionsOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent
+              className="mt-4 overflow-hidden transition-all duration-1000 ease-[cubic-bezier(0.25,0.1,0.25,1)] data-[state=closed]:max-h-0 data-[state=closed]:opacity-0 data-[state=open]:max-h-[3000px] data-[state=open]:opacity-100"
+            >
+              <div className="space-y-6">
+                {/* Ubicación - Primero */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <Label>Ubicación</Label>
+                  </div>
+                  <div>
+                    <Label htmlFor="address">Dirección</Label>
+                    <GooglePlacesAutocomplete
+                      onAddressSelect={handleAddressSelect}
+                      onClear={handleAddressClear}
+                      onInputChange={setAddress}
+                      placeholder="Buscar dirección..."
+                      value={address}
+                      disabled={false}
+                      className="mt-1"
+                    />
+                  </div>
+                  {/* Campo oculto para Google Maps link */}
+                  <input
+                    type="hidden"
+                    id="mapLink"
+                    value={mapLink}
+                    onChange={(e) => setMapLink(e.target.value)}
+                  />
+                </div>
+
+                {/* Notas */}
+                <div className="space-y-4">
+                  <Label htmlFor="notes">Notas</Label>
+                  <Textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Notas adicionales sobre el rodaje..."
+                    disabled={isPending}
+                    rows={3}
+                  />
+                </div>
+
+                {/* Google Calendar */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <Label>Google Calendar</Label>
+                  </div>
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-2">
                       <Checkbox
-                        checked={selectedTaskIds.includes(task.id)}
-                        onCheckedChange={() => toggleTask(task.id)}
+                        id="createCalendarEvent"
+                        checked={createCalendarEvent}
+                        onCheckedChange={(checked) => setCreateCalendarEvent(checked as boolean)}
+                        disabled={!isCalendarConnected || isPending}
                       />
-                      <div className="flex-1">
-                        <span className="text-sm font-medium">{task.title}</span>
-                        <Badge variant="outline" className="ml-2">
-                          {task.status}
-                        </Badge>
+                      <Label htmlFor="createCalendarEvent" className="text-sm">
+                        Crear evento en Google Calendar
+                      </Label>
+                    </div>
+                    {!isCalendarConnected ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push("/admin/settings")}
+                        disabled={isPending}
+                      >
+                        Ir a configuración
+                      </Button>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">
+                        Conectado
+                      </Badge>
+                    )}
+                  </div>
+                  {!isCalendarConnected && (
+                    <p className="text-xs text-muted-foreground">
+                      Google Calendar no está conectado. Ve a configuración para conectarlo y habilitar la creación automática
+                      de eventos.
+                    </p>
+                  )}
+                </div>
+
+                {/* Equipo (Crew) */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <Label>Equipo (Crew)</Label>
+                  </div>
+                  <div className="border rounded-lg p-4 max-h-48 overflow-y-auto">
+                    {users.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Cargando usuarios...</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {users.map((user) => (
+                          <div
+                            key={user.id}
+                            className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer"
+                            onClick={() => toggleCrew(user.id)}
+                          >
+                            <Checkbox
+                              checked={selectedCrewIds.includes(user.id)}
+                              onCheckedChange={() => toggleCrew(user.id)}
+                            />
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={user.image || undefined} />
+                              <AvatarFallback>
+                                {user.name
+                                  ?.split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()
+                                  .slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium">{user.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tareas a Grabar */}
+                <div className="space-y-4">
+                  <Label>Tareas a Grabar</Label>
+                  {!clientId ? (
+                    <p className="text-sm text-muted-foreground">
+                      Selecciona un cliente para ver sus tareas activas
+                    </p>
+                  ) : availableTasks.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No hay tareas activas para este cliente
+                    </p>
+                  ) : (
+                    <div className="border rounded-lg p-4 max-h-48 overflow-y-auto">
+                      <div className="space-y-2">
+                        {availableTasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer"
+                            onClick={() => toggleTask(task.id)}
+                          >
+                            <Checkbox
+                              checked={selectedTaskIds.includes(task.id)}
+                              onCheckedChange={() => toggleTask(task.id)}
+                            />
+                            <div className="flex-1">
+                              <span className="text-sm font-medium">{task.title}</span>
+                              <Badge variant="outline" className="ml-2">
+                                {task.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  )}
+                </div>
+
+                {/* Archivos */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <Label>Guiones</Label>
+                  </div>
+                  {scriptUrl ? (
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <a
+                          href={scriptUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline"
+                        >
+                          Ver guión
+                        </a>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setScriptUrl("")}
+                        disabled={isPending}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <UploadButton
+                      endpoint="brandAsset"
+                      onClientUploadComplete={(res: Array<{ url?: string; ufsUrl?: string }>) => {
+                        if (res && res[0]) {
+                          const url = res[0].ufsUrl || res[0].url;
+                          if (url) {
+                            setScriptUrl(url);
+                            toast({
+                              title: "Guión subido",
+                              description: "El archivo se ha subido correctamente",
+                            });
+                          }
+                        }
+                      }}
+                      onUploadError={(error: Error) => {
+                        toast({
+                          variant: "destructive",
+                          title: "Error al subir",
+                          description: error.message,
+                        });
+                      }}
+                    />
+                  )}
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* Archivos */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <Label>Guiones</Label>
-            </div>
-            {scriptUrl ? (
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  <a
-                    href={scriptUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline"
-                  >
-                    Ver guión
-                  </a>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setScriptUrl("")}
-                  disabled={isPending}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <UploadButton
-                endpoint="brandAsset"
-                onClientUploadComplete={(res: Array<{ url?: string; ufsUrl?: string }>) => {
-                  if (res && res[0]) {
-                    const url = res[0].ufsUrl || res[0].url;
-                    if (url) {
-                      setScriptUrl(url);
-                      toast({
-                        title: "Guión subido",
-                        description: "El archivo se ha subido correctamente",
-                      });
-                    }
-                  }
-                }}
-                onUploadError={(error: Error) => {
-                  toast({
-                    variant: "destructive",
-                    title: "Error al subir",
-                    description: error.message,
-                  });
-                }}
-              />
-            )}
-          </div>
-
-          {/* Botones */}
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isPending}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={handleSubmit} disabled={isPending}>
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {shooting ? "Actualizando..." : "Creando..."}
-                </>
-              ) : (
-                shooting ? "Actualizar" : "Crear"
-              )}
-            </Button>
-          </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
-      </DialogContent>
-    </Dialog>
+      </AnimatedModal>
   );
 }
-

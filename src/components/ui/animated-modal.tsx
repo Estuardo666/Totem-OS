@@ -1,0 +1,102 @@
+"use client";
+
+import * as React from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface AnimatedModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+  title?: string;
+  description?: string;
+  className?: string;
+  maxWidthClassName?: string;
+}
+
+// Modal reutilizable con animación de altura real (scrollHeight) usando useLayoutEffect.
+export function AnimatedModal({ open, onOpenChange, children, title, description, className, maxWidthClassName = "max-w-lg" }: AnimatedModalProps) {
+  const measureRef = React.useRef<HTMLDivElement | null>(null);
+  const [height, setHeight] = React.useState<number | null>(null);
+  const [ready, setReady] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    const el = measureRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const next = el.scrollHeight;
+      if (next !== height) setHeight(next);
+    };
+
+    // medir en el frame actual y en el siguiente para capturar layout completo
+    measure();
+    const raf = requestAnimationFrame(measure);
+
+    // observar cambios dinámicos
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
+  }, [open, children]);
+
+  React.useLayoutEffect(() => {
+    if (open) {
+      setReady(true);
+    } else {
+      setReady(false);
+    }
+  }, [open]);
+
+  const fallbackOpenHeight = 400; // altura base para evitar línea fina antes de medir
+  const resolvedHeight = height ?? fallbackOpenHeight;
+  const maxViewportHeight = typeof window !== "undefined" ? Math.round(window.innerHeight * 0.9) : null;
+  const clampedHeight = maxViewportHeight ? Math.min(resolvedHeight, maxViewportHeight) : resolvedHeight;
+  const animatedHeight = open ? `${clampedHeight}px` : "0px";
+  const animateClassBase = "duration-700 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] data-[state=closed]:opacity-0 data-[state=closed]:scale-95 data-[state=open]:opacity-100 data-[state=open]:scale-100";
+  const shouldAnimateHeight = ready && height !== null;
+  const shouldAnimateScale = ready;
+
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/20 backdrop-blur-3xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:duration-300 data-[state=open]:duration-300 ease-in-out" />
+        <DialogPrimitive.Content
+          className={cn(
+            "fixed left-1/2 top-1/2 z-50 w-[93vw] sm:w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[2.5rem] border border-white/20 bg-white/10 dark:bg-black/10 text-black dark:text-white shadow-2xl backdrop-blur-[40px]",
+            shouldAnimateScale
+              ? shouldAnimateHeight
+                ? `transition-[height,transform,opacity] ${animateClassBase}`
+                : `transition-[transform,opacity] ${animateClassBase}`
+              : "",
+            maxWidthClassName,
+            className
+          )}
+          style={{ height: shouldAnimateHeight ? animatedHeight : "auto", minHeight: open ? fallbackOpenHeight : 0 }}
+        >
+          <div ref={measureRef} className="relative w-full">
+            <DialogPrimitive.Close className="absolute right-4 top-4 z-50 flex h-8 w-8 items-center justify-center rounded-[1.25rem] bg-red-500 p-1 text-white hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Cerrar</span>
+            </DialogPrimitive.Close>
+
+            {title ? (
+              <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
+            ) : null}
+            {description ? (
+              <DialogPrimitive.Description className="sr-only">{description}</DialogPrimitive.Description>
+            ) : null}
+
+            {children}
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}
+
+export const AnimatedModalTrigger = DialogPrimitive.Trigger;

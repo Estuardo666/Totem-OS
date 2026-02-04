@@ -114,7 +114,7 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
     <div className="space-y-6">
       {/* Botón Nuevo Rodaje */}
       <div className="flex justify-end">
-        <Button onClick={handleNewShooting}>
+        <Button onClick={handleNewShooting} className="w-full md:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Rodaje
         </Button>

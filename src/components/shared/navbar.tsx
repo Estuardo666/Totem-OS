@@ -17,7 +17,7 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background px-4 md:hidden">
+    <div className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b bg-background/90 backdrop-blur md:hidden px-4">
       <div className="flex items-center">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>

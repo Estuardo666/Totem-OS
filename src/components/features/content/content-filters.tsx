@@ -11,8 +11,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { Client, User } from "@prisma/client";
+
+const normalizeText = (text: string) =>
+  text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
 
 interface ContentFiltersProps {
   tasks: ContentTaskWithClient[];
@@ -46,6 +53,14 @@ export function ContentFilters({
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
+  const [clientSearch, setClientSearch] = useState("");
+
+  const sortedClients = [...clients].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+  const filteredClients = sortedClients.filter((client) => {
+    const search = normalizeText(clientSearch).trim();
+    if (!search) return true;
+    return normalizeText(client.name).startsWith(search);
+  });
 
   // Obtener meses únicos de las tareas
   const availableMonths = useMemo(() => {
@@ -130,8 +145,16 @@ export function ContentFilters({
             <SelectValue placeholder="Filtrar por cliente" />
           </SelectTrigger>
           <SelectContent>
+            <div className="px-3 pt-3 pb-2" onKeyDown={(e) => e.stopPropagation()}>
+              <Input
+                placeholder="Buscar cliente"
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
             <SelectItem value="all">Todos los clientes</SelectItem>
-            {clients
+            {filteredClients
               .filter((client) => client.status !== "INACTIVE")
               .map((client) => (
                 <SelectItem key={client.id} value={client.id}>
@@ -203,7 +226,14 @@ export function ContentFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los usuarios</SelectItem>
-              <SelectItem value="unassigned">Sin asignar</SelectItem>
+              <SelectItem value="unassigned">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-muted text-muted-foreground text-xs font-semibold flex items-center justify-center">
+                    ?
+                  </div>
+                  <span>Sin asignar</span>
+                </div>
+              </SelectItem>
               {users.map((user) => {
                 const initials = user.name
                   .split(" ")

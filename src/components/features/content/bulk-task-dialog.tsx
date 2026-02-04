@@ -65,8 +65,8 @@ export function BulkTaskDialog({
             </div>
           </DialogHeader>
         </div>
-        <div className="px-4 pb-4 pt-0 md:px-6 md:pb-5">
-          <BulkTaskCreator clients={clients} variant="dialog" showHeader={false} />
+        <div className="px-4 pb-4 pt-0 md:px-6 md:pb-5 transition-[height,max-height] duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height]">
+          <BulkTaskCreator clients={clients} variant="dialog" showHeader={false} onSuccess={() => setOpen(false)} />
         </div>
       </DialogContent>
     </Dialog>

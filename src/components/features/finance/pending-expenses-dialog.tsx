@@ -86,7 +86,7 @@ export function PendingExpensesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto custom-scroll">
         <DialogHeader>
           <DialogTitle>Gastos Pendientes de Reembolso</DialogTitle>
           <DialogDescription>
