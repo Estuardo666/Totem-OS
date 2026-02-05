@@ -32,6 +32,7 @@ import { UploadButton } from "@/utils/uploadthing";
 import { useState } from "react";
 import { X } from "lucide-react";
 import type { User } from "@prisma/client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface ClientFormProps {
   users: User[];
@@ -116,6 +117,8 @@ export function ClientForm({ users }: ClientFormProps) {
                   placeholder="Ej: Empresa XYZ"
                   {...field}
                   disabled={isPending}
+                  className="text-2xl font-medium border-0 border-b-2 border-input rounded-none px-0 pb-2 bg-transparent focus:border-primary"
+                  style={{ fontSize: "1.5rem", fontWeight: 500 }}
                 />
               </FormControl>
               <FormMessage />
@@ -377,7 +380,13 @@ export function ClientForm({ users }: ClientFormProps) {
                     <SelectItem value="none">Sin asignar</SelectItem>
                     {users.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
-                        {user.name}
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={user.image || undefined} alt={user.name || ""} />
+                            <AvatarFallback>{user.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span>{user.name}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -410,7 +419,13 @@ export function ClientForm({ users }: ClientFormProps) {
                     <SelectItem value="none">Sin asignar</SelectItem>
                     {users.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
-                        {user.name}
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={user.image || undefined} alt={user.name || ""} />
+                            <AvatarFallback>{user.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span>{user.name}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>

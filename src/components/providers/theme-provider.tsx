@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { getCurrentUser } from "@/actions/user.actions";
+import { setPrimaryColorCookieClient } from "@/lib/theme";
 
 /**
  * ThemeProvider que sincroniza darkMode y primaryColor desde la BD
@@ -70,8 +71,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           return `${h} ${s}% ${lPercent}%`;
         };
 
-        const hslColor = hexToHsl(user.primaryColor || "#2563eb");
+        const primaryHex = user.primaryColor || "#2563eb";
+        const hslColor = hexToHsl(primaryHex);
         rootElement.style.setProperty("--primary", hslColor);
+        rootElement.style.setProperty("--primary-color", primaryHex);
+
+        try {
+          localStorage.setItem("primaryColor", primaryHex);
+          setPrimaryColorCookieClient(primaryHex);
+        } catch (_) {}
 
         // Aplicar transición suave al body
         rootElement.style.transition = "color 300ms ease, background-color 300ms ease";

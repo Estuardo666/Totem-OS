@@ -52,7 +52,7 @@ interface ColorPickerProps {
 export function ColorPicker({ value, onChange, disabled }: ColorPickerProps) {
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-8 gap-2">
+      <div className="grid grid-cols-8 gap-1.5">
         {COLOR_PALETTE.map((color) => (
           <button
             key={color}
@@ -60,7 +60,7 @@ export function ColorPicker({ value, onChange, disabled }: ColorPickerProps) {
             onClick={() => !disabled && onChange(color)}
             disabled={disabled}
             className={cn(
-              "h-10 w-10 rounded-full border-2 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+              "h-8 w-8 rounded-full border transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
               value === color
                 ? "border-foreground ring-2 ring-offset-2"
                 : "border-gray-300 dark:border-gray-600"

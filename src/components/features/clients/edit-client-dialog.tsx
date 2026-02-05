@@ -156,7 +156,7 @@ export function EditClientDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto custom-scroll">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col min-h-0">
         <DialogHeader>
           <DialogTitle>Editar Cliente</DialogTitle>
           <DialogDescription>
@@ -164,8 +164,9 @@ export function EditClientDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="max-h-[calc(90vh-180px)] overflow-y-auto overflow-x-hidden pr-2 flex-1 min-h-0 custom-scroll">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-4">
             <FormField
               control={form.control}
               name="name"
@@ -177,6 +178,8 @@ export function EditClientDialog({
                       placeholder="Ej: Empresa XYZ"
                       {...field}
                       disabled={isPending}
+                      className="text-2xl font-medium border-0 border-b-2 border-input rounded-none px-0 pb-2 bg-transparent focus:border-primary"
+                      style={{ fontSize: "1.5rem", fontWeight: 500 }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -260,6 +263,16 @@ export function EditClientDialog({
                     )}
                     <UploadButton
                       endpoint="imageUploader"
+                      appearance={{
+                        button: "px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90 text-sm font-medium shadow-sm",
+                        allowedContent: "text-xs text-muted-foreground",
+                      }}
+                      content={{
+                        button({ ready }) {
+                          return ready ? "Subir logo" : "Preparando...";
+                        },
+                        allowedContent: "Imagen (máx. 4MB)",
+                      }}
                       onClientUploadComplete={(res) => {
                         if (res && res.length > 0) {
                           setLogoUrl(res[0].url);
@@ -540,10 +553,10 @@ export function EditClientDialog({
                 Cancelar
               </Button>
             </div>
-          </form>
-        </Form>
+            </form>
+          </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
-
