@@ -107,6 +107,8 @@ type SpeechRecognitionEventLike = {
   results: SpeechRecognitionResultListLike;
 };
 
+type RecorderState = "idle" | "recording" | "uploading";
+
 type SpeechRecognitionResultListLike = {
   length: number;
   item: (index: number) => SpeechRecognitionResultLike;
@@ -164,6 +166,9 @@ interface VoiceControlPanelProps {
 
 export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const [recorderState, setRecorderState] = useState<RecorderState>("idle");
+  const [recorderError, setRecorderError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(true);
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -190,11 +195,6 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
   }, []);
 
   const handleStart = () => {
-    if (!isSupported) {
-      setError("Tu navegador no soporta la API de reconocimiento de voz.");
-      return;
-    }
-
     // Reset state for a stateless IA call (no historial)
     setTranscript("");
     setResult(null);
@@ -202,6 +202,10 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
     setActionError(null);
     setTaskDefaults(null);
     setShootDefaults(null);
+    if (!isSupported) {
+      setError("Tu navegador no soporta la API de reconocimiento de voz.");
+      return null;
+    }
 
     const recognition = new getSpeechRecognitionConstructor()!;
     recognition.lang = "es-ES";
@@ -226,9 +230,60 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
     return recognition;
   };
 
+  const stopRecorder = () => {
+    mediaRecorderRef.current?.stop();
+    mediaRecorderRef.current = null;
+  };
+
+  const startRecorder = async () => {
+    try {
+      setRecorderError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const chunks: BlobPart[] = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        setRecorderState("uploading");
+        try {
+          const blob = new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" });
+          const form = new FormData();
+          form.append("file", blob, "audio.webm");
+          const res = await fetch("/api/transcribe", { method: "POST", body: form });
+          const data = (await res.json()) as { text?: string; error?: string };
+          if (!res.ok || data.error) {
+            throw new Error(data.error || "No se pudo transcribir");
+          }
+          setTranscript(data.text ?? "");
+        } catch (err) {
+          setRecorderError(err instanceof Error ? err.message : "Error al transcribir");
+        } finally {
+          setRecorderState("idle");
+        }
+      };
+
+      mediaRecorder.start();
+      setRecorderState("recording");
+    } catch (err) {
+      setRecorderError(err instanceof Error ? err.message : "No se pudo iniciar grabación");
+      setRecorderState("idle");
+    }
+  };
+
   const handleToggleListening = () => {
+    // Fallback: if no Web Speech, use recorder + backend transcribe
     if (!isSupported) {
-      setError("Este navegador no soporta Web Speech API.");
+      if (recorderState === "recording") {
+        stopRecorder();
+        return;
+      }
+      startRecorder();
       return;
     }
 
@@ -411,6 +466,13 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
             <Alert variant="destructive">
               <AlertTitle>Atención</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {recorderError && (
+            <Alert variant="destructive">
+              <AlertTitle>Error de grabación</AlertTitle>
+              <AlertDescription>{recorderError}</AlertDescription>
             </Alert>
           )}
 
