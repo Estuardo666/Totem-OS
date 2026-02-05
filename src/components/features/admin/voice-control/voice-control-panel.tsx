@@ -207,17 +207,23 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
       return null;
     }
 
-    const recognition = new getSpeechRecognitionConstructor()!;
+    const SpeechCtor = getSpeechRecognitionConstructor();
+    if (!SpeechCtor) {
+      setError("Tu navegador no soporta la API de reconocimiento de voz.");
+      return null;
+    }
+
+    const recognition = new SpeechCtor();
     recognition.lang = "es-ES";
     recognition.interimResults = true;
     recognition.continuous = true;
 
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
       const currentTranscript = extractTranscript(event.results);
       setTranscript(currentTranscript);
     };
 
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
       setError(`Error de reconocimiento: ${event.error}`);
       setIsListening(false);
     };
@@ -229,6 +235,8 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
     recognitionRef.current = recognition;
     return recognition;
   };
+
+  const initRecognition = () => handleStart();
 
   const stopRecorder = () => {
     mediaRecorderRef.current?.stop();
@@ -397,9 +405,9 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
             <button
               type="button"
               onClick={handleToggleListening}
-              disabled={!isSupported}
+              disabled={recorderState === "uploading"}
               className={`flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-200 ${
-                isListening
+                isListening || recorderState === "recording"
                   ? "bg-primary text-primary-foreground scale-105"
                   : "bg-background text-foreground border"
               }`}
