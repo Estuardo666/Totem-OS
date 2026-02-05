@@ -1,8 +1,6 @@
-const CACHE_NAME = "totem-os-v2";
+const CACHE_NAME = "totem-os-v4";
 const STATIC_ASSETS = [
-  "/",
-  "/content",
-  "/finance",
+  // Mantenemos solo manifest para instalación PWA; evitamos precache de rutas HTML
   "/manifest.json",
 ];
 
@@ -40,47 +38,13 @@ self.addEventListener("fetch", (event) => {
   }
 
   const requestUrl = new URL(event.request.url);
-  if (requestUrl.pathname.startsWith("/_next/") || requestUrl.pathname.startsWith("/icons/")) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
 
-  const isHtmlRequest = event.request.headers.get("accept")?.includes("text/html");
-  const isClientsRoute = new URL(event.request.url).pathname.startsWith("/clients");
-
-  if (isHtmlRequest || isClientsRoute) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-          return response;
-        })
-        .catch(async () => {
-          const cachedResponse = await caches.match(event.request);
-          return cachedResponse ?? Response.error();
-        })
-    );
-    return;
-  }
-
+  // Para todas las rutas, preferimos siempre red. Cache solo se usa si el fetch falla.
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request)
-        .then((networkResponse) => {
-          if (!networkResponse || networkResponse.status !== 200) {
-            return networkResponse;
-          }
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-          return networkResponse;
-        })
-        .catch(() => cachedResponse ?? Response.error());
+    fetch(event.request).catch(async () => {
+      // Fallback opcional: manifest o assets precacheados
+      const cachedResponse = await caches.match(event.request);
+      return cachedResponse ?? Response.error();
     })
   );
 });
