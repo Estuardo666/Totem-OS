@@ -7,6 +7,7 @@ import { CheckCircle2 } from "lucide-react";
 import {
   DragDropContext,
   DropResult,
+  DragUpdate,
 } from "@hello-pangea/dnd";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import { updateTaskStatus, getTasks } from "@/actions/content-actions";
@@ -45,7 +46,9 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollFrame = useRef<number | null>(null);
+  const lastPointer = useRef<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [hoverColumn, setHoverColumn] = useState<ContentTaskStatus | null>(null);
 
   useEffect(() => {
     setTasks(initialTasks);
@@ -74,20 +77,28 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
     const handlePointerMove = (e: PointerEvent) => {
       const container = scrollRef.current;
       if (!container) return;
+      lastPointer.current = { x: e.clientX, y: e.clientY };
+
       const rect = container.getBoundingClientRect();
-      const edge = 140; // px desde el borde para disparar scroll
-      const velocity = 2; // px por frame para máximo control
+      const edge = 180; // px desde el borde para disparar scroll
 
       const deltaLeft = e.clientX - rect.left;
       const deltaRight = rect.right - e.clientX;
 
       let direction: -1 | 0 | 1 = 0;
-      if (deltaLeft < edge) direction = -1;
-      else if (deltaRight < edge) direction = 1;
+      let intensity = 0;
+      if (deltaLeft < edge) {
+        direction = -1;
+        intensity = (edge - deltaLeft) / edge;
+      } else if (deltaRight < edge) {
+        direction = 1;
+        intensity = (edge - deltaRight) / edge;
+      }
 
       if (direction !== 0) {
         if (scrollFrame.current) cancelAnimationFrame(scrollFrame.current);
         scrollFrame.current = requestAnimationFrame(() => {
+          const velocity = Math.max(1, Math.round(intensity * 6));
           container.scrollBy({ left: direction * velocity, behavior: "auto" });
         });
       }
@@ -98,6 +109,46 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
       window.removeEventListener("pointermove", handlePointerMove);
       if (scrollFrame.current) cancelAnimationFrame(scrollFrame.current);
       scrollFrame.current = null;
+    };
+  }, [isDragging]);
+
+  // Hit-test de columna por posición de puntero (más confiable en mobile)
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const container = scrollRef.current;
+      if (!container) return;
+
+      const columns = container.querySelectorAll("[data-column-id]");
+      for (const column of columns) {
+        const rect = column.getBoundingClientRect();
+        const expanded = {
+          left: rect.left - 24,
+          right: rect.right + 24,
+          top: rect.top,
+          bottom: rect.bottom,
+        };
+
+        if (
+          e.clientX >= expanded.left &&
+          e.clientX <= expanded.right &&
+          e.clientY >= expanded.top &&
+          e.clientY <= expanded.bottom
+        ) {
+          const colId = column.getAttribute("data-column-id") as ContentTaskStatus | null;
+          if (colId) setHoverColumn(colId);
+          return;
+        }
+      }
+
+      setHoverColumn(null);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      setHoverColumn(null);
     };
   }, [isDragging]);
 
@@ -361,86 +412,102 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
     }
   };
 
-  // Manejar el final del drag
-  const onDragEnd = async (result: DropResult) => {
-    const { destination, source } = result;
+  // Manejar el final del drag con hoverColumn como respaldo
+  const handleDragEnd = async (result: DropResult) => {
+    setIsDragging(false);
 
-    // Si no hay destino, cancelar
+    let destination = result.destination;
+    if (!destination && lastPointer.current) {
+      const container = scrollRef.current;
+      if (container) {
+        const { x, y } = lastPointer.current;
+        const columns = container.querySelectorAll("[data-column-id]");
+        for (const column of columns) {
+          const rect = column.getBoundingClientRect();
+          if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            const colId = column.getAttribute("data-column-id") as ContentTaskStatus | null;
+            if (colId) {
+              destination = {
+                droppableId: colId,
+                index: optimisticTasks.filter((t) => t.status === colId).length,
+              };
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    if (!destination && hoverColumn) {
+      destination = { droppableId: hoverColumn, index: optimisticTasks.filter((t) => t.status === hoverColumn).length };
+    }
+
+    if (destination && hoverColumn && destination.droppableId !== hoverColumn) {
+      destination = {
+        droppableId: hoverColumn,
+        index: optimisticTasks.filter((t) => t.status === hoverColumn).length,
+      };
+    }
+
     if (!destination) {
+      setHoverColumn(null);
       return;
     }
 
-    // Si no cambió de posición, no hacer nada
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
+    const source = result.source;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) {
+      setHoverColumn(null);
       return;
     }
 
     const sourceStatus = source.droppableId as ContentTaskStatus;
     const destinationStatus = destination.droppableId as ContentTaskStatus;
 
-    // Encontrar la tarea que se está moviendo
-    const taskToMove = tasks.find(
-      (task) => task.id === result.draggableId && task.status === sourceStatus
-    );
-
+    const taskToMove = tasks.find((task) => task.id === result.draggableId && task.status === sourceStatus);
     if (!taskToMove) {
+      setHoverColumn(null);
       return;
     }
 
-    // Guardar el estado anterior para posible reversión
     const previousTasks = [...tasks];
+    const optimistic = reorderTasks(sourceStatus, destinationStatus, source.index, destination.index);
+    setTasks(optimistic);
 
-    // ACTUALIZACIÓN OPTIMISTA: Actualizar el estado local inmediatamente
-    const optimisticTasks = reorderTasks(
-      sourceStatus,
-      destinationStatus,
-      source.index,
-      destination.index
-    );
-    setTasks(optimisticTasks);
-
-    // Si cambió de columna (status), actualizar en la base de datos
     if (sourceStatus !== destinationStatus) {
       try {
-        const result = await updateTaskStatus(taskToMove.id, destinationStatus);
-
-        if (!result.success) {
-          // Revertir el cambio si falla
+        const resultUpdate = await updateTaskStatus(taskToMove.id, destinationStatus);
+        if (!resultUpdate.success) {
           setTasks(previousTasks);
           toast({
             variant: "destructive",
             title: "Error al actualizar tarea",
-            description: result.error || "No se pudo actualizar el estado",
+            description: resultUpdate.error || "No se pudo actualizar el estado",
           });
         } else {
-          // Disparar evento personalizado para notificar que se actualizó el estado
-          // Esto permite que otros componentes (como ContractFulfillment) se actualicen
-          window.dispatchEvent(new CustomEvent("taskStatusUpdated", {
-            detail: {
-              taskId: taskToMove.id,
-              oldStatus: sourceStatus,
-              newStatus: destinationStatus,
-            },
-          }));
-          // No refrescar automáticamente - Pusher debería notificar a todos los clientes
-          // El evento de Pusher se enviará desde el servidor y actualizará a todos los usuarios
-          console.log("✅ Tarea actualizada. Pusher notificará a otros usuarios automáticamente.");
+          window.dispatchEvent(
+            new CustomEvent("taskStatusUpdated", {
+              detail: { taskId: taskToMove.id, oldStatus: sourceStatus, newStatus: destinationStatus },
+            })
+          );
         }
       } catch (error) {
-        // Revertir el cambio si hay excepción
         setTasks(previousTasks);
         toast({
           variant: "destructive",
           title: "Error al actualizar tarea",
-          description:
-            error instanceof Error
-              ? error.message
-              : "Ocurrió un error inesperado",
+          description: error instanceof Error ? error.message : "Ocurrió un error inesperado",
         });
       }
+    }
+
+    setHoverColumn(null);
+  };
+
+  const handleDragUpdate = (update: DragUpdate) => {
+    if (!update.destination) return;
+    const droppableId = update.destination.droppableId as ContentTaskStatus | undefined;
+    if (droppableId && droppableId !== hoverColumn) {
+      setHoverColumn(droppableId);
     }
   };
 
@@ -544,10 +611,8 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
   return (
     <DragDropContext
       onDragStart={() => setIsDragging(true)}
-      onDragEnd={(result) => {
-        setIsDragging(false);
-        onDragEnd(result);
-      }}
+      onDragUpdate={handleDragUpdate}
+      onDragEnd={handleDragEnd}
     >
       <div className="w-full h-full overflow-hidden">
         {/* Mobile: scroll horizontal | Desktop: grid con columnas fijas */}
