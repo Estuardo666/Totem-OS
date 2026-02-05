@@ -44,6 +44,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
   const [selectedTask, setSelectedTask] = useState<ContentTaskWithClient | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollFrame = useRef<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
@@ -74,18 +75,30 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
       const container = scrollRef.current;
       if (!container) return;
       const rect = container.getBoundingClientRect();
-      const edge = 60; // px desde el borde para disparar scroll
-      const velocity = 18; // px por frame aprox.
+      const edge = 140; // px desde el borde para disparar scroll
+      const velocity = 2; // px por frame para máximo control
 
-      if (e.clientX - rect.left < edge) {
-        container.scrollBy({ left: -velocity, behavior: "auto" });
-      } else if (rect.right - e.clientX < edge) {
-        container.scrollBy({ left: velocity, behavior: "auto" });
+      const deltaLeft = e.clientX - rect.left;
+      const deltaRight = rect.right - e.clientX;
+
+      let direction: -1 | 0 | 1 = 0;
+      if (deltaLeft < edge) direction = -1;
+      else if (deltaRight < edge) direction = 1;
+
+      if (direction !== 0) {
+        if (scrollFrame.current) cancelAnimationFrame(scrollFrame.current);
+        scrollFrame.current = requestAnimationFrame(() => {
+          container.scrollBy({ left: direction * velocity, behavior: "auto" });
+        });
       }
     };
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
-    return () => window.removeEventListener("pointermove", handlePointerMove);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      if (scrollFrame.current) cancelAnimationFrame(scrollFrame.current);
+      scrollFrame.current = null;
+    };
   }, [isDragging]);
 
   // Configurar Pusher para actualizaciones en tiempo real
