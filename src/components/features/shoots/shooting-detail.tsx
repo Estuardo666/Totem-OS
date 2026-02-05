@@ -83,13 +83,16 @@ export function ShootingDetail({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-start justify-between">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="pb-2">
+          <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
-              <DialogTitle className="text-2xl mb-2">{shooting.title}</DialogTitle>
-              <div className="mt-2">
+              <DialogTitle className="text-xl sm:text-2xl mb-1 sm:mb-2 leading-snug">
+                {shooting.title}
+              </DialogTitle>
+              <div className="mt-1 sm:mt-2">
                 <Badge
+                  className="px-2.5 py-1 text-[12px]"
                   variant={
                     shooting.status === "COMPLETED"
                       ? "default"
@@ -109,7 +112,7 @@ export function ShootingDetail({
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4">
+        <div className="space-y-5 sm:space-y-6 mt-2">
           {/* Fecha y Hora */}
           <div className="flex items-center gap-3">
             <Calendar className="h-5 w-5 text-muted-foreground" />

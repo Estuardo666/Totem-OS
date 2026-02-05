@@ -181,7 +181,7 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish }: TaskCa
                 </div>
               )}
 
-              <CardContent className="p-3">
+              <CardContent className="p-[0.45rem]">
                 {/* Para tareas publicadas: Vista compacta minimalista */}
                 {task.status === "PUBLISHED" ? (
                   <div className="flex items-center justify-between">

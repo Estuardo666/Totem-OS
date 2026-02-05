@@ -17,7 +17,7 @@ interface KanbanColumnProps {
 
 export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPublish }: KanbanColumnProps) {
   return (
-    <div className="flex flex-col min-w-[50vw] sm:min-w-[350px] md:min-w-0 md:w-full md:flex-1 snap-center flex-shrink-0 ml-0 mr-[5px] md:mr-0 px-0 md:px-0 h-full">
+    <div className="flex flex-col min-w-[35vw] max-w-[35vw] sm:min-w-[350px] sm:max-w-none md:min-w-0 md:w-full md:flex-1 snap-center flex-shrink-0 ml-0 mr-[5px] md:mr-0 px-0 md:px-0 h-full">
       {/* Column Container con fondo y borde - Padding reducido en desktop */}
       <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-800/70 rounded-xl border border-slate-200 dark:border-slate-600 overflow-hidden">
         {/* Header Sticky - Texto más compacto en desktop */}

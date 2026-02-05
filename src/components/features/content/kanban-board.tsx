@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useOptimistic } from "react";
+import { useState, useEffect, useOptimistic, useRef } from "react";
+
 import Pusher from "pusher-js";
 import { CheckCircle2 } from "lucide-react";
 import {
@@ -42,6 +43,8 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
   const [isMounted, setIsMounted] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ContentTaskWithClient | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     setTasks(initialTasks);
@@ -62,6 +65,28 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
     setIsMounted(true);
     console.log("🔑 Cluster Pusher Frontend:", process.env.NEXT_PUBLIC_PUSHER_CLUSTER);
   }, []);
+
+  // Auto-scroll horizontal en mobile mientras se arrastra
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const container = scrollRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const edge = 60; // px desde el borde para disparar scroll
+      const velocity = 18; // px por frame aprox.
+
+      if (e.clientX - rect.left < edge) {
+        container.scrollBy({ left: -velocity, behavior: "auto" });
+      } else if (rect.right - e.clientX < edge) {
+        container.scrollBy({ left: velocity, behavior: "auto" });
+      }
+    };
+
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    return () => window.removeEventListener("pointermove", handlePointerMove);
+  }, [isDragging]);
 
   // Configurar Pusher para actualizaciones en tiempo real
   useEffect(() => {
@@ -234,17 +259,14 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
     newTasks.splice(taskIndex, 1);
     
     // Encontrar la posición de inserción en la columna destino
-    const destinationTasks = newTasks.filter((t) => t.status === destinationStatus);
     let insertIndex = 0;
     
     if (sourceStatus === destinationStatus) {
       // Si es la misma columna, recalcular el índice después de remover
-      const newDestinationTasks = newTasks.filter((t) => t.status === destinationStatus);
-      insertIndex = Math.min(destinationIndex, newDestinationTasks.length);
+      insertIndex = Math.min(destinationIndex, newTasks.filter((t) => t.status === destinationStatus).length);
     } else {
       // Si es columna diferente, encontrar la posición absoluta
-      const allDestinationTasks = newTasks.filter((t) => t.status === destinationStatus);
-      insertIndex = Math.min(destinationIndex, allDestinationTasks.length);
+      insertIndex = Math.min(destinationIndex, newTasks.filter((t) => t.status === destinationStatus).length);
     }
     
     // Encontrar el índice absoluto para insertar
@@ -431,7 +453,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
             return (
               <div
                 key={column.status}
-                className="flex flex-col min-w-[85vw] sm:min-w-[350px] md:min-w-0 md:w-full md:flex-1 snap-center flex-shrink-0 first:ml-4 last:mr-4 px-2 md:px-0 h-full"
+                className="flex flex-col min-w-[40vw] sm:min-w-[350px] md:min-w-0 md:w-full md:flex-1 snap-center flex-shrink-0 first:ml-4 last:mr-4 px-2 md:px-0 h-full"
               >
                 <div className="flex flex-col h-full bg-slate-50/50 dark:bg-slate-90/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                   <div className="sticky top-0 z-30 w-full bg-white dark:bg-slate-900 py-2 px-2 md:py-2 md:px-2 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between rounded-t-xl">
@@ -445,7 +467,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
                   <div className="flex-1 overflow-y-auto pr-1 scrollbar-hide">
                     <div className="flex flex-col gap-3 p-3 w-full overflow-hidden">
                       {columnTasks.length > 0 ? (
-                        columnTasks.map((task, index) => (
+                        columnTasks.map((task) => (
                           <div key={task.id}>
                             {/* Versión simplificada sin Draggable para estado no montado */}
                             <Card className="border-l-2 md:border-l-4 cursor-pointer hover:shadow-md transition-all max-w-full overflow-hidden"
@@ -507,10 +529,19 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
 
   // Versión con drag & drop
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
+    <DragDropContext
+      onDragStart={() => setIsDragging(true)}
+      onDragEnd={(result) => {
+        setIsDragging(false);
+        onDragEnd(result);
+      }}
+    >
       <div className="w-full h-full overflow-hidden">
         {/* Mobile: scroll horizontal | Desktop: grid con columnas fijas */}
-        <div className="flex md:grid md:grid-cols-6 md:gap-4 w-full h-full items-start overflow-x-auto md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0">
+        <div
+          ref={scrollRef}
+          className="flex md:grid md:grid-cols-6 md:gap-4 w-full h-full items-start overflow-x-auto md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
+        >
           {KANBAN_COLUMNS.map((column) => {
             const columnTasks = tasksByStatus[column.status] || [];
 

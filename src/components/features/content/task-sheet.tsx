@@ -10,7 +10,7 @@ import { Loader2, Trash2, Copy, Check, X, Download, Sparkles } from "lucide-reac
 import { updateContentTaskSchema, createContentTaskSchema, type UpdateContentTaskInput, type CreateContentTaskInput, updateTaskMetricsSchema, type UpdateTaskMetricsInput } from "@/schemas/content";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import { updateTask, deleteTask, createTask, getTaskMetrics, updateTaskMetrics, getEnabledMetricsForClient } from "@/actions/content-actions";
-import type { TaskMetrics } from "@prisma/client";
+import type { TaskMetrics, User } from "@prisma/client";
 import type { UserWithTaskCount } from "@/actions/user.actions";
 import type { ContentTaskStatus, ContentTaskType } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
@@ -150,7 +150,7 @@ interface TaskSheetProps {
   task: ContentTaskWithClient | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  users: UserWithTaskCount[];
+  users: (UserWithTaskCount | User)[];
   clients?: Array<{ id: string; name: string; logo?: string | null; color?: string | null }>;
   initialScheduledAt?: Date | string;
 }
