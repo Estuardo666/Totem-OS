@@ -77,6 +77,8 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
     const handlePointerMove = (e: PointerEvent) => {
       const container = scrollRef.current;
       if (!container) return;
+
+      const prev = lastPointer.current;
       lastPointer.current = { x: e.clientX, y: e.clientY };
 
       const rect = container.getBoundingClientRect();
@@ -85,12 +87,15 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
       const deltaLeft = e.clientX - rect.left;
       const deltaRight = rect.right - e.clientX;
 
+      // Detectar dirección real del dedo para evitar scroll inicial al lado opuesto
+      const movementX = prev ? e.clientX - prev.x : 0;
+
       let direction: -1 | 0 | 1 = 0;
       let intensity = 0;
-      if (deltaLeft < edge) {
+      if (deltaLeft < edge && movementX < 0) {
         direction = -1;
         intensity = (edge - deltaLeft) / edge;
-      } else if (deltaRight < edge) {
+      } else if (deltaRight < edge && movementX > 0) {
         direction = 1;
         intensity = (edge - deltaRight) / edge;
       }
