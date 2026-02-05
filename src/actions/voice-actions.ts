@@ -98,12 +98,16 @@ export async function interpretVoiceCommandAction(
       { role: "user", content: userPrompt },
     ];
 
+    const chatModel = config.model?.toLowerCase().includes("whisper")
+      ? "llama-3.1-8b-instant"
+      : config.model || "llama-3.1-8b-instant";
+
     const rawText = await callAIProvider(
       config.provider,
       config.apiKey,
       messages,
       {
-        model: config.model,
+        model: chatModel,
         baseUrl: config.baseUrl,
         temperature: 0.2,
         response_format: { type: "json_object" },

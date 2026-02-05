@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Mic, Square, Sparkles, Radio, ListChecks } from "lucide-react";
+import { Mic, Square, Sparkles, Radio, ListChecks, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +48,18 @@ const matchClientId = (clients: Pick<Client, "id" | "name">[], needle?: string) 
   if (!needle) return undefined;
   const target = normalizeText(needle);
   return clients.find((c) => normalizeText(c.name).includes(target))?.id;
+};
+
+const matchClientIdWithFallback = (
+  clients: Pick<Client, "id" | "name">[],
+  primary?: string,
+  fallbackText?: string
+) => {
+  const fromPrimary = matchClientId(clients, primary);
+  if (fromPrimary) return fromPrimary;
+  if (!fallbackText) return undefined;
+  const text = normalizeText(fallbackText);
+  return clients.find((c) => text.includes(normalizeText(c.name)))?.id;
 };
 
 const parseTimeToHHMM = (raw?: string) => {
@@ -167,6 +179,8 @@ interface VoiceControlPanelProps {
 export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoRunningRef = useRef(false);
   const [recorderState, setRecorderState] = useState<RecorderState>("idle");
   const [recorderError, setRecorderError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(true);
@@ -221,6 +235,10 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
     recognition.onresult = (event: SpeechRecognitionEventLike) => {
       const currentTranscript = extractTranscript(event.results);
       setTranscript(currentTranscript);
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => {
+        void handleAutoInterpretAndCreate();
+      }, 2000);
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
@@ -230,6 +248,13 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
 
     recognition.onend = () => {
       setIsListening(false);
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+      if (transcript.trim() && !autoRunningRef.current) {
+        void handleAutoInterpretAndCreate();
+      }
     };
 
     recognitionRef.current = recognition;
@@ -269,6 +294,9 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
             throw new Error(data.error || "No se pudo transcribir");
           }
           setTranscript(data.text ?? "");
+          if (data.text) {
+            await handleAutoInterpretAndCreate();
+          }
         } catch (err) {
           setRecorderError(err instanceof Error ? err.message : "Error al transcribir");
         } finally {
@@ -308,6 +336,28 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
     setResult(null);
     recognition.start();
     setIsListening(true);
+  };
+
+  const handleAutoInterpretAndCreate = async () => {
+    if (autoRunningRef.current || isProcessing) return;
+    if (!transcript.trim()) return;
+    autoRunningRef.current = true;
+    setIsProcessing(true);
+    const response = await interpretVoiceCommandAction({ transcript: transcript.trim() });
+    if (response.success && response.data) {
+      setResult(response.data);
+      const newEntry: VoiceHistoryItem = {
+        ...response.data,
+        id: crypto.randomUUID(),
+        createdAt: new Date().toLocaleString("es-EC"),
+      };
+      setHistory((prev) => [newEntry, ...prev].slice(0, MAX_HISTORY));
+      handleSimulatedCreate(response.data.type);
+    } else {
+      setError(response.error || "No se pudo interpretar el comando.");
+    }
+    setIsProcessing(false);
+    autoRunningRef.current = false;
   };
 
   const handleInterpret = async () => {
@@ -366,7 +416,7 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
         priority: "MEDIUM",
         postCopy: result.details,
         scheduledAt: result.suggestedDate ? formatDateTimeForInput(parseDDMMYYYY(result.suggestedDate)) : undefined,
-        clientId: matchClientId(clients, result.suggestedClient) ?? "",
+        clientId: matchClientIdWithFallback(clients, result.suggestedClient, transcript) ?? "",
       });
       setTaskFormOpen(true);
     } else {
@@ -374,7 +424,7 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
         title: result.title,
         notes: result.details,
         scheduledAt: result.suggestedDate ? parseDDMMYYYY(result.suggestedDate) : undefined,
-        clientId: matchClientId(clients, result.suggestedClient),
+        clientId: matchClientIdWithFallback(clients, result.suggestedClient, transcript),
         startTime: parseTimeToHHMM(result.suggestedStartTime),
         endTime: (() => {
           const parsedStart = parseTimeToHHMM(result.suggestedStartTime);
@@ -435,6 +485,12 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
                 }`}
               />
               {isListening ? "Escuchando en tiempo real" : "Micrófono en pausa"}
+              {isProcessing && (
+                <span className="inline-flex items-center gap-1 text-primary">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Interpretando...
+                </span>
+              )}
             </div>
           </div>
         </CardHeader>

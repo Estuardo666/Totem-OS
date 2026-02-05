@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NotificationBell } from "./notification-bell";
+import { TaskBell } from "./task-bell";
 import { Sidebar } from "./sidebar";
 import { getPublicBrandSettings } from "@/actions/admin-actions";
 
@@ -110,6 +111,7 @@ export function Navbar() {
         </Link>
       </div>
       <div className="flex items-center gap-3">
+        <TaskBell />
         <NotificationBell side="bottom" align="end" />
         <Avatar className="h-9 w-9">
           <AvatarImage src={session?.user?.image ?? undefined} alt={session?.user?.name ?? "Usuario"} />
