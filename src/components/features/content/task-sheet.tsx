@@ -120,25 +120,26 @@ const formatDateTimeForInput = (value?: Date | string | null) => {
 
 const buildTaskFormValues = (
   currentTask: ContentTaskWithClient | null,
-  initialScheduledAt?: Date | string
+  initialScheduledAt?: Date | string,
+  initialDefaults?: Partial<CreateTaskFormValues>
 ): TaskFormValues => {
   const scheduledValue = currentTask
     ? formatDateTimeForInput(currentTask.scheduledAt)
     : formatDateTimeForInput(initialScheduledAt);
 
   return {
-    title: currentTask?.title ?? "",
-    type: currentTask ? ensureTaskType(currentTask.type) : "REEL",
-    status: currentTask ? ensureTaskStatus(currentTask.status) : "IDEA",
-    priority: ensureTaskPriority((currentTask as any)?.priority),
-    clientId: currentTask?.clientId ?? "",
-    assignedEditorId: currentTask?.assignedEditorId ?? undefined,
-    assignedCommunityId: currentTask?.assignedCommunityId ?? undefined,
-    dueDate: formatDateForInput(currentTask?.dueDate) ?? undefined,
-    scheduledAt: scheduledValue,
-    postCopy: currentTask?.postCopy ?? undefined,
-    coverImageUrl: currentTask?.coverImageUrl ?? undefined,
-    audioBriefUrl: currentTask?.audioBriefUrl ?? undefined,
+    title: initialDefaults?.title ?? currentTask?.title ?? "",
+    type: currentTask ? ensureTaskType(currentTask.type) : ensureTaskType(initialDefaults?.type),
+    status: currentTask ? ensureTaskStatus(currentTask.status) : ensureTaskStatus(initialDefaults?.status),
+    priority: ensureTaskPriority((currentTask as any)?.priority ?? initialDefaults?.priority),
+    clientId: currentTask?.clientId ?? initialDefaults?.clientId ?? "",
+    assignedEditorId: currentTask?.assignedEditorId ?? initialDefaults?.assignedEditorId ?? undefined,
+    assignedCommunityId: currentTask?.assignedCommunityId ?? initialDefaults?.assignedCommunityId ?? undefined,
+    dueDate: formatDateForInput(currentTask?.dueDate ?? (initialDefaults as any)?.dueDate) ?? undefined,
+    scheduledAt: scheduledValue ?? (initialDefaults as any)?.scheduledAt,
+    postCopy: currentTask?.postCopy ?? initialDefaults?.postCopy ?? undefined,
+    coverImageUrl: currentTask?.coverImageUrl ?? initialDefaults?.coverImageUrl ?? undefined,
+    audioBriefUrl: currentTask?.audioBriefUrl ?? initialDefaults?.audioBriefUrl ?? undefined,
     shootId: undefined,
     reviewToken: undefined,
     clientFeedback: undefined,
@@ -153,9 +154,11 @@ interface TaskSheetProps {
   users: (UserWithTaskCount | User)[];
   clients?: Array<{ id: string; name: string; logo?: string | null; color?: string | null }>;
   initialScheduledAt?: Date | string;
+  initialDefaults?: Partial<CreateTaskFormValues>;
+  disableClientSelector?: boolean;
 }
 
-export function TaskSheet({ task, open, onOpenChange, users, clients = [], initialScheduledAt }: TaskSheetProps) {
+export function TaskSheet({ task, open, onOpenChange, users, clients = [], initialScheduledAt, initialDefaults }: TaskSheetProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -181,7 +184,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
   
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(isNewTask ? createContentTaskSchema : updateContentTaskSchema),
-    defaultValues: buildTaskFormValues(task, initialScheduledAt),
+    defaultValues: buildTaskFormValues(task, initialScheduledAt, initialDefaults),
   });
 
   const selectedClientId = form.watch("clientId");
@@ -250,9 +253,9 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
   // Resetear el formulario cuando cambia la tarea o se abre para crear nueva
   useEffect(() => {
-    form.reset(buildTaskFormValues(task, initialScheduledAt));
+    form.reset(buildTaskFormValues(task, initialScheduledAt, initialDefaults));
     setClientSearch("");
-  }, [task, form, initialScheduledAt]);
+  }, [task, form, initialScheduledAt, initialDefaults]);
 
   const onSubmit = async (data: TaskFormValues) => {
     startTransition(async () => {

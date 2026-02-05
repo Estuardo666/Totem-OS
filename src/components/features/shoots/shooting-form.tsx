@@ -39,23 +39,41 @@ interface ShootingFormProps {
   clients: Client[];
   shooting?: ShootWithRelations | null;
   onCreated?: (shooting: ShootWithRelations) => void;
+  initialTitle?: string;
+  initialNotes?: string;
+  initialDate?: Date;
+  initialClientId?: string;
+  initialStartTime?: string;
+  initialEndTime?: string;
 }
 
-export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated }: ShootingFormProps) {
+export function ShootingForm({
+  open,
+  onOpenChange,
+  clients,
+  shooting,
+  onCreated,
+  initialTitle,
+  initialNotes,
+  initialDate,
+  initialClientId,
+  initialStartTime,
+  initialEndTime,
+}: ShootingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [clientId, setClientId] = useState<string>("");
+  const [title, setTitle] = useState(initialTitle ?? "");
+  const [date, setDate] = useState(initialDate ? format(initialDate, "yyyy-MM-dd") : "");
+  const [startTime, setStartTime] = useState(initialStartTime ?? "");
+  const [endTime, setEndTime] = useState(initialEndTime ?? "");
+  const [clientId, setClientId] = useState(initialClientId ?? "");
   const [address, setAddress] = useState("");
   const [mapLink, setMapLink] = useState("");
   const [scriptUrl, setScriptUrl] = useState("");
   const [audioBriefUrl, setAudioBriefUrl] = useState("");
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(initialNotes ?? "");
   const [clientSearch, setClientSearch] = useState("");
   const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([]);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
@@ -130,7 +148,18 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
     }
   }, [clientId]);
 
-  // Inicializar formulario cuando se abre o cambia el shooting
+  // Inicializar formulario cuando se abre (modo nuevo) con defaults de voz
+  useEffect(() => {
+    if (!shooting && open) {
+      setTitle(initialTitle ?? "");
+      setDate(initialDate ? format(initialDate, "yyyy-MM-dd") : "");
+      setClientId(initialClientId ?? "");
+      setNotes(initialNotes ?? "");
+      setStartTime(initialStartTime ?? "");
+      setEndTime(initialEndTime ?? "");
+    }
+  }, [open, shooting, initialTitle, initialDate, initialClientId, initialNotes, initialStartTime, initialEndTime]);
+
   useEffect(() => {
     if (shooting) {
       setTitle(shooting.title);
@@ -146,22 +175,6 @@ export function ShootingForm({ open, onOpenChange, clients, shooting, onCreated 
       setSelectedCrewIds(shooting.crew.map((u) => u.id));
       setSelectedTaskIds(shooting.tasks.map((t) => t.id));
       setCreateCalendarEvent(Boolean(shooting.googleEventId));
-    } else {
-      // Reset form con año actual
-      const currentYear = new Date().getFullYear();
-      setTitle("");
-      setDate(`${currentYear}-01-01`);
-      setStartTime("");
-      setEndTime("");
-      setClientId("");
-      setAddress("");
-      setMapLink("");
-      setScriptUrl("");
-      setAudioBriefUrl("");
-      setNotes("");
-      setSelectedCrewIds(defaultCrewIds);
-      setSelectedTaskIds([]);
-      setCreateCalendarEvent(true);
     }
   }, [shooting, open, defaultCrewIds]);
 
