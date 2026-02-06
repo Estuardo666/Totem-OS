@@ -31,12 +31,12 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: [
         { url: faviconUrl },
-        { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
-        { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+        { url: "/icons/icon-192x192.png?v=2", sizes: "192x192", type: "image/png" },
+        { url: "/icons/icon-512x512.png?v=2", sizes: "512x512", type: "image/png" },
       ],
       shortcut: [{ url: faviconUrl }],
       apple: [
-        { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+        { url: "/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" },
         { url: faviconUrl },
       ],
     },
@@ -82,7 +82,7 @@ export default async function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap"
         />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
         <link rel="apple-touch-startup-image" href="/apple-splash/apple-splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
         <link rel="apple-touch-startup-image" href="/apple-splash/apple-splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
         <link rel="apple-touch-startup-image" href="/apple-splash/apple-splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
