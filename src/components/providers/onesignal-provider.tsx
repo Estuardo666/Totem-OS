@@ -106,111 +106,26 @@ export function useOneSignal() {
  */
 export function OneSignalProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
+
+  // Desactivado temporalmente por problemas en producción
+  // TODO: Reactivar cuando NextAuth esté funcionando correctamente
+  return <>{children}</>;
+
+  /*
   const [oneSignalReady, setOneSignalReady] = useState(false);
 
   // Inicializar OneSignal una sola vez
   useEffect(() => {
-    if (typeof window === "undefined" || !ONESIGNAL_APP_ID) {
-      return;
-    }
-
-    // Flag para evitar doble inicialización
-    const flagKey = "__onesignal_init";
-    if ((window as unknown as Record<string, boolean>)[flagKey]) {
-      setOneSignalReady(true);
-      return;
-    }
-    (window as unknown as Record<string, boolean>)[flagKey] = true;
-
-    // No initializar en localhost a menos que sea explícito
-    const isLocalhost = typeof window !== "undefined" && (
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1"
-    );
-
-    if (isLocalhost) {
-      console.info("[OneSignal] Saltando inicialización en localhost (requiere HTTPS y dominio autorizado)");
-      setOneSignalReady(false);
-      return;
-    }
-
-    // Cargar el SDK de OneSignal
-    const script = document.createElement("script");
-    script.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
-    script.defer = true;
-    
-    script.onload = async () => {
-      try {
-        const oneSignal = await waitForOneSignal(10000);
-        if (!oneSignal) {
-          console.warn("[OneSignal] SDK no disponible después de carga");
-          setOneSignalReady(false);
-          return;
-        }
-
-        // Verificar si ya fue inicializado
-        try {
-          await oneSignal.init({
-            appId: ONESIGNAL_APP_ID,
-            serviceWorkerPath: "/OneSignalSDKWorker.js",
-            notifyButton: { enable: false },
-          });
-          console.log("[OneSignal] SDK inicializado correctamente");
-        } catch (initError) {
-          // Si ya está inicializado, continuar
-          if (initError instanceof Error && initError.message.includes("already initialized")) {
-            console.log("[OneSignal] SDK ya estaba inicializado");
-          } else {
-            throw initError;
-          }
-        }
-
-        setOneSignalReady(true);
-      } catch (error) {
-        console.error("[OneSignal] Error al inicializar:", error);
-        setOneSignalReady(false);
-      }
-    };
-
-    script.onerror = () => {
-      console.error("[OneSignal] Error al cargar el SDK");
-      setOneSignalReady(false);
-    };
-
-    document.head.appendChild(script);
-
-    return () => {
-      // Cleanup: no removemos el script
-    };
+    // TODO: implementar cuando NextAuth esté listo
   }, []);
 
   // Cuando el usuario inicia sesión y OneSignal está listo, registrar
   useEffect(() => {
-    if (!session?.user?.id || !oneSignalReady) return;
-
-    const registerUser = async () => {
-      const oneSignal = await waitForOneSignal(3000);
-      if (!oneSignal) {
-        console.warn("[OneSignal] SDK no disponible para registrar usuario");
-        return;
-      }
-
-      try {
-        // Obtener playerId sin hacer login (que causa el error)
-        const playerId = oneSignal.User.PushSubscription.id;
-        if (playerId) {
-          await registerPlayerInDb(playerId, session.user.id);
-          console.log("[OneSignal] PlayerId registrado:", playerId);
-        }
-      } catch (error) {
-        console.warn("[OneSignal] No se pudo registrar playerId:", error);
-      }
-    };
-
-    registerUser();
-  }, [session?.user?.id, oneSignalReady]);
+    // TODO: implementar cuando NextAuth esté listo
+  }, [session?.user?.id]);
 
   return <>{children}</>;
+  */
 }
 
 /**
