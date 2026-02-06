@@ -74,7 +74,7 @@ export default async function SharedReportPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="container mx-auto p-8 max-w-5xl">
+      <div className="container mx-auto p-4 max-w-5xl">
         {/* Encabezado Premium */}
         <SharedReportHeader
           clientName={reportData.client.name}

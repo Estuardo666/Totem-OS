@@ -5,6 +5,7 @@ import { TransactionDialog } from "@/components/features/finance/transaction-dia
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, DollarSign, FileText } from "lucide-react";
+import { PageHeader } from "@/components/shared";
 import Link from "next/link";
 
 export default async function TransactionsPage() {
@@ -16,13 +17,11 @@ export default async function TransactionsPage() {
 
   if (!result.success || !result.data) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Transacciones</h1>
-          <p className="text-muted-foreground">
-            Gestiona todas las transacciones financieras
-          </p>
-        </div>
+      <div className="container mx-auto p-3">
+        <PageHeader
+          title="Transacciones"
+          description="Gestiona todas las transacciones financieras"
+        />
         <Card>
           <CardContent className="py-12">
             <p className="text-destructive text-center">
@@ -35,44 +34,43 @@ export default async function TransactionsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Transacciones</h1>
-          <p className="text-muted-foreground">
-            {isAdmin ? "Gestiona todas las transacciones financieras del sistema" : "Gestiona tus transacciones financieras"}
-          </p>
-        </div>
-        
-        {/* Action Bar */}
-        <div className="flex flex-wrap items-center gap-2">
-          <TransactionDialog>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Crear nueva transacción
-            </Button>
-          </TransactionDialog>
-          
-          {isAdmin && (
-            <>
-              <Button variant="outline" asChild className="gap-2">
-                <Link href="/finance/settlement">
-                  <DollarSign className="h-4 w-4" />
-                  Liquidación interna
-                </Link>
+    <div className="container mx-auto p-3 space-y-6">
+      <PageHeader
+        title="Transacciones"
+        description={
+          isAdmin 
+            ? "Gestiona todas las transacciones financieras del sistema" 
+            : "Gestiona tus transacciones financieras"
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <TransactionDialog>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Crear nueva transacción
               </Button>
-              
-              <Button variant="outline" asChild className="gap-2">
-                <Link href="/finance/invoices">
-                  <FileText className="h-4 w-4" />
-                  Facturas
-                </Link>
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+            </TransactionDialog>
+            
+            {isAdmin && (
+              <>
+                <Button variant="outline" asChild className="gap-2">
+                  <Link href="/finance/settlement">
+                    <DollarSign className="h-4 w-4" />
+                    Liquidación interna
+                  </Link>
+                </Button>
+                
+                <Button variant="outline" asChild className="gap-2">
+                  <Link href="/finance/invoices">
+                    <FileText className="h-4 w-4" />
+                    Facturas
+                  </Link>
+                </Button>
+              </>
+            )}
+          </div>
+        }
+      />
 
       {/* Transaction List */}
       <Card>

@@ -6,6 +6,7 @@ import { TransactionDialog } from "@/components/features/finance/transaction-dia
 import { Plus } from "lucide-react";
 import type { FinancialStats } from "@/actions/finance-actions";
 import { format } from "date-fns";
+import { PageHeader } from "@/components/shared";
 
 interface PersonalFinanceDashboardProps {
   stats: FinancialStats;
@@ -48,20 +49,18 @@ export function PersonalFinanceDashboard({ stats, userId }: PersonalFinanceDashb
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard personal</h1>
-          <p className="text-muted-foreground">
-            Visualiza los ingresos, gastos y beneficios.
-          </p>
-        </div>
-        <TransactionDialog>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nueva Transacción
-          </Button>
-        </TransactionDialog>
-      </div>
+      <PageHeader
+        title="Dashboard personal"
+        description="Visualiza los ingresos, gastos y beneficios."
+        actions={
+          <TransactionDialog>
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nueva Transacción
+            </Button>
+          </TransactionDialog>
+        }
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

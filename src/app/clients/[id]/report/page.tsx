@@ -31,7 +31,7 @@ export default async function ClientReportPage({
 
   return (
     <div className="min-h-screen bg-white print:bg-white">
-      <div className="container mx-auto p-8 print:p-12 max-w-4xl">
+      <div className="container mx-auto p-4 print:p-6 max-w-4xl">
         {/* Encabezado del Reporte */}
         <ClientReportHeader
           clientName={reportData.client.name}

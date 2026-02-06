@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FinanceLoading() {
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-3">
       {/* Header */}
       <div className="mb-6">
         <PageHeaderSkeleton />

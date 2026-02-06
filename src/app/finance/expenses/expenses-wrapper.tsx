@@ -11,6 +11,7 @@ import { ExpensesBarChart } from "@/components/features/finance/expenses-bar-cha
 import { ExpensesFilters } from "@/components/features/finance/expenses-filters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { PageHeader } from "@/components/shared";
 
 export function ExpensesWrapper() {
   const { toast } = useToast();
@@ -70,10 +71,8 @@ export function ExpensesWrapper() {
 
   if (loading && !expensesData) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Gastos y Egresos</h1>
-        </div>
+      <div className="container mx-auto p-3">
+        <PageHeader title="Gastos y Egresos" />
         <Card>
           <CardContent className="py-12">
             <p className="text-center text-muted-foreground">Cargando...</p>
@@ -85,10 +84,8 @@ export function ExpensesWrapper() {
 
   if (!expensesData) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Gastos y Egresos</h1>
-        </div>
+      <div className="container mx-auto p-3">
+        <PageHeader title="Gastos y Egresos" />
         <Card>
           <CardContent className="py-12">
             <p className="text-destructive text-center">
@@ -101,13 +98,11 @@ export function ExpensesWrapper() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Gastos y Egresos</h1>
-        <p className="text-muted-foreground mt-2">
-          Gestiona los gastos de la agencia y reembolsos pendientes
-        </p>
-      </div>
+    <div className="container mx-auto p-3">
+      <PageHeader
+        title="Gastos y Egresos"
+        description="Gestiona los gastos de la agencia y reembolsos pendientes"
+      />
 
       {/* Filtros */}
       <div className="mb-6">

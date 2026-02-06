@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { SmartTimer } from "@/components/features/chronos/smart-timer";
 import { TimeStats } from "@/components/features/chronos/time-stats";
+import { PageHeader } from "@/components/shared";
 
 export default async function ChronosPage() {
   const session = await auth();
@@ -11,13 +12,11 @@ export default async function ChronosPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 px-4 md:px-6 space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Totem Chronos</h1>
-        <p className="text-muted-foreground">
-          Control de tiempo, cálculo de salario y estadísticas de productividad
-        </p>
-      </div>
+      <div className="container mx-auto py-3 px-2 md:px-3 space-y-6">
+      <PageHeader
+        title="Totem Chronos"
+        description="Control de tiempo, cálculo de salario y estadísticas de productividad"
+      />
 
       {/* Timer Principal */}
       <SmartTimer />

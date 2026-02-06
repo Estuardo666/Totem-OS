@@ -9,6 +9,7 @@ import { GoogleCalendarSuccessToast } from "@/components/features/admin/google-c
 import { SettingsSkeleton } from "@/components/features/settings/settings-skeleton";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { PageHeader } from "@/components/shared";
 
 async function SettingsContent() {
   // ✅ Verificar sesión PRIMERO (antes de cualquier otra lógica)
@@ -44,14 +45,12 @@ async function SettingsContent() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-6 p-2 md:p-3">
       <GoogleCalendarSuccessToast />
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configuración</h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Personaliza tu experiencia en Totem OS
-        </p>
-      </div>
+      <PageHeader
+        title="Configuración"
+        description="Personaliza tu experiencia en Totem OS"
+      />
 
       <div className="grid gap-6 md:grid-cols-2">
         <AppearanceForm

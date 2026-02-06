@@ -16,6 +16,7 @@ import { getUserWorkloads } from "@/actions/workload-actions";
 import Link from "next/link";
 import { Suspense } from "react";
 import { MetricSkeleton, CardSkeleton } from "@/components/ui/skeletons-composite";
+import { PageHeader } from "@/components/shared";
 
 export default async function Home() {
   // Obtener sesión del usuario autenticado
@@ -36,23 +37,12 @@ export default async function Home() {
     : workloads;
 
   return (
-    <div className="container mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Hola, {firstName} 👋
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Aquí tienes el estado de tu agencia hoy.
-            </p>
-          </div>
-          <div className="mt-1">
-            <DashboardRefresh />
-          </div>
-        </div>
-      </div>
+    <div className="container mx-auto px-2 md:px-3 py-3">
+      <PageHeader
+        title={`Hola, ${firstName} 👋`}
+        description="Aquí tienes el estado de tu agencia hoy."
+        actions={<DashboardRefresh />}
+      />
 
       {/* Acciones Rápidas - Solo para ADMIN */}
       {isAdmin && (

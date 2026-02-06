@@ -2,16 +2,15 @@ import { getReceivables } from "@/actions/finance-actions";
 import { ReceivablesSummary } from "@/components/features/finance/receivables-summary";
 import { ReceivablesTable } from "@/components/features/finance/receivables-table";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/shared";
 
 export default async function ReceivablesPage() {
   const result = await getReceivables();
 
   if (!result.success || !result.data) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Cuentas por Cobrar</h1>
-        </div>
+      <div className="container mx-auto p-3">
+        <PageHeader title="Cuentas por Cobrar" />
         <Card>
           <CardContent className="py-12">
             <p className="text-destructive text-center">
@@ -24,13 +23,11 @@ export default async function ReceivablesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Cuentas por Cobrar</h1>
-        <p className="text-muted-foreground mt-2">
-          Gestiona la cartera de clientes y seguimiento de pagos pendientes
-        </p>
-      </div>
+    <div className="container mx-auto p-3">
+      <PageHeader
+        title="Cuentas por Cobrar"
+        description="Gestiona la cartera de clientes y seguimiento de pagos pendientes"
+      />
 
       {/* Resumen de métricas (KPIs) */}
       <div className="mb-8">

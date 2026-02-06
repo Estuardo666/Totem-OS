@@ -5,6 +5,7 @@ import { getClientById, getClientProfitability } from "@/actions/client-actions"
 import { getUsers } from "@/actions/user.actions";
 import { getClientGlobalMetrics, getClientRecentTasksWithMetrics, getClientFacebookMetrics } from "@/actions/metrics-actions";
 import { ClientHeader } from "@/components/features/clients/client-header";
+import { ClientDeleteButton } from "@/components/features/clients/client-delete-button";
 import { VaultList } from "@/components/features/clients/vault-list";
 import { BrandKit } from "@/components/features/clients/brand-kit";
 import { ContractFulfillment } from "@/components/features/clients/contract-fulfillment";
@@ -28,6 +29,7 @@ import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { TaskMetrics } from "@prisma/client";
 import { calculateMonthlyEngagement, calculateMonthlyEfficiency, formatCurrency } from "@/lib/metrics-calculations";
 import { TrendingUp, Brain, BarChart3 } from "lucide-react";
+import { PageHeader } from "@/components/shared";
 
 interface TaskWithMetrics {
   id: string;
@@ -76,7 +78,15 @@ export default async function ClientDetailPage({
   // Check if user is authenticated
   if (!session?.user?.id) {
     return (
-      <div className="container mx-auto px-4 md:px-6">
+      <div className="container mx-auto px-2 md:px-3">
+        <PageHeader 
+          title="Cliente"
+          breadcrumbs={[
+            { label: "Inicio", href: "/" },
+            { label: "Clientes", href: "/clients" },
+            { label: "Cliente" }
+          ]}
+        />
         <div className="flex flex-col items-center justify-center py-12">
           <h2 className="text-2xl font-bold mb-4">Acceso Restringido</h2>
           <p className="text-muted-foreground text-center mb-6">
@@ -167,7 +177,15 @@ export default async function ClientDetailPage({
   }
 
   return (
-    <div className="container mx-auto px-4 md:px-6">
+    <div className="container mx-auto px-2 md:px-3">
+      <PageHeader 
+        breadcrumbs={[
+          { label: "Inicio", href: "/" },
+          { label: "Clientes", href: "/clients" },
+          { label: client.name }
+        ]}
+        actions={isAdmin ? <ClientDeleteButton clientId={client.id} clientName={client.name} /> : undefined}
+      />
       <div className="mb-6">
         <ClientHeader client={client} users={users} isAdmin={isAdmin} canEditClient={canEditClient} />
       </div>

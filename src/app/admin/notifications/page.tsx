@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Bell } from "lucide-react";
 import { NotificationsList } from "@/components/features/shared/notifications-list";
 import { MarkAllAsReadButton } from "@/components/features/shared/mark-all-as-read-button";
+import { PageHeader } from "@/components/shared";
 
 export default async function AdminNotificationsPage() {
   // Verificar autenticación
@@ -24,7 +25,7 @@ export default async function AdminNotificationsPage() {
 
   if (!notificationsResult.success || !notificationsResult.data) {
     return (
-      <div className="container mx-auto py-6 px-4 md:px-6">
+      <div className="container mx-auto py-3 px-2 md:px-3">
         <Card>
           <CardContent className="py-12">
             <p className="text-destructive text-center">
@@ -40,25 +41,12 @@ export default async function AdminNotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Bell className="h-8 w-8 text-primary" />
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                Notificaciones
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Historial completo de tus notificaciones
-              </p>
-            </div>
-          </div>
-          {unreadCount > 0 && (
-            <MarkAllAsReadButton />
-          )}
-        </div>
-      </div>
+    <div className="container mx-auto p-3">
+      <PageHeader
+        title="Notificaciones"
+        description="Historial completo de tus notificaciones"
+        actions={unreadCount > 0 ? <MarkAllAsReadButton /> : undefined}
+      />
 
       <Card>
         <CardHeader>

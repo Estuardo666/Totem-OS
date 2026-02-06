@@ -6,6 +6,7 @@ import { getUsers } from "@/actions/user.actions";
 import { SettlementPageClient } from "@/components/features/finance/settlement-page-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
+import { PageHeader } from "@/components/shared";
 
 interface SettlementPageProps {
   searchParams: Promise<{ month?: string; year?: string }>;
@@ -38,7 +39,11 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
   // Solo ADMIN y EDITOR pueden acceder
   if (userRole !== "ADMIN" && userRole !== "EDITOR") {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-3">
+        <PageHeader
+          title="Liquidación Mensual"
+          description="Gestión de salarios y honorarios del equipo"
+        />
         <Card className="border-red-300 bg-red-50 dark:bg-red-950/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-700">
@@ -81,7 +86,7 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
   const isAdmin = userRole === "ADMIN";
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-3">
       <SettlementPageClient
         initialMonth={month}
         initialYear={year}

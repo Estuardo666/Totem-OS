@@ -138,25 +138,27 @@ export function ShareReportButton({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="default"
+            variant="outline"
             size="sm"
             disabled={isCopying || isGenerating}
-            className={copied ? "bg-green-600 hover:bg-green-700" : ""}
+            className={`rounded-full ${
+              copied ? "border-green-600 text-green-600" : ""
+            }`}
           >
             {copied ? (
               <>
-                <Check className="h-4 w-4 mr-2" />
+                <Check className="h-4 w-4 mr-1.5" />
                 ¡Copiado!
               </>
             ) : isCopying ? (
               <>
-                <Copy className="h-4 w-4 mr-2 animate-pulse" />
+                <Copy className="h-4 w-4 mr-1.5 animate-pulse" />
                 Copiando...
               </>
             ) : (
               <>
-                <Link2 className="h-4 w-4 mr-2" />
-                Copiar Enlace de Reporte
+                <Link2 className="h-4 w-4 mr-1.5" />
+                Generar Enlace
               </>
             )}
           </Button>
@@ -166,14 +168,14 @@ export function ShareReportButton({
             onClick={() => handleCopyLink(shareToken)}
             disabled={isCopying}
           >
-            <Copy className="h-4 w-4 mr-2" />
+            <Copy className="h-4 w-4 mr-1.5" />
             Copiar Enlace Actual
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={handleRegenerateToken}
             disabled={isGenerating}
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className="h-4 w-4 mr-1.5" />
             Invalidar y Generar Nuevo
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -183,25 +185,27 @@ export function ShareReportButton({
 
   return (
     <Button
-      variant="default"
+      variant="outline"
       size="sm"
       onClick={handleGenerateAndCopy}
       disabled={isGenerating}
-      className={copied ? "bg-green-600 hover:bg-green-700" : ""}
+      className={`rounded-full ${
+        copied ? "border-green-600 text-green-600" : ""
+      }`}
     >
       {copied ? (
         <>
-          <Check className="h-4 w-4 mr-2" />
+          <Check className="h-4 w-4 mr-1.5" />
           ¡Copiado!
         </>
       ) : isGenerating ? (
         <>
-          <Link2 className="h-4 w-4 mr-2 animate-pulse" />
+          <Link2 className="h-4 w-4 mr-1.5 animate-pulse" />
           Generando...
         </>
       ) : (
         <>
-          <Link2 className="h-4 w-4 mr-2" />
+          <Link2 className="h-4 w-4 mr-1.5" />
           Generar Enlace
         </>
       )}

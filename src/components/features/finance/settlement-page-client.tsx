@@ -6,6 +6,7 @@ import { UserSettlementReport } from "@/actions/finance-actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import type { User } from "@prisma/client";
+import { PageHeader } from "@/components/shared";
 
 interface SettlementPageClientProps {
   initialMonth: number;
@@ -50,21 +51,18 @@ export function SettlementPageClient({
 
   return (
     <div className="space-y-6">
-      {/* Header con selector */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Liquidación Mensual</h1>
-          <p className="text-muted-foreground mt-2">
-            Gestión de salarios y honorarios del equipo
-          </p>
-        </div>
-        <MonthYearSelector
-          month={initialMonth}
-          year={initialYear}
-          onMonthChange={handleMonthChange}
-          onYearChange={handleYearChange}
-        />
-      </div>
+      <PageHeader
+        title="Liquidación Mensual"
+        description="Gestión de salarios y honorarios del equipo"
+        actions={
+          <MonthYearSelector
+            month={initialMonth}
+            year={initialYear}
+            onMonthChange={handleMonthChange}
+            onYearChange={handleYearChange}
+          />
+        }
+      />
 
       {/* Tarjetas de Liquidación */}
       {displayReports.length === 0 ? (

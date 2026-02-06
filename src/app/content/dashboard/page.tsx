@@ -25,7 +25,7 @@ export default async function ContentDashboardPage() {
 
   if (!dashboardResult.success || !dashboardResult.data) {
     return (
-      <div className="container mx-auto py-6 px-4 md:px-6">
+      <div className="container mx-auto py-3 px-2 md:px-3">
         <Card>
           <CardContent className="py-12">
             <p className="text-destructive text-center">
@@ -41,7 +41,7 @@ export default async function ContentDashboardPage() {
   const clients = clientsResult.success ? (clientsResult.data ?? []) : [];
 
   return (
-    <div className="container mx-auto py-6 px-4 md:px-6 space-y-6">
+      <div className="container mx-auto py-3 px-2 md:px-3 space-y-6">
       {/* Header con QuickActions */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex-1">

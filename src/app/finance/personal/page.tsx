@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getFinancialStats } from "@/actions/finance-actions";
 import { PersonalFinanceDashboard } from "@/components/features/finance/personal-finance-dashboard";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/shared";
 
 export default async function PersonalFinancePage() {
   const session = await auth();
@@ -15,7 +16,8 @@ export default async function PersonalFinancePage() {
 
   if (!result.success || !result.data) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-3">
+        <PageHeader title="Dashboard personal" />
         <Card>
           <CardContent className="py-12">
             <p className="text-destructive text-center">

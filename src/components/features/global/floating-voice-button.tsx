@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Mic, Square, Loader2, X } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
+import { Mic, Square, X } from "lucide-react";
 import { interpretVoiceCommandAction } from "@/actions/voice-actions";
 import { voiceCommandResponseSchema } from "@/schemas/voice";
 import { TaskSheet } from "@/components/features/content/task-sheet";
@@ -101,6 +100,7 @@ export function FloatingVoiceButton() {
   const [transcript, setTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [users, setUsers] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [shootFormOpen, setShootFormOpen] = useState(false);
   const [taskDefaults, setTaskDefaults] = useState<any | null>(null);
@@ -112,6 +112,7 @@ export function FloatingVoiceButton() {
   const transcriptRef = useRef("");
   const autoRunningRef = useRef(false);
   const cancelledRef = useRef(false);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Ocultar en Finanzas y /admin/voice-control
   const isHidden = pathname?.startsWith("/finanzas") || pathname?.startsWith("/admin/voice-control");
@@ -155,6 +156,7 @@ export function FloatingVoiceButton() {
         const res = await fetch("/api/voice/bootstrap");
         const data = await res.json();
         if (data.clients) setClients(data.clients);
+        if (data.users) setUsers(data.users);
       } catch {
         // ignore
       }
@@ -180,9 +182,25 @@ export function FloatingVoiceButton() {
         .join(" ");
       setTranscript(current);
       transcriptRef.current = current.trim();
+      
+      // Reset silence timeout - auto-interpret after 2s of silence
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+      if (current.trim()) {
+        silenceTimeoutRef.current = setTimeout(() => {
+          if (transcriptRef.current.trim() && !autoRunningRef.current && !cancelledRef.current) {
+            recognitionRef.current?.stop();
+          }
+        }, 2000);
+      }
     };
     recognition.onerror = (e: any) => setError(`Error: ${e.error}`);
     recognition.onend = () => {
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+        silenceTimeoutRef.current = null;
+      }
       setIsListening(false);
       if (transcriptRef.current.trim() && !autoRunningRef.current && !cancelledRef.current) {
         void handleAutoInterpretAndCreate();
@@ -244,6 +262,10 @@ export function FloatingVoiceButton() {
   };
 
   const stopListening = () => {
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
     const SpeechCtor = getSpeechRecognitionConstructor();
     if (SpeechCtor) {
       recognitionRef.current?.stop();
@@ -349,41 +371,269 @@ export function FloatingVoiceButton() {
 
   return (
     <>
-      {/* Botón flotante futurista - se transforma cuando está activo */}
-      <button
-        onClick={handleFloatingButtonClick}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full text-white transition-all duration-500 flex items-center justify-center group ${
-          open
-            ? "scale-110"
-            : "bg-gradient-to-br from-primary to-primary/80 hover:scale-110"
+      {/* Efecto Siri - Bordes luminosos en los extremos de la pantalla */}
+      <div 
+        className={`fixed inset-0 z-40 pointer-events-none overflow-hidden transition-opacity duration-500 ease-out ${
+          open && isListening ? "opacity-100" : "opacity-0"
         }`}
-        style={open ? {
-          background: `linear-gradient(135deg, rgb(${primaryColor}), rgba(${primaryColor},0.8))`,
-          boxShadow: `0 0 40px rgba(${primaryColor},0.6), 0 0 80px rgba(${primaryColor},0.4), 0 0 120px rgba(${primaryColor},0.3), inset 0 0 20px rgba(255,255,255,0.1)`
-        } : {
-          boxShadow: "0 0 32px rgba(95,64,255,0.4), 0 0 64px rgba(95,64,255,0.2)",
+      >
+        {/* Borde superior */}
+        <div 
+          className="absolute top-0 left-0 right-0 h-8 md:h-12"
+          style={{
+            background: `linear-gradient(to bottom, rgba(${primaryColor},0.5) 0%, rgba(${primaryColor},0.2) 40%, transparent 100%)`,
+            animation: "siriPulse 2s ease-in-out infinite",
+          }}
+        />
+        {/* Borde inferior */}
+        <div 
+          className="absolute bottom-0 left-0 right-0 h-8 md:h-12"
+          style={{
+            background: `linear-gradient(to top, rgba(${primaryColor},0.5) 0%, rgba(${primaryColor},0.2) 40%, transparent 100%)`,
+            animation: "siriPulse 2s ease-in-out infinite 0.5s",
+          }}
+        />
+        {/* Borde izquierdo */}
+        <div 
+          className="absolute top-0 bottom-0 left-0 w-6 md:w-10"
+          style={{
+            background: `linear-gradient(to right, rgba(${primaryColor},0.4) 0%, rgba(${primaryColor},0.15) 50%, transparent 100%)`,
+            animation: "siriPulse 2s ease-in-out infinite 0.25s",
+          }}
+        />
+        {/* Borde derecho */}
+        <div 
+          className="absolute top-0 bottom-0 right-0 w-6 md:w-10"
+          style={{
+            background: `linear-gradient(to left, rgba(${primaryColor},0.4) 0%, rgba(${primaryColor},0.15) 50%, transparent 100%)`,
+            animation: "siriPulse 2s ease-in-out infinite 0.75s",
+          }}
+        />
+        {/* Esquinas con resplandor concentrado */}
+        <div 
+          className="absolute top-0 left-0 w-16 md:w-20 h-16 md:h-20"
+          style={{
+            background: `radial-gradient(ellipse 70% 70% at top left, rgba(${primaryColor},0.6), transparent 70%)`,
+            animation: "siriPulse 2s ease-in-out infinite",
+          }}
+        />
+        <div 
+          className="absolute top-0 right-0 w-16 md:w-20 h-16 md:h-20"
+          style={{
+            background: `radial-gradient(ellipse 70% 70% at top right, rgba(${primaryColor},0.6), transparent 70%)`,
+            animation: "siriPulse 2s ease-in-out infinite 0.25s",
+          }}
+        />
+        <div 
+          className="absolute bottom-0 left-0 w-16 md:w-20 h-16 md:h-20"
+          style={{
+            background: `radial-gradient(ellipse 70% 70% at bottom left, rgba(${primaryColor},0.6), transparent 70%)`,
+            animation: "siriPulse 2s ease-in-out infinite 0.5s",
+          }}
+        />
+        <div 
+          className="absolute bottom-0 right-0 w-16 md:w-20 h-16 md:h-20"
+          style={{
+            background: `radial-gradient(ellipse 70% 70% at bottom right, rgba(${primaryColor},0.6), transparent 70%)`,
+            animation: "siriPulse 2s ease-in-out infinite 0.75s",
+          }}
+        />
+      </div>
+
+      {/* Overlay blur del contenido cuando está abierto */}
+      <div
+        className={`fixed inset-0 z-30 backdrop-blur-md bg-black/10 transition-all duration-500 ease-out ${
+          open ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={handleFloatingButtonClick}
+      />
+
+      {/* Transcripción estilo Liquid Glass iOS 26 */}
+      <div
+        className={`fixed bottom-24 right-6 z-40 w-[90%] max-w-md origin-bottom-right pointer-events-auto ${
+          open
+            ? "opacity-100 scale-100"
+            : "opacity-0 scale-75 pointer-events-none"
+        }`}
+        style={{
+          transition: "opacity 400ms cubic-bezier(0.34, 1.56, 0.64, 1), transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)",
         }}
       >
-        <span
-          className={`text-2xl font-bold transition-transform duration-300 ${
-            open ? "rotate-45" : ""
-          }`}
+        {/* Resplandor exterior del liquid glass */}
+        <div 
+          className="absolute -inset-1 rounded-[28px] opacity-60 blur-xl"
+          style={{
+            background: `linear-gradient(135deg, rgba(${primaryColor},0.4), rgba(${primaryColor},0.2), rgba(${primaryColor},0.3))`,
+          }}
+        />
+        <div 
+          className="relative rounded-[24px] px-6 py-5 overflow-hidden"
+          style={{
+            background: `linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05))`,
+            backdropFilter: "blur(40px) saturate(180%)",
+            WebkitBackdropFilter: "blur(40px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.2)",
+            boxShadow: `
+              0 8px 32px rgba(0,0,0,0.25),
+              0 0 80px rgba(${primaryColor},0.12),
+              inset 0 1px 0 rgba(255,255,255,0.3),
+              inset 0 -1px 0 rgba(255,255,255,0.1)
+            `,
+          }}
         >
-          +
-        </span>
-        {/* Anillos de resplandor animados cuando está activo */}
-        {open && (
+          {/* Efecto de luz superior tipo liquid glass */}
+          <div 
+            className="absolute top-0 left-4 right-4 h-px"
+            style={{
+              background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)`
+            }}
+          />
+          
+          {/* Indicador de estado */}
+          <div className="flex items-center justify-center gap-2 mb-3">
+            {isListening && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <span 
+                    className="w-1.5 h-1.5 rounded-full animate-pulse"
+                    style={{ backgroundColor: `rgb(${primaryColor})` }}
+                  />
+                  <span 
+                    className="w-1.5 h-1.5 rounded-full animate-pulse"
+                    style={{ backgroundColor: `rgb(${primaryColor})`, animationDelay: "0.15s" }}
+                  />
+                  <span 
+                    className="w-1.5 h-1.5 rounded-full animate-pulse"
+                    style={{ backgroundColor: `rgb(${primaryColor})`, animationDelay: "0.3s" }}
+                  />
+                </div>
+                <span className="text-xs font-medium" style={{ color: `rgb(${primaryColor})` }}>
+                  Escuchando...
+                </span>
+              </div>
+            )}
+            {isProcessing && (
+              <div className="flex flex-col items-center gap-3">
+                {/* Spinner futurista iOS 26 */}
+                <div 
+                  className={`transition-all duration-500 ease-out ${
+                    isProcessing ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                  }`}
+                >
+                  <div className="relative w-12 h-12 flex items-center justify-center">
+                    {/* Anillo exterior giratorio */}
+                    <div 
+                      className="absolute inset-0 rounded-full animate-spin-slow"
+                      style={{
+                        background: `conic-gradient(from 0deg, transparent, rgba(${primaryColor},0.8), transparent)`,
+                        filter: "blur(6px)",
+                        animationDuration: "1.5s",
+                      }}
+                    />
+                    {/* Anillo medio */}
+                    <div 
+                      className="absolute inset-1.5 rounded-full animate-spin-reverse"
+                      style={{
+                        background: `conic-gradient(from 180deg, transparent, rgba(${primaryColor},0.6), transparent)`,
+                        filter: "blur(4px)",
+                        animationDuration: "2s",
+                      }}
+                    />
+                    {/* Centro brillante */}
+                    <div 
+                      className="absolute inset-3 rounded-full animate-pulse"
+                      style={{
+                        background: `radial-gradient(circle, rgba(${primaryColor},0.9), rgba(${primaryColor},0.4))`,
+                        boxShadow: `0 0 16px rgba(${primaryColor},0.6), inset 0 0 8px rgba(255,255,255,0.3)`,
+                      }}
+                    />
+                    {/* Puntos orbitales */}
+                    <div className="absolute inset-0 animate-spin" style={{ animationDuration: "2s" }}>
+                      <div 
+                        className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: `rgb(${primaryColor})`, boxShadow: `0 0 6px rgba(${primaryColor},0.8)` }}
+                      />
+                    </div>
+                    <div className="absolute inset-0 animate-spin-reverse" style={{ animationDuration: "1.8s" }}>
+                      <div 
+                        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                        style={{ backgroundColor: `rgb(${primaryColor})`, boxShadow: `0 0 4px rgba(${primaryColor},0.8)` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs font-medium" style={{ color: `rgb(${primaryColor})` }}>
+                  Interpretando...
+                </span>
+              </div>
+            )}
+            {!isListening && !isProcessing && (
+              <span className="text-xs text-muted-foreground/70">
+                Toca el botón para hablar
+              </span>
+            )}
+          </div>
+          
+          {/* Transcripción con fade in por palabra */}
+          <div 
+            className="text-center text-lg md:text-xl font-bold text-foreground min-h-[3.5rem] max-h-28 overflow-y-auto leading-relaxed"
+            style={{ 
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+          >
+            {transcript ? (
+              transcript.split(' ').map((word, index) => (
+                <span 
+                  key={index} 
+                  className="inline-block animate-fade-in-word"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  {word}&nbsp;
+                </span>
+              ))
+            ) : (
+              <span className="text-muted-foreground/70 font-normal text-base">
+                La transcripción aparecerá aquí...
+              </span>
+            )}
+          </div>
+
+          {error && (
+            <p className="text-xs text-destructive text-center mt-2">
+              {error}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Botón flotante futurista con transparencia y blur */}
+      <button
+        onClick={handleFloatingButtonClick}
+        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full text-white transition-all duration-500 flex items-center justify-center group backdrop-blur-xl border border-white/20`}
+        style={open ? {
+          background: `linear-gradient(135deg, rgba(${primaryColor},0.85), rgba(${primaryColor},0.6))`,
+          boxShadow: `0 0 40px rgba(${primaryColor},0.6), 0 0 60px rgba(${primaryColor},0.4), inset 0 0 20px rgba(255,255,255,0.1)`
+        } : {
+          background: `linear-gradient(135deg, rgba(${primaryColor},0.9), rgba(${primaryColor},0.7))`,
+          boxShadow: `0 8px 24px rgba(${primaryColor},0.35), 0 0 30px rgba(${primaryColor},0.15)`,
+        }}
+      >
+        {open ? (
+          isListening ? (
+            <Square className="h-5 w-5" />
+          ) : (
+            <X className="h-5 w-5" />
+          )
+        ) : (
+          <Mic className="h-5 w-5" />
+        )}
+        {/* Anillos de resplandor animados cuando está activo y escuchando */}
+        {open && isListening && (
           <>
             <span 
               className="absolute inset-0 rounded-full animate-pulse"
-              style={{ background: `linear-gradient(135deg, rgba(${primaryColor},0.3), rgba(${primaryColor},0.2))` }}
-            />
-            <span 
-              className="absolute -inset-1 rounded-full animate-spin"
-              style={{ 
-                background: `linear-gradient(90deg, rgba(${primaryColor},0.2), rgba(${primaryColor},0.1), rgba(${primaryColor},0.2))`,
-                animationDuration: "3s" 
-              }} 
+              style={{ background: `linear-gradient(135deg, rgba(${primaryColor},0.3), rgba(${primaryColor},0.15))` }}
             />
             <span 
               className="absolute -inset-2 rounded-full animate-ping"
@@ -398,170 +648,60 @@ export function FloatingVoiceButton() {
         <span className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       </button>
 
-      {/* Toast bottom elegante con transparencia y backdrop blur */}
-      <div
-        className={`fixed bottom-24 right-4 left-4 md:left-auto md:right-6 md:w-96 z-40 transition-all duration-150 ease-out origin-bottom-right ${
-          open
-            ? "opacity-100 scale-100 translate-y-0 pointer-events-auto"
-            : "opacity-0 scale-90 translate-y-4 pointer-events-none"
-        }`}
-      >
-        {/* Resplandor exterior animado */}
-        <div
-          className="absolute -inset-1 rounded-3xl opacity-75 blur-xl animate-pulse"
-          style={{
-            background: `linear-gradient(135deg, rgba(${primaryColor},0.4), rgba(${primaryColor},0.3), rgba(${primaryColor},0.4))`,
-            animationDuration: "2s",
-          }}
-        />
-        <div
-          className="absolute -inset-0.5 rounded-2xl opacity-50 blur-md"
-          style={{
-            background: `linear-gradient(90deg, rgba(${primaryColor},0.5), rgba(${primaryColor},0.4), rgba(${primaryColor},0.5))`,
-          }}
-        />
-        
-        <div
-          className="relative rounded-2xl bg-background/80 backdrop-blur-xl shadow-2xl overflow-hidden"
-          style={{
-            borderColor: `rgba(${primaryColor},0.2)`,
-            borderWidth: "1px",
-            boxShadow: `0 8px 32px rgba(0,0,0,0.4), 0 0 80px rgba(${primaryColor},0.3), 0 0 120px rgba(${primaryColor},0.2), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(${primaryColor},0.1)`,
-          }}
-        >
-          {/* Borde gradiente animado */}
-          <div 
-            className="absolute inset-0 rounded-2xl pointer-events-none animate-pulse"
-            style={{
-              background: `linear-gradient(to bottom right, rgba(${primaryColor},0.2), rgba(${primaryColor},0.1))`,
-              animationDuration: "3s"
-            }}
-          />
-          
-          {/* Línea de luz superior */}
-          <div 
-            className="absolute top-0 left-4 right-4 h-px"
-            style={{
-              background: `linear-gradient(to right, rgba(${primaryColor},0), rgba(${primaryColor},0.5), rgba(${primaryColor},0))`
-            }}
-          />
-          
-          {/* Header elegante */}
-          <div className="relative flex items-center justify-between px-4 py-3 border-b border-white/5">
-            <div className="flex items-center gap-2">
-              <div 
-                className="w-2 h-2 rounded-full animate-pulse"
-                style={{ backgroundColor: `rgb(${primaryColor})` }}
-              />
-              <span className="text-sm font-medium text-foreground/90">Voice control</span>
-            </div>
-            <button
-              onClick={() => {
-                if (isListening) {
-                  stopListeningAndCancel();
-                }
-                setTranscript("");
-                transcriptRef.current = "";
-                setOpen(false);
-              }}
-              className="p-1 rounded-full hover:bg-white/10 transition-colors"
-            >
-              <X className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
-
-          {/* Contenido */}
-          <div className="relative p-4 space-y-4">
-            {/* Botón de micrófono futurista */}
-            <div className="flex flex-col items-center gap-3">
-              <button
-                type="button"
-                onClick={handleToggleListening}
-                disabled={isProcessing}
-                className={`relative flex h-16 w-16 items-center justify-center rounded-full transition-all duration-300 text-white ${
-                  isListening
-                    ? "scale-110"
-                    : "bg-white/5 text-foreground border border-white/10 hover:bg-white/10"
-                }`}
-                style={{
-                  background: isListening
-                    ? `linear-gradient(135deg, rgb(${primaryColor}), rgba(${primaryColor},0.8))`
-                    : undefined,
-                  borderColor: !isListening ? `rgba(${primaryColor},0.3)` : undefined,
-                  boxShadow: isListening
-                    ? `0 0 30px rgba(${primaryColor},0.5), 0 0 60px rgba(${primaryColor},0.3)`
-                    : "none",
-                }}
-              >
-                {isListening ? (
-                  <Square className="h-6 w-6" />
-                ) : (
-                  <Mic className="h-6 w-6" />
-                )}
-                {isListening && (
-                  <span className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/20 to-transparent animate-pulse" />
-                )}
-              </button>
-              
-              <div className="flex items-center gap-2 text-xs">
-                {isListening && (
-                  <span className="flex items-center gap-1.5" style={{ color: `rgb(${primaryColor})` }}>
-                    <span 
-                      className="w-1.5 h-1.5 rounded-full animate-pulse"
-                      style={{ backgroundColor: `rgb(${primaryColor})` }}
-                    />
-                    <span 
-                      className="w-1.5 h-1.5 rounded-full animate-pulse"
-                      style={{ 
-                        backgroundColor: `rgb(${primaryColor})`,
-                        animationDelay: "0.2s" 
-                      }} 
-                    />
-                    <span 
-                      className="w-1.5 h-1.5 rounded-full animate-pulse"
-                      style={{ 
-                        backgroundColor: `rgb(${primaryColor})`,
-                        animationDelay: "0.4s" 
-                      }} 
-                    />
-                    Escuchando...
-                  </span>
-                )}
-                {!isListening && !isProcessing && (
-                  <span className="text-muted-foreground">Toca para grabar</span>
-                )}
-                {isProcessing && (
-                  <span className="inline-flex items-center gap-1.5" style={{ color: `rgb(${primaryColor})` }}>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Interpretando...
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Textarea con estilo glassmorphism */}
-            <Textarea
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Transcripción en tiempo real..."
-              className="min-h-[80px] text-sm bg-white/5 border-white/10 focus:border-violet-400/50 placeholder:text-muted-foreground/50 resize-none"
-            />
-
-            {error && (
-              <p className="text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
-                {error}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* CSS para animaciones */}
+      <style jsx global>{`
+        @keyframes siriPulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.4;
+          }
+        }
+        @keyframes fadeInWord {
+          from {
+            opacity: 0;
+            transform: translateY(4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fade-in-word {
+          animation: fadeInWord 0.3s ease-out forwards;
+          opacity: 0;
+        }
+        @keyframes spinSlow {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        @keyframes spinReverse {
+          from {
+            transform: rotate(360deg);
+          }
+          to {
+            transform: rotate(0deg);
+          }
+        }
+        .animate-spin-slow {
+          animation: spinSlow 1.5s linear infinite;
+        }
+        .animate-spin-reverse {
+          animation: spinReverse 2s linear infinite;
+        }
+      `}</style>
 
       {/* Formularios reales */}
       <TaskSheet
         open={taskFormOpen}
         onOpenChange={setTaskFormOpen}
         task={null}
-        users={[]}
+        users={users as any}
         clients={clients as any}
         initialDefaults={taskDefaults || undefined}
         initialScheduledAt={undefined}

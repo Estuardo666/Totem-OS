@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getFinancialStats, getGlobalProfitabilityStats, getStrategicClientPlans } from "@/actions/finance-actions";
 import { StrategicFinanceDashboard } from "@/components/features/finance/strategic-finance-dashboard";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/shared";
 
 export default async function FinancePage() {
   const session = await auth();
@@ -23,10 +24,8 @@ export default async function FinancePage() {
   // Si hay error, mostrar mensaje
   if (!result.success || !result.data) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Finanzas Totem</h1>
-        </div>
+      <div className="container mx-auto p-3">
+        <PageHeader title="Finanzas Totem" />
         <Card>
           <CardContent className="py-12">
             <p className="text-destructive text-center">
@@ -39,7 +38,7 @@ export default async function FinancePage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-3">
       <StrategicFinanceDashboard
         stats={result.data}
         profitability={profitabilityResult.success ? profitabilityResult.data : null}

@@ -2,7 +2,7 @@ import { PageHeaderSkeleton, MetricSkeleton, TableSkeleton } from "@/components/
 
 export default function ContentDashboardLoading() {
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-3">
       {/* Header */}
       <div className="mb-6">
         <PageHeaderSkeleton />

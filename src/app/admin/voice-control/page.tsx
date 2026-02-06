@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { VoiceControlPanel } from "@/components/features/admin/voice-control/voice-control-panel";
 import { db } from "@/lib/db";
+import { PageHeader } from "@/components/shared";
 
 export default async function VoiceControlPage() {
   const session = await auth();
@@ -44,14 +45,11 @@ export default async function VoiceControlPage() {
   });
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Control por voz (beta)</h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Habla, transcribe y deja que la IA sugiera tareas o rodajes. Los resultados se
-          generan solo en esta pantalla.
-        </p>
-      </div>
+    <div className="space-y-6 p-2 md:p-3">
+      <PageHeader
+        title="Control por voz (beta)"
+        description="Habla, transcribe y deja que la IA sugiera tareas o rodajes. Los resultados se generan solo en esta pantalla."
+      />
       <VoiceControlPanel clients={clients} users={users as any} />
     </div>
   );

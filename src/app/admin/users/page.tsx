@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Users, Layers, Plus, RefreshCw } from "lucide-react";
 import { SyncButton } from "@/components/features/admin/users/sync-button";
 import { FixRolesButton } from "@/components/features/admin/users/fix-roles-button";
+import { PageHeader } from "@/components/shared";
 
 export default async function AdminUsersPage() {
   const session = await auth();
@@ -27,21 +28,45 @@ export default async function AdminUsersPage() {
   ]);
 
   if (!usersResult.success) {
-    return <div className="container mx-auto py-6"><Card><CardContent className="py-12"><p className="text-destructive text-center">{usersResult.error}</p></CardContent></Card></div>;
+    return (
+      <div className="container mx-auto py-3">
+        <PageHeader
+          title="Gestión de Usuarios"
+          description="Administra usuarios y especialidades del sistema"
+        />
+        <Card>
+          <CardContent className="py-12">
+            <p className="text-destructive text-center">{usersResult.error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
   if (!specialtiesResult.success) {
-    return <div className="container mx-auto py-6"><Card><CardContent className="py-12"><p className="text-destructive text-center">{specialtiesResult.error}</p></CardContent></Card></div>;
+    return (
+      <div className="container mx-auto py-3">
+        <PageHeader
+          title="Gestión de Usuarios"
+          description="Administra usuarios y especialidades del sistema"
+        />
+        <Card>
+          <CardContent className="py-12">
+            <p className="text-destructive text-center">{specialtiesResult.error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const users = usersResult.data;
   const specialties = specialtiesResult.data;
 
   return (
-    <div className="container mx-auto py-6 px-4 md:px-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Gestión de Usuarios</h1>
-        <p className="text-muted-foreground mt-1">Administra usuarios y especialidades del sistema</p>
-      </div>
+    <div className="container mx-auto py-3 px-2 md:px-3">
+      <PageHeader
+        title="Gestión de Usuarios"
+        description="Administra usuarios y especialidades del sistema"
+      />
 
       <Tabs defaultValue="usuarios" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 max-w-xl">

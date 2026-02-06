@@ -8,6 +8,7 @@ import { DisconnectMetaButton } from "@/components/features/admin/disconnect-met
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, AlertCircle, Info } from "lucide-react";
+import { PageHeader } from "@/components/shared";
 
 async function IntegrationsContent() {
   const userResult = await getCurrentUser();
@@ -27,13 +28,11 @@ async function IntegrationsContent() {
   const metaAccountResult = await getConnectedMetaAccount();
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Integraciones</h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Conecta Totem OS con plataformas externas para automatizar tareas y sincronizar datos
-        </p>
-      </div>
+    <div className="space-y-6 p-2 md:p-3">
+      <PageHeader
+        title="Integraciones"
+        description="Conecta Totem OS con plataformas externas para automatizar tareas y sincronizar datos"
+      />
 
       {/* Meta (Facebook & Instagram) Integration */}
       <Card>
@@ -122,7 +121,7 @@ export default async function IntegrationsPage({
   return (
     <>
       {hasSuccess && (
-        <div className="p-4 md:p-6 pb-0">
+        <div className="p-2 md:p-3 pb-0">
           <Alert className="bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800">
             <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
             <AlertDescription className="text-green-800 dark:text-green-200">
@@ -133,7 +132,7 @@ export default async function IntegrationsPage({
       )}
 
       {error && (
-        <div className="p-4 md:p-6 pb-0">
+        <div className="p-2 md:p-3 pb-0">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{decodeURIComponent(error)}</AlertDescription>
@@ -141,7 +140,7 @@ export default async function IntegrationsPage({
         </div>
       )}
 
-      <Suspense fallback={<div className="p-4 md:p-6">Cargando...</div>}>
+      <Suspense fallback={<div className="p-2 md:p-3">Cargando...</div>}>
         <IntegrationsContent />
       </Suspense>
     </>

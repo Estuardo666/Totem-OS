@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ContentFactoryWrapper } from "@/components/features/content/content-factory-wrapper";
 import { BulkTaskDialog } from "@/components/features/content/bulk-task-dialog";
+import { PageHeader } from "@/components/shared";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +36,7 @@ export default async function ContentPage({
   // Si hay error, mostrar mensaje
   if (!tasksResult.success || !tasksResult.data) {
     return (
-      <div className="container mx-auto py-6 px-4 md:px-6">
+      <div className="container mx-auto py-3 px-2 md:px-3">
         <Card>
           <CardContent className="py-12">
             <p className="text-destructive text-center">
@@ -57,37 +58,35 @@ export default async function ContentPage({
   const shouldOpenBulkDialog = bulkParam === "1" || bulkParam === "true";
 
   return (
-    <div className="container mx-auto p-0 md:px-6 md:py-6">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Content Factory</h1>
-          <p className="text-muted-foreground mt-2">
-            Visualiza y gestiona todas tus tareas de contenido
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-1.5 md:gap-2 items-center">
-          <Button asChild variant="outline" size="sm" className="text-xs">
-            <Link href="/content/shoots">
-              <Video className="mr-1.5 h-3.5 w-3.5" />
-              Plan de Rodaje
-            </Link>
-          </Button>
-          <BulkTaskDialog
-            clients={clients}
-            defaultOpen={shouldOpenBulkDialog}
-            label="Crear tareas en lote"
-            buttonVariant="outline"
-            buttonSize="sm"
-            className="border-primary text-primary text-xs"
-          />
-          <Button asChild size="sm" className="text-xs">
-            <Link href="/content/new">
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Nueva Tarea
-            </Link>
-          </Button>
-        </div>
-      </div>
+    <div className="container mx-auto p-0 md:px-3 md:py-3">
+      <PageHeader
+        title="Content Factory"
+        description="Visualiza y gestiona todas tus tareas de contenido"
+        actions={
+          <div className="flex flex-wrap gap-1.5 md:gap-2 items-center">
+            <Button asChild variant="outline" size="sm" className="text-xs">
+              <Link href="/content/shoots">
+                <Video className="mr-1.5 h-3.5 w-3.5" />
+                Plan de Rodaje
+              </Link>
+            </Button>
+            <BulkTaskDialog
+              clients={clients}
+              defaultOpen={shouldOpenBulkDialog}
+              label="Crear tareas en lote"
+              buttonVariant="outline"
+              buttonSize="sm"
+              className="border-primary text-primary text-xs"
+            />
+            <Button asChild size="sm" className="text-xs">
+              <Link href="/content/new">
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Nueva Tarea
+              </Link>
+            </Button>
+          </div>
+        }
+      />
 
       <ContentFactoryWrapper tasks={tasks} clients={clients} users={users} />
     </div>

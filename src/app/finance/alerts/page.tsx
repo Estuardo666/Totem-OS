@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { getFinanceAlerts, getFinanceAlertRules } from "@/actions/finance-alerts-actions";
 import { FinanceAlertsDashboard } from "@/components/features/finance/finance-alerts-dashboard";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/shared";
 
 export default async function FinanceAlertsPage() {
   const session = await auth();
@@ -13,7 +14,11 @@ export default async function FinanceAlertsPage() {
 
   if (session.user.role !== "ADMIN") {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-3">
+        <PageHeader
+          title="Alertas Financieras"
+          description="Monitorea riesgos, desviaciones y oportunidades con reglas predictivas."
+        />
         <Card>
           <CardContent className="py-12">
             <p className="text-destructive text-center">
@@ -32,7 +37,11 @@ export default async function FinanceAlertsPage() {
 
   if (!alertsResult.success || !alertsResult.data || !rulesResult.success || !rulesResult.data) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-3">
+        <PageHeader
+          title="Alertas Financieras"
+          description="Monitorea riesgos, desviaciones y oportunidades con reglas predictivas."
+        />
         <Card>
           <CardContent className="py-12">
             <p className="text-destructive text-center">
@@ -45,13 +54,11 @@ export default async function FinanceAlertsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Alertas Financieras</h1>
-        <p className="text-muted-foreground mt-2">
-          Monitorea riesgos, desviaciones y oportunidades con reglas predictivas.
-        </p>
-      </div>
+    <div className="container mx-auto p-3 space-y-6">
+      <PageHeader
+        title="Alertas Financieras"
+        description="Monitorea riesgos, desviaciones y oportunidades con reglas predictivas."
+      />
       <FinanceAlertsDashboard
         initialAlerts={alertsResult.data}
         initialRules={rulesResult.data}

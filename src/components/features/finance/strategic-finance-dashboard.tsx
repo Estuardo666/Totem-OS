@@ -26,6 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
 import { SimpleAIInsights } from "@/components/features/finance/ai-insights-simple";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/shared";
 
 interface StrategicFinanceDashboardProps {
   stats: FinancialStats;
@@ -400,24 +401,16 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Finanzas</span>
-          <span>/</span>
-          <span>Dashboard Estratégico</span>
-          <Badge variant="outline" className="ml-2 border-emerald-200 text-emerald-700">
-            Tiempo real
-          </Badge>
-        </div>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard Estratégico Financiero</h1>
-            <p className="text-muted-foreground mt-2 max-w-2xl">
-              Panorama 360° de ingresos, costos, rentabilidad y riesgos. Diseñado para decisiones rápidas con foco en
-              previsión y eficiencia.
-            </p>
-          </div>
+      <PageHeader
+        title="Dashboard Estratégico Financiero"
+        description={
+          "Panorama 360° de ingresos, costos, rentabilidad y riesgos. Diseñado para decisiones rápidas con foco en previsión y eficiencia."
+        }
+        actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="border-emerald-200 text-emerald-700">
+              Tiempo real
+            </Badge>
             <Button variant="outline" className="gap-2">
               <Calendar className="h-4 w-4" />
               Actualizado {timeAgo}
@@ -427,40 +420,40 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
               Exportar reporte
             </Button>
           </div>
-        </div>
+        }
+      />
 
-        <div className="flex flex-wrap items-center gap-2">
-          {userRole === "ADMIN" && (
-            <Button variant="outline" asChild>
-              <Link href="/finance/receivables">
-                <Receipt className="mr-2 h-4 w-4" />
-                Cuentas por Cobrar
-              </Link>
-            </Button>
-          )}
-          {userRole !== "EDITOR" && (
-            <Button variant="outline" asChild>
-              <Link href="/finance/expenses">
-                <TrendingDown className="mr-2 h-4 w-4" />
-                Gastos y Egresos
-              </Link>
-            </Button>
-          )}
-          {userRole === "ADMIN" && (
-            <Button variant="outline" asChild>
-              <Link href="/finance/settlement">
-                <Receipt className="mr-2 h-4 w-4" />
-                Liquidación Interna
-              </Link>
-            </Button>
-          )}
-          <TransactionDialog>
-            <Button variant="outline" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nueva Transacción
-            </Button>
-          </TransactionDialog>
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {userRole === "ADMIN" && (
+          <Button variant="outline" asChild>
+            <Link href="/finance/receivables">
+              <Receipt className="mr-2 h-4 w-4" />
+              Cuentas por Cobrar
+            </Link>
+          </Button>
+        )}
+        {userRole !== "EDITOR" && (
+          <Button variant="outline" asChild>
+            <Link href="/finance/expenses">
+              <TrendingDown className="mr-2 h-4 w-4" />
+              Gastos y Egresos
+            </Link>
+          </Button>
+        )}
+        {userRole === "ADMIN" && (
+          <Button variant="outline" asChild>
+            <Link href="/finance/settlement">
+              <Receipt className="mr-2 h-4 w-4" />
+              Liquidación Interna
+            </Link>
+          </Button>
+        )}
+        <TransactionDialog>
+          <Button variant="outline" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nueva Transacción
+          </Button>
+        </TransactionDialog>
       </div>
 
       <Card className="border-primary/20 bg-primary/5">

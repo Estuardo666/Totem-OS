@@ -4,6 +4,7 @@ import { getClients } from "@/actions/client-actions";
 import { ClientList } from "@/components/features/clients/client-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/shared";
 import { auth } from "@/auth";
 
 export default async function ClientsPage() {
@@ -16,7 +17,7 @@ export default async function ClientsPage() {
   // Si hay error, mostrar mensaje (en producción podrías redirigir o mostrar error boundary)
   if (!result.success || !result.data) {
     return (
-      <div className="container mx-auto py-6 px-4 md:px-6">
+      <div className="container mx-auto py-3 px-2 md:px-3">
         <Card>
           <CardContent className="py-12">
             <p className="text-destructive text-center">
@@ -29,26 +30,25 @@ export default async function ClientsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
-          <p className="text-muted-foreground mt-2">
-            {isAdmin 
-              ? "Gestiona todos tus clientes desde aquí"
-              : "Visualiza el dashboard general de clientes"
-            }
-          </p>
-        </div>
-        {isAdmin && (
-          <Button asChild>
-            <Link href="/clients/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Cliente
-            </Link>
-          </Button>
-        )}
-      </div>
+    <div className="container mx-auto p-3">
+      <PageHeader
+        title="Clientes"
+        description={
+          isAdmin 
+            ? "Gestiona todos tus clientes desde aquí"
+            : "Visualiza el dashboard general de clientes"
+        }
+        actions={
+          isAdmin ? (
+            <Button asChild>
+              <Link href="/clients/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Cliente
+              </Link>
+            </Button>
+          ) : undefined
+        }
+      />
 
       <ClientList clients={result.data} isAdmin={isAdmin} canEditClient={canEditClient} />
     </div>
