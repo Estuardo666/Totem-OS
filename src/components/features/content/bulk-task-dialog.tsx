@@ -50,7 +50,7 @@ export function BulkTaskDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant={buttonVariant} size={buttonSize} className={className}>
-          {showIcon && isClient && <LayersIcon className="mr-2 h-4 w-4" />}
+          {showIcon && isClient && <LayersIcon className={`${buttonSize === "sm" ? "mr-1.5 h-3.5 w-3.5" : "mr-2 h-4 w-4"}`} />}
           {label}
         </Button>
       </DialogTrigger>

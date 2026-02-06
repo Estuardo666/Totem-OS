@@ -9,6 +9,7 @@ import { auth } from "@/auth";
 export default async function ClientsPage() {
   const session = await auth();
   const isAdmin = session?.user?.role === "ADMIN";
+  const canEditClient = isAdmin || session?.user?.role === "EDITOR" || session?.user?.role === "COMMUNITY";
   
   const result = await getClients();
 
@@ -49,7 +50,7 @@ export default async function ClientsPage() {
         )}
       </div>
 
-      <ClientList clients={result.data} isAdmin={isAdmin} />
+      <ClientList clients={result.data} isAdmin={isAdmin} canEditClient={canEditClient} />
     </div>
   );
 }

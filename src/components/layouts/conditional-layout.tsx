@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Navbar } from "@/components/shared/navbar";
+import { FloatingVoiceButton } from "@/components/features/global/floating-voice-button";
 
 export function ConditionalLayout({
   children,
@@ -40,6 +41,9 @@ export function ConditionalLayout({
           {children}
         </div>
       </main>
+
+      {/* Botón flotante de voz (se oculta solo en Finanzas y /admin/voice-control) */}
+      <FloatingVoiceButton />
     </div>
   );
 }

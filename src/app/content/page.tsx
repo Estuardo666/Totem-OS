@@ -65,10 +65,10 @@ export default async function ContentPage({
             Visualiza y gestiona todas tus tareas de contenido
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <Button asChild variant="outline" className="w-full md:w-auto">
+        <div className="flex flex-wrap gap-1.5 md:gap-2 items-center">
+          <Button asChild variant="outline" size="sm" className="text-xs">
             <Link href="/content/shoots">
-              <Video className="mr-2 h-4 w-4" />
+              <Video className="mr-1.5 h-3.5 w-3.5" />
               Plan de Rodaje
             </Link>
           </Button>
@@ -77,11 +77,12 @@ export default async function ContentPage({
             defaultOpen={shouldOpenBulkDialog}
             label="Crear tareas en lote"
             buttonVariant="outline"
-            className="w-full md:w-auto border-primary text-primary"
+            buttonSize="sm"
+            className="border-primary text-primary text-xs"
           />
-          <Button asChild className="w-full md:w-auto">
+          <Button asChild size="sm" className="text-xs">
             <Link href="/content/new">
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
               Nueva Tarea
             </Link>
           </Button>

@@ -37,3 +37,7 @@ export default function GlobalError({ error, reset }) {
     </html>
   );
 }
+
+export function ErrorBoundary({ error, reset }) {
+  return <GlobalError error={error} reset={reset} />;
+}

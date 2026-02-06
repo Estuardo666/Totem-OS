@@ -49,6 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           image: user.image,
           role: user.roleLegacy, // Incluir el rol legacy en el objeto de usuario
+          specialty: user.specialty, // Incluir especialidad
         };
       },
     }),
@@ -132,6 +133,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           user.id = dbUser.id;
           // Asegurar que el rol esté en el objeto user para el callback jwt
           user.role = dbUser.roleLegacy || "EDITOR";
+          user.specialty = dbUser.specialty || null;
         } catch (error) {
           console.error("❌ Error al crear/actualizar usuario:", error);
           // Continuar con el login aunque haya error
@@ -143,10 +145,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const dbUser = await prisma.user.findUnique({
             where: { email: user.email },
-            select: { roleLegacy: true },
+            select: { roleLegacy: true, specialty: true },
           });
           // Asegurar que el rol esté en el objeto user para el callback jwt
           user.role = dbUser?.roleLegacy || "EDITOR";
+          user.specialty = dbUser?.specialty || null;
         } catch (error) {
           console.error("❌ Error al obtener rol para credentials:", error);
           user.role = "EDITOR";
@@ -166,6 +169,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (user.role) {
           token.role = user.role;
         }
+        if (user.specialty !== undefined) {
+          token.specialty = user.specialty as string | null;
+        }
       }
       
       // Siempre obtener el rol actualizado desde la base de datos
@@ -174,7 +180,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { roleLegacy: true, image: true },
+            select: { roleLegacy: true, image: true, specialty: true },
           });
           // Fuerza el valor por defecto "EDITOR" si no existe o es inválido
           if (dbUser && dbUser.roleLegacy) {
@@ -185,6 +191,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // Sincronizar la imagen desde la base de datos
           if (dbUser?.image) {
             token.image = dbUser.image;
+          }
+          // Sincronizar especialidad
+          if (dbUser) {
+            token.specialty = dbUser.specialty;
           }
         } catch (error) {
           console.error("Error al obtener rol del usuario:", error);
@@ -200,6 +210,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as string; // Compatibilidad
         session.user.roleLegacy = token.role as string; // Explícito
+        session.user.specialty = token.specialty as string | null; // Especialidad
         session.user.email = token.email as string;
         session.user.name = token.name as string;
         session.user.image = token.image as string;

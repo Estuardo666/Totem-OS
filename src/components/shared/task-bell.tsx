@@ -39,7 +39,7 @@ export function TaskBell() {
       size="icon"
       className="relative"
       aria-label="Tareas pendientes"
-      onClick={() => router.push("/content/dashboard")}
+      onClick={() => router.push("/content")}
     >
       <CheckSquare className="h-5 w-5" />
       {pendingCount > 0 && (

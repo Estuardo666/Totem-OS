@@ -39,6 +39,7 @@ interface ClientListProps {
     nextShootDetails?: { title: string; address?: string };
   }>;
   isAdmin: boolean;
+  canEditClient?: boolean;
 }
 
 // Helper para convertir hex a rgba con opacidad
@@ -54,7 +55,7 @@ function formatDateNatural(date: Date): string {
   return format(date, "d 'de' MMMM 'a las' HH:mm", { locale: es });
 }
 
-export function ClientList({ clients, isAdmin }: ClientListProps) {
+export function ClientList({ clients, isAdmin, canEditClient = false }: ClientListProps) {
   const [query, setQuery] = useState("");
 
   const normalizedQuery = query.trim().toLowerCase();
@@ -112,18 +113,18 @@ export function ClientList({ clients, isAdmin }: ClientListProps) {
         
         const clientCard = (
           <div
-            className={`h-full transition-all rounded-lg p-6 border-none ${isAdmin ? 'cursor-pointer' : 'cursor-not-allowed'} animate-fade-in`}
+            className={`h-full transition-all rounded-lg p-6 border-none ${canEditClient ? 'cursor-pointer' : 'cursor-not-allowed'} animate-fade-in`}
             style={{
               backgroundColor: hexToRgba(userColor, 0.05),
               animationDelay: `${Math.min(index, 6) * 50}ms`,
             }}
             onMouseEnter={(e) => {
-              if (isAdmin) {
+              if (canEditClient) {
                 e.currentTarget.style.backgroundColor = hexToRgba(userColor, 0.1);
               }
             }}
             onMouseLeave={(e) => {
-              if (isAdmin) {
+              if (canEditClient) {
                 e.currentTarget.style.backgroundColor = hexToRgba(userColor, 0.05);
               }
             }}
@@ -292,7 +293,7 @@ export function ClientList({ clients, isAdmin }: ClientListProps) {
           </div>
         );
 
-        return isAdmin ? (
+        return canEditClient ? (
           <Link key={client.id} href={`/clients/${client.id}`}>
             {clientCard}
           </Link>

@@ -71,6 +71,7 @@ export default async function ClientDetailPage({
   const { id } = await params;
   const session = await auth();
   const isAdmin = session?.user?.role === "ADMIN";
+  const canEditClient = isAdmin || (session?.user?.role === "EDITOR" && session?.user?.specialty === "COMMUNITY");
 
   // Check if user is authenticated
   if (!session?.user?.id) {
@@ -168,7 +169,7 @@ export default async function ClientDetailPage({
   return (
     <div className="container mx-auto px-4 md:px-6">
       <div className="mb-6">
-        <ClientHeader client={client} users={users} isAdmin={isAdmin} />
+        <ClientHeader client={client} users={users} isAdmin={isAdmin} canEditClient={canEditClient} />
       </div>
 
       <Tabs defaultValue="summary" className="w-full">

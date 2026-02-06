@@ -57,6 +57,15 @@ const nextConfig: NextConfig = {
       "@radix-ui/react-sheet",
       "@radix-ui/react-alert-dialog",
     ],
+    reactCompiler: false,
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
   eslint: {
     // Advertencia: Esto permite que el build se complete incluso si hay errores de ESLint.

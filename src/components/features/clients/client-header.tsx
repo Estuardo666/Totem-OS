@@ -13,6 +13,7 @@ import { EditClientDialog } from "./edit-client-dialog";
 import { ShareReportButton } from "./share-report-button";
 import { deleteClient } from "@/actions/client-actions";
 import { useToast } from "@/components/ui/use-toast";
+import { BulkTaskDialog } from "../content/bulk-task-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,9 +38,10 @@ interface ClientHeaderProps {
   client: Client & { hasPendingFeedback?: boolean };
   users: User[];
   isAdmin?: boolean;
+  canEditClient?: boolean;
 }
 
-export function ClientHeader({ client, users, isAdmin = false }: ClientHeaderProps) {
+export function ClientHeader({ client, users, isAdmin = false, canEditClient = false }: ClientHeaderProps) {
   const router = useRouter();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
@@ -198,6 +200,17 @@ export function ClientHeader({ client, users, isAdmin = false }: ClientHeaderPro
                   Generar Reporte
                 </Link>
               </Button>
+            </>
+          )}
+          {canEditClient && (
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <BulkTaskDialog
+                clients={[client]}
+                label="Crear tareas en lote"
+                buttonVariant="outline"
+                buttonSize="sm"
+                className="w-full sm:w-auto border-primary text-primary rounded-full"
+              />
               <Button
                 variant="outline"
                 size="sm"
@@ -207,43 +220,45 @@ export function ClientHeader({ client, users, isAdmin = false }: ClientHeaderPro
                 <Edit className="h-4 w-4 mr-2" />
                 Editar Cliente
               </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="w-full sm:w-auto"
+            </div>
+          )}
+          {isAdmin && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Eliminar
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción eliminará todas las tareas, finanzas y datos asociados a
+                    <strong className="text-foreground"> {client.name}</strong>. No se puede deshacer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Eliminar
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Esta acción eliminará todas las tareas, finanzas y datos asociados a
-                      <strong className="text-foreground"> {client.name}</strong>. No se puede deshacer.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      {isDeleting ? "Eliminando..." : "Eliminar"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </>
+                    {isDeleting ? "Eliminando..." : "Eliminar"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </div>
       </CardContent>
 
-      {isAdmin && (
+      {canEditClient && (
         <EditClientDialog
           client={client}
           open={isEditDialogOpen}

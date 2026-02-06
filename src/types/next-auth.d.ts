@@ -10,6 +10,7 @@ declare module "next-auth" {
       image?: string | null;
       role: string; // Compatibilidad: Contiene el valor de roleLegacy
       roleLegacy: string; // Explícito: Valor real guardado en DB
+      specialty?: string | null;
     };
   }
 
@@ -19,6 +20,7 @@ declare module "next-auth" {
     name: string;
     image?: string | null;
     role?: string; // Usado durante el signIn, mapeado a roleLegacy
+    specialty?: string | null;
   }
 }
 
@@ -29,5 +31,6 @@ declare module "next-auth/jwt" {
     name: string;
     image?: string | null;
     role: string; // Almacena el valor de roleLegacy
+    specialty?: string | null;
   }
 }

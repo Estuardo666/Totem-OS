@@ -125,7 +125,18 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
   const [brandSettings, setBrandSettings] = useState<{
     logoLight: string | null;
     logoDark: string | null;
-  } | null>(null);
+  } | null>(() => {
+    // Cargar desde localStorage al inicializar
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("totem_brand_cache");
+        return cached ? JSON.parse(cached) : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
     // Inicializar con menús expandidos si alguna de sus rutas está activa
     const contentFactoryPaths = ["/content/dashboard", "/content", "/content/shoots"];
@@ -172,6 +183,12 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
 
         if (result.success && result.data) {
           setBrandSettings(result.data);
+          // Guardar en localStorage para siguiente carga
+          try {
+            localStorage.setItem("totem_brand_cache", JSON.stringify(result.data));
+          } catch {
+            // Ignorar errores de localStorage
+          }
         }
       } catch (error) {
         console.error("Error al cargar configuración de marca:", error);
@@ -211,7 +228,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
   return (
     <div 
       className={cn(
-        "flex h-[calc(100vh-2rem)] w-64 flex-col bg-white dark:bg-background/5 dark:backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl rounded-3xl m-4",
+        "flex h-[calc(100vh-2rem)] w-64 flex-col bg-white dark:bg-background/95 dark:backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl rounded-3xl m-4",
         className
       )}
       {...props}

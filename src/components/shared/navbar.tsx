@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useSession } from "next-auth/react";
-import { Menu } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
+import { Menu, Settings, Plug, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -13,6 +13,14 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "./notification-bell";
 import { TaskBell } from "./task-bell";
 import { Sidebar } from "./sidebar";
@@ -113,10 +121,40 @@ export function Navbar() {
       <div className="flex items-center gap-3">
         <TaskBell />
         <NotificationBell side="bottom" align="end" />
-        <Avatar className="h-9 w-9">
-          <AvatarImage src={session?.user?.image ?? undefined} alt={session?.user?.name ?? "Usuario"} />
-          <AvatarFallback>{userInitials}</AvatarFallback>
-        </Avatar>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="cursor-pointer">
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={session?.user?.image ?? undefined} alt={session?.user?.name ?? "Usuario"} />
+                <AvatarFallback>{userInitials}</AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/admin/settings" className="cursor-pointer">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Configuración</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/settings/integrations" className="cursor-pointer">
+                <Plug className="mr-2 h-4 w-4" />
+                <span>Integraciones</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => signOut({ callbackUrl: "/sign-in" })}
+              className="cursor-pointer"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Cerrar Sesión</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

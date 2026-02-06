@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { z } from "zod";
 import { Mic, Square, Sparkles, Radio, ListChecks, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { interpretVoiceCommandAction } from "@/actions/voice-actions";
+import { voiceCommandResponseSchema } from "@/schemas/voice";
 import { TaskSheet } from "@/components/features/content/task-sheet";
 import { ShootingForm } from "@/components/features/shoots/shooting-form";
 import type { Client } from "@prisma/client";
@@ -59,7 +62,13 @@ const matchClientIdWithFallback = (
   if (fromPrimary) return fromPrimary;
   if (!fallbackText) return undefined;
   const text = normalizeText(fallbackText);
-  return clients.find((c) => text.includes(normalizeText(c.name)))?.id;
+  const exact = clients.find((c) => normalizeText(c.name) === text);
+  if (exact) return exact.id;
+  const partial = clients.find((c) => text.includes(normalizeText(c.name)));
+  if (partial) return partial.id;
+  const reverse = clients.find((c) => normalizeText(c.name).includes(text));
+  if (reverse) return reverse.id;
+  return undefined;
 };
 
 const parseTimeToHHMM = (raw?: string) => {
@@ -86,18 +95,14 @@ const parseTimeToHHMM = (raw?: string) => {
   return "";
 };
 
-interface VoiceCommandResponse {
-  type: "task" | "shoot";
-  title: string;
-  details: string;
-  pieceType?: "REEL" | "FLYER" | "STORY";
-  suggestedDate?: string;
+type VoiceResponse = z.infer<typeof voiceCommandResponseSchema> & {
   suggestedClient?: string;
+  suggestedDate?: string;
   suggestedStartTime?: string;
   suggestedEndTime?: string;
-}
+};
 
-interface VoiceHistoryItem extends VoiceCommandResponse {
+interface VoiceHistoryItem extends VoiceResponse {
   id: string;
   createdAt: string;
 }
@@ -177,10 +182,12 @@ interface VoiceControlPanelProps {
 }
 
 export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
+  const router = useRouter();
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoRunningRef = useRef(false);
+  const transcriptRef = useRef("");
   const [recorderState, setRecorderState] = useState<RecorderState>("idle");
   const [recorderError, setRecorderError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(true);
@@ -188,7 +195,7 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<VoiceCommandResponse | null>(null);
+  const [result, setResult] = useState<VoiceResponse | null>(null);
   const [history, setHistory] = useState<VoiceHistoryItem[]>([]);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -235,6 +242,7 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
     recognition.onresult = (event: SpeechRecognitionEventLike) => {
       const currentTranscript = extractTranscript(event.results);
       setTranscript(currentTranscript);
+      transcriptRef.current = currentTranscript.trim();
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
         void handleAutoInterpretAndCreate();
@@ -252,7 +260,7 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
         clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = null;
       }
-      if (transcript.trim() && !autoRunningRef.current) {
+      if (transcriptRef.current.trim() && !autoRunningRef.current) {
         void handleAutoInterpretAndCreate();
       }
     };
@@ -294,6 +302,7 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
             throw new Error(data.error || "No se pudo transcribir");
           }
           setTranscript(data.text ?? "");
+          transcriptRef.current = (data.text ?? "").trim();
           if (data.text) {
             await handleAutoInterpretAndCreate();
           }
@@ -317,6 +326,7 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
     if (!isSupported) {
       if (recorderState === "recording") {
         stopRecorder();
+        void handleAutoInterpretAndCreate();
         return;
       }
       startRecorder();
@@ -326,6 +336,7 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
+      void handleAutoInterpretAndCreate();
       return;
     }
 
@@ -340,24 +351,70 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
 
   const handleAutoInterpretAndCreate = async () => {
     if (autoRunningRef.current || isProcessing) return;
-    if (!transcript.trim()) return;
+    const textForUse = transcriptRef.current.trim() || transcript.trim();
+    if (!textForUse) return;
     autoRunningRef.current = true;
     setIsProcessing(true);
-    const response = await interpretVoiceCommandAction({ transcript: transcript.trim() });
+    setActionError(null);
+    setActionMessage(null);
+
+    const response = await interpretVoiceCommandAction({ transcript: textForUse });
     if (response.success && response.data) {
-      setResult(response.data);
+      setResult(response.data as VoiceResponse);
       const newEntry: VoiceHistoryItem = {
         ...response.data,
         id: crypto.randomUUID(),
         createdAt: new Date().toLocaleString("es-EC"),
       };
       setHistory((prev) => [newEntry, ...prev].slice(0, MAX_HISTORY));
-      handleSimulatedCreate(response.data.type);
+      const clientId = matchClientIdWithFallback(clients, (response.data as VoiceResponse).suggestedClient, textForUse);
+
+      if (response.data.type === "task") {
+        setTaskDefaults({
+          title: response.data.title,
+          type: response.data.pieceType || "REEL",
+          status: "IDEA",
+          priority: "MEDIUM",
+          postCopy: response.data.details,
+          scheduledAt: (response.data as VoiceResponse).suggestedDate
+            ? formatDateTimeForInput(parseDDMMYYYY((response.data as VoiceResponse).suggestedDate))
+            : undefined,
+          clientId: clientId ?? "",
+        });
+        setTaskFormOpen(true);
+      } else {
+        setShootDefaults({
+          title: response.data.title,
+          notes: response.data.details,
+          scheduledAt: (response.data as VoiceResponse).suggestedDate ? parseDDMMYYYY((response.data as VoiceResponse).suggestedDate) : undefined,
+          clientId,
+          startTime: parseTimeToHHMM((response.data as VoiceResponse).suggestedStartTime),
+          endTime: (() => {
+            const parsedStart = parseTimeToHHMM((response.data as VoiceResponse).suggestedStartTime);
+            const parsedEnd = parseTimeToHHMM((response.data as VoiceResponse).suggestedEndTime);
+            if (parsedEnd) return parsedEnd;
+            if (!parsedStart) return "";
+            const [h, m] = parsedStart.split(":").map(Number);
+            const endH = (h + 1) % 24;
+            return `${String(endH).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+          })(),
+        });
+        setShootFormOpen(true);
+      }
     } else {
       setError(response.error || "No se pudo interpretar el comando.");
     }
     setIsProcessing(false);
     autoRunningRef.current = false;
+  };
+
+  const handleShootingCreated = (shooting: any) => {
+    setShootFormOpen(false);
+    if (shooting?.id) {
+      router.push(`/content/shoots?detail=${shooting.id}`);
+    } else {
+      router.refresh();
+    }
   };
 
   const handleInterpret = async () => {
@@ -660,7 +717,7 @@ export function VoiceControlPanel({ clients, users }: VoiceControlPanelProps) {
         onOpenChange={setShootFormOpen}
         clients={clients as any}
         shooting={null as any}
-        onCreated={undefined}
+        onCreated={handleShootingCreated}
         initialTitle={shootDefaults?.title}
         initialNotes={shootDefaults?.notes}
         initialDate={shootDefaults?.scheduledAt}
