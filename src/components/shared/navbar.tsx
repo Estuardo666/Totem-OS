@@ -80,7 +80,7 @@ export function Navbar() {
           </SheetTrigger>
           <SheetContent 
             side="left" 
-            className="w-[75vw] max-w-[400px] p-0 bg-white/95 dark:bg-background/95 backdrop-blur-xl border-r-0 rounded-r-3xl"
+            className="w-[75vw] max-w-[400px] p-0 bg-white/95 dark:bg-background/30 backdrop-blur-xl border-r-0 rounded-r-3xl"
           >
             <SheetTitle className="sr-only">Menú de Navegación</SheetTitle>
             <Sidebar 

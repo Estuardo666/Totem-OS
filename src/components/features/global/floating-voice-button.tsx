@@ -111,6 +111,7 @@ export function FloatingVoiceButton() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const transcriptRef = useRef("");
   const autoRunningRef = useRef(false);
+  const cancelledRef = useRef(false);
 
   // Ocultar en Finanzas y /admin/voice-control
   const isHidden = pathname?.startsWith("/finanzas") || pathname?.startsWith("/admin/voice-control");
@@ -183,9 +184,10 @@ export function FloatingVoiceButton() {
     recognition.onerror = (e: any) => setError(`Error: ${e.error}`);
     recognition.onend = () => {
       setIsListening(false);
-      if (transcriptRef.current.trim() && !autoRunningRef.current) {
+      if (transcriptRef.current.trim() && !autoRunningRef.current && !cancelledRef.current) {
         void handleAutoInterpretAndCreate();
       }
+      cancelledRef.current = false;
     };
     recognitionRef.current = recognition;
     recognition.start();
@@ -204,6 +206,10 @@ export function FloatingVoiceButton() {
       };
       mediaRecorder.onstop = async () => {
         try {
+          if (cancelledRef.current) {
+            cancelledRef.current = false;
+            return;
+          }
           const blob = new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" });
           const form = new FormData();
           form.append("file", blob, "audio.webm");
@@ -212,7 +218,7 @@ export function FloatingVoiceButton() {
           if (!res.ok || data.error) throw new Error(data.error || "No se pudo transcribir");
           setTranscript(data.text ?? "");
           transcriptRef.current = (data.text ?? "").trim();
-          if (data.text) await handleAutoInterpretAndCreate();
+          if (data.text && !cancelledRef.current) await handleAutoInterpretAndCreate();
         } catch (err) {
           setError(err instanceof Error ? err.message : "Error al transcribir");
         }
@@ -228,6 +234,7 @@ export function FloatingVoiceButton() {
     setError(null);
     setTranscript("");
     transcriptRef.current = "";
+    cancelledRef.current = false;
     const SpeechCtor = getSpeechRecognitionConstructor();
     if (SpeechCtor) {
       startWebSpeech();
@@ -246,6 +253,11 @@ export function FloatingVoiceButton() {
     setIsListening(false);
   };
 
+  const stopListeningAndCancel = () => {
+    cancelledRef.current = true;
+    stopListening();
+  };
+
   const handleToggleListening = () => {
     if (isListening) {
       stopListening();
@@ -257,11 +269,12 @@ export function FloatingVoiceButton() {
 
   const handleFloatingButtonClick = () => {
     if (open) {
-      // Cerrar: detener grabación si está activa
+      // Cerrar: detener grabación si está activa (sin interpretar)
       if (isListening) {
-        stopListening();
-        void handleAutoInterpretAndCreate();
+        stopListeningAndCancel();
       }
+      setTranscript("");
+      transcriptRef.current = "";
       setOpen(false);
     } else {
       // Abrir: mostrar toast e iniciar grabación automáticamente
@@ -445,9 +458,10 @@ export function FloatingVoiceButton() {
             <button
               onClick={() => {
                 if (isListening) {
-                  stopListening();
-                  void handleAutoInterpretAndCreate();
+                  stopListeningAndCancel();
                 }
+                setTranscript("");
+                transcriptRef.current = "";
                 setOpen(false);
               }}
               className="p-1 rounded-full hover:bg-white/10 transition-colors"

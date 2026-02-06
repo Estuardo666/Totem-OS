@@ -231,7 +231,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
   return (
     <div 
       className={cn(
-        "flex h-[calc(100vh-2rem)] w-40 flex-col bg-white/70 dark:bg-background/60 backdrop-blur-md dark:backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl rounded-3xl m-4 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+        "flex h-[calc(100vh-2rem)] w-56 flex-col bg-white/70 dark:bg-background/60 backdrop-blur-md dark:backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl rounded-3xl m-4 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
         className
       )}
       {...props}
@@ -248,7 +248,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   alt="Totem OS"
                   width={180}
                   height={56}
-                  className="h-10 w-auto block dark:hidden"
+                  className="h-14 w-auto block dark:hidden"
                   priority
                 />
               )}
@@ -259,7 +259,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   alt="Totem OS"
                   width={180}
                   height={56}
-                  className="h-10 w-auto hidden dark:block"
+                  className="h-14 w-auto hidden dark:block"
                   priority
                 />
               )}
@@ -312,10 +312,10 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
 
             {/* Información del usuario */}
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-sm font-medium leading-snug break-words">
+              <span className="text-base font-medium leading-snug break-words">
                 {user.name || "Usuario"}
               </span>
-              <span className="text-xs text-muted-foreground truncate">
+              <span className="text-sm text-muted-foreground truncate">
                 {userRole === "ADMIN" ? "Administrador" : userRole === "USER" ? "Usuario" : "EDITOR"}
               </span>
             </div>
@@ -347,7 +347,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-2 rounded-l-lg px-2 py-1.5 text-sm font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] flex-1 h-full",
+                      "flex items-center gap-2 rounded-l-lg px-2 py-1.5 text-base font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] flex-1 h-full",
                       isActive
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -427,7 +427,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                "flex items-center gap-2 rounded-lg px-2 py-1.5 text-base font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
