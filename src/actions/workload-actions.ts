@@ -29,7 +29,7 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
       select: {
         id: true,
         name: true,
-        role: true,
+        roleLegacy: true,
         specialty: true,
       },
     });
@@ -83,7 +83,7 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
         return {
           userId: user.id,
           userName: user.name,
-          userRole: user.role,
+          userRole: user.roleLegacy,
           pendingTasksCount,
           weeklyCapacity,
         };

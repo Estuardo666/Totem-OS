@@ -682,3 +682,23 @@ model GoogleCalendarToken {
   
   @@index([userId])
 }
+
+// ONESIGNAL PUSH NOTIFICATIONS
+model OneSignalPlayer {
+  id        String   @id @default(cuid())
+  
+  userId    String?  // Relación opcional con User (puede ser null si usuario no autenticado)
+  playerId  String   @unique // ID del dispositivo en OneSignal
+  device    String?  // Tipo de dispositivo: "ios", "android", "web"
+  browser   String?  // Navegador si es web: "chrome", "safari", "firefox"
+  
+  // Metadata útil
+  subscribed Boolean  @default(true) // Si el usuario tiene notificaciones activas
+  lastSeen   DateTime? // Última actividad
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([playerId])
+}

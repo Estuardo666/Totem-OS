@@ -125,18 +125,8 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
   const [brandSettings, setBrandSettings] = useState<{
     logoLight: string | null;
     logoDark: string | null;
-  } | null>(() => {
-    // Cargar desde localStorage al inicializar
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem("totem_brand_cache");
-        return cached ? JSON.parse(cached) : null;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
+  } | null>(null); // Inicializar siempre como null para evitar mismatch SSR
+  const [mounted, setMounted] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
     // Inicializar con menús expandidos si alguna de sus rutas está activa
     const contentFactoryPaths = ["/content/dashboard", "/content", "/content/shoots"];
@@ -172,12 +162,25 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
     .toUpperCase()
     .slice(0, 2) || "U";
 
-  // Cargar configuración de marca
+  // Cargar configuración de marca (solo en cliente después de hidratación)
   useEffect(() => {
+    setMounted(true); // Marcar que el cliente está listo
+
     let isMounted = true;
 
     const loadBrandSettings = async () => {
       try {
+        // Primero intentar cargar desde localStorage
+        try {
+          const cached = localStorage.getItem("totem_brand_cache");
+          if (cached && isMounted) {
+            setBrandSettings(JSON.parse(cached));
+          }
+        } catch (e) {
+          // Ignorar errores de localStorage
+        }
+
+        // Luego cargar desde API para actualizar
         const result = await getBrandSettings();
         if (!isMounted) return;
 
@@ -236,7 +239,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-14 items-center border-b px-4 mb-4">
         <Link href="/" className="flex items-center gap-2" onClick={() => onNavigate?.()}>
-          {brandSettings?.logoLight || brandSettings?.logoDark ? (
+          {mounted && (brandSettings?.logoLight || brandSettings?.logoDark) ? (
             <>
               {/* Logo Modo Claro */}
               {brandSettings.logoLight && (

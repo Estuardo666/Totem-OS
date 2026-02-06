@@ -78,7 +78,7 @@ export async function calculateMonthlySettlement(
     // 3. Gasto Operativo: Suma de salarios de usuarios EDITOR
     const editors = await db.user.findMany({
       where: {
-        role: "EDITOR",
+        roleLegacy: "EDITOR",
       },
       select: {
         baseSalary: true,
