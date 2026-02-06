@@ -228,13 +228,13 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
   return (
     <div 
       className={cn(
-        "flex h-[calc(100vh-2rem)] w-64 flex-col bg-white dark:bg-background/95 dark:backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl rounded-3xl m-4",
+        "flex h-[calc(100vh-2rem)] w-40 flex-col bg-white/70 dark:bg-background/60 backdrop-blur-md dark:backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl rounded-3xl m-4 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
         className
       )}
       {...props}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center border-b px-6 mb-6">
+      <div className="flex h-14 items-center border-b px-4 mb-4">
         <Link href="/" className="flex items-center gap-2" onClick={() => onNavigate?.()}>
           {brandSettings?.logoLight || brandSettings?.logoDark ? (
             <>
@@ -245,7 +245,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   alt="Totem OS"
                   width={180}
                   height={56}
-                  className="h-14 w-auto block dark:hidden"
+                  className="h-10 w-auto block dark:hidden"
                   priority
                 />
               )}
@@ -256,26 +256,26 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   alt="Totem OS"
                   width={180}
                   height={56}
-                  className="h-14 w-auto hidden dark:block"
+                  className="h-10 w-auto hidden dark:block"
                   priority
                 />
               )}
             </>
           ) : (
-            <span className="text-xl font-bold">Totem OS</span>
+            <span className="text-base font-bold">Totem OS</span>
           )}
         </Link>
       </div>
 
       {/* Sección de Usuario */}
       {user && (
-        <div className="px-4 mb-6">
-          <div className="flex items-center gap-3">
+        <div className="px-3 mb-4">
+          <div className="flex items-center gap-2">
             {/* Avatar */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="cursor-pointer">
-                  <Avatar className="h-12 w-12">
+                  <Avatar className="h-10 w-10">
                     <AvatarImage src={user.image || undefined} alt={user.name || ""} />
                     <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
@@ -309,7 +309,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
 
             {/* Información del usuario */}
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-[1.1875rem] font-medium leading-snug break-words">
+              <span className="text-sm font-medium leading-snug break-words">
                 {user.name || "Usuario"}
               </span>
               <span className="text-xs text-muted-foreground truncate">
@@ -326,7 +326,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
       )}
 
       {/* Navegación */}
-      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+      <nav className="flex-1 space-y-0.5 px-2 py-2 overflow-y-auto">
         {navItems
           // Chronos deshabilitado temporalmente (oculto, sin eliminar la definición)
           .filter((item) => item.href !== "/chronos")
@@ -344,14 +344,14 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 rounded-l-lg px-3 py-2 text-sm font-medium transition-colors flex-1 h-full",
+                      "flex items-center gap-2 rounded-l-lg px-2 py-1.5 text-sm font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] flex-1 h-full",
                       isActive
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     )}
                     onClick={() => onNavigate?.()}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-4 w-4" />
                     <span>{item.label}</span>
                   </Link>
                   <button
@@ -360,7 +360,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                       toggleExpanded(item.href);
                     }}
                     className={cn(
-                      "flex items-center justify-center h-full aspect-square rounded-r-lg transition-colors shrink-0",
+                      "flex items-center justify-center h-full aspect-square rounded-r-lg transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] shrink-0",
                       isActive
                         ? "bg-primary text-primary-foreground hover:bg-primary/90"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -368,7 +368,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   >
                     <ChevronRight
                       className={cn(
-                        "h-4 w-4 transition-transform duration-200",
+                        "h-4 w-4 transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
                         isExpanded && "rotate-90"
                       )}
                     />
@@ -378,11 +378,11 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                 {/* Sub-ítems con animación de acordeón */}
                 <div
                   className={cn(
-                    "overflow-hidden transition-all duration-300 ease-in-out",
+                    "overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
                     isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
                   )}
                 >
-                  <div className="ml-4 space-y-1 border-l-2 border-muted pl-2 pt-1">
+                  <div className="ml-2 space-y-0.5 border-l-2 border-muted pl-2 pt-0.5">
                     {(item.href === "/finance"
                       ? item.children.filter((child) =>
                           child.href === "/finance" ? isAdmin :
@@ -400,14 +400,14 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                           key={child.href}
                           href={child.href}
                           className={cn(
-                            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                            "flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
                             childIsActive
                               ? "bg-primary/10 text-primary font-semibold"
                               : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                           )}
                           onClick={() => onNavigate?.()}
                         >
-                          <ChildIcon className="h-4 w-4" />
+                          <ChildIcon className="h-3.5 w-3.5" />
                           <span>{child.label}</span>
                         </Link>
                       );
@@ -424,14 +424,14 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
               onClick={() => onNavigate?.()}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-4 w-4" />
               <span>{item.label}</span>
             </Link>
           );
@@ -450,14 +450,14 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   )}
                   onClick={() => onNavigate?.()}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-4 w-4" />
                   <span>{item.label}</span>
                 </Link>
               );

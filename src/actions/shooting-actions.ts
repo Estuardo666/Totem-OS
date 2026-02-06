@@ -205,6 +205,7 @@ export async function createShooting(
     // Revalidar rutas
     revalidatePath("/content/shoots");
     revalidatePath("/content");
+    revalidatePath("/content/dashboard");
 
     return { success: true, data: shooting, calendarError } as ApiResponse<ShootWithRelations> & {
       calendarError: string | null;
@@ -410,6 +411,7 @@ export async function updateShooting(
     // Revalidar rutas
     revalidatePath("/content/shoots");
     revalidatePath("/content");
+    revalidatePath("/content/dashboard");
 
     return { success: true, data: shooting, calendarError } as ApiResponse<ShootWithRelations> & {
       calendarError: string | null;
@@ -619,6 +621,7 @@ export async function deleteShooting(
     // Revalidar rutas
     revalidatePath("/content/shoots");
     revalidatePath("/content");
+    revalidatePath("/content/dashboard");
 
     return { success: true };
   } catch (error) {
