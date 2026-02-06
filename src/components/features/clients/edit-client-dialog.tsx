@@ -108,10 +108,11 @@ export function EditClientDialog({
     }
   }, [client, open, form]);
 
+  const handleAuthError = useRedirectOnAuthError();
+
   const onSubmit = async (data: UpdateClientFormInput) => {
     startTransition(async () => {
       try {
-        // Include logo URL in the data
         const clientData = {
           ...data,
           logo: logoUrl,
@@ -124,10 +125,18 @@ export function EditClientDialog({
             title: "Cliente actualizado",
             description: "Los cambios se han guardado correctamente.",
           });
-          // La UI se actualizará automáticamente gracias a revalidatePath
           router.refresh();
           onOpenChange(false);
         } else {
+          if (handleAuthError(result)) {
+            toast({
+              variant: "destructive",
+              title: "Sesión expirada",
+              description: "Tu sesión ha expirado. Serás redirigido al login.",
+            });
+            return;
+          }
+
           toast({
             variant: "destructive",
             title: "Error al actualizar",

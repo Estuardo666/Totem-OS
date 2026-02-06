@@ -1,8 +1,31 @@
 import { NextResponse } from "next/server";
 import { getActiveProvider } from "@/lib/ai/ai-provider-service";
+import { checkRateLimit, getClientIP } from "@/lib/rate-limiter";
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting: 10 requests per minute per IP
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(clientIP, "transcribe", 10, 60 * 1000);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: "Demasiados intentos. Inténtalo más tarde.",
+          retryAfter: rateLimitResult.retryAfter,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": (rateLimitResult.retryAfter ?? 60).toString(),
+            "X-RateLimit-Limit": "10",
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+            "X-RateLimit-Reset": new Date(rateLimitResult.resetTime).toISOString(),
+          },
+        }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file");
 

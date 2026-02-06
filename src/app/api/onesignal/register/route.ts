@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { checkRateLimit, getClientIP } from "@/lib/rate-limiter";
 
 /**
  * POST /api/onesignal/register
@@ -7,6 +8,25 @@ import { db } from "@/lib/db";
  */
 export async function POST(request: Request) {
   try {
+    // Rate limiting: 30 requests per minute per IP
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(clientIP, "onesignal-register", 30, 60 * 1000);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: "Demasiados intentos. Inténtalo más tarde.",
+          retryAfter: rateLimitResult.retryAfter,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": (rateLimitResult.retryAfter ?? 60).toString(),
+          },
+        }
+      );
+    }
+
     const body = await request.json();
     const { playerId, userId, device, browser } = body;
 

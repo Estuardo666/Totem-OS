@@ -15,6 +15,13 @@ export async function createClient(
   input: unknown
 ): Promise<ApiResponse<Client>> {
   try {
+    // 0. Verificar autenticación
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
     // 1. Validar con Zod
     const validatedData = createClientSchema.parse(input);
 
@@ -74,6 +81,13 @@ export async function updateClient(
   input: unknown
 ): Promise<ApiResponse<Client>> {
   try {
+    // 0. Verificar autenticación
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
     // 1. Validar con Zod
     const validatedData = updateClientSchema.parse(input);
 
@@ -231,6 +245,13 @@ export async function getClients(): Promise<ApiResponse<Array<
   }
 >>> {
   try {
+    // 0. Verificar autenticación
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
     const { startOfMonth, endOfMonth } = await import("date-fns");
     const now = new Date();
     const currentMonthStart = startOfMonth(now);
@@ -786,6 +807,13 @@ export async function addCredential(
   input: unknown
 ): Promise<ApiResponse<Credential>> {
   try {
+    // 0. Verificar autenticación
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
     // 1. Validar con Zod
     const validatedData = createCredentialSchema.parse(input);
 
@@ -1022,6 +1050,13 @@ export async function deleteClient(
   clientId: string
 ): Promise<ApiResponse<void>> {
   try {
+    // 0. Verificar autenticación
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
     const client = await db.client.findUnique({
       where: { id: clientId },
       select: { id: true, name: true },

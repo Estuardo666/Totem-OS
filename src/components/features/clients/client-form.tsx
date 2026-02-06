@@ -64,11 +64,11 @@ export function ClientForm({ users }: ClientFormProps) {
   });
 
   const { formState: { isSubmitting } } = form;
+  const handleAuthError = useRedirectOnAuthError();
 
   const onSubmit = async (data: CreateClientFormInput) => {
     startTransition(async () => {
       try {
-        // Include logo URL in the data
         const clientData = {
           ...data,
           logo: logoUrl,
@@ -81,9 +81,17 @@ export function ClientForm({ users }: ClientFormProps) {
             title: "Cliente creado",
             description: `El cliente "${result.data.name}" ha sido creado exitosamente.`,
           });
-          // Redirigir a la lista de clientes (la UI se actualizará automáticamente gracias a revalidatePath)
           router.push("/clients");
         } else {
+          if (handleAuthError(result)) {
+            toast({
+              variant: "destructive",
+              title: "Sesión expirada",
+              description: "Tu sesión ha expirado. Serás redirigido al login.",
+            });
+            return;
+          }
+
           toast({
             variant: "destructive",
             title: "Error al crear cliente",

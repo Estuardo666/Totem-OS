@@ -92,6 +92,28 @@ export async function getActiveProvider(): Promise<AIProviderConfig | null> {
 }
 
 /**
+ * Get active provider with environment variable fallback
+ * Falls back to GROQ_API_KEY if no database config exists
+ */
+export async function getActiveProviderWithFallback(): Promise<AIProviderConfig | null> {
+  // Try database config first
+  const dbConfig = await getActiveProvider();
+  if (dbConfig) return dbConfig;
+
+  // Fallback to GROQ_API_KEY from environment
+  if (process.env.GROQ_API_KEY) {
+    console.log("[AI] Using GROQ_API_KEY environment fallback");
+    return {
+      provider: "grok",
+      apiKey: process.env.GROQ_API_KEY,
+      model: "llama-3.1-8b-instant",
+    };
+  }
+
+  return null;
+}
+
+/**
  * Factory pattern: Devuelve la instancia correcta del modelo según el proveedor
  */
 export async function getAiModel(provider?: AIProvider): Promise<AIProviderConfig> {

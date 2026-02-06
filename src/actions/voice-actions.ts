@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import type { ActionResponse } from "@/types";
 import type { VoiceNote } from "@prisma/client";
 import { voiceCommandInputSchema, voiceCommandResponseSchema } from "@/schemas/voice";
-import { getActiveProvider } from "@/lib/ai/ai-provider-service";
+import { getActiveProviderWithFallback } from "@/lib/ai/ai-provider-service";
 import { callAIProvider } from "@/lib/ai/engine";
 
 interface VoiceCommandResponse {
@@ -71,12 +71,12 @@ export async function interpretVoiceCommandAction(
     }
 
     const validatedInput = voiceCommandInputSchema.parse(input);
-    const config = await getActiveProvider();
+    const config = await getActiveProviderWithFallback();
 
     if (!config) {
       return {
         success: false,
-        error: "No hay proveedor de IA configurado. Configúralo en /admin/settings",
+        error: "No hay proveedor de IA configurado. Configura GROQ_API_KEY en .env o en /admin/settings",
       };
     }
 
@@ -84,13 +84,26 @@ export async function interpretVoiceCommandAction(
     const systemPrompt = "Eres asistente de Totem OS. Devuelve SOLO JSON válido para crear tarea o rodaje.";
     const userPrompt = [
       `Transcripción: "${trimmedTranscript}"`,
-      "Detecta tipo: 'task' (Content Factory) o 'shoot'.",
-      "Si dice 'rodaje <nombre>', usa ese texto como título del rodaje.",
-      "Fechas: normaliza a dd/mm/aaaa (usa año actual si no se menciona).",
-      "Horas: devuelve suggestedStartTime HH:mm 24h; si solo hay una hora, suggestedEndTime = start + 1h.",
-      "Tarea: pieceType REEL|FLYER|STORY opcional, detalles breves.",
-      "Cliente opcional: suggestedClient (texto).",
-      "JSON: {type, title, details, pieceType?, suggestedDate?, suggestedClient?, suggestedStartTime?, suggestedEndTime?} sin texto adicional.",
+      "Detecta tipo: 'task' (Content Factory) o 'shoot' (rodaje).",
+      "",
+      "IMPORTANTE - Extrae SOLO lo que el usuario DICE explícitamente (sin inferir):",
+      "- Si NO menciona un campo, devuelve '' (cadena vacía).",
+      "- title: SOLO si dice nombre/descripción específica. Sino, ''.",
+      "- details: SOLO si describe detalles explícitos. Sino, ''.",
+      "- suggestedClient: SOLO si menciona el nombre del cliente en la transcripción.",
+      "- suggestedDate: SOLO si menciona fecha (normaliza a dd/mm/aaaa).",
+      "- suggestedStartTime/EndTime: SOLO si menciona hora.",
+      "- NO inventes nombres ni clientes que no estén en la transcripción.",
+      "",
+      "Ejemplos:",
+      "1. 'Crear tarea' → type: task, title: '', details: '', suggestedClient: '', suggestedDate: '', suggestedStartTime: '', suggestedEndTime: ''",
+      "2. 'Crear rodaje' → type: shoot, title: '', details: '', suggestedClient: '', suggestedDate: '', suggestedStartTime: '', suggestedEndTime: ''",
+      "3. 'Rodaje para Ruth' → type: shoot, title: '', details: '', suggestedClient: Ruth",
+      "4. 'Tarea editar video para cliente X' → type: task, title: 'editar video', suggestedClient: X",
+      "5. 'Rodaje mañana a las 3' → type: shoot, title: '', suggestedDate: dd/mm/aaaa, suggestedStartTime: 15:00",
+      "",
+      "JSON: {type, title, details, pieceType?, suggestedDate?, suggestedClient?, suggestedStartTime?, suggestedEndTime?}",
+      "No incluyas nada más que el JSON.",
     ].join("\n");
 
     const messages = [

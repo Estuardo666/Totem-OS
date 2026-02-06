@@ -6,6 +6,7 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { deleteClient } from "@/actions/client-actions";
 import { useToast } from "@/components/ui/use-toast";
+import { useRedirectOnAuthError } from "@/hooks/use-redirect-on-auth-error";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +28,7 @@ export function ClientDeleteButton({ clientId, clientName }: ClientDeleteButtonP
   const [isDeleting, startDeleteTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
+  const handleAuthError = useRedirectOnAuthError();
 
   const handleDelete = () => {
     startDeleteTransition(async () => {
@@ -38,6 +40,15 @@ export function ClientDeleteButton({ clientId, clientName }: ClientDeleteButtonP
         });
         router.push("/clients");
         router.refresh();
+        return;
+      }
+
+      if (handleAuthError(result)) {
+        toast({
+          variant: "destructive",
+          title: "Sesión expirada",
+          description: "Tu sesión ha expirado. Serás redirigido al login.",
+        });
         return;
       }
 

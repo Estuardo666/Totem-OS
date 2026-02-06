@@ -24,6 +24,13 @@ export interface UserWorkload {
  */
 export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
   try {
+    // 0. Verificar autenticación
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
     // Obtener todos los usuarios con su specialty
     const users = await db.user.findMany({
       select: {

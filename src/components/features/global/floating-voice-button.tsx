@@ -91,8 +91,19 @@ const matchClientIdWithFallback = (
 };
 
 export function FloatingVoiceButton() {
+  // Check if we should hide BEFORE calling hooks
+  if (typeof window === "undefined") {
+    // Server-side, we can check pathname via pathname context later
+    // For now, render the component and handle hiding client-side
+  }
+
   const pathname = usePathname();
   const router = useRouter();
+
+  // Ocultar en Finanzas y /admin/voice-control
+  const isHidden =
+    pathname?.startsWith("/finanzas") ||
+    pathname?.startsWith("/admin/voice-control");
 
   const [open, setOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -100,7 +111,12 @@ export function FloatingVoiceButton() {
   const [transcript, setTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
-  const [users, setUsers] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
+  const [users, setUsers] = useState<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  }[]>([]);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [shootFormOpen, setShootFormOpen] = useState(false);
   const [taskDefaults, setTaskDefaults] = useState<any | null>(null);
@@ -113,10 +129,6 @@ export function FloatingVoiceButton() {
   const autoRunningRef = useRef(false);
   const cancelledRef = useRef(false);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Ocultar en Finanzas y /admin/voice-control
-  const isHidden = pathname?.startsWith("/finanzas") || pathname?.startsWith("/admin/voice-control");
-  if (isHidden) return null;
 
   // Obtener color primario del CSS custom property
   useEffect(() => {
@@ -371,8 +383,10 @@ export function FloatingVoiceButton() {
 
   return (
     <>
-      {/* Efecto Siri - Bordes luminosos en los extremos de la pantalla */}
-      <div 
+      {isHidden ? null : (
+        <>
+          {/* Efecto Siri - Bordes luminosos en los extremos de la pantalla */}
+          <div 
         className={`fixed inset-0 z-40 pointer-events-none overflow-hidden transition-opacity duration-500 ease-out ${
           open && isListening ? "opacity-100" : "opacity-0"
         }`}
@@ -719,6 +733,8 @@ export function FloatingVoiceButton() {
         initialStartTime={shootDefaults?.startTime}
         initialEndTime={shootDefaults?.endTime}
       />
+        </>
+      )}
     </>
   );
 }

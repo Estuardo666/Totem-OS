@@ -121,6 +121,13 @@ export async function sendPushToUser(
   message: string,
   url?: string
 ) {
+  // 0. Verificar autenticación
+  const { auth } = await import("@/auth");
+  const session = await auth();
+  if (!session?.user) {
+    return { success: false, error: "No autenticado" };
+  }
+
   return sendPushNotification({
     title,
     message,
@@ -137,6 +144,13 @@ export async function sendPushToAll(
   message: string,
   url?: string
 ) {
+  // 0. Verificar autenticación
+  const { auth } = await import("@/auth");
+  const session = await auth();
+  if (!session?.user) {
+    return { success: false, error: "No autenticado" };
+  }
+
   return sendPushNotification({
     title,
     message,
@@ -150,6 +164,13 @@ export async function sendPushToAll(
  */
 export async function getSubscriptionStats() {
   try {
+    // 0. Verificar autenticación
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
     const total = await db.oneSignalPlayer.count();
     const subscribed = await db.oneSignalPlayer.count({
       where: { subscribed: true },

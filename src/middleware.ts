@@ -21,9 +21,6 @@ export default auth((req) => {
   const userRole = req.auth?.user?.roleLegacy || req.auth?.user?.role || "EDITOR";
   const isEditor = userRole === "EDITOR";
 
-  // Debug logging (desactivar en producción)
-  console.log(`[Middleware] Path: ${req.nextUrl.pathname}, isAuth: ${isAuth}, role: ${userRole}, port: ${req.nextUrl.port}, fullUrl: ${req.nextUrl.toString()}`);
-
   // Permitir acceso público a reportes compartidos
   if (isPublicReport) {
     return NextResponse.next();
@@ -31,21 +28,18 @@ export default auth((req) => {
 
   if (isAuthPage) {
     if (isAuth) {
-      console.log(`[Middleware] Redirigiendo autenticado a dashboard desde ${req.nextUrl.pathname}`);
       return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/"));
     }
     return NextResponse.next();
   }
 
   if (!isAuth) {
-    console.log(`[Middleware] No autenticado, redirigiendo a sign-in desde ${req.nextUrl.pathname}`);
     return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/sign-in"));
   }
 
   // Bloquear acceso a rutas de administrador para no ADMIN
   const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
   if (isAdminRoute && userRole !== "ADMIN") {
-    console.log(`[Middleware] Acceso denegado a ruta de admin: ${req.nextUrl.pathname}, rol: ${userRole}`);
     return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/"));
   }
 

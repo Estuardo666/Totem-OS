@@ -244,6 +244,13 @@ export type UserWithTaskCount = User & {
  */
 export async function getUsers(): Promise<ApiResponse<UserWithTaskCount[]>> {
   try {
+    // 0. Verificar autenticación
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
     const users = await db.user.findMany({
       include: {
         _count: {
@@ -273,6 +280,13 @@ export async function registerUser(
   input: unknown
 ): Promise<ApiResponse<User>> {
   try {
+    // 0. Verificar autenticación
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
     // 1. Validar con Zod
     const validatedData = registerSchema.parse(input);
 

@@ -1,9 +1,29 @@
 import { NextResponse } from "next/server";
 import { getClients } from "@/actions/client-actions";
 import { getUsers } from "@/actions/user.actions";
+import { checkRateLimit, getClientIP } from "@/lib/rate-limiter";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Rate limiting: 60 requests per minute per IP (bootstrap es más frecuente)
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(clientIP, "voice-bootstrap", 60, 60 * 1000);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: "Demasiados intentos. Inténtalo más tarde.",
+          retryAfter: rateLimitResult.retryAfter,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": (rateLimitResult.retryAfter ?? 60).toString(),
+          },
+        }
+      );
+    }
+
     const [clientsResult, usersResult] = await Promise.all([
       getClients(),
       getUsers(),

@@ -20,10 +20,10 @@ export const authConfig = {
   },
   session: {
     strategy: "jwt" as const,
-    maxAge: 30 * 24 * 60 * 60, // 30 días
+    maxAge: 14 * 24 * 60 * 60, // 14 días (reducido desde 30)
   },
   secret: process.env.AUTH_SECRET,
-  trustHost: true, // Necesario para desarrollo local y algunos entornos
+  trustHost: process.env.NODE_ENV === "production" ? false : true,
   debug: process.env.NODE_ENV === "development",
   
   // Callbacks para sincronizar el rol

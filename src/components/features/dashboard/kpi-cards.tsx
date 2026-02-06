@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getFinancialStats } from "@/actions/finance-actions";
 import { getPendingTasksCount } from "@/actions/content-actions";
 import { getClients } from "@/actions/client-actions";
@@ -44,6 +45,11 @@ export async function KPICards() {
       getPendingTasksCount(),
       getClients(),
     ]);
+
+  // Verificar errores de autenticación en server component
+  if (!clientsResult.success && clientsResult.error?.toLowerCase().includes("no autenticado")) {
+    redirect("/sign-in");
+  }
 
   // Procesar datos
   const financialStats = financialResult.success ? financialResult.data : null;

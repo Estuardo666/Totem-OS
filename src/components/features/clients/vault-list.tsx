@@ -49,6 +49,7 @@ interface VaultListProps {
 export function VaultList({ credentials, clientId }: VaultListProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const handleAuthError = useRedirectOnAuthError();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [revealedPasswords, setRevealedPasswords] = useState<Set<string>>(new Set());
@@ -79,6 +80,15 @@ export function VaultList({ credentials, clientId }: VaultListProps) {
         setIsDialogOpen(false);
         router.refresh();
       } else {
+        if (handleAuthError(result)) {
+          toast({
+            variant: "destructive",
+            title: "Sesión expirada",
+            description: "Tu sesión ha expirado. Serás redirigido al login.",
+          });
+          return;
+        }
+
         toast({
           variant: "destructive",
           title: "Error al agregar credencial",
