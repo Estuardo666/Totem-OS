@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.onesignal.com https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; media-src 'self' blob:; connect-src 'self' https://*.googleusercontent.com https://utfs.io https://*.pusher.com https://pusher.pusherapp.com wss://*.pusher.com wss://pusher.pusherapp.com https://onesignal.com https://*.onesignal.com https://groq.com https://*.groq.com; worker-src 'self' blob:; frame-ancestors 'none'; form-action 'self'; base-uri 'self';"
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.onesignal.com https://api.onesignal.com https://*.onesignal.com https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; media-src 'self' blob:; connect-src 'self' https://*.googleusercontent.com https://utfs.io https://*.pusher.com https://pusher.pusherapp.com wss://*.pusher.com wss://pusher.pusherapp.com https://onesignal.com https://*.onesignal.com https://groq.com https://*.groq.com https://api.groq.com; worker-src 'self' blob:; frame-ancestors 'none'; form-action 'self'; base-uri 'self';"
           },
         ],
       },
