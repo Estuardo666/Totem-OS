@@ -23,7 +23,7 @@ export const authConfig = {
     maxAge: 14 * 24 * 60 * 60, // 14 días (reducido desde 30)
   },
   secret: process.env.AUTH_SECRET,
-  trustHost: process.env.NODE_ENV === "production" ? false : true,
+  trustHost: true, // Permitir hosts de Vercel
   debug: process.env.NODE_ENV === "development",
   
   // Callbacks para sincronizar el rol

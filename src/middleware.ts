@@ -13,42 +13,48 @@ function createUrlWithPort(baseUrl: URL, path: string): URL {
 }
 
 export default auth((req) => {
-  const isAuth = !!req.auth;
-  const isAuthPage = req.nextUrl.pathname.startsWith("/sign-in") || req.nextUrl.pathname.startsWith("/sign-up");
-  const isPublicReport = req.nextUrl.pathname.startsWith("/reports/share");
-  // Intentar leer roleLegacy primero, luego role como fallback
-  // Si ambos son null/undefined, asumir EDITOR para no bloquear el acceso
-  const userRole = req.auth?.user?.roleLegacy || req.auth?.user?.role || "EDITOR";
-  const isEditor = userRole === "EDITOR";
+  try {
+    const isAuth = !!req.auth;
+    const isAuthPage = req.nextUrl.pathname.startsWith("/sign-in") || req.nextUrl.pathname.startsWith("/sign-up");
+    const isPublicReport = req.nextUrl.pathname.startsWith("/reports/share");
+    // Intentar leer roleLegacy primero, luego role como fallback
+    // Si ambos son null/undefined, asumir EDITOR para no bloquear el acceso
+    const userRole = req.auth?.user?.roleLegacy || req.auth?.user?.role || "EDITOR";
+    const isEditor = userRole === "EDITOR";
 
-  // Permitir acceso público a reportes compartidos
-  if (isPublicReport) {
-    return NextResponse.next();
-  }
+    // Permitir acceso público a reportes compartidos
+    if (isPublicReport) {
+      return NextResponse.next();
+    }
 
-  if (isAuthPage) {
-    if (isAuth) {
+    if (isAuthPage) {
+      if (isAuth) {
+        return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/"));
+      }
+      return NextResponse.next();
+    }
+
+    if (!isAuth) {
+      return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/sign-in"));
+    }
+
+    // Bloquear acceso a rutas de administrador para no ADMIN
+    const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
+    if (isAdminRoute && userRole !== "ADMIN") {
       return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/"));
     }
+
+    // Bloquear acceso a /finance/settlement para EDITOR
+    if (isEditor && req.nextUrl.pathname === "/finance/settlement") {
+      return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/finance"));
+    }
+
+    return NextResponse.next();
+  } catch (error) {
+    console.error("[Middleware] Error:", error);
+    // En caso de error, permitir pasar (no bloquear el sitio)
     return NextResponse.next();
   }
-
-  if (!isAuth) {
-    return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/sign-in"));
-  }
-
-  // Bloquear acceso a rutas de administrador para no ADMIN
-  const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
-  if (isAdminRoute && userRole !== "ADMIN") {
-    return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/"));
-  }
-
-  // Bloquear acceso a /finance/settlement para EDITOR
-  if (isEditor && req.nextUrl.pathname === "/finance/settlement") {
-    return NextResponse.redirect(createUrlWithPort(req.nextUrl, "/finance"));
-  }
-
-  return NextResponse.next();
 });
 
 export const config = {
