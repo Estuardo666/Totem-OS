@@ -37,11 +37,12 @@ export default async function Home() {
     : workloads;
 
   return (
-    <div className="container mx-auto px-2 md:px-3 py-3">
+    <div className="w-full max-w-full overflow-x-hidden">
       <PageHeader
         title={`Hola, ${firstName} 👋`}
         description="Aquí tienes el estado de tu agencia hoy."
         actions={<DashboardRefresh />}
+        showBackButton={false}
       />
 
       {/* Acciones Rápidas - Solo para ADMIN */}

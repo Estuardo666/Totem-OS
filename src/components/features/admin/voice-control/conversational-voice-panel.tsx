@@ -449,7 +449,10 @@ export function ConversationalVoicePanel({
 
   const speakMessage = useCallback(
     (text: string, onEnd?: () => void) => {
+      console.log("[TTS] speakMessage called:", { text, ttsEnabled, ttsProvider, ttsVoice });
+      
       if (!ttsEnabled) {
+        console.warn("[TTS] TTS is disabled, skipping speech");
         onEnd?.();
         return;
       }
@@ -460,16 +463,20 @@ export function ConversationalVoicePanel({
         setTtsTokensUsed(prev => prev + charCount);
       }
 
+      console.log("[TTS] Calling ttsRef.current.speak()");
       ttsRef.current.speak(text, {
         rate: 1.01,
         voice: ttsVoice,
         onEnd: () => {
+          console.log("[TTS] Speech ended successfully");
           setContext((prev) => ({ ...prev, step: "awaiting_input" }));
           onEnd?.();
         },
         onError: (error) => {
           if (error instanceof Error) {
-            console.warn("TTS error:", error.message);
+            console.warn("[TTS] Speech error:", error.message);
+          } else {
+            console.warn("[TTS] Speech error:", error);
           }
           // Continue even if TTS fails
           setContext((prev) => ({ ...prev, step: "awaiting_input" }));
@@ -676,6 +683,8 @@ export function ConversationalVoicePanel({
           if (!newData.title || newData.title.length === 0)
             missing.push("título");
           if (!newData.clientId) missing.push("cliente");
+          if (!newData.pieceType) missing.push("tipo");
+          if (!newData.dueDate) missing.push("fecha de publicación");
 
           console.log(
             `[Voice] Task missing fields: ${JSON.stringify(missing)}`
@@ -694,12 +703,16 @@ export function ConversationalVoicePanel({
           }
 
           if (missing.length === 0) {
-            return `Perfecto. Voy a crear una tarea "${newData.title}" para ${newData.clientName}. ¿Está bien?`;
+            const tipoTexto = newData.pieceType === "REEL" ? "reel" : newData.pieceType === "FLYER" ? "carrusel" : "contenido";
+            const fechaTexto = newData.dueDate ? ` para el ${newData.dueDate}` : "";
+            return `Perfecto. Voy a crear un ${tipoTexto} "${newData.title}" para ${newData.clientName}${fechaTexto}. ¿Está bien?`;
           } else {
             const next = missing[0];
             if (next === "título")
               return "¿Cuál es el título o nombre de la tarea?";
             if (next === "cliente") return "¿Para qué cliente es la tarea?";
+            if (next === "tipo") return "¿Qué tipo de contenido? Di 'reel' o 'carrusel'.";
+            if (next === "fecha de publicación") return "¿Para qué día es esta tarea?";
           }
         }
 
@@ -767,9 +780,25 @@ export function ConversationalVoicePanel({
         console.log(`[Voice] Filled title: ${userMessage}`);
       }
 
+      // Try to fill PIECE TYPE (for tasks)
+      if (remainingMissing.includes("tipo")) {
+        const messageLower = userMessage.toLowerCase();
+        if (messageLower.includes("reel") || messageLower.includes("video")) {
+          newData.pieceType = "REEL";
+          filled = true;
+          remainingMissing = remainingMissing.filter((item) => item !== "tipo");
+          console.log(`[Voice] ✓ Filled pieceType: REEL`);
+        } else if (messageLower.includes("carrusel") || messageLower.includes("flyer") || messageLower.includes("imagen")) {
+          newData.pieceType = "FLYER";
+          filled = true;
+          remainingMissing = remainingMissing.filter((item) => item !== "tipo");
+          console.log(`[Voice] ✓ Filled pieceType: FLYER`);
+        }
+      }
+
       // Try to fill DATE - attempt fill regardless of order
       if (
-        (remainingMissing.includes("fecha") || remainingMissing.includes("dueDate")) &&
+        (remainingMissing.includes("fecha") || remainingMissing.includes("dueDate") || remainingMissing.includes("fecha de publicación")) &&
         parsedDate
       ) {
         const formatted = formatDateToDDMMYYYY(parsedDate);
@@ -777,7 +806,7 @@ export function ConversationalVoicePanel({
         newData.dueDate = formatted;
         filled = true;
         remainingMissing = remainingMissing.filter(
-          (item) => item !== "fecha" && item !== "dueDate"
+          (item) => item !== "fecha" && item !== "dueDate" && item !== "fecha de publicación"
         );
         console.log(`[Voice] ✓ Filled date: "${userMessage}" -> ${formatted}`);
       }
@@ -890,7 +919,9 @@ export function ConversationalVoicePanel({
             if (currentContext.intent === "shoot") {
               response = `Perfecto. Voy a crear un rodaje para ${updatedData.clientName || "el cliente"} el ${updatedData.date} a las ${updatedData.startTime}. ¿Está bien?`;
             } else if (currentContext.intent === "task") {
-              response = `Perfecto. Voy a crear una tarea "${updatedData.title}" para ${updatedData.clientName || "el cliente"}. ¿Está bien?`;
+              const tipoTexto = updatedData.pieceType === "REEL" ? "reel" : updatedData.pieceType === "FLYER" ? "carrusel" : "contenido";
+              const fechaTexto = updatedData.dueDate ? ` para el ${updatedData.dueDate}` : "";
+              response = `Perfecto. Voy a crear un ${tipoTexto} "${updatedData.title}" para ${updatedData.clientName || "el cliente"}${fechaTexto}. ¿Está bien?`;
             } else {
               response = `Perfecto. ¿Confirmas la creación? Di 'sí' o 'está bien'.`;
             }
@@ -905,6 +936,8 @@ export function ConversationalVoicePanel({
             } else if (currentContext.intent === "task") {
               if (next === "título") response = "¿Cuál es el título o nombre de la tarea?";
               else if (next === "cliente") response = "¿Para qué cliente es la tarea?";
+              else if (next === "tipo") response = "¿Qué tipo de contenido? Di 'reel' o 'carrusel'.";
+              else if (next === "fecha de publicación") response = "¿Para qué día es esta tarea?";
               else response = `¿${next}?`;
             } else {
               response = `¿${next}?`;
@@ -922,6 +955,8 @@ export function ConversationalVoicePanel({
           } else if (currentContext.intent === "task") {
             if (next === "título") response = "¿Cuál es el nombre de la tarea?";
             else if (next === "cliente") response = "No encontré ese cliente. ¿Para quién es la tarea?";
+            else if (next === "tipo") response = "No entendí. ¿Es un reel o un carrusel?";
+            else if (next === "fecha de publicación") response = "No entendí la fecha. ¿Para qué día? Ejemplo: mañana, 15/02/2026";
             else response = `No entendí. ¿${next}?`;
           } else {
             response = `No entendí. ¿${next}?`;
@@ -1182,15 +1217,17 @@ export function ConversationalVoicePanel({
       isFirstRenderRef.current = false;
       
       const greeting = `Hola ${userFirstName}, ¿en qué puedo ayudarte?`;
+      
+      console.log("[Voice] Initial greeting triggered for:", userFirstName);
 
       setTimeout(() => {
         addMessage("assistant", greeting);
-        if (inputMode === "voice") {
-          speakMessage(greeting);
-        }
+        // Don't speak initial greeting due to browser autoplay policy
+        // TTS will work after user clicks the mic button
+        console.log("[Voice] Initial greeting shown (silent due to autoplay policy)");
       }, 500);
     }
-  }, [userFirstName, addMessage, speakMessage, inputMode]);
+  }, [userFirstName, addMessage, speakMessage]);
 
   // ============================================
   // Render
