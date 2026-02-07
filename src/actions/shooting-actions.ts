@@ -202,6 +202,23 @@ export async function createShooting(
       });
     }
 
+    // Notificar a los admins sobre el nuevo rodaje (Pusher + PUSH PWA)
+    try {
+      const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
+      const startTimeStr = format(input.startTime, "dd/MM/yyyy HH:mm", { locale: es });
+      
+      await notifyAdminsWithPush(
+        "Nuevo rodaje creado",
+        `Se creó un nuevo rodaje: ${input.title} - ${client.name} (${startTimeStr})`,
+        "ADMIN_ALERT",
+        "/content/shoots",
+        sessionUserId
+      );
+    } catch (error) {
+      console.error("❌ Error al enviar notificaciones PUSH a admins:", error);
+      // No fallar la operación si las notificaciones fallan
+    }
+
     // Revalidar rutas
     revalidatePath("/content/shoots");
     revalidatePath("/content");

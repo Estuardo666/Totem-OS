@@ -67,7 +67,7 @@ export async function notifyAdmins(
 ): Promise<ApiResponse<{ count: number }>> {
   try {
     const admins = await db.user.findMany({
-      where: { role: "ADMIN" },
+      where: { roleLegacy: "ADMIN" },
       select: { id: true },
     });
 
@@ -90,6 +90,58 @@ export async function notifyAdmins(
       success: false,
       error:
         error instanceof Error ? error.message : "Error al notificar administradores",
+    };
+  }
+}
+
+/**
+ * Notifica a todos los administradores con notificación PUSH (PWA)
+ * Combina notificaciones in-app (Pusher) + notificaciones PUSH (OneSignal)
+ */
+export async function notifyAdminsWithPush(
+  title: string,
+  message: string,
+  type: string = "ADMIN_ALERT",
+  url?: string,
+  createdBy?: string
+): Promise<ApiResponse<{ inAppCount: number; pushSent: boolean }>> {
+  try {
+    // 1. Enviar notificaciones in-app a todos los admins
+    const inAppResult = await notifyAdmins(message, type, createdBy);
+    const inAppCount = inAppResult.success ? inAppResult.data?.count ?? 0 : 0;
+
+    // 2. Enviar notificación PUSH a todos los admins
+    const { sendPushNotification } = await import("@/actions/onesignal-actions");
+    
+    const admins = await db.user.findMany({
+      where: { roleLegacy: "ADMIN" },
+      select: { id: true },
+    });
+
+    const pushResult = await sendPushNotification({
+      title,
+      message,
+      userIds: admins.map((admin) => admin.id),
+      url,
+    });
+
+    console.log(`✅ Notificaciones enviadas: ${inAppCount} in-app, PUSH: ${pushResult.success ? "✅" : "❌"}`);
+
+    return {
+      success: true,
+      data: {
+        inAppCount,
+        pushSent: pushResult.success,
+      },
+    };
+  } catch (error) {
+    console.error("❌ Error al notificar administradores con PUSH:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Error al notificar administradores con PUSH",
     };
   }
 }

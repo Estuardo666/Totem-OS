@@ -175,6 +175,24 @@ async function notifyAndRevalidate({
   if (assignedCommunityId) affectedUserIds.push(assignedCommunityId);
   if (sessionUserId) affectedUserIds.push(sessionUserId);
   await triggerDashboardUpdate(affectedUserIds);
+
+  // Notificar a los admins sobre la nueva tarea (Pusher + PUSH PWA)
+  try {
+    const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
+    const assignedTo = assignedEditorId || assignedCommunityId ? "asignada" : "sin asignar";
+    const taskInfo = `${task.title}${clientName ? ` - ${clientName}` : ""}`;
+    
+    await notifyAdminsWithPush(
+      "Nueva tarea creada",
+      `Se creó una nueva tarea ${assignedTo}: ${taskInfo}`,
+      "ADMIN_ALERT",
+      "/content",
+      sessionUserId || undefined
+    );
+  } catch (error) {
+    console.error("❌ Error al enviar notificaciones PUSH a admins:", error);
+    // No fallar la operación si las notificaciones fallan
+  }
 }
 
 /**

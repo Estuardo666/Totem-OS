@@ -106,26 +106,90 @@ export function useOneSignal() {
  */
 export function OneSignalProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
-
-  // Desactivado temporalmente por problemas en producción
-  // TODO: Reactivar cuando NextAuth esté funcionando correctamente
-  return <>{children}</>;
-
-  /*
   const [oneSignalReady, setOneSignalReady] = useState(false);
 
   // Inicializar OneSignal una sola vez
   useEffect(() => {
-    // TODO: implementar cuando NextAuth esté listo
+    if (!ONESIGNAL_APP_ID) {
+      console.warn("[OneSignal] App ID no configurado");
+      return;
+    }
+
+    let mounted = true;
+
+    async function initOneSignal() {
+      try {
+        const oneSignal = await waitForOneSignal();
+        if (!oneSignal || !mounted) return;
+
+        await oneSignal.init({
+          appId: ONESIGNAL_APP_ID!,
+          allowLocalhostAsSecureOrigin: true,
+          serviceWorkerPath: "/OneSignalSDKWorker.js",
+        });
+
+        console.log("[OneSignal] SDK inicializado correctamente");
+        if (mounted) {
+          setOneSignalReady(true);
+        }
+      } catch (error) {
+        console.error("[OneSignal] Error al inicializar:", error);
+      }
+    }
+
+    initOneSignal();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Cuando el usuario inicia sesión y OneSignal está listo, registrar
   useEffect(() => {
-    // TODO: implementar cuando NextAuth esté listo
-  }, [session?.user?.id]);
+    if (!oneSignalReady || !session?.user?.id) return;
+
+    let mounted = true;
+
+    async function registerUser() {
+      try {
+        const oneSignal = await waitForOneSignal();
+        if (!oneSignal || !mounted) return;
+
+        // Esperar un momento para que OneSignal obtenga el playerId
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const playerId = oneSignal.User.PushSubscription.id;
+        if (!playerId) {
+          console.log("[OneSignal] No hay playerId aún, usuario no suscrito");
+          return;
+        }
+
+        console.log("[OneSignal] PlayerId obtenido:", playerId);
+
+        // Registrar en BD
+        await registerPlayerInDb(playerId, session.user.id);
+
+        // Agregar tags del usuario
+        await oneSignal.User.addTags({
+          userId: session.user.id,
+          userName: session.user.name || "Usuario",
+          userRole: session.user.role || "EDITOR",
+        });
+
+        console.log("[OneSignal] Usuario registrado y etiquetado");
+      } catch (error) {
+        console.error("[OneSignal] Error al registrar usuario:", error);
+      }
+    }
+
+    registerUser();
+
+    return () => {
+      mounted = false;
+    };
+  }, [oneSignalReady, session?.user?.id, session?.user?.name, session?.user?.role]);
 
   return <>{children}</>;
-  */
 }
 
 /**

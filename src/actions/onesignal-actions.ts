@@ -45,6 +45,7 @@ export async function sendPushNotification(options: SendNotificationOptions) {
         select: { playerId: true },
       });
       targetPlayerIds = players.map((p) => p.playerId);
+      console.log(`[OneSignal] Encontrados ${targetPlayerIds.length} playerIds para ${options.userIds.length} userIds:`, targetPlayerIds);
     }
 
     // Construir el payload para OneSignal
@@ -56,12 +57,15 @@ export async function sendPushNotification(options: SendNotificationOptions) {
 
     // Configurar destinatarios
     if (targetPlayerIds && targetPlayerIds.length > 0) {
-      payload.include_subscription_ids = targetPlayerIds;
+      payload.include_player_ids = targetPlayerIds; // API v11 usa include_player_ids
+      console.log(`[OneSignal] Enviando a playerIds:`, targetPlayerIds);
     } else if (options.segments && options.segments.length > 0) {
       payload.included_segments = options.segments;
+      console.log(`[OneSignal] Enviando a segmentos:`, options.segments);
     } else {
       // Por defecto, enviar a todos los suscritos
       payload.included_segments = ["Subscribed Users"];
+      console.log(`[OneSignal] Enviando a todos los suscritos (Subscribed Users)`);
     }
 
     // URL de destino al hacer click
@@ -94,6 +98,7 @@ export async function sendPushNotification(options: SendNotificationOptions) {
       };
     }
 
+    console.log("[OneSignal] Respuesta completa de OneSignal:", JSON.stringify(result, null, 2));
     console.log("[OneSignal] Notificación enviada:", result.id, "Recipients:", result.recipients);
 
     return {

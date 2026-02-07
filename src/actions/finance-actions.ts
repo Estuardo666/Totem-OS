@@ -816,23 +816,18 @@ export async function createExpense(
       }
     }
 
-    // Notificar a los admins sobre el nuevo gasto
+    // Notificar a los admins sobre el nuevo gasto (Pusher + PUSH PWA)
     try {
-      const admins = await db.user.findMany({
-        where: { role: "ADMIN" },
-        select: { id: true },
-      });
-
+      const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
       const userName = session.user.name || session.user.email || "Un usuario";
-
-      for (const admin of admins) {
-        await sendNotification({
-          userId: admin.id,
-          message: `Nuevo gasto registrado por ${userName}: ${validatedData.description} - $${validatedData.amount}`,
-          type: "ADMIN_ALERT",
-          createdBy: userId,
-        });
-      }
+      
+      await notifyAdminsWithPush(
+        "Nuevo gasto registrado",
+        `${userName} registró un gasto: ${validatedData.description} - $${validatedData.amount}`,
+        "ADMIN_ALERT",
+        "/finance/expenses",
+        userId
+      );
     } catch (error) {
       console.error("❌ Error al enviar notificaciones a admins:", error);
       // No fallar la operación si las notificaciones fallan
@@ -911,6 +906,27 @@ export async function createTransaction(
         userId: validatedData.userId ?? null,
       },
     });
+
+    // Notificar a los admins sobre nuevos ingresos u honorarios (Pusher + PUSH PWA)
+    if (transaction.type === "INCOME" || transaction.type === "HONORARIOS") {
+      try {
+        const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
+        
+        const typeLabel = transaction.type === "INCOME" ? "Ingreso" : "Honorario";
+        const description = transaction.description || "Sin descripción";
+        
+        await notifyAdminsWithPush(
+          `Nuevo ${typeLabel.toLowerCase()} registrado`,
+          `Se registró un ${typeLabel.toLowerCase()}: ${description} - $${transaction.amount}`,
+          "ADMIN_ALERT",
+          "/finance",
+          userId
+        );
+      } catch (error) {
+        console.error("❌ Error al enviar notificaciones a admins:", error);
+        // No fallar la operación si las notificaciones fallan
+      }
+    }
 
     // Revalidar rutas
     revalidatePath("/finance");
