@@ -50,16 +50,56 @@ interface NotificationEventData {
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 
 /**
+ * Carga dinámicamente el script de OneSignal desde el cliente
+ */
+function loadOneSignalScript(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") {
+      resolve();
+      return;
+    }
+
+    // Si ya está cargando, espera
+    if ((window as any).OneSignalScriptLoading) {
+      const checkInterval = setInterval(() => {
+        if (window.OneSignal) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 100);
+      return;
+    }
+
+    (window as any).OneSignalScriptLoading = true;
+
+    const script = document.createElement("script");
+    script.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.js";
+    script.async = true;
+    script.onerror = () => {
+      console.error("[OneSignal] Error al cargar el SDK desde CDN");
+      (window as any).OneSignalScriptLoading = false;
+      resolve();
+    };
+    script.onload = () => {
+      console.log("[OneSignal] Script cargado desde CDN");
+      (window as any).OneSignalScriptLoading = false;
+      resolve();
+    };
+    document.head.appendChild(script);
+  });
+}
+
+/**
  * Espera a que OneSignal esté disponible en window
  */
-function waitForOneSignal(timeout = 15000): Promise<OneSignalInstance | null> {
+function waitForOneSignal(timeout = 20000): Promise<OneSignalInstance | null> {
   return new Promise((resolve) => {
     const start = Date.now();
     const check = () => {
       if (typeof window !== "undefined" && window.OneSignal) {
         resolve(window.OneSignal);
       } else if (Date.now() - start > timeout) {
-        console.warn("[OneSignal] Timeout esperando SDK (15s)");
+        console.warn("[OneSignal] Timeout esperando SDK (20s)");
         resolve(null);
       } else {
         setTimeout(check, 100);
@@ -68,10 +108,6 @@ function waitForOneSignal(timeout = 15000): Promise<OneSignalInstance | null> {
     check();
   });
 }
-
-/**
- * Hook para usar OneSignal en componentes
- */
 export function useOneSignal() {
   const requestPermission = useCallback(async () => {
     const oneSignal = await waitForOneSignal();
@@ -119,6 +155,10 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
     async function initOneSignal() {
       try {
+        // Primero cargar el script
+        await loadOneSignalScript();
+        
+        // Luego esperar a que esté disponible
         const oneSignal = await waitForOneSignal();
         if (!oneSignal || !mounted) return;
 
