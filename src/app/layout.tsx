@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { cookies } from "next/headers";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "@/components/ui/toaster";
@@ -72,11 +71,7 @@ export default async function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning style={htmlStyle}>
       <head>
-        <Script 
-          src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.js"
-          strategy="beforeInteractive"
-          onError={() => console.error("[OneSignal] error al cargar SDK")}
-        />
+        <script async src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.js"></script>
         <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
         <link rel="apple-touch-startup-image" href="/apple-splash/apple-splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
         <link rel="apple-touch-startup-image" href="/apple-splash/apple-splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
