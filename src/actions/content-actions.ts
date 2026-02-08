@@ -83,7 +83,7 @@ export type ContentTaskWithClient = ContentTask & {
 async function persistTask(validatedData: ReturnType<typeof createContentTaskSchema.parse>) {
   const client = await db.client.findUnique({
     where: { id: validatedData.clientId },
-    select: { editorId: true, communityId: true, name: true },
+    select: { editorId: true, communityId: true, name: true, logo: true },
   });
 
   const assignedEditorId = validatedData.assignedEditorId ?? client?.editorId ?? null;
@@ -110,17 +110,25 @@ async function persistTask(validatedData: ReturnType<typeof createContentTaskSch
     },
   });
 
-  return { task, clientName: client?.name ?? null, assignedEditorId, assignedCommunityId };
+  return { 
+    task, 
+    clientName: client?.name ?? null, 
+    clientLogo: client?.logo ?? null,
+    assignedEditorId, 
+    assignedCommunityId 
+  };
 }
 
 async function notifyAndRevalidate({
   task,
   clientName,
+  clientLogo,
   assignedEditorId,
   assignedCommunityId,
 }: {
   task: ContentTask;
   clientName: string | null;
+  clientLogo: string | null;
   assignedEditorId: string | null;
   assignedCommunityId: string | null;
 }) {
@@ -187,7 +195,8 @@ async function notifyAndRevalidate({
       `Se creó una nueva tarea ${assignedTo}: ${taskInfo}`,
       "ADMIN_ALERT",
       "/content",
-      sessionUserId || undefined
+      sessionUserId || undefined,
+      clientLogo || undefined // Rich media: logo del cliente
     );
   } catch (error) {
     console.error("❌ Error al enviar notificaciones PUSH a admins:", error);
@@ -203,10 +212,11 @@ export async function createTask(
 ): Promise<ApiResponse<ContentTask>> {
   try {
     const validatedData = createContentTaskSchema.parse(input);
-    const { task, clientName, assignedEditorId, assignedCommunityId } = await persistTask(validatedData);
+    const { task, clientName, clientLogo, assignedEditorId, assignedCommunityId } = await persistTask(validatedData);
     await notifyAndRevalidate({
       task,
       clientName,
+      clientLogo,
       assignedEditorId,
       assignedCommunityId,
     });
@@ -226,23 +236,70 @@ export async function createTasksBatch(
     const { tasks } = batchCreateContentTasksSchema.parse(input);
     const created: ContentTask[] = [];
     const errors: string[] = [];
+    const affectedUserIds = new Set<string>();
+    const clientNames = new Set<string>();
+    let firstClientLogo: string | null = null;
 
+    // Crear todas las tareas sin notificar individualmente
     for (const taskInput of tasks) {
       try {
-        const { task, clientName, assignedEditorId, assignedCommunityId } = await persistTask(taskInput);
+        const { task, clientName, clientLogo, assignedEditorId, assignedCommunityId } = await persistTask(taskInput);
         created.push(task);
-        await notifyAndRevalidate({
-          task,
-          clientName,
-          assignedEditorId,
-          assignedCommunityId,
-        });
+        
+        // Acumular userIds afectados y nombres de clientes
+        if (assignedEditorId) affectedUserIds.add(assignedEditorId);
+        if (assignedCommunityId) affectedUserIds.add(assignedCommunityId);
+        if (clientName) clientNames.add(clientName);
+        
+        // Guardar logo del primer cliente para la notificación
+        if (!firstClientLogo && clientLogo) {
+          firstClientLogo = clientLogo;
+        }
       } catch (taskError) {
         errors.push(
           taskError instanceof Error
             ? `${taskInput.title}: ${taskError.message}`
             : `${taskInput.title}: Error desconocido`
         );
+      }
+    }
+
+    // Notificación consolidada: solo si se crearon tareas exitosamente
+    if (created.length > 0) {
+      try {
+        // Revalidar ruta una sola vez
+        revalidatePath("/content");
+
+        // Disparar evento consolidado a Pusher
+        await pusherServer.trigger("content-kanban", "tasks-created-batch", {
+          count: created.length,
+          tasks: created,
+        });
+        console.log(`✅ Evento batch Kanban enviado: ${created.length} tareas creadas`);
+
+        // Dashboard update para usuarios afectados
+        if (affectedUserIds.size > 0) {
+          await triggerDashboardUpdate(Array.from(affectedUserIds));
+        }
+
+        // Notificación consolidada a admins con logo del primer cliente
+        const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
+        const clientSummary = Array.from(clientNames).join(", ");
+        const taskSummary = created.length === 1 
+          ? `1 tarea creada` 
+          : `${created.length} tareas creadas`;
+        
+        await notifyAdminsWithPush(
+          "Tareas creadas en lote",
+          `${taskSummary}${clientSummary ? ` para ${clientSummary}` : ""}`,
+          "ADMIN_ALERT",
+          "/content",
+          undefined,
+          firstClientLogo || undefined // Rich media: logo del primer cliente
+        );
+      } catch (notificationError) {
+        console.error("❌ Error al enviar notificaciones batch:", notificationError);
+        // No fallar la operación si las notificaciones fallan
       }
     }
 

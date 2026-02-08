@@ -103,7 +103,8 @@ export async function notifyAdminsWithPush(
   message: string,
   type: string = "ADMIN_ALERT",
   url?: string,
-  createdBy?: string
+  createdBy?: string,
+  imageUrl?: string // Rich media: logo del cliente, preview de tarea, etc
 ): Promise<ApiResponse<{ inAppCount: number; pushSent: boolean }>> {
   try {
     // 1. Enviar notificaciones in-app a todos los admins
@@ -123,9 +124,10 @@ export async function notifyAdminsWithPush(
       message,
       userIds: admins.map((admin) => admin.id),
       url,
+      imageUrl, // Pasar rich media a OneSignal
     });
 
-    console.log(`✅ Notificaciones enviadas: ${inAppCount} in-app, PUSH: ${pushResult.success ? "✅" : "❌"}`);
+    console.log(`✅ Notificaciones enviadas: ${inAppCount} in-app, PUSH: ${pushResult.success ? "✅" : "❌"}${imageUrl ? " (con imagen)" : ""}`);
 
     return {
       success: true,
@@ -479,6 +481,129 @@ export async function checkPendingInvoicesOver72h(): Promise<ApiResponse<{ check
         error instanceof Error
           ? error.message
           : "Error al verificar facturas pendientes",
+    };
+  }
+}
+
+/**
+ * Envía smart digest diario a todos los usuarios con tareas asignadas para hoy
+ * Se ejecuta todos los días a las 8am (via cron)
+ * Consolida todas las tareas del día en UNA notificación por usuario
+ */
+export async function sendDailyTaskDigest(): Promise<ApiResponse<{ sentCount: number; totalTasks: number }>> {
+  try {
+    const { startOfDay, endOfDay } = await import("date-fns");
+    const today = new Date();
+    const startToday = startOfDay(today);
+    const endToday = endOfDay(today);
+
+    // Obtener todas las tareas programadas para hoy (scheduledAt entre startOfDay y endOfDay)
+    const todayTasks = await db.contentTask.findMany({
+      where: {
+        scheduledAt: {
+          gte: startToday,
+          lte: endToday,
+        },
+        status: {
+          notIn: ["PUBLISHED", "APPROVED"], // Excluir tareas ya finalizadas
+        },
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+      },
+      orderBy: {
+        dueDate: "asc",
+      },
+    });
+
+    if (todayTasks.length === 0) {
+      console.log("📭 No hay tareas programadas para hoy - digest no enviado");
+      return {
+        success: true,
+        data: { sentCount: 0, totalTasks: 0 },
+      };
+    }
+
+    // Agrupar tareas por usuario (assignedEditorId o assignedCommunityId)
+    const tasksByUser = new Map<string, typeof todayTasks>();
+
+    for (const task of todayTasks) {
+      // Asignar a Editor
+      if (task.assignedEditorId) {
+        const existing = tasksByUser.get(task.assignedEditorId) || [];
+        tasksByUser.set(task.assignedEditorId, [...existing, task]);
+      }
+      // Asignar a Community Manager
+      if (task.assignedCommunityId) {
+        const existing = tasksByUser.get(task.assignedCommunityId) || [];
+        tasksByUser.set(task.assignedCommunityId, [...existing, task]);
+      }
+    }
+
+    let sentCount = 0;
+
+    // Enviar digest consolidado a cada usuario
+    for (const [userId, userTasks] of tasksByUser) {
+      const taskCount = userTasks.length;
+      const clientNames = [...new Set(userTasks.map((t) => t.client.name))];
+      const clientSummary = clientNames.length <= 3 
+        ? clientNames.join(", ") 
+        : `${clientNames.slice(0, 2).join(", ")} y ${clientNames.length - 2} más`;
+
+      const title = taskCount === 1 
+        ? "Tienes 1 tarea programada para hoy" 
+        : `Tienes ${taskCount} tareas programadas para hoy`;
+
+      const message = `${clientSummary} • ${userTasks.filter((t) => t.type === "REEL").length} Reels, ${userTasks.filter((t) => t.type === "FLYER").length} Flyers, ${userTasks.filter((t) => t.type === "STORY").length} Stories`;
+
+      // Enviar notificación in-app
+      const inAppResult = await sendNotification({
+        userId,
+        message: `${title}: ${message}`,
+        type: "DAILY_DIGEST",
+      });
+
+      // Enviar notificación PUSH con logo del primer cliente
+      const { sendPushNotification } = await import("@/actions/onesignal-actions");
+      const firstClientLogo = userTasks[0]?.client?.logo || undefined;
+
+      await sendPushNotification({
+        title,
+        message,
+        userIds: [userId],
+        url: "/content",
+        data: {
+          type: "DAILY_DIGEST",
+          taskCount: taskCount.toString(),
+        },
+        imageUrl: firstClientLogo, // Rich media: logo del cliente
+      });
+
+      if (inAppResult.success) {
+        sentCount++;
+      }
+    }
+
+    console.log(`✅ Daily digest enviado a ${sentCount} usuarios (${todayTasks.length} tareas totales)`);
+
+    return {
+      success: true,
+      data: {
+        sentCount,
+        totalTasks: todayTasks.length,
+      },
+    };
+  } catch (error) {
+    console.error("❌ Error al enviar daily digest:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al enviar daily digest",
     };
   }
 }

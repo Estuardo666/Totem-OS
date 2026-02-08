@@ -15,6 +15,8 @@ interface SendNotificationOptions {
   segments?: string[];      // Segmentos de OneSignal (ej: "Subscribed Users")
   // Datos adicionales
   data?: Record<string, string>;
+  // Rich media
+  imageUrl?: string;        // URL de imagen para notificación (logo cliente, preview, etc)
 }
 
 interface OneSignalResponse {
@@ -58,6 +60,15 @@ export async function sendPushNotification(options: SendNotificationOptions) {
       // TTL de 24 horas
       ttl: 86400,
     };
+
+    // Rich media: imagen grande (logo cliente, preview tarea, etc)
+    if (options.imageUrl) {
+      payload.chrome_web_image = options.imageUrl; // Chrome desktop/Android
+      payload.firefox_icon = options.imageUrl;     // Firefox
+      payload.big_picture = options.imageUrl;      // Android
+      payload.ios_attachments = { id1: options.imageUrl }; // iOS
+      console.log(`[OneSignal] Rich media agregado: ${options.imageUrl}`);
+    }
 
     // Configurar destinatarios
     if (targetPlayerIds && targetPlayerIds.length > 0) {
