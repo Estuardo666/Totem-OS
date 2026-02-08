@@ -173,18 +173,111 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
     // Handler para notificaciones en primer plano
     const handleForegroundNotification = (event: ForegroundNotificationEvent | NotificationEventData) => {
-      // Permitir que la notificación se muestre en primer plano
-      // NO llamamos preventDefault() para que se muestre
       console.log("[OneSignal] Notificación recibida en primer plano:", event);
+      
+      // Extraer datos de la notificación
+      const notification = "notification" in event ? event.notification : null;
+      const title = notification?.title || "Nueva notificación";
+      const body = notification?.body || "";
       
       // Vibrar el dispositivo si está disponible (móvil/PWA)
       if (typeof navigator !== "undefined" && navigator.vibrate) {
-        // Patrón de vibración: vibrar 200ms, pausa 100ms, vibrar 200ms
         navigator.vibrate([200, 100, 200]);
       }
       
       // Reproducir sonido de notificación
       playNotificationSound();
+      
+      // Mostrar notificación in-app visual cuando la página está activa
+      // Esto funciona en todos los navegadores incluido iOS Safari
+      if (document.visibilityState === "visible") {
+        showInAppNotification(title, body);
+      }
+    };
+
+    // Mostrar notificación visual in-app (especialmente para iOS)
+    const showInAppNotification = (title: string, body: string) => {
+      // Crear el elemento de notificación
+      const notificationEl = document.createElement("div");
+      notificationEl.id = "onesignal-inapp-notification";
+      notificationEl.innerHTML = `
+        <div style="
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          left: 20px;
+          max-width: 400px;
+          margin: 0 auto;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 16px 20px;
+          border-radius: 12px;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+          z-index: 999999;
+          animation: slideDown 0.3s ease-out;
+          cursor: pointer;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        ">
+          <style>
+            @keyframes slideDown {
+              from { transform: translateY(-100%); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+            @keyframes slideUp {
+              from { transform: translateY(0); opacity: 1; }
+              to { transform: translateY(-100%); opacity: 0; }
+            }
+          </style>
+          <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <div style="
+              width: 40px;
+              height: 40px;
+              background: rgba(255,255,255,0.2);
+              border-radius: 10px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              flex-shrink: 0;
+            ">
+              🔔
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">${title}</div>
+              <div style="font-size: 14px; opacity: 0.9; line-height: 1.4;">${body}</div>
+            </div>
+            <button style="
+              background: rgba(255,255,255,0.2);
+              border: none;
+              color: white;
+              width: 24px;
+              height: 24px;
+              border-radius: 50%;
+              cursor: pointer;
+              font-size: 14px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              flex-shrink: 0;
+            " onclick="this.closest('#onesignal-inapp-notification').remove()">✕</button>
+          </div>
+        </div>
+      `;
+      
+      // Remover notificación anterior si existe
+      const existing = document.getElementById("onesignal-inapp-notification");
+      if (existing) existing.remove();
+      
+      // Agregar al DOM
+      document.body.appendChild(notificationEl);
+      
+      // Auto-cerrar después de 5 segundos
+      setTimeout(() => {
+        const el = document.getElementById("onesignal-inapp-notification");
+        if (el) {
+          el.style.animation = "slideUp 0.3s ease-out forwards";
+          setTimeout(() => el.remove(), 300);
+        }
+      }, 5000);
     };
 
     // Función para reproducir sonido
