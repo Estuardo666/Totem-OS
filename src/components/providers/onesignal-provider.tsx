@@ -176,6 +176,45 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
       // Permitir que la notificación se muestre en primer plano
       // NO llamamos preventDefault() para que se muestre
       console.log("[OneSignal] Notificación recibida en primer plano:", event);
+      
+      // Vibrar el dispositivo si está disponible (móvil/PWA)
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        // Patrón de vibración: vibrar 200ms, pausa 100ms, vibrar 200ms
+        navigator.vibrate([200, 100, 200]);
+      }
+      
+      // Reproducir sonido de notificación
+      playNotificationSound();
+    };
+
+    // Función para reproducir sonido
+    const playNotificationSound = () => {
+      try {
+        // Crear un contexto de audio para reproducir el sonido
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        
+        // Crear un oscilador para generar un tono de notificación
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Configurar el tono (frecuencia agradable para notificación)
+        oscillator.frequency.value = 880; // Nota A5
+        oscillator.type = "sine";
+        
+        // Configurar volumen con fade out
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        
+        // Reproducir por 300ms
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+      } catch (error) {
+        // Si el audio no está disponible, ignorar silenciosamente
+        console.log("[OneSignal] No se pudo reproducir sonido:", error);
+      }
     };
 
     async function initOneSignal() {

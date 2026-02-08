@@ -53,6 +53,21 @@ export async function sendPushNotification(options: SendNotificationOptions) {
       app_id: ONESIGNAL_APP_ID,
       headings: { en: options.title, es: options.title },
       contents: { en: options.message, es: options.message },
+      // Sonido de notificación
+      chrome_web_sound: "default", // Sonido en Chrome/Chromium
+      firefox_sound: "default", // Sonido en Firefox
+      // Android
+      android_sound: "notification", // Sonido en Android
+      android_channel_id: "push_notifications", // Canal de Android
+      android_visibility: 1, // Visible en pantalla de bloqueo
+      // iOS
+      ios_sound: "default",
+      // Vibración (Android)
+      android_led_color: "FF9900FF", // LED color (si el dispositivo lo soporta)
+      // Prioridad alta para que aparezca inmediatamente
+      priority: 10,
+      // TTL de 24 horas
+      ttl: 86400,
     };
 
     // Configurar destinatarios
