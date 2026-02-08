@@ -26,7 +26,8 @@ interface OneSignalInstance {
     permission?: boolean;
     permissionNative?: NotificationPermission;
     requestPermission: () => Promise<void>;
-    addEventListener?: (event: string, callback: (data: NotificationEventData) => void) => void;
+    addEventListener: (event: string, callback: (data: ForegroundNotificationEvent | NotificationEventData) => void) => void;
+    removeEventListener: (event: string, callback: (data: ForegroundNotificationEvent | NotificationEventData) => void) => void;
   };
   login: (externalId: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -38,6 +39,15 @@ interface OneSignalConfig {
   notifyButton?: { enable: boolean };
   allowLocalhostAsSecureOrigin?: boolean;
   serviceWorkerPath?: string;
+}
+
+interface ForegroundNotificationEvent {
+  notification: {
+    title?: string;
+    body?: string;
+    data?: Record<string, unknown>;
+  };
+  preventDefault: () => void;
 }
 
 interface NotificationEventData {
@@ -161,6 +171,13 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
     let mounted = true;
 
+    // Handler para notificaciones en primer plano
+    const handleForegroundNotification = (event: ForegroundNotificationEvent | NotificationEventData) => {
+      // Permitir que la notificación se muestre en primer plano
+      // NO llamamos preventDefault() para que se muestre
+      console.log("[OneSignal] Notificación recibida en primer plano:", event);
+    };
+
     async function initOneSignal() {
       try {
         // Primero cargar el script
@@ -176,7 +193,15 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
           serviceWorkerPath: "/OneSignalSDKWorker.js",
         });
 
-        console.log("[OneSignal] SDK inicializado correctamente");
+        // Habilitar notificaciones en primer plano
+        // El listener 'foregroundWillDisplay' permite mostrar notificaciones
+        // incluso cuando la app/pestaña está activa
+        oneSignal.Notifications.addEventListener(
+          "foregroundWillDisplay",
+          handleForegroundNotification
+        );
+
+        console.log("[OneSignal] SDK inicializado correctamente (con soporte para notificaciones en primer plano)");
         if (mounted) {
           setOneSignalReady(true);
         }
@@ -189,6 +214,15 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
+      // Limpiar listener al desmontar
+      waitForOneSignal().then((oneSignal) => {
+        if (oneSignal) {
+          oneSignal.Notifications.removeEventListener(
+            "foregroundWillDisplay",
+            handleForegroundNotification
+          );
+        }
+      });
     };
   }, []);
 
