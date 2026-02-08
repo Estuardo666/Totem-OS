@@ -59,6 +59,12 @@ function loadOneSignalScript(): Promise<void> {
       return;
     }
 
+    // Si ya está cargado
+    if (window.OneSignal) {
+      resolve();
+      return;
+    }
+
     // Si ya está cargando, espera
     if ((window as any).OneSignalScriptLoading) {
       const checkInterval = setInterval(() => {
@@ -73,8 +79,10 @@ function loadOneSignalScript(): Promise<void> {
     (window as any).OneSignalScriptLoading = true;
 
     const script = document.createElement("script");
-    script.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.js";
+    // URL correcta del SDK v16 de OneSignal
+    script.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.es6.js";
     script.async = true;
+    script.defer = true;
     script.onerror = () => {
       console.error("[OneSignal] Error al cargar el SDK desde CDN");
       (window as any).OneSignalScriptLoading = false;
