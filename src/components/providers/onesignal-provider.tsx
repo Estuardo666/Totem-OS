@@ -52,14 +52,14 @@ const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 /**
  * Espera a que OneSignal esté disponible en window
  */
-function waitForOneSignal(timeout = 5000): Promise<OneSignalInstance | null> {
+function waitForOneSignal(timeout = 15000): Promise<OneSignalInstance | null> {
   return new Promise((resolve) => {
     const start = Date.now();
     const check = () => {
       if (typeof window !== "undefined" && window.OneSignal) {
         resolve(window.OneSignal);
       } else if (Date.now() - start > timeout) {
-        console.warn("[OneSignal] Timeout esperando SDK");
+        console.warn("[OneSignal] Timeout esperando SDK (15s)");
         resolve(null);
       } else {
         setTimeout(check, 100);
