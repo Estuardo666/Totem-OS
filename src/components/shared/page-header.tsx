@@ -45,7 +45,7 @@ export function PageHeader({
   };
 
   return (
-    <div className={cn("mb-6 space-y-3", className)}>
+    <div className={cn("mb-8 space-y-4", className)}>
       {/* Top row: Back Button y Actions (en esquina opuesta) */}
       <div className="flex items-center justify-between">
         <div>

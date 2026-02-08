@@ -81,7 +81,7 @@ export default async function Home() {
       )}
 
       {/* Resumen Rápido - Grid de Tarjetas con Suspense */}
-      <div className={`grid grid-cols-1 gap-4 mb-8 ${isEditor ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
+      <div className={`grid grid-cols-1 gap-6 mb-10 ${isEditor ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
         <Suspense fallback={
           <>
             {isAdmin && <MetricSkeleton />}
@@ -94,7 +94,7 @@ export default async function Home() {
       </div>
 
       {/* Bloque de tres tarjetas (30% c/u en desktop): Mis Ideas, Tareas Prioritarias, Últimas Transacciones */}
-      <div className="grid grid-cols-1 gap-4 mb-8 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 mb-10 lg:grid-cols-3">
         <div className="w-full">
           <VoiceNotesWidget />
         </div>

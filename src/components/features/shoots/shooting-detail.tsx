@@ -1,20 +1,31 @@
 "use client";
 
+import { useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { MapPin, Users, FileText, Mic, ExternalLink, Edit, X, Video, Calendar, Send, Link as LinkIcon } from "lucide-react";
+import { MapPin, Users, FileText, Mic, ExternalLink, Edit, X, Video, Calendar, Send, Link as LinkIcon, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
-import type { ShootWithRelations } from "@/actions/shooting-actions";
+import type { ShootWithRelations } from "@/lib/shooting-service";
 
 interface ShootingDetailProps {
   shooting: ShootWithRelations | null;
@@ -22,6 +33,7 @@ interface ShootingDetailProps {
   onOpenChange: (open: boolean) => void;
   onEdit: () => void;
   onCancel: () => void;
+  onDelete: () => void;
 }
 
 export function ShootingDetail({
@@ -30,9 +42,16 @@ export function ShootingDetail({
   onOpenChange,
   onEdit,
   onCancel,
+  onDelete,
 }: ShootingDetailProps) {
   const { toast } = useToast();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   if (!shooting) return null;
+
+  const handleDeleteConfirm = () => {
+    setShowDeleteConfirm(false);
+    onDelete();
+  };
 
   const getCalendarShareLink = (link?: string | null) => {
     if (!link) return null;
@@ -279,6 +298,15 @@ export function ShootingDetail({
             <>
               <Separator />
               <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  title="Eliminar rodaje"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
                 <Button variant="outline" onClick={onCancel}>
                   <X className="mr-2 h-4 w-4" />
                   Cancelar Rodaje
@@ -308,6 +336,27 @@ export function ShootingDetail({
           )}
         </div>
       </DialogContent>
+
+      {/* Confirmación de eliminación */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar rodaje?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará el rodaje "{shooting.title}" permanentemente de la plataforma y también del Google Calendar si está vinculado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,9 +35,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { OptimizedAvatar } from "@/components/ui/optimized-avatar";
+import { UserList } from "./user-list-row";
 // Mapeo de palabras clave a categorías
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   COMIDA: ["almuerzo", "cena", "desayuno", "comida", "meal", "restaurant", "comedor", "pizza", "hamburguesa", "sushi", "café", "coffee", "lunch", "dinner", "breakfast", "food", "restaurante"],
@@ -105,7 +104,7 @@ interface CreateExpenseDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateExpenseDialog({
+function CreateExpenseDialogComponent({
   open,
   onOpenChange,
 }: CreateExpenseDialogProps) {
@@ -154,7 +153,7 @@ export function CreateExpenseDialog({
     if (descriptionValue && descriptionValue.trim()) {
       const detectedCategory = detectCategory(descriptionValue);
       console.log("Detected category:", detectedCategory, "from description:", descriptionValue);
-      form.setValue("category", detectedCategory);
+      form.setValue("category", detectedCategory as any);
     }
   };
 
@@ -375,24 +374,28 @@ export function CreateExpenseDialog({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="none">Sin cliente</SelectItem>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={client.logo || undefined} alt={client.name} />
-                              <AvatarFallback className="text-xs">
-                                {client.name
-                                  ?.split(' ')
-                                  .map(n => n[0])
-                                  .join('')
-                                  .toUpperCase()
-                                  .slice(0, 2) || '??'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span>{client.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {clients.map((client) => {
+                        const initials = client.name
+                          ?.split(' ')
+                          .map(n => n[0])
+                          .join('')
+                          .toUpperCase()
+                          .slice(0, 2) || '??';
+                        
+                        return (
+                          <SelectItem key={client.id} value={client.id}>
+                            <div className="flex items-center gap-2">
+                              <OptimizedAvatar
+                                src={client.logo}
+                                alt={client.name}
+                                fallback={initials}
+                                size="sm"
+                              />
+                              <span>{client.name}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -410,45 +413,19 @@ export function CreateExpenseDialog({
                     <p className="text-sm text-muted-foreground">
                       Selecciona uno o más usuarios. Si seleccionas múltiples, el monto se dividirá equitativamente.
                     </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      {users.map((user) => {
-                        const firstName = user.name?.split(' ')[0] || user.name;
-                        const initials = user.name
-                          ?.split(' ')
-                          .map(n => n[0])
-                          .join('')
-                          .toUpperCase()
-                          .slice(0, 2) || '??';
-                        
-                        return (
-                          <div key={user.id} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`create-user-${user.id}`}
-                              checked={field.value?.includes(user.id) || false}
-                              onCheckedChange={(checked) => {
-                                const currentValue = field.value || [];
-                                if (checked) {
-                                  field.onChange([...currentValue, user.id]);
-                                } else {
-                                  field.onChange(currentValue.filter((id) => id !== user.id));
-                                }
-                              }}
-                              disabled={isSubmitting || loadingUsers}
-                            />
-                            <Label
-                              htmlFor={`create-user-${user.id}`}
-                              className="flex items-center gap-2 cursor-pointer flex-1"
-                            >
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage src={user.profileImage || undefined} alt={firstName} />
-                                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm font-normal truncate">{firstName}</span>
-                            </Label>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <UserList
+                      users={users}
+                      selectedIds={field.value || []}
+                      isLoading={isSubmitting || loadingUsers}
+                      onChange={(userId) => {
+                        const currentValue = field.value || [];
+                        if (currentValue.includes(userId)) {
+                          field.onChange(currentValue.filter((id) => id !== userId));
+                        } else {
+                          field.onChange([...currentValue, userId]);
+                        }
+                      }}
+                    />
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -485,3 +462,9 @@ export function CreateExpenseDialog({
     </Dialog>
   );
 }
+
+/**
+ * Exported component wrapped with React.memo
+ * Evita re-renders cuando props no cambian
+ */
+export const CreateExpenseDialog = React.memo(CreateExpenseDialogComponent);

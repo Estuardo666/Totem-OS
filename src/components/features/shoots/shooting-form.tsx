@@ -31,7 +31,7 @@ import { createShooting, updateShooting, type CreateShootingInput, type UpdateSh
 import { getTasks } from "@/actions/content-actions";
 import { getUsers } from "@/actions/user.actions";
 import type { Client, User, ContentTask } from "@prisma/client";
-import type { ShootWithRelations } from "@/actions/shooting-actions";
+import type { ShootWithRelations } from "@/lib/shooting-service";
 
 interface ShootingFormProps {
   open: boolean;

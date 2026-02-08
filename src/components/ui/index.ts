@@ -10,3 +10,6 @@ export {
   DashboardSkeleton,
 } from "./skeletons-composite";
 
+// Componentes optimizados
+export { OptimizedAvatar } from "./optimized-avatar";
+

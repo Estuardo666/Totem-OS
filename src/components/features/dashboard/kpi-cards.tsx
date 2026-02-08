@@ -69,7 +69,7 @@ export async function KPICards() {
     cards.push({
       key: "income",
       content: (
-        <Card className="animate-fade-in" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
+        <Card className="animate-fade-in">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Ingresos del Mes
@@ -95,7 +95,7 @@ export async function KPICards() {
     {
       key: "pending",
       content: (
-        <Card className="animate-fade-in" style={{ animationDelay: `${cards.length * 120}ms`, animationFillMode: "both" }}>
+        <Card className="animate-fade-in">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Tareas Pendientes
@@ -121,7 +121,7 @@ export async function KPICards() {
     {
       key: "clients",
       content: (
-        <Card className="animate-fade-in" style={{ animationDelay: `${(cards.length + 1) * 120}ms`, animationFillMode: "both" }}>
+        <Card className="animate-fade-in">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Clientes Activos
@@ -142,7 +142,7 @@ export async function KPICards() {
   );
 
   return cards.map((card, index) => (
-    <div key={card.key} className="contents" style={{ animationDelay: `${index * 120}ms` }}>
+    <div key={card.key} className="w-full" style={{ animationDelay: `${index * 120}ms` }}>
       {card.content}
     </div>
   ));

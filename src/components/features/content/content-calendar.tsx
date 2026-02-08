@@ -76,6 +76,7 @@ export function ContentCalendar({ tasks, users, clients }: ContentCalendarProps)
   const [selectedTask, setSelectedTask] = useState<ContentTaskWithClient | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [newTaskDate, setNewTaskDate] = useState<Date | null>(null);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
   // Obtener el primer día del mes y el último día
   const monthStart = startOfMonth(currentDate);
@@ -115,6 +116,17 @@ export function ContentCalendar({ tasks, users, clients }: ContentCalendarProps)
     e.stopPropagation();
     setSelectedTask(task);
     setIsSheetOpen(true);
+  };
+
+  const toggleExpandDay = (day: Date) => {
+    const dayKey = format(day, "yyyy-MM-dd");
+    const newExpandedDays = new Set(expandedDays);
+    if (newExpandedDays.has(dayKey)) {
+      newExpandedDays.delete(dayKey);
+    } else {
+      newExpandedDays.add(dayKey);
+    }
+    setExpandedDays(newExpandedDays);
   };
 
   // Navegación de meses
@@ -203,28 +215,49 @@ export function ContentCalendar({ tasks, users, clients }: ContentCalendarProps)
                     {format(day, "d")}
                   </div>
                   <div className="space-y-1">
-                    {dayTasks.slice(0, 3).map((task) => (
-                      <div
-                        key={task.id}
-                        onClick={(e) => handleTaskClick(task, e)}
-                        className={`${getTypeColor(
-                          task.type
-                        )} text-white text-xs p-1.5 rounded cursor-pointer flex items-center gap-1.5 shadow-sm`}
-                      >
-                        {getTypeIcon(task.type)}
-                        <span className="truncate flex-1 font-medium">
-                          {task.client.name}
-                        </span>
-                        {task.status === "CLIENT_APPROVED" && (
-                          <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
-                        )}
-                      </div>
-                    ))}
-                    {dayTasks.length > 3 && (
-                      <div className="text-xs text-muted-foreground text-center py-1">
-                        +{dayTasks.length - 3} más
-                      </div>
-                    )}
+                    {(() => {
+                      const dayKey = format(day, "yyyy-MM-dd");
+                      const isExpanded = expandedDays.has(dayKey);
+                      const tasksToShow = isExpanded ? dayTasks : dayTasks.slice(0, 3);
+
+                      return (
+                        <>
+                          {tasksToShow.map((task, idx) => (
+                            <div
+                              key={task.id}
+                              onClick={(e) => handleTaskClick(task, e)}
+                              className={`${getTypeColor(
+                                task.type
+                              )} text-white text-xs p-1.5 rounded cursor-pointer flex items-center gap-1.5 shadow-sm transition-all duration-300 opacity-100 animate-in fade-in slide-in-from-top-1`}
+                              style={{
+                                animationDelay: `${idx * 50}ms`,
+                              }}
+                            >
+                              {getTypeIcon(task.type)}
+                              <span className="truncate flex-1 font-medium">
+                                {task.client.name}
+                              </span>
+                              {task.status === "CLIENT_APPROVED" && (
+                                <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+                              )}
+                            </div>
+                          ))}
+                          {dayTasks.length > 3 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpandDay(day);
+                              }}
+                              className="text-xs text-primary hover:text-primary/80 font-medium text-center w-full py-1 hover:underline transition-all duration-300"
+                            >
+                              {isExpanded
+                                ? "▲ Mostrar menos"
+                                : `+${dayTasks.length - 3} más`}
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               );

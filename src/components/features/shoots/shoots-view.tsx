@@ -1,13 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
-import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Video, MapPin, Users, FileText, Plus } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -17,10 +13,11 @@ import {
 } from "@/components/ui/select";
 import { ShootingForm } from "./shooting-form";
 import { ShootingDetail } from "./shooting-detail";
-import { cancelShooting } from "@/actions/shooting-actions";
+import { ShootsCalendar } from "./shoots-calendar";
+import { cancelShooting, deleteShooting } from "@/actions/shooting-actions";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { ShootWithRelations } from "@/actions/shooting-actions";
+import type { ShootWithRelations } from "@/lib/shooting-service";
 import type { Client } from "@prisma/client";
 
 interface ShootsViewProps {
@@ -32,13 +29,17 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedShooting, setSelectedShooting] = useState<ShootWithRelations | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingShooting, setEditingShooting] = useState<ShootWithRelations | null>(null);
+  
+  // Prefilled values for new shooting from calendar click
+  const [prefilledDate, setPrefilledDate] = useState<Date | undefined>();
+  const [prefilledStartTime, setPrefilledStartTime] = useState<string | undefined>();
+  const [prefilledEndTime, setPrefilledEndTime] = useState<string | undefined>();
 
   useEffect(() => {
     if (searchParams?.get("new") === "1") {
@@ -53,6 +54,18 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
   };
 
   const handleNewShooting = () => {
+    // Clear prefilled values when clicking "Nuevo Rodaje" button
+    setPrefilledDate(undefined);
+    setPrefilledStartTime(undefined);
+    setPrefilledEndTime(undefined);
+    setEditingShooting(null);
+    setIsFormOpen(true);
+  };
+
+  const handleCreateFromCalendar = (date: Date, startTime?: string, endTime?: string) => {
+    setPrefilledDate(date);
+    setPrefilledStartTime(startTime);
+    setPrefilledEndTime(endTime);
     setEditingShooting(null);
     setIsFormOpen(true);
   };
@@ -63,19 +76,6 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
     if (selectedStatus !== "all" && shooting.status !== selectedStatus) return false;
     return true;
   });
-
-  // Rodajes del mes actual
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  const monthShootings = filteredShootings.filter((shooting) => {
-    const shootDate = new Date(shooting.startTime);
-    return shootDate >= monthStart && shootDate <= monthEnd;
-  });
-
-  // Calendario
-  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-  const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const handleShootingClick = (shooting: ShootWithRelations) => {
     setSelectedShooting(shooting);
@@ -105,6 +105,26 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
           variant: "destructive",
           title: "Error",
           description: result.error || "No se pudo cancelar el rodaje",
+        });
+      }
+    }
+  };
+
+  const handleDelete = async () => {
+    if (selectedShooting) {
+      const result = await deleteShooting(selectedShooting.id);
+      if (result.success) {
+        toast({
+          title: "Rodaje eliminado",
+          description: "El rodaje se ha eliminado correctamente",
+        });
+        setIsDetailOpen(false);
+        router.refresh();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error || "No se pudo eliminar el rodaje",
         });
       }
     }
@@ -149,160 +169,12 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
         </Select>
       </div>
 
-      {/* Vistas */}
-      <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="h-12 items-center rounded-full bg-muted px-3 py-1 text-muted-foreground">
-          <TabsTrigger value="calendar" className="rounded-full">Calendario</TabsTrigger>
-          <TabsTrigger value="list" className="rounded-full">Lista</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="calendar" className="mt-4">
-          <Card>
-            <CardContent className="p-6">
-              {/* Navegación del mes */}
-              <div className="flex items-center justify-between mb-6">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <h2 className="text-xl font-semibold">
-                  {format(currentMonth, "MMMM yyyy", { locale: es })}
-                </h2>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Calendario */}
-              <div className="grid grid-cols-7 gap-2">
-                {/* Días de la semana */}
-                {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day) => (
-                  <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
-                    {day}
-                  </div>
-                ))}
-
-                {/* Días del mes */}
-                {calendarDays.map((day) => {
-                  const dayShootings = monthShootings.filter((shooting) =>
-                    isSameDay(new Date(shooting.startTime), day)
-                  );
-                  const isCurrentMonth = isSameMonth(day, currentMonth);
-                  const isToday = isSameDay(day, new Date());
-
-                  return (
-                    <div
-                      key={day.toISOString()}
-                      className={`min-h-[100px] border rounded-lg p-2 ${
-                        isCurrentMonth ? "bg-background" : "bg-muted/30"
-                      } ${isToday ? "ring-2 ring-primary" : ""}`}
-                    >
-                      <div className={`text-sm mb-1 ${isCurrentMonth ? "" : "text-muted-foreground"}`}>
-                        {format(day, "d")}
-                      </div>
-                      <div className="space-y-1">
-                        {dayShootings.slice(0, 2).map((shooting) => (
-                          <div
-                            key={shooting.id}
-                            onClick={() => handleShootingClick(shooting)}
-                            className="text-xs p-1 rounded bg-primary text-primary-foreground cursor-pointer hover:opacity-80 truncate"
-                            title={shooting.title}
-                          >
-                            {shooting.title}
-                          </div>
-                        ))}
-                        {dayShootings.length > 2 && (
-                          <div className="text-xs text-muted-foreground">
-                            +{dayShootings.length - 2} más
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="list" className="mt-4">
-          <Card>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {filteredShootings.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    No hay rodajes que mostrar
-                  </p>
-                ) : (
-                  filteredShootings.map((shooting) => (
-                    <div
-                      key={shooting.id}
-                      onClick={() => handleShootingClick(shooting)}
-                      className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-semibold text-sm md:text-base">{shooting.title}</h3>
-                            <Badge
-                              variant={
-                                shooting.status === "COMPLETED"
-                                  ? "default"
-                                  : shooting.status === "CANCELED"
-                                  ? "destructive"
-                                  : "secondary"
-                              }
-                              className="text-xs md:text-sm"
-                            >
-                              {shooting.status === "SCHEDULED"
-                                ? "Programado"
-                                : shooting.status === "COMPLETED"
-                                ? "Completado"
-                                : "Cancelado"}
-                            </Badge>
-                          </div>
-                          <div className="space-y-1 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                              <Video className="h-4 w-4" />
-                              {format(new Date(shooting.startTime), "PPP 'a las' HH:mm", { locale: es })}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span>{shooting.client.name}</span>
-                            </div>
-                            {shooting.address && (
-                              <div className="flex items-center gap-2">
-                                <MapPin className="h-4 w-4" />
-                                {shooting.address}
-                              </div>
-                            )}
-                            <div className="flex items-center gap-4 mt-2">
-                              <div className="flex items-center gap-1">
-                                <Users className="h-4 w-4" />
-                                <span>{shooting.crew.length} miembros</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <FileText className="h-4 w-4" />
-                                <span>{shooting.tasks.length} tareas</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Calendario estilo Google Calendar */}
+      <ShootsCalendar
+        shootings={filteredShootings}
+        onShootingClick={handleShootingClick}
+        onCreateClick={handleCreateFromCalendar}
+      />
 
       {/* Dialog de detalle */}
       <ShootingDetail
@@ -311,6 +183,7 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
         onOpenChange={setIsDetailOpen}
         onEdit={handleEdit}
         onCancel={handleCancel}
+        onDelete={handleDelete}
       />
 
       {/* Formulario */}
@@ -320,12 +193,19 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
           setIsFormOpen(open);
           if (!open) {
             setEditingShooting(null);
+            // Clear prefilled values when closing
+            setPrefilledDate(undefined);
+            setPrefilledStartTime(undefined);
+            setPrefilledEndTime(undefined);
             router.refresh();
           }
         }}
         clients={clients}
         shooting={editingShooting}
         onCreated={handleCreated}
+        initialDate={prefilledDate}
+        initialStartTime={prefilledStartTime}
+        initialEndTime={prefilledEndTime}
       />
     </div>
   );
