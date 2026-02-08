@@ -197,19 +197,16 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
     if (!oneSignalReady || !session?.user?.id) return;
 
     let mounted = true;
+    let retryInterval: NodeJS.Timeout | null = null;
 
-    async function registerUser() {
+    async function tryRegisterUser() {
       try {
         const oneSignal = await waitForOneSignal();
-        if (!oneSignal || !mounted) return;
-
-        // Esperar un momento para que OneSignal obtenga el playerId
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (!oneSignal || !mounted) return false;
 
         const playerId = oneSignal.User.PushSubscription.id;
         if (!playerId) {
-          console.log("[OneSignal] No hay playerId aún, usuario no suscrito");
-          return;
+          return false; // No registrado aún
         }
 
         console.log("[OneSignal] PlayerId obtenido:", playerId);
@@ -225,15 +222,46 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
         });
 
         console.log("[OneSignal] Usuario registrado y etiquetado");
+        return true; // Éxito
       } catch (error) {
         console.error("[OneSignal] Error al registrar usuario:", error);
+        return false;
       }
     }
 
-    registerUser();
+    async function registerWithRetry() {
+      // Intento inicial
+      const success = await tryRegisterUser();
+      if (success || !mounted) return;
+
+      console.log("[OneSignal] No hay playerId aún, reintentando cada 3s...");
+      
+      // Reintentar cada 3 segundos hasta que funcione (max 60s)
+      let attempts = 0;
+      const maxAttempts = 20;
+      
+      retryInterval = setInterval(async () => {
+        if (!mounted || attempts >= maxAttempts) {
+          if (retryInterval) clearInterval(retryInterval);
+          if (attempts >= maxAttempts) {
+            console.log("[OneSignal] Máximo de intentos alcanzado");
+          }
+          return;
+        }
+        
+        attempts++;
+        const success = await tryRegisterUser();
+        if (success && retryInterval) {
+          clearInterval(retryInterval);
+        }
+      }, 3000);
+    }
+
+    registerWithRetry();
 
     return () => {
       mounted = false;
+      if (retryInterval) clearInterval(retryInterval);
     };
   }, [oneSignalReady, session?.user?.id, session?.user?.name, session?.user?.role]);
 
@@ -245,6 +273,8 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
  */
 async function registerPlayerInDb(playerId: string, userId: string) {
   try {
+    console.log("[OneSignal] Intentando registrar playerId:", playerId, "para userId:", userId);
+    
     const response = await fetch("/api/onesignal/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -257,10 +287,13 @@ async function registerPlayerInDb(playerId: string, userId: string) {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      const errorText = await response.text();
+      console.error("[OneSignal] Error respuesta del servidor:", response.status, errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
-    console.log("[OneSignal] PlayerId registrado en BD");
+    const data = await response.json();
+    console.log("[OneSignal] PlayerId registrado en BD exitosamente:", data);
   } catch (error) {
     console.error("[OneSignal] Error al registrar playerId:", error);
   }
