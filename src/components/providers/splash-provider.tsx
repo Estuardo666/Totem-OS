@@ -25,26 +25,25 @@ interface SplashProviderProps {
 }
 
 export function SplashProvider({ children }: SplashProviderProps) {
-  const { isPwa } = usePwaDetect();
+  const { isPwa, platform } = usePwaDetect();
   const [showSplash, setShowSplash] = useState(false);
   const [isFading, setIsFading] = useState(false);
   const [canHide, setCanHide] = useState(false);
   const [appReady, setAppReady] = useState(false);
 
-  // Initialize splash on mount - for all PWA platforms
-  // iOS native splash can fail with large images, so we show our custom one too
+  // Initialize splash on mount - only for desktop PWAs (Windows/macOS)
+  // iOS and Android have native splash screens that work correctly
   useEffect(() => {
-    // Only show for installed PWAs (not regular browser)
-    if (!isPwa) return;
+    const isDesktopPwa = isPwa && (platform === "windows" || platform === "macos");
     
     // Check if we've shown splash in this session already
     const hasShownSplash = sessionStorage.getItem("splash-shown");
     
-    if (!hasShownSplash) {
+    if (isDesktopPwa && !hasShownSplash) {
       setShowSplash(true);
       sessionStorage.setItem("splash-shown", "true");
     }
-  }, [isPwa]);
+  }, [isPwa, platform]);
 
   // Minimum duration timer
   useEffect(() => {
