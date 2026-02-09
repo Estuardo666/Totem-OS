@@ -16,7 +16,7 @@ interface ProductionRadarProps {
 }
 
 const statusLabels: Record<keyof Omit<ProductionRadarProps["radar"], "shootsThisMonth">, string> = {
-  IDEA: "Idea",
+  IDEA: "Guión",
   RECORDED: "Grabado",
   EDITING: "Editando",
   REVIEW_CLIENT: "Revisión Cliente",

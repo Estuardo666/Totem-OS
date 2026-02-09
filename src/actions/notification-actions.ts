@@ -14,11 +14,15 @@ export async function sendNotification({
   message,
   type,
   createdBy,
+  clientLogo,
+  clientName,
 }: {
   userId: string;
   message: string;
   type: string;
   createdBy?: string;
+  clientLogo?: string;
+  clientName?: string;
 }): Promise<ApiResponse<Notification>> {
   try {
     // 1. Guardar notificación en Prisma
@@ -29,6 +33,8 @@ export async function sendNotification({
         type,
         createdBy: createdBy || null,
         read: false,
+        clientLogo: clientLogo || null,
+        clientName: clientName || null,
       },
     });
 
@@ -40,6 +46,8 @@ export async function sendNotification({
         type: notification.type,
         createdBy: notification.createdBy,
         createdAt: notification.createdAt,
+        clientLogo: notification.clientLogo,
+        clientName: notification.clientName,
       });
       console.log(`✅ Notificación enviada a Pusher para usuario ${userId}`);
     } catch (pusherError) {

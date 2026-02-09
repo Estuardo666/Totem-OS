@@ -143,6 +143,8 @@ async function notifyAndRevalidate({
         message: `Se te ha asignado una nueva tarea como Editor: "${task.title}"${clientName ? ` para ${clientName}` : ""}`,
         type: "ASSIGNED",
         createdBy: sessionUserId || undefined,
+        clientLogo: clientLogo || undefined,
+        clientName: clientName || undefined,
       });
     } catch (error) {
       console.error("❌ Error al enviar notificación de asignación (Editor):", error);
@@ -156,6 +158,8 @@ async function notifyAndRevalidate({
         message: `Se te ha asignado una nueva tarea como Community: "${task.title}"${clientName ? ` para ${clientName}` : ""}`,
         type: "ASSIGNED",
         createdBy: sessionUserId || undefined,
+        clientLogo: clientLogo || undefined,
+        clientName: clientName || undefined,
       });
     } catch (error) {
       console.error("❌ Error al enviar notificación de asignación (Community):", error);
@@ -507,7 +511,7 @@ export async function updateTaskStatus(
         title: true,
         clientFeedback: true,
         client: {
-          select: { name: true },
+          select: { name: true, logo: true },
         },
       },
     });
@@ -599,6 +603,9 @@ export async function updateTaskStatus(
       const statusLabel = statusLabels[newStatus] || newStatus;
       const oldStatusLabel = statusLabels[currentTask.status] || currentTask.status;
 
+      const clientLogo = currentTask.client?.logo || undefined;
+      const clientName = currentTask.client?.name || undefined;
+
       // AUTOMATIZACIÓN: Notificaciones específicas cuando cambia a CLIENT_APPROVED
       if (isChangingToClientApproved && newAssignedCommunityId) {
         // Notificar al Community Manager
@@ -608,6 +615,8 @@ export async function updateTaskStatus(
             message: `✅ Tarea lista para publicar: "${currentTask.title}" ha sido aprobada por el cliente y se te ha asignado.`,
             type: "ASSIGNED",
             createdBy: sessionUserId || undefined,
+            clientLogo,
+            clientName,
           });
         }
 
@@ -618,6 +627,8 @@ export async function updateTaskStatus(
             message: `👍 ¡Buen trabajo! Tu tarea "${currentTask.title}" ha sido aprobada por el cliente.`,
             type: "STATUS_CHANGE",
             createdBy: sessionUserId || undefined,
+            clientLogo,
+            clientName,
           });
         }
       } else {
@@ -630,6 +641,8 @@ export async function updateTaskStatus(
             message: `La tarea "${currentTask.title}" cambió de estado: ${oldStatusLabel} → ${statusLabel}${currentTask.client ? ` (${currentTask.client.name})` : ""}`,
             type: "STATUS_CHANGE",
             createdBy: sessionUserId || undefined,
+            clientLogo,
+            clientName,
           });
         }
 
@@ -640,6 +653,8 @@ export async function updateTaskStatus(
             message: `Se te ha asignado la tarea "${currentTask.title}"${currentTask.client ? ` para ${currentTask.client.name}` : ""}`,
             type: "ASSIGNED",
             createdBy: sessionUserId || undefined,
+            clientLogo,
+            clientName,
           });
         }
       }
@@ -732,7 +747,7 @@ export async function updateTask(
         title: true,
         clientFeedback: true,
         client: {
-          select: { name: true },
+          select: { name: true, logo: true },
         },
       },
     });
@@ -850,6 +865,9 @@ export async function updateTask(
 
     // Notificaciones específicas para CLIENT_APPROVED o reasignación estándar
     try {
+      const clientLogo = taskBefore.client?.logo || undefined;
+      const clientName = taskBefore.client?.name || undefined;
+
       if (isChangingToClientApproved && newAssignedCommunityId) {
         // AUTOMATIZACIÓN: Notificaciones específicas cuando cambia a CLIENT_APPROVED
         // Notificar al Community Manager
@@ -859,6 +877,8 @@ export async function updateTask(
             message: `✅ Tarea lista para publicar: "${taskBefore.title}" ha sido aprobada por el cliente y se te ha asignado.`,
             type: "ASSIGNED",
             createdBy: sessionUserId || undefined,
+            clientLogo,
+            clientName,
           });
         }
 
@@ -869,24 +889,58 @@ export async function updateTask(
             message: `👍 ¡Buen trabajo! Tu tarea "${taskBefore.title}" ha sido aprobada por el cliente.`,
             type: "STATUS_CHANGE",
             createdBy: sessionUserId || undefined,
+            clientLogo,
+            clientName,
           });
         }
       } else {
         // Notificaciones estándar para otras reasignaciones
+        
+        // Notificar al NUEVO editor (si cambió y no es el usuario actual)
         if (assignedEditorIdChanged && newAssignedEditorId && newAssignedEditorId !== sessionUserId) {
           await sendNotification({
             userId: newAssignedEditorId,
             message: `Se te ha asignado la tarea como Editor: "${taskBefore.title}"${taskBefore.client ? ` para ${taskBefore.client.name}` : ""}`,
             type: "ASSIGNED",
             createdBy: sessionUserId || undefined,
+            clientLogo,
+            clientName,
           });
         }
+
+        // Notificar al ANTERIOR editor (si fue removido y no es el usuario actual)
+        if (assignedEditorIdChanged && previousEditorId && previousEditorId !== sessionUserId && previousEditorId !== newAssignedEditorId) {
+          await sendNotification({
+            userId: previousEditorId,
+            message: `Te removieron de la tarea "${taskBefore.title}"${taskBefore.client ? ` de ${taskBefore.client.name}` : ""}`,
+            type: "UNASSIGNED",
+            createdBy: sessionUserId || undefined,
+            clientLogo,
+            clientName,
+          });
+        }
+        
+        // Notificar al NUEVO community manager (si cambió y no es el usuario actual)
         if (assignedCommunityIdChanged && newAssignedCommunityId && newAssignedCommunityId !== sessionUserId) {
           await sendNotification({
             userId: newAssignedCommunityId,
             message: `Se te ha asignado la tarea como Community: "${taskBefore.title}"${taskBefore.client ? ` para ${taskBefore.client.name}` : ""}`,
             type: "ASSIGNED",
             createdBy: sessionUserId || undefined,
+            clientLogo,
+            clientName,
+          });
+        }
+
+        // Notificar al ANTERIOR community manager (si fue removido y no es el usuario actual)
+        if (assignedCommunityIdChanged && previousCommunityId && previousCommunityId !== sessionUserId && previousCommunityId !== newAssignedCommunityId) {
+          await sendNotification({
+            userId: previousCommunityId,
+            message: `Te removieron de la tarea "${taskBefore.title}"${taskBefore.client ? ` de ${taskBefore.client.name}` : ""}`,
+            type: "UNASSIGNED",
+            createdBy: sessionUserId || undefined,
+            clientLogo,
+            clientName,
           });
         }
       }
@@ -974,7 +1028,7 @@ export async function quickPublishTask(taskId: string): Promise<ApiResponse<Cont
         assignedEditorId: true,
         assignedCommunityId: true,
         client: {
-          select: { name: true },
+          select: { name: true, logo: true },
         },
       },
     });
@@ -1011,6 +1065,8 @@ export async function quickPublishTask(taskId: string): Promise<ApiResponse<Cont
     // 5. Notificar al editor y community manager
     try {
       const affectedUserIds: string[] = [];
+      const clientLogo = task.client?.logo || undefined;
+      const clientName = task.client?.name || undefined;
       
       if (task.assignedEditorId && task.assignedEditorId !== sessionUserId) {
         affectedUserIds.push(task.assignedEditorId);
@@ -1019,6 +1075,8 @@ export async function quickPublishTask(taskId: string): Promise<ApiResponse<Cont
           message: `🚀 ¡Publicado! La tarea "${task.title}" ha sido publicada exitosamente.`,
           type: "STATUS_CHANGE",
           createdBy: sessionUserId || undefined,
+          clientLogo,
+          clientName,
         });
       }
 
@@ -1029,6 +1087,8 @@ export async function quickPublishTask(taskId: string): Promise<ApiResponse<Cont
           message: `🚀 ¡Publicado! La tarea "${task.title}" ha sido publicada exitosamente.`,
           type: "STATUS_CHANGE",
           createdBy: sessionUserId || undefined,
+          clientLogo,
+          clientName,
         });
       }
 

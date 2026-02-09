@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, startTransition } from "react";
-import { format, isToday, differenceInHours } from "date-fns";
-import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2, Sparkles } from "lucide-react";
+import { format, isToday } from "date-fns";
+import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2 } from "lucide-react";
 import {
   Draggable,
   DraggableProvided,
@@ -208,16 +208,6 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish }: TaskCa
                       <Badge variant="outline" className="text-[9px] md:text-[10px] px-1 py-0">
                         {task.client.name}
                       </Badge>
-                      {/* Badge "Nuevo" si la tarea fue asignada en las últimas 24 horas */}
-                      {task.assignedAt && differenceInHours(new Date(), new Date(task.assignedAt)) < 24 && (
-                        <Badge
-                          variant="default"
-                          className="text-[9px] md:text-[10px] bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 px-1 py-0"
-                        >
-                          <Sparkles className="h-2 w-2 md:h-2.5 md:w-2.5" />
-                          Nuevo
-                        </Badge>
-                      )}
                       {(task.status === "REVIEW_CLIENT" || task.status === "APPROVED" || task.status === "CLIENT_APPROVED") && (
                         <Badge
                           variant="default"
@@ -249,16 +239,16 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish }: TaskCa
                       <span className="truncate">{getTypeLabel(task.type)}</span>
                     </div>
 
-                    {/* Fecha de entrega */}
-                    {task.dueDate && (
+                    {/* Fecha de entrega (oculta en IDEA/Guión) */}
+                    {task.dueDate && task.status !== "IDEA" && (
                       <div className="text-[9px] md:text-[10px] text-muted-foreground truncate mt-1 flex items-center gap-1">
                         <span>⏰</span>
                         <span>{format(new Date(task.dueDate), "dd/MM/yy")}</span>
                       </div>
                     )}
 
-                    {/* Fecha programada */}
-                    {task.scheduledAt && (
+                    {/* Fecha programada (oculta en IDEA/Guión) */}
+                    {task.scheduledAt && task.status !== "IDEA" && (
                       <div className={`text-[9px] md:text-[10px] flex items-center gap-1 mt-1 ${
                         isToday(new Date(task.scheduledAt))
                           ? "text-orange-600 font-semibold"

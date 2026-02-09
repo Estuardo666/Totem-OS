@@ -15,6 +15,8 @@ type NotificationWithCreator = {
   read: boolean;
   createdBy: string | null;
   createdAt: Date;
+  clientLogo?: string | null;
+  clientName?: string | null;
   createdByUser?: {
     name: string;
     image: string | null;
@@ -66,20 +68,29 @@ export function NotificationsList({ notifications }: NotificationsListProps) {
           )}
         >
           <div className="flex items-start gap-3">
-            {/* Avatar del usuario que creó la notificación */}
-            {notification.createdByUser && (
+            {/* Avatar: Prioridad logo del cliente, fallback a usuario creador */}
+            {(notification.clientLogo || notification.createdByUser) && (
               <Avatar className="h-10 w-10 shrink-0">
                 <AvatarImage
-                  src={notification.createdByUser.image || undefined}
-                  alt={notification.createdByUser.name}
+                  src={notification.clientLogo || notification.createdByUser?.image || undefined}
+                  alt={notification.clientName || notification.createdByUser?.name || "Notificación"}
                 />
                 <AvatarFallback>
-                  {notification.createdByUser.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2)}
+                  {notification.clientName
+                    ? notification.clientName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)
+                    : notification.createdByUser
+                    ? notification.createdByUser.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)
+                    : "N"}
                 </AvatarFallback>
               </Avatar>
             )}

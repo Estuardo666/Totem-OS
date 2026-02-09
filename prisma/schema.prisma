@@ -547,15 +547,19 @@ model VoiceNote {
 
 // NOTIFICACIONES
 model Notification {
-  id        String   @id @default(cuid())
-  userId    String   // El destinatario
-  message   String
-  type      String   // ej: "ASSIGNED", "STATUS_CHANGE", "INFO"
-  read      Boolean  @default(false)
-  createdBy String?  // ID del usuario que creó la notificación (opcional, para mostrar foto de perfil)
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String   // El destinatario
+  message    String
+  type       String   // ej: "ASSIGNED", "STATUS_CHANGE", "INFO"
+  read       Boolean  @default(false)
+  createdBy  String?  // ID del usuario que creó la notificación (opcional, para mostrar foto de perfil)
+  createdAt  DateTime @default(now())
   
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Metadatos opcionales para enriquecer las notificaciones
+  clientLogo String?  // URL del logo del cliente (para mostrar en notificaciones de tareas)
+  clientName String?  // Nombre del cliente (para contexto adicional)
+  
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@index([userId])
   @@index([read])

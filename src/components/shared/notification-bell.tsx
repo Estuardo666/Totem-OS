@@ -31,6 +31,8 @@ type NotificationWithCreator = {
   read: boolean;
   createdBy: string | null;
   createdAt: Date;
+  clientLogo?: string | null;
+  clientName?: string | null;
   createdByUser?: {
     name: string;
     image: string | null;
@@ -196,23 +198,24 @@ export function NotificationBell({ align = "start", side = "right" }: Notificati
 
             // Encontrar la notificación más reciente para obtener el avatar
             const latestNotification = result.data[0];
-            if (latestNotification?.createdByUser) {
-              // Mostrar toast con avatar
+            if (latestNotification?.createdByUser || latestNotification?.clientLogo) {
+              // Mostrar toast con avatar (prioridad: logo cliente → avatar usuario)
+              const avatarSrc = latestNotification.clientLogo || latestNotification.createdByUser?.image || undefined;
+              const avatarAlt = latestNotification.clientName || latestNotification.createdByUser?.name || "Usuario";
+              const avatarFallback = latestNotification.clientName 
+                ? latestNotification.clientName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+                : latestNotification.createdByUser?.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?";
+              
               toast({
                 title: (
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8 shrink-0">
                       <AvatarImage
-                        src={latestNotification.createdByUser.image || undefined}
-                        alt={latestNotification.createdByUser.name}
+                        src={avatarSrc}
+                        alt={avatarAlt}
                       />
                       <AvatarFallback>
-                        {latestNotification.createdByUser.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase()
-                          .slice(0, 2)}
+                        {avatarFallback}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
@@ -359,20 +362,17 @@ export function NotificationBell({ align = "start", side = "right" }: Notificati
                       )}
                     >
                       <div className="flex items-start gap-3">
-                        {/* Avatar del usuario que creó la notificación */}
-                        {notification.createdByUser && (
+                        {/* Avatar: prioridad logo cliente → avatar usuario */}
+                        {(notification.clientLogo || notification.createdByUser) && (
                           <Avatar className="h-8 w-8 shrink-0">
                             <AvatarImage
-                              src={notification.createdByUser.image || undefined}
-                              alt={notification.createdByUser.name}
+                              src={notification.clientLogo || notification.createdByUser?.image || undefined}
+                              alt={notification.clientName || notification.createdByUser?.name || "Usuario"}
                             />
                             <AvatarFallback>
-                              {notification.createdByUser.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                                .toUpperCase()
-                                .slice(0, 2)}
+                              {notification.clientName
+                                ? notification.clientName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+                                : notification.createdByUser?.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?"}
                             </AvatarFallback>
                           </Avatar>
                         )}

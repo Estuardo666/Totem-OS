@@ -30,7 +30,7 @@ const KANBAN_COLUMNS: {
   status: ContentTaskStatus;
   label: string;
 }[] = [
-  { status: "IDEA", label: "Idea" },
+  { status: "IDEA", label: "Guión" },
   { status: "RECORDED", label: "Grabado" },
   { status: "EDITING", label: "Editando" },
   { status: "REVIEW_CLIENT", label: "Revisión Cliente" },

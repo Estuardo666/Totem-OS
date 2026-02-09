@@ -25,7 +25,7 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center gap-3 overflow-hidden rounded-3xl border border-black/5 bg-white dark:border-white/10 dark:bg-background/5 backdrop-blur-xl p-4 pr-8 shadow-2xl text-sm font-medium text-foreground data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-toast-in data-[state=closed]:animate-toast-out data-[swipe=end]:animate-toast-out",
+  "group pointer-events-auto relative flex w-full items-center gap-3 overflow-hidden rounded-3xl border border-black/5 bg-white dark:border-white/10 dark:bg-background/5 backdrop-blur-xl p-4 pr-8 shadow-2xl text-sm font-medium text-foreground data-[swipe=cancel]:translate-y-0 data-[swipe=end]:translate-y-[var(--radix-toast-swipe-end-y)] data-[swipe=move]:translate-y-[var(--radix-toast-swipe-move-y)] data-[swipe=move]:transition-none data-[state=open]:animate-toast-in data-[state=closed]:animate-toast-out data-[swipe=end]:animate-toast-out",
   {
     variants: {
       variant: {
@@ -50,6 +50,7 @@ const Toast = React.forwardRef<
       ref={ref}
       className={cn(toastVariants({ variant }), className)}
       {...props}
+      swipeDirection="down"
     />
   );
 });
@@ -77,7 +78,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-2 top-2 rounded-full p-1 bg-red-500 dark:bg-red-600 text-white opacity-0 transition-all hover:bg-red-600 dark:hover:bg-red-500 hover:scale-110 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-400 group-hover:opacity-100",
+      "absolute right-2 top-2 rounded-full p-1 bg-red-500 dark:bg-red-600 text-white opacity-100 transition-all hover:bg-red-600 dark:hover:bg-red-500 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-red-400 active:scale-95",
       className
     )}
     toast-close=""
