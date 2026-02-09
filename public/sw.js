@@ -1,4 +1,7 @@
-const CACHE_NAME = "totem-os-v4";
+// Import OneSignal SDK for push notifications (must be at the top)
+importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+
+const CACHE_NAME = "totem-os-v5";
 const STATIC_ASSETS = [
   // Mantenemos solo manifest para instalación PWA; evitamos precache de rutas HTML
   "/manifest.json",

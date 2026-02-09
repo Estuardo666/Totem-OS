@@ -8,7 +8,6 @@ export function PwaServiceWorker() {
       navigator.serviceWorker
         .register("/sw.js", {
           scope: "/",
-          type: "module"
         })
         .catch((error) => console.error("SW registration failed", error));
     }

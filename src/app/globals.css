@@ -7,6 +7,18 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Previene el layout shift cuando Radix aplica inline styles al body */
+body[data-scroll-locked] {
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+  overflow: hidden !important; /* Radix necesita esto para el modal */
+}
+
+/* Alternativa: mantener scroll visible pero sin afectar el layout */
+html:has(body[data-scroll-locked]) {
+  overflow-y: scroll;
+}
+
 /* Google Sans Fonts */
 @font-face {
   font-family: 'Google Sans';

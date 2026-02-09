@@ -2,7 +2,7 @@
 
 import { useState, startTransition } from "react";
 import { format, isToday } from "date-fns";
-import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2 } from "lucide-react";
+import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2, ChevronRight } from "lucide-react";
 import {
   Draggable,
   DraggableProvided,
@@ -45,11 +45,13 @@ interface TaskCardProps {
   index: number;
   onCardClick: (task: ContentTaskWithClient) => void;
   optimisticPublish: (taskId: string) => Promise<void>;
+  onPromoteTask?: (taskId: string) => Promise<void>;
   isCompactView?: boolean;
 }
 
-export function TaskCard({ task, index, onCardClick, optimisticPublish, isCompactView = false }: TaskCardProps) {
+export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromoteTask, isCompactView = false }: TaskCardProps) {
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isPromoting, setIsPromoting] = useState(false);
   const [shouldRender, setShouldRender] = useState(true);
 
   // LÓGICA DE PUBLICACIÓN (handleQuickPublish)
@@ -85,6 +87,22 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, isCompac
       // FALLO: Revertir estado
       console.error("Error en handleQuickPublish:", error);
       setIsPublishing(false);
+    }
+  };
+
+  // LÓGICA DE PROMOVER TAREA (handlePromote)
+  const handlePromote = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (isPromoting || !onPromoteTask) return;
+    setIsPromoting(true);
+
+    try {
+      await onPromoteTask(task.id);
+    } catch (error) {
+      console.error("Error en handlePromote:", error);
+    } finally {
+      setIsPromoting(false);
     }
   };
 
@@ -161,9 +179,10 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, isCompac
                 onCardClick(task);
               }}
             >
-              {/* Checkbox de Publicación Rápida - Solo si no está publicada */}
+              {/* Botones de acción rápida - Solo si no está publicada */}
               {task.status !== "PUBLISHED" && (
-                <div className="absolute top-2 right-2 z-20">
+                <div className="absolute top-2 right-2 z-20 flex flex-col gap-1">
+                  {/* Checkbox de Publicación Rápida */}
                   <button
                     onClick={handleQuickPublish}
                     disabled={isPublishing}
@@ -180,6 +199,26 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, isCompac
                       <div className="w-2 h-2 rounded-full bg-slate-400 group-hover:bg-emerald-500 transition-colors" />
                     )}
                   </button>
+                  
+                  {/* Botón de Promover a siguiente estado */}
+                  {onPromoteTask && (
+                    <button
+                      onClick={handlePromote}
+                      disabled={isPromoting || isPublishing}
+                      className={`group relative flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all
+                        ${isPromoting 
+                          ? "bg-primary border-primary cursor-wait" 
+                          : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 hover:border-primary hover:ring-2 hover:ring-primary/30"
+                        }`}
+                      title={isPromoting ? "Moviendo..." : "Avanzar al siguiente estado"}
+                    >
+                      {isPromoting ? (
+                        <div className="w-3 h-3 border-2 border-white rounded-full animate-spin" />
+                      ) : (
+                        <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-primary transition-colors" />
+                      )}
+                    </button>
+                  )}
                 </div>
               )}
 

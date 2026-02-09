@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { Client, User } from "@prisma/client";
 
@@ -286,7 +287,14 @@ export function ContentFilters({
             size="sm"
             onClick={() => setViewMode("my-tasks")}
             disabled={!userId}
+            className="gap-2"
           >
+            <Avatar className="h-5 w-5">
+              <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || "Usuario"} />
+              <AvatarFallback className="text-xs">
+                {session?.user?.name?.charAt(0)?.toUpperCase() || "U"}
+              </AvatarFallback>
+            </Avatar>
             Mis Tareas
           </Button>
           <Button

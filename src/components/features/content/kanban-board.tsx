@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useOptimistic, useRef } from "react";
+import { useState, useEffect, useOptimistic, useRef, startTransition } from "react";
 
 import Pusher from "pusher-js";
 import { CheckCircle2 } from "lucide-react";
@@ -418,6 +418,66 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     }
   };
 
+  // Función OPTIMISTIC para promover tareas al siguiente estado
+  const promoteTask = async (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    // Encontrar el índice del estado actual
+    const currentIndex = KANBAN_COLUMNS.findIndex((col) => col.status === task.status);
+    
+    // Si ya está en el último estado (PUBLISHED), no hacer nada
+    if (currentIndex === -1 || currentIndex >= KANBAN_COLUMNS.length - 1) {
+      toast({
+        variant: "default",
+        title: "Sin cambios",
+        description: "La tarea ya está en el último estado",
+      });
+      return;
+    }
+
+    const nextStatus = KANBAN_COLUMNS[currentIndex + 1].status;
+    const previousTasks = [...tasks];
+
+    // 1. Optimismo: Actualizar localmente (envuelto en startTransition para React 19)
+    startTransition(() => {
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: nextStatus } : t))
+      );
+      setOptimisticTasks({ taskId, newStatus: nextStatus });
+    });
+
+    // 2. Llamar al server action
+    try {
+      const result = await updateTaskStatus(taskId, nextStatus);
+
+      if (!result.success) {
+        // REVERSIÓN
+        setTasks(previousTasks);
+        toast({
+          variant: "destructive",
+          title: "Error al mover tarea",
+          description: result.error || "No se pudo actualizar el estado",
+        });
+      } else {
+        // Dispatch evento para otros componentes
+        window.dispatchEvent(
+          new CustomEvent("taskStatusUpdated", {
+            detail: { taskId, oldStatus: task.status, newStatus: nextStatus },
+          })
+        );
+        console.log(`✅ Tarea promovida: ${task.status} → ${nextStatus}`);
+      }
+    } catch (error) {
+      // REVERSIÓN
+      setTasks(previousTasks);
+      toast({
+        variant: "destructive",
+        title: "Error de red",
+        description: "No se pudo mover la tarea",
+      });
+    }
+  };
   // Manejar el final del drag con hoverColumn como respaldo
   const handleDragEnd = async (result: DropResult) => {
     setIsDragging(false);
@@ -640,6 +700,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
                   setIsSheetOpen(true);
                 }}
                 optimisticPublish={optimisticPublish}
+                onPromoteTask={promoteTask}
                 isCompactView={isCompactView}
               />
             );

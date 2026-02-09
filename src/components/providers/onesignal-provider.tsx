@@ -322,7 +322,7 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
         await oneSignal.init({
           appId: ONESIGNAL_APP_ID!,
           allowLocalhostAsSecureOrigin: true,
-          serviceWorkerPath: "/OneSignalSDKWorker.js",
+          serviceWorkerPath: "/sw.js",
         });
 
         // Habilitar notificaciones en primer plano
