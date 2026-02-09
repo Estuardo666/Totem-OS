@@ -10,6 +10,71 @@ interface TTSOptions {
 
 type TTSProvider = "web-speech" | "google-tts";
 
+// Global audio element for mobile audio unlock
+let globalAudioElement: HTMLAudioElement | null = null;
+let audioUnlocked = false;
+
+/**
+ * Unlock audio playback on mobile devices.
+ * Must be called from a user interaction (click/tap) handler.
+ * This creates a silent audio context that allows future playback.
+ */
+export function unlockAudioForMobile(): Promise<void> {
+  return new Promise((resolve) => {
+    if (audioUnlocked) {
+      console.log("[TTS] Audio already unlocked");
+      resolve();
+      return;
+    }
+
+    if (typeof window === "undefined") {
+      resolve();
+      return;
+    }
+
+    console.log("[TTS] Attempting to unlock audio for mobile...");
+
+    // Create or reuse global audio element
+    if (!globalAudioElement) {
+      globalAudioElement = new Audio();
+    }
+
+    // Create a short silent audio data URL (minimal valid MP3)
+    // This is a tiny silent MP3 that plays instantly
+    const silentAudioBase64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7v////////////////////////////////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7v////////////////////////////////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+    globalAudioElement.src = silentAudioBase64;
+    globalAudioElement.volume = 0.01; // Near silent
+
+    const playPromise = globalAudioElement.play();
+
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          audioUnlocked = true;
+          console.log("[TTS] Audio unlocked successfully for mobile");
+          globalAudioElement?.pause();
+          resolve();
+        })
+        .catch((error) => {
+          console.warn("[TTS] Audio unlock failed (expected if not from user gesture):", error);
+          resolve();
+        });
+    } else {
+      // Older browsers without promise support
+      audioUnlocked = true;
+      resolve();
+    }
+  });
+}
+
+/**
+ * Check if audio is unlocked for playback
+ */
+export function isAudioUnlocked(): boolean {
+  return audioUnlocked;
+}
+
 /**
  * Text-to-Speech helper class with Google Cloud TTS and Web Speech API fallback
  * Compatible with iOS Safari, Chrome, and PWA
@@ -17,6 +82,7 @@ type TTSProvider = "web-speech" | "google-tts";
 export class TTS {
   private synth: SpeechSynthesis | null = null;
   private isIOS: boolean = false;
+  private isMobile: boolean = false;
   private provider: TTSProvider;
   private currentAudio: HTMLAudioElement | null = null;
   private defaultVoice: string;
@@ -32,6 +98,7 @@ export class TTS {
     if (typeof window !== "undefined") {
       this.synth = window.speechSynthesis;
       this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
   }
 
@@ -106,7 +173,7 @@ export class TTS {
   private async speakCloud(text: string, options: TTSOptions = {}) {
     try {
       this._isSpeaking = true;
-      console.log("[TTS] Using Google Cloud TTS");
+      console.log("[TTS] Using Google Cloud TTS", { isMobile: this.isMobile, audioUnlocked });
 
       const response = await fetch("/api/tts", {
         method: "POST",
@@ -136,6 +203,10 @@ export class TTS {
 
       this.currentAudio = new Audio(audioUrl);
       this.currentAudio.volume = options.volume || 1.0;
+      
+      // Mobile-specific: set playsinline attribute to help with iOS
+      this.currentAudio.setAttribute("playsinline", "true");
+      this.currentAudio.setAttribute("webkit-playsinline", "true");
 
       this.currentAudio.onended = () => {
         URL.revokeObjectURL(audioUrl);
@@ -144,15 +215,31 @@ export class TTS {
         options.onEnd?.();
       };
 
-      this.currentAudio.onerror = () => {
+      this.currentAudio.onerror = (e) => {
         URL.revokeObjectURL(audioUrl);
         this._isSpeaking = false;
-        // Fallback to Web Speech silently
-        console.log("[TTS] Audio playback error, falling back to Web Speech");
+        console.log("[TTS] Audio playback error:", e);
+        // On mobile, if audio fails, always fall back to Web Speech
+        console.log("[TTS] Falling back to Web Speech");
         this.speakLocal(text, options);
       };
 
-      await this.currentAudio.play();
+      try {
+        // Try to play the audio
+        await this.currentAudio.play();
+        console.log("[TTS] Audio playback started successfully");
+      } catch (playError) {
+        URL.revokeObjectURL(audioUrl);
+        this._isSpeaking = false;
+        
+        // This is likely a mobile autoplay restriction
+        const errorMsg = playError instanceof Error ? playError.message : String(playError);
+        console.warn("[TTS] Audio play() failed (likely mobile restriction):", errorMsg);
+        
+        // Fall back to Web Speech API which is more permissive on mobile
+        console.log("[TTS] Falling back to Web Speech API for mobile");
+        this.speakLocal(text, options);
+      }
     } catch (error) {
       console.warn("[TTS] Google TTS unavailable:", error instanceof Error ? error.message : error);
       this._isSpeaking = false;

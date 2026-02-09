@@ -22,7 +22,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { getTTS, GOOGLE_TTS_VOICES } from "@/lib/tts";
+import { getTTS, GOOGLE_TTS_VOICES, unlockAudioForMobile } from "@/lib/tts";
 import { useToast } from "@/components/ui/use-toast";
 import { interpretVoiceCommandAction } from "@/actions/voice-actions";
 import { createShooting, type CreateShootingInput } from "@/actions/shooting-actions";
@@ -994,6 +994,9 @@ export function ConversationalVoicePanel({
 
   const handleUserInput = useCallback(
     (message: string) => {
+      // Unlock audio for mobile devices when user sends text
+      // This allows TTS responses to play after async processing
+      unlockAudioForMobile();
       handleUserInputWithContext(message, context);
     },
     [handleUserInputWithContext, context]
@@ -1005,6 +1008,10 @@ export function ConversationalVoicePanel({
 
   const startListening = useCallback(() => {
     if (recognitionRef.current && !isListening) {
+      // Unlock audio for mobile devices - this must happen during user interaction
+      // to allow subsequent audio playback (TTS responses)
+      unlockAudioForMobile();
+      
       ttsRef.current.cancel();
       setIsListening(true);
       setContext((prev) => ({ ...prev, step: "listening" }));

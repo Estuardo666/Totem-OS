@@ -7,6 +7,7 @@ import { interpretVoiceCommandAction } from "@/actions/voice-actions";
 import { voiceCommandResponseSchema } from "@/schemas/voice";
 import { TaskSheet } from "@/components/features/content/task-sheet";
 import { ShootingForm } from "@/components/features/shoots/shooting-form";
+import { unlockAudioForMobile } from "@/lib/tts";
 import { z } from "zod";
 
 type VoiceResponse = z.infer<typeof voiceCommandResponseSchema> & {
@@ -261,6 +262,10 @@ export function FloatingVoiceButton() {
   };
 
   const startListening = () => {
+    // Unlock audio for mobile devices - this must happen during user interaction
+    // to allow subsequent audio playback (TTS responses)
+    unlockAudioForMobile();
+    
     setError(null);
     setTranscript("");
     transcriptRef.current = "";
