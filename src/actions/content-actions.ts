@@ -1394,3 +1394,140 @@ export async function updateTaskMetrics(
   }
 }
 
+/**
+ * Server Action para actualizar múltiples tareas a la vez (bulk operations)
+ * Admin/Editor pueden cambiar estado, asignación y prioridad de varias tareas
+ */
+export async function bulkUpdateTasks(
+  input: unknown
+): Promise<ApiResponse<{ updated: ContentTask[]; errors: string[] }>> {
+  try {
+    // 1. Validar autenticación
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    // 2. Validar input
+    const { bulkUpdateTasksSchema } = await import("@/schemas/content");
+    const validatedData = bulkUpdateTasksSchema.parse(input);
+
+    const { taskIds, status, assignedEditorId, assignedCommunityId, priority } = validatedData;
+
+    // 3. Obtener las tareas para validar permisos
+    const tasks = await db.contentTask.findMany({
+      where: {
+        id: { in: taskIds },
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+      },
+    });
+
+    if (tasks.length === 0) {
+      return { success: false, error: "No se encontraron tareas" };
+    }
+
+    // 4. Validar permisos: EDITOR solo puede actualizar sus propias tareas
+    if (session.user.role === "EDITOR") {
+      const hasPermission = tasks.every(
+        (task) =>
+          task.assignedEditorId === session.user.id ||
+          task.assignedCommunityId === session.user.id
+      );
+
+      if (!hasPermission) {
+        return {
+          success: false,
+          error: "No tienes permiso para actualizar todas las tareas seleccionadas",
+        };
+      }
+    }
+
+    // 5. Actualizar tareas
+    const updated: ContentTask[] = [];
+    const errors: string[] = [];
+
+    for (const task of tasks) {
+      try {
+        const updateData: Record<string, unknown> = {};
+
+        if (status) updateData.status = status;
+        if (assignedEditorId !== undefined) updateData.assignedEditorId = assignedEditorId;
+        if (assignedCommunityId !== undefined) updateData.assignedCommunityId = assignedCommunityId;
+        if (priority) updateData.priority = priority;
+
+        const updatedTask = await db.contentTask.update({
+          where: { id: task.id },
+          data: updateData,
+        });
+
+        updated.push(updatedTask);
+      } catch (taskError) {
+        errors.push(
+          `${task.title}: ${taskError instanceof Error ? taskError.message : "Error desconocido"}`
+        );
+      }
+    }
+
+    // 6. Disparar evento a Pusher para actualizar Kanban
+    try {
+      await pusherServer.trigger("content-kanban", "tasks-updated-bulk", {
+        count: updated.length,
+        status: status,
+        tasks: updated.map((t) => ({ id: t.id, status: t.status })),
+      });
+    } catch (pusherError) {
+      console.error("❌ Error al dispara evento Pusher:", pusherError);
+    }
+
+    // 7. Notificar a usuarios afectados (si hay reasignación)
+    if ((assignedEditorId || assignedCommunityId) && updated.length > 0) {
+      try {
+        const affectedUserIds = new Set<string>();
+        if (assignedEditorId) affectedUserIds.add(assignedEditorId);
+        if (assignedCommunityId) affectedUserIds.add(assignedCommunityId);
+
+        if (affectedUserIds.size > 0) {
+          await triggerDashboardUpdate(Array.from(affectedUserIds));
+
+          // Notificar a admins sobre bulk update
+          const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
+          const clientNames = [...new Set(updated.map((t) => t.client?.name))].filter(Boolean);
+          const clientSummary = clientNames.length <= 2 
+            ? clientNames.join(", ") 
+            : `${clientNames[0]} y ${clientNames.length - 1} más`;
+
+          await notifyAdminsWithPush(
+            "Tareas actualizadas en lote",
+            `${updated.length} tareas cambiarones a estado ${status}${clientSummary ? ` para ${clientSummary}` : ""}`,
+            "ADMIN_ALERT",
+            "/content"
+          );
+        }
+      } catch (notifyError) {
+        console.error("❌ Error al notificar:", notifyError);
+      }
+    }
+
+    // 8. Revalidar
+    revalidatePath("/content");
+
+    return {
+      success: errors.length === 0,
+      data: { updated, errors },
+      error: errors.length ? `${errors.length} tareas no se pudieron actualizar` : undefined,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al actualizar tareas en lote",
+    };
+  }
+}

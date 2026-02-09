@@ -21,7 +21,7 @@ export type ExpenseStatus = "PENDING" | "REIMBURSED";
 
 export type PayrollStatus = "PENDING" | "PAID";
 
-export type InvoiceStatus = "PENDING" | "SENT" | "PAID";
+export type InvoiceStatus = "PENDING" | "SENT" | "PAID" | "OVERDUE";
 
 export interface BrandKit {
   colors: string[];

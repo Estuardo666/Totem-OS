@@ -808,3 +808,82 @@ export async function processSalaryPayment(
   }
 }
 
+/**
+ * Server Action para ejecutar cobranza checks manualmente
+ * Admins pueden forzar detección de OVERDUE y alertas 72h
+ */
+export async function runCobranzaChecks(): Promise<
+  ApiResponse<{
+    overdue: { overdueCount: number; alertsSent: number };
+    alerts72h: { alertCount: number; alertsSent: number };
+  }>
+> {
+  try {
+    // Verificar autenticación y rol ADMIN
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return { success: false, error: "Solo admins pueden ejecutar cobranza checks" };
+    }
+
+    const { checkAndMarkOverdueInvoices, checkPaymentAlerts72Hours } = await import(
+      "@/lib/finance-cobranza-service"
+    );
+
+    // Ejecutar ambos checks
+    const [overdueResult, alertsResult] = await Promise.all([
+      checkAndMarkOverdueInvoices(),
+      checkPaymentAlerts72Hours(),
+    ]);
+
+    revalidatePath("/finance");
+
+    return {
+      success: true,
+      data: {
+        overdue: {
+          overdueCount: overdueResult.overdueCount,
+          alertsSent: overdueResult.alertsSent,
+        },
+        alerts72h: {
+          alertCount: alertsResult.alertCount,
+          alertsSent: alertsResult.alertsSent,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("❌ Error en runCobranzaChecks:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al ejecutar cobranza checks",
+    };
+  }
+}
+
+/**
+ * Server Action para obtener resumen de cobranzas
+ */
+export async function getCobranzaSummary(): Promise<ApiResponse<any>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    const { getCobranzaSummary: getCobranzaSummaryFromDb } = await import(
+      "@/lib/finance-cobranza-service"
+    );
+
+    const summary = await getCobranzaSummaryFromDb();
+
+    return { success: true, data: summary };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al obtener resumen de cobranzas",
+    };
+  }
+}

@@ -72,6 +72,28 @@ export const batchCreateContentTasksSchema = z.object({
     .min(1, "Debes incluir al menos una tarea para crear en lote"),
 });
 
+/**
+ * Schema para actualizar múltiples tareas a la vez (bulk operations)
+ */
+export const bulkUpdateTasksSchema = z.object({
+  taskIds: z
+    .array(z.string().cuid())
+    .min(1, "Debes seleccionar al menos una tarea"),
+  status: z.enum([
+    "IDEA",
+    "RECORDED",
+    "EDITING",
+    "REVIEW_INTERNAL",
+    "REVIEW_CLIENT",
+    "CLIENT_APPROVED",
+    "APPROVED",
+    "PUBLISHED",
+  ]),
+  assignedEditorId: z.string().cuid().optional().nullable(),
+  assignedCommunityId: z.string().cuid().optional().nullable(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
+});
+
 export const shootSchema = z.object({
   id: z.string().cuid().optional(),
   startTime: z.union([z.date(), z.string()]).transform((val) => {
