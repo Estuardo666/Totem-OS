@@ -113,7 +113,13 @@ export function ClientForm({ users }: ClientFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 relative">
+        {isUploading && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-50">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="text-lg font-medium">Subiendo logo...</p>
+          </div>
+        )}
         <FormField
           control={form.control}
           name="name"
@@ -206,29 +212,26 @@ export function ClientForm({ users }: ClientFormProps) {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                {isUploading && (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                )}
                 <UploadButton
                   endpoint="imageUploader"
+                  onUploadBegin={() => {
+                    setIsUploading(true);
+                  }}
                   onClientUploadComplete={(res) => {
                     if (res && res.length > 0) {
                       setLogoUrl(res[0].url);
                       setIsUploading(false);
                       toast({
-                        title: "Logo subido",
+                        title: "✅ Logo subido",
                         description: "El logo se ha subido correctamente.",
                       });
                     }
-                  }}
-                  onUploadProgress={() => {
-                    setIsUploading(true);
                   }}
                   onUploadError={(error: Error) => {
                     setIsUploading(false);
                     toast({
                       variant: "destructive",
-                      title: "Error al subir logo",
+                      title: "❌ Error al subir logo",
                       description: error.message,
                     });
                   }}

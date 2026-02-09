@@ -166,7 +166,13 @@ export function EditClientDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col min-h-0">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col min-h-0 relative">
+        {isUploading && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-50 rounded-lg">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="text-lg font-medium">Subiendo logo...</p>
+          </div>
+        )}
         <DialogHeader>
           <DialogTitle>Editar Cliente</DialogTitle>
           <DialogDescription>
@@ -268,9 +274,6 @@ export function EditClientDialog({
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    {isUploading && (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    )}
                     <UploadButton
                       endpoint="imageUploader"
                       appearance={{
@@ -283,24 +286,24 @@ export function EditClientDialog({
                         },
                         allowedContent: "Imagen (máx. 4MB)",
                       }}
+                      onUploadBegin={() => {
+                        setIsUploading(true);
+                      }}
                       onClientUploadComplete={(res) => {
                         if (res && res.length > 0) {
                           setLogoUrl(res[0].url);
                           setIsUploading(false);
                           toast({
-                            title: "Logo subido",
+                            title: "✅ Logo subido",
                             description: "El logo se ha subido correctamente.",
                           });
                         }
-                      }}
-                      onUploadProgress={() => {
-                        setIsUploading(true);
                       }}
                       onUploadError={(error: Error) => {
                         setIsUploading(false);
                         toast({
                           variant: "destructive",
-                          title: "Error al subir logo",
+                          title: "❌ Error al subir logo",
                           description: error.message,
                         });
                       }}

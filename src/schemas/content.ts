@@ -29,6 +29,7 @@ export const contentTaskSchema = z.object({
   postCopy: z.string().optional().nullable(),
   coverImageUrl: z.string().optional().nullable(),
   audioBriefUrl: z.string().optional().nullable(),
+  scriptUrl: z.string().optional().nullable(),
   clientId: z.string().cuid(),
   assignedEditorId: z.string().cuid().optional(),
   assignedCommunityId: z.string().cuid().optional(),

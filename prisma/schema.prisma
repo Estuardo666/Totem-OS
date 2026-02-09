@@ -253,6 +253,7 @@ model ContentTask {
   postCopy       String? // Texto del post/copy
   coverImageUrl  String? // URL de la imagen de portada subida
   audioBriefUrl  String? // URL de la nota de voz (Totem Voice)
+  scriptUrl      String? // URL del archivo del guión (PDF/Word/TXT)
 
   clientId String
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)

@@ -156,13 +156,23 @@ export function BrandKit({ assets, clientId }: BrandKitProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
+      {isUploading && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-50">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <div className="text-center">
+            <p className="text-lg font-medium">Subiendo archivos...</p>
+            {uploadingFiles.length > 0 && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {uploadingFiles.join(", ")}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Brand Kit</h2>
         <div className="flex items-center gap-2">
-          {isUploading && (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          )}
           <UploadButton<OurFileRouter>
             endpoint="brandAsset"
             onUploadBegin={(files) => {

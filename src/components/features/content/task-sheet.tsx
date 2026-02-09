@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { subHours } from "date-fns";
-import { Loader2, Trash2, Copy, Check, X, Download, Sparkles } from "lucide-react";
+import { Loader2, Trash2, Copy, Check, X, Download, Sparkles, Share2, FileText } from "lucide-react";
 import { updateContentTaskSchema, createContentTaskSchema, type UpdateContentTaskInput, type CreateContentTaskInput, updateTaskMetricsSchema, type UpdateTaskMetricsInput } from "@/schemas/content";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import { updateTask, deleteTask, createTask, getTaskMetrics, updateTaskMetrics, getEnabledMetricsForClient } from "@/actions/content-actions";
@@ -140,6 +140,7 @@ const buildTaskFormValues = (
     postCopy: currentTask?.postCopy ?? initialDefaults?.postCopy ?? undefined,
     coverImageUrl: currentTask?.coverImageUrl ?? initialDefaults?.coverImageUrl ?? undefined,
     audioBriefUrl: currentTask?.audioBriefUrl ?? initialDefaults?.audioBriefUrl ?? undefined,
+    scriptUrl: currentTask?.scriptUrl ?? initialDefaults?.scriptUrl ?? undefined,
     shootId: undefined,
     reviewToken: undefined,
     clientFeedback: undefined,
@@ -172,6 +173,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [copiedPostCopy, setCopiedPostCopy] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const sortedClients = [...clients].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
   const filteredClients = sortedClients.filter((client) => {
@@ -188,6 +190,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
   });
 
   const selectedClientId = form.watch("clientId");
+  const coverImageUrl = form.watch("coverImageUrl");
+  const scriptUrl = form.watch("scriptUrl");
   const selectedClient = filteredClients.find((c) => c.id === selectedClientId) || clients.find((c) => c.id === selectedClientId) || task?.client;
 
   // Formulario de métricas (ahora usa un objeto genérico para valores dinámicos)
@@ -976,7 +980,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     control={form.control}
                     name="coverImageUrl"
                     render={({ field }) => {
-                      const hasImage = !!field.value && field.value !== "";
+                      const hasImage = !!coverImageUrl && coverImageUrl !== "";
                       return (
                         <FormItem>
                           <FormLabel>Imagen de Portada</FormLabel>
@@ -985,7 +989,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                               <div className="relative rounded-lg border border-input overflow-hidden">
                                 <div className="relative w-full h-64">
                                   <NextImage
-                                    src={field.value}
+                                    src={coverImageUrl}
                                     alt="Imagen de portada"
                                     fill
                                     className="object-cover"
@@ -998,7 +1002,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                                       className="h-8 w-8 bg-background/80 backdrop-blur-sm"
                                       asChild
                                     >
-                                      <Link href={field.value} target="_blank" rel="noopener noreferrer">
+                                      <Link href={coverImageUrl} target="_blank" rel="noopener noreferrer">
                                         <Download className="h-4 w-4" />
                                       </Link>
                                     </Button>
@@ -1022,7 +1026,13 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                                 </div>
                               </div>
                             ) : (
-                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex justify-center bg-gray-50">
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center gap-4 bg-gray-50 relative">
+                                {isUploadingImage && (
+                                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg flex flex-col items-center justify-center gap-3 z-10">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                    <p className="text-sm font-medium text-muted-foreground">Subiendo imagen...</p>
+                                  </div>
+                                )}
                                 <UploadButton
                                   endpoint="brandAsset"
                                   appearance={{
@@ -1030,7 +1040,11 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                                     allowedContent: "hidden"
                                   }}
                                   content={{ button: "Subir Portada" }}
+                                  onUploadBegin={() => {
+                                    setIsUploadingImage(true);
+                                  }}
                                   onClientUploadComplete={(res) => {
+                                    setIsUploadingImage(false);
                                     console.log("✅ Archivos: ", res);
                                     if (res && res[0]) {
                                       const newUrl = res[0].ufsUrl || res[0].url;
@@ -1040,13 +1054,149 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                                         shouldValidate: true
                                       });
                                       toast({
-                                        title: "Nueva imagen lista",
+                                        title: "✅ Imagen subida",
                                         description: "La imagen se ha subido correctamente",
                                       });
                                     }
                                   }}
                                   onUploadError={(error: Error) => {
+                                    setIsUploadingImage(false);
                                     console.error("❌ Error subiendo:", error);
+                                    toast({
+                                      variant: "destructive",
+                                      title: "❌ Error al subir",
+                                      description: error.message,
+                                    });
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
+                  />
+
+                  {/* Guión del contenido */}
+                  <FormField
+                    control={form.control}
+                    name="scriptUrl"
+                    render={({ field }) => {
+                      const hasScript = !!scriptUrl && scriptUrl !== "";
+                      const getFileExtension = (url: string) => {
+                        const match = url.match(/\.([^./?#]+)(?:[?#]|$)/i);
+                        return match ? match[1].toUpperCase() : 'DOC';
+                      };
+                      const getFileName = (url: string) => {
+                        try {
+                          const urlObj = new URL(url);
+                          const pathname = urlObj.pathname;
+                          const segments = pathname.split('/');
+                          return decodeURIComponent(segments[segments.length - 1]);
+                        } catch {
+                          return 'documento';
+                        }
+                      };
+                      
+                      return (
+                        <FormItem>
+                          <FormLabel>Guión del Contenido</FormLabel>
+                          <FormControl>
+                            {hasScript ? (
+                              <div className="border border-input rounded-lg p-4 bg-gray-50">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-shrink-0 w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                                    <FileText className="h-6 w-6 text-primary" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                      {getFileName(scriptUrl)}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {getFileExtension(scriptUrl)}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-9 w-9"
+                                      asChild
+                                    >
+                                      <Link href={scriptUrl} target="_blank" rel="noopener noreferrer">
+                                        <Download className="h-4 w-4" />
+                                      </Link>
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-9 w-9"
+                                      onClick={async () => {
+                                        try {
+                                          await navigator.clipboard.writeText(scriptUrl);
+                                          toast({
+                                            title: "Link copiado",
+                                            description: "El enlace del guión se copió al portapapeles",
+                                          });
+                                        } catch (error) {
+                                          toast({
+                                            variant: "destructive",
+                                            title: "Error",
+                                            description: "No se pudo copiar el enlace",
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <Share2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="icon"
+                                      className="h-9 w-9"
+                                      onClick={() => {
+                                        field.onChange("");
+                                        toast({
+                                          title: "Guión eliminado",
+                                          description: "Guarda cambios para confirmar.",
+                                        });
+                                      }}
+                                      disabled={isPending}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex justify-center bg-gray-50">
+                                <UploadButton
+                                  endpoint="brandAsset"
+                                  appearance={{
+                                    button: "bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+                                    allowedContent: "hidden"
+                                  }}
+                                  content={{ button: "Subir Guión" }}
+                                  onClientUploadComplete={(res) => {
+                                    console.log("✅ Guión subido: ", res);
+                                    if (res && res[0]) {
+                                      const newUrl = res[0].url;
+                                      form.setValue("scriptUrl", newUrl, {
+                                        shouldDirty: true,
+                                        shouldTouch: true,
+                                        shouldValidate: true
+                                      });
+                                      toast({
+                                        title: "Guión subido",
+                                        description: "El archivo se ha subido correctamente",
+                                      });
+                                    }
+                                  }}
+                                  onUploadError={(error: Error) => {
+                                    console.error("❌ Error subiendo guión:", error);
                                     toast({
                                       variant: "destructive",
                                       title: "Error al subir",

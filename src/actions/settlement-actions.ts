@@ -149,7 +149,7 @@ export async function getUserSettlements(
       select: {
         id: true,
         name: true,
-        role: true,
+        roleLegacy: true,
         baseSalary: true,
       },
     });
@@ -395,10 +395,10 @@ export async function getPendingPartnerFee(
     // Verificar si el usuario es ADMIN
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: { role: true },
+      select: { roleLegacy: true },
     });
 
-    if (!user || user.role !== "ADMIN") {
+    if (!user || user.roleLegacy !== "ADMIN") {
       return { success: true, data: 0 };
     }
 

@@ -76,6 +76,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
   const [copied, setCopied] = useState(false);
   const [isGenerating, startGenerating] = useTransition();
   const [isRefining, startRefining] = useTransition();
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const coverImageUrl = form.watch("coverImageUrl");
   const selectedClientId = form.watch("clientId");
   const postCopy = form.watch("postCopy");
@@ -610,7 +611,13 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                       </div>
                     </div>
                   ) : (
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex justify-center bg-gray-50">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center gap-4 bg-gray-50 relative">
+                      {isUploadingImage && (
+                        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg flex flex-col items-center justify-center gap-3 z-10">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                          <p className="text-sm font-medium text-muted-foreground">Subiendo imagen...</p>
+                        </div>
+                      )}
                       <UploadButton
                         endpoint="brandAsset"
                         appearance={{
@@ -618,7 +625,11 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                           allowedContent: "hidden"
                         }}
                         content={{ button: "Subir Portada" }}
+                        onUploadBegin={() => {
+                          setIsUploadingImage(true);
+                        }}
                         onClientUploadComplete={(res) => {
+                          setIsUploadingImage(false);
                           if (res && res[0]) {
                             const newUrl = res[0].ufsUrl || res[0].url; // Usa ufsUrl, con fallback a url
                             // Actualiza el estado local "en caliente" para mostrar la nueva imagen inmediatamente
@@ -628,13 +639,18 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                               shouldValidate: true
                             });
                             toast({
-                              title: "Nueva imagen lista",
+                              title: "✅ Imagen subida",
                               description: "La imagen se ha subido correctamente",
                             });
                           }
                         }}
                         onUploadError={(error: Error) => {
-                          alert(`ERROR: ${error.message}`);
+                          setIsUploadingImage(false);
+                          toast({
+                            title: "❌ Error al subir",
+                            description: error.message,
+                            variant: "destructive"
+                          });
                         }}
                       />
                     </div>
