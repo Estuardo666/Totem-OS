@@ -5,6 +5,8 @@
 /* Soluciona el body shift cuando se abre un modal/sheet */
 html {
   scrollbar-gutter: stable;
+  /* Deshabilitar zoom con dos dedos en mobile */
+  touch-action: none;
 }
 
 /* Previene el layout shift cuando Radix aplica inline styles al body */
