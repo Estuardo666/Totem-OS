@@ -683,7 +683,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                                   className="flex items-center gap-2 cursor-pointer flex-1"
                                 >
                                   <Avatar className="h-8 w-8">
-                                    <AvatarImage src={user.profileImage || undefined} alt={firstName} />
+                                    <AvatarImage src={user.image || undefined} alt={firstName} />
                                     <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                                   </Avatar>
                                   <span className="text-sm font-normal truncate">{firstName}</span>

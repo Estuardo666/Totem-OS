@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Check, X, Edit, Loader2, Minus, Plus } from "lucide-react";
+import { Check, X, Edit, Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import type { FinancialStats } from "@/actions/finance-actions";
 import {
   markTransactionAsPaid,
@@ -13,6 +13,9 @@ import {
   getTransactionById,
   getInvoiceById,
   getExpenseById,
+  bulkDeleteTransactions,
+  bulkDeleteExpenses,
+  bulkUpdateTransactionStatus,
 } from "@/actions/finance-actions";
 import type { Transaction, Invoice } from "@prisma/client";
 import { EditTransactionDialog } from "./edit-transaction-dialog";
@@ -21,6 +24,7 @@ import { EditExpenseDialog } from "./edit-expense-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -144,6 +148,10 @@ export function TransactionList({ transactions }: TransactionListProps) {
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isEditInvoiceDialogOpen, setIsEditInvoiceDialogOpen] = useState(false);
+  
+  // Estados para selección múltiple
+  const [selectedItems, setSelectedItems] = useState<Map<string, string>>(new Map()); // id -> tipo (transaction|expense)
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
 
   // Filtrar transacciones por estado y tipo
   const filteredTransactions = useMemo(() => {
@@ -338,6 +346,148 @@ export function TransactionList({ transactions }: TransactionListProps) {
     }
   };
 
+  // Funciones de selección múltiple
+  const toggleSelectAll = () => {
+    if (selectedItems.size === filteredTransactions.length) {
+      setSelectedItems(new Map());
+    } else {
+      const newSelected = new Map(selectedItems);
+      filteredTransactions.forEach(t => {
+        // Detectar si es un expense o una transacción
+        const isExpense = t.type === "EXPENSE";
+        const sourceType = t.sourceType || 
+          (t.description?.startsWith("Factura") ? "INVOICE" : 
+           isExpense ? "EXPENSE" :
+           t.category ? "EXPENSE" : "TRANSACTION");
+        newSelected.set(t.id, sourceType === "EXPENSE" ? "expense" : "transaction");
+      });
+      setSelectedItems(newSelected);
+    }
+  };
+
+  const toggleSelectTransaction = (id: string, itemType: "transaction" | "expense") => {
+    const newSelected = new Map(selectedItems);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.set(id, itemType);
+    }
+    setSelectedItems(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.size === 0) return;
+
+    setIsBulkProcessing(true);
+    try {
+      // Separar transacciones y gastos
+      const transactionIds = Array.from(selectedItems.entries())
+        .filter(([_, type]) => type === "transaction")
+        .map(([id, _]) => id);
+      
+      const expenseIds = Array.from(selectedItems.entries())
+        .filter(([_, type]) => type === "expense")
+        .map(([id, _]) => id);
+
+      let deletedCount = 0;
+      let hasError = false;
+
+      // Borrar transacciones
+      if (transactionIds.length > 0) {
+        const result = await bulkDeleteTransactions(transactionIds);
+        if (!result.success) {
+          hasError = true;
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: result.error || "No se pudieron eliminar las transacciones",
+          });
+        } else {
+          deletedCount += result.data.deleted;
+        }
+      }
+
+      // Borrar gastos
+      if (expenseIds.length > 0) {
+        const result = await bulkDeleteExpenses(expenseIds);
+        if (!result.success) {
+          hasError = true;
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: result.error || "No se pudieron eliminar los gastos",
+          });
+        } else {
+          deletedCount += result.data.deleted;
+        }
+      }
+
+      if (!hasError && deletedCount > 0) {
+        toast({
+          title: "Registros eliminados",
+          description: `Se eliminaron ${deletedCount} registro(s) permanentemente.`,
+        });
+        setSelectedItems(new Map());
+        router.refresh();
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Ocurrió un error inesperado",
+      });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus: "PENDING" | "PAID" | "CANCELLED") => {
+    if (selectedItems.size === 0) return;
+
+    // Solo aplicar a transacciones, no a gastos
+    const transactionIds = Array.from(selectedItems.entries())
+      .filter(([_, type]) => type === "transaction")
+      .map(([id, _]) => id);
+
+    if (transactionIds.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Sin transacciones",
+        description: "Solo se pueden cambiar el estado de transacciones, no de gastos.",
+      });
+      return;
+    }
+
+    setIsBulkProcessing(true);
+    try {
+      const result = await bulkUpdateTransactionStatus(transactionIds, newStatus);
+      
+      if (result.success) {
+        const statusLabel = newStatus === "PAID" ? "Pagadas" : newStatus === "PENDING" ? "Pendientes" : "Canceladas";
+        toast({
+          title: "Estado actualizado",
+          description: `Se actualizaron ${result.data.updated} transacción(es) a ${statusLabel}.`,
+        });
+        setSelectedItems(new Map());
+        router.refresh();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error || "No se pudo actualizar el estado",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Ocurrió un error inesperado",
+      });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
   if (transactions.length === 0) {
     return (
       <Card>
@@ -352,36 +502,101 @@ export function TransactionList({ transactions }: TransactionListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Filtros */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrar por estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los estados</SelectItem>
-              <SelectItem value="PENDING">Pendientes</SelectItem>
-              <SelectItem value="PAID">Pagadas</SelectItem>
-              <SelectItem value="CANCELLED">Canceladas</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrar por tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los tipos</SelectItem>
-              <SelectItem value="income">Ingresos</SelectItem>
-              <SelectItem value="expense">Gastos</SelectItem>
-              <SelectItem value="honorarios">Honorarios</SelectItem>
-              <SelectItem value="reimbursement">Reembolsos</SelectItem>
-            </SelectContent>
-          </Select>
+      {/* Filtros y acciones en lote */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtrar por estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="PENDING">Pendientes</SelectItem>
+                <SelectItem value="PAID">Pagadas</SelectItem>
+                <SelectItem value="CANCELLED">Canceladas</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtrar por tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los tipos</SelectItem>
+                <SelectItem value="income">Ingresos</SelectItem>
+                <SelectItem value="expense">Gastos</SelectItem>
+                <SelectItem value="honorarios">Honorarios</SelectItem>
+                <SelectItem value="reimbursement">Reembolsos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <span className="text-sm text-muted-foreground">
+            {selectedItems.size > 0 ? `${selectedItems.size} seleccionada(s) · ` : ""}
+            {filteredTransactions.length} transacción(es)
+          </span>
         </div>
-        <span className="text-sm text-muted-foreground">
-          {filteredTransactions.length} transacción(es)
-        </span>
+
+        {/* Botones de acciones en lote */}
+        {selectedItems.size > 0 && (
+          <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg border">
+            <span className="text-sm font-medium">Acciones en lote:</span>
+            {/* Cambiar estado solo para transacciones */}
+            {Array.from(selectedItems.values()).some(type => type === "transaction") && (
+              <Select onValueChange={(value) => handleBulkStatusChange(value as "PENDING" | "PAID" | "CANCELLED")}>
+                <SelectTrigger className="w-[140px] h-9">
+                  <SelectValue placeholder="Cambiar estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">A Pendiente</SelectItem>
+                  <SelectItem value="PAID">A Pagada</SelectItem>
+                  <SelectItem value="CANCELLED">A Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isBulkProcessing}
+                >
+                  {isBulkProcessing ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Borrar ({selectedItems.size})
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Borrar registros?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción eliminará permanentemente {selectedItems.size} registro(s).
+                    No se podrán recuperar y ya no afectarán el historial financiero.
+                    ¿Estás seguro?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleBulkDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Sí, borrar permanentemente
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedItems(new Map())}
+            >
+              Deseleccionar todo
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Tabla de transacciones */}
@@ -389,6 +604,13 @@ export function TransactionList({ transactions }: TransactionListProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[50px]">
+                <Checkbox
+                  checked={selectedItems.size === filteredTransactions.length && filteredTransactions.length > 0}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Seleccionar todas"
+                />
+              </TableHead>
               <TableHead>Fecha</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Concepto</TableHead>
@@ -401,7 +623,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
           <TableBody>
             {filteredTransactions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   No hay transacciones con este filtro
                 </TableCell>
               </TableRow>
@@ -412,8 +634,23 @@ export function TransactionList({ transactions }: TransactionListProps) {
                 const isPaid = transaction.status === "PAID";
                 const isCancelled = transaction.status === "CANCELLED";
 
+                // Detectar tipo (transaction o expense)
+                const isExpenseType = transaction.type === "EXPENSE";
+                const sourceType = transaction.sourceType || 
+                  (transaction.description?.startsWith("Factura") ? "INVOICE" : 
+                   isExpenseType ? "EXPENSE" :
+                   transaction.category ? "EXPENSE" : "TRANSACTION");
+                const itemType = sourceType === "EXPENSE" ? "expense" : "transaction";
+
                 return (
                   <TableRow key={transaction.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedItems.has(transaction.id)}
+                        onCheckedChange={() => toggleSelectTransaction(transaction.id, itemType)}
+                        aria-label={`Seleccionar transacción ${transaction.description}`}
+                      />
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {format(new Date(transaction.date), "dd/MM/yyyy")}
                     </TableCell>

@@ -23,6 +23,7 @@ interface KanbanBoardProps {
   tasks: ContentTaskWithClient[];
   users: User[];
   clients?: Array<{ id: string; name: string }>;
+  isCompactView?: boolean;
 }
 
 // Estados que se mostrarán en el Kanban
@@ -38,7 +39,7 @@ const KANBAN_COLUMNS: {
   { status: "PUBLISHED", label: "Publicado" },
 ];
 
-export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: KanbanBoardProps) {
+export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompactView = false }: KanbanBoardProps) {
   const { toast } = useToast();
   const [tasks, setTasks] = useState<ContentTaskWithClient[]>(initialTasks);
   const [isMounted, setIsMounted] = useState(false);
@@ -639,6 +640,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [] }: Kanban
                   setIsSheetOpen(true);
                 }}
                 optimisticPublish={optimisticPublish}
+                isCompactView={isCompactView}
               />
             );
           })}

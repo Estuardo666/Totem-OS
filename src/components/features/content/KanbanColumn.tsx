@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Droppable, DroppableProvided, DroppableStateSnapshot } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 
@@ -13,9 +14,18 @@ interface KanbanColumnProps {
   tasks: ContentTaskWithClient[];
   onCardClick: (task: ContentTaskWithClient) => void;
   optimisticPublish: (taskId: string) => Promise<void>;
+  isCompactView?: boolean;
 }
 
-export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPublish }: KanbanColumnProps) {
+export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPublish, isCompactView = false }: KanbanColumnProps) {
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // Gatillar transición cuando isCompactView cambia
+  useEffect(() => {
+    setIsTransitioning(true);
+    const timer = setTimeout(() => setIsTransitioning(false), 150);
+    return () => clearTimeout(timer);
+  }, [isCompactView]);
   return (
     <div
       data-column-id={status}
@@ -40,25 +50,31 @@ export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPubl
               ref={provided.innerRef}
               {...provided.droppableProps}
               data-droppable-id={status}
-              className={`flex-1 overflow-y-auto pr-1 scrollbar-hide transition-colors ${
+              className={`flex-1 overflow-y-auto pr-1 scrollbar-hide transition-colors ${ 
                 snapshot.isDraggingOver
                   ? "bg-primary/5 border-2 border-dashed border-primary rounded-md"
                   : ""
               }`}
             >
-              {/* Mobile: grid 2 cols | Desktop: flex col siempre */}
-              <div className="flex flex-col gap-3 p-3 w-full overflow-hidden">
+              {/* Contenedor de tarjetas con transición suave */}
+              <div 
+                key={`tasks-${status}-${isCompactView}`}
+                className={`flex flex-col gap-3 p-3 w-full overflow-hidden tasks-content-transition ${
+                  isTransitioning ? "opacity-0" : "opacity-100"
+                }`}
+              >
                 {tasks.length > 0 ? (
                   tasks.map((task, index) => (
                     <div
                       key={task.id}
-                      className="animate-fade-in-up"
+                      className="animate-fade-in-view"
                     >
                       <TaskCard
                         task={task}
                         index={index}
                         onCardClick={onCardClick}
                         optimisticPublish={optimisticPublish}
+                        isCompactView={isCompactView}
                       />
                     </div>
                   ))

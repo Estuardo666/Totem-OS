@@ -363,6 +363,114 @@ export async function cancelTransaction(
   }
 }
 
+/**
+ * Borrar múltiples transacciones de forma permanente
+ * Solo borra de la tabla Transaction, no facturas ni gastos
+ */
+export async function bulkDeleteTransactions(
+  transactionIds: string[]
+): Promise<ApiResponse<{ deleted: number }>> {
+  try {
+    if (!transactionIds || transactionIds.length === 0) {
+      return { success: false, error: "No se seleccionaron transacciones" };
+    }
+
+    // Borrar todas las transacciones seleccionadas
+    const result = await db.transaction.deleteMany({
+      where: {
+        id: {
+          in: transactionIds,
+        },
+      },
+    });
+
+    revalidatePath("/finance");
+    return { 
+      success: true, 
+      data: { deleted: result.count }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al borrar transacciones",
+    };
+  }
+}
+
+/**
+ * Borrar múltiples gastos de forma permanente
+ */
+export async function bulkDeleteExpenses(
+  expenseIds: string[]
+): Promise<ApiResponse<{ deleted: number }>> {
+  try {
+    if (!expenseIds || expenseIds.length === 0) {
+      return { success: false, error: "No se seleccionaron gastos" };
+    }
+
+    // Borrar todos los gastos seleccionados
+    const result = await db.expense.deleteMany({
+      where: {
+        id: {
+          in: expenseIds,
+        },
+      },
+    });
+
+    revalidatePath("/finance");
+    return { 
+      success: true, 
+      data: { deleted: result.count }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al borrar gastos",
+    };
+  }
+}
+
+/**
+ * Cambiar el estado de múltiples transacciones
+ */
+export async function bulkUpdateTransactionStatus(
+  transactionIds: string[],
+  newStatus: "PENDING" | "PAID" | "CANCELLED"
+): Promise<ApiResponse<{ updated: number }>> {
+  try {
+    if (!transactionIds || transactionIds.length === 0) {
+      return { success: false, error: "No se seleccionaron transacciones" };
+    }
+
+    if (!["PENDING", "PAID", "CANCELLED"].includes(newStatus)) {
+      return { success: false, error: "Estado inválido" };
+    }
+
+    // Actualizar todas las transacciones seleccionadas
+    const result = await db.transaction.updateMany({
+      where: {
+        id: {
+          in: transactionIds,
+        },
+      },
+      data: {
+        status: newStatus,
+      },
+    });
+
+    revalidatePath("/finance");
+    return { 
+      success: true, 
+      data: { updated: result.count }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al actualizar transacciones",
+    };
+  }
+}
+
 export async function getTransactionById(
   transactionId: string
 ): Promise<ApiResponse<any>> {

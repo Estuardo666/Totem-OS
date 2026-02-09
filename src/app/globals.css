@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Soluciona el body shift cuando se abre un modal/sheet */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* Google Sans Fonts */
 @font-face {
   font-family: 'Google Sans';
@@ -104,6 +109,11 @@
   * {
     @apply border-border;
   }
+  
+  html {
+    overflow-y: scroll;
+  }
+  
   body {
     @apply bg-background text-foreground;
     font-family: "Google Sans", sans-serif;
@@ -376,6 +386,65 @@
   .animate-chat-bubble {
     animation: chat-bubble-in 0.25s ease-out forwards;
   }
+
+  /* iOS 26 Siri-style voice animations */
+  @keyframes siriPulseColorful {
+    0% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1.15);
+    }
+    100% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes siriGlowSequential {
+    0% {
+      opacity: 0.3;
+      filter: blur(24px);
+      transform: scale(0.95);
+    }
+    40% {
+      opacity: 0.7;
+      filter: blur(16px);
+      transform: scale(1.05);
+    }
+    60% {
+      opacity: 0.8;
+      filter: blur(20px);
+      transform: scale(1.08);
+    }
+    100% {
+      opacity: 0.3;
+      filter: blur(24px);
+      transform: scale(0.95);
+    }
+  }
+
+  /* Apple Intelligence orb floating animation */
+  @keyframes appleOrbFloat {
+    0%, 100% {
+      opacity: 0.25;
+      transform: translateY(0px) translateX(0px);
+    }
+    25% {
+      opacity: 0.35;
+      transform: translateY(-12px) translateX(8px);
+    }
+    50% {
+      opacity: 0.4;
+      transform: translateY(-20px) translateX(-8px);
+    }
+    75% {
+      opacity: 0.3;
+      transform: translateY(-10px) translateX(12px);
+    }
+  }
 }
 
 /* Estilos para impresión/PDF */
@@ -459,6 +528,69 @@
 
 .fade-out {
   animation: fadeOut 300ms ease-in-out forwards;
+}
+
+/* Animación de salida elegante para sheets (derecha) */
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Animación de entrada elegante para sheets (derecha) */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.sheet-slide-out {
+  animation: slideOutRight 0.3s cubic-bezier(0.7, 0, 1, 0.2) forwards;
+}
+
+.sheet-slide-in {
+  animation: slideInRight 0.5s cubic-bezier(0.3, 0, 0.2, 1) forwards;
+}
+
+/* Animación fade in para cambios de vista */
+@keyframes fadeInView {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeViewChange {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in-view {
+  animation: fadeInView 0.3s ease-out forwards;
+}
+
+/* Transición suave para contenedor de tarjetas */
+.tasks-content-transition {
+  transition: opacity 0.2s ease-in-out;
 }
 
 /* Forzar estilos personalizados */

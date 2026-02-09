@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { UserList } from "./user-list-row";
 
 interface EditExpenseDialogProps {
   expenseId: string | null;
@@ -353,31 +354,19 @@ export function EditExpenseDialog({
                     <p className="text-sm text-muted-foreground">
                       Selecciona uno o más usuarios. Si seleccionas múltiples, el monto se dividirá equitativamente.
                     </p>
-                    <div className="space-y-2">
-                      {users.map((user) => (
-                        <div key={user.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`edit-user-${user.id}`}
-                            checked={field.value?.includes(user.id) || false}
-                            onCheckedChange={(checked) => {
-                              const currentValue = field.value || [];
-                              if (checked) {
-                                field.onChange([...currentValue, user.id]);
-                              } else {
-                                field.onChange(currentValue.filter((id) => id !== user.id));
-                              }
-                            }}
-                            disabled={isSubmitting || loadingUsers}
-                          />
-                          <Label
-                            htmlFor={`edit-user-${user.id}`}
-                            className="text-sm font-normal cursor-pointer"
-                          >
-                            {user.name}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
+                    <UserList
+                      users={users}
+                      selectedIds={field.value || []}
+                      isLoading={isSubmitting || loadingUsers}
+                      onChange={(userId) => {
+                        const currentValue = field.value || [];
+                        if (currentValue.includes(userId)) {
+                          field.onChange(currentValue.filter((id) => id !== userId));
+                        } else {
+                          field.onChange([...currentValue, userId]);
+                        }
+                      }}
+                    />
                   </div>
                   <FormMessage />
                 </FormItem>

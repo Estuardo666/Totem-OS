@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Mic, Square, X } from "lucide-react";
+import { Waves, StopCircle, X } from "lucide-react";
 import { interpretVoiceCommandAction } from "@/actions/voice-actions";
 import { voiceCommandResponseSchema } from "@/schemas/voice";
 import { TaskSheet } from "@/components/features/content/task-sheet";
@@ -386,10 +386,9 @@ export function FloatingVoiceButton() {
       {isHidden ? null : (
         <>
           {/* Efecto Siri - Bordes luminosos en los extremos de la pantalla */}
+          {(open && isListening) && (
           <div 
-        className={`fixed inset-0 z-40 pointer-events-none overflow-hidden transition-opacity duration-500 ease-out ${
-          open && isListening ? "opacity-100" : "opacity-0"
-        }`}
+        className="fixed inset-0 z-50 pointer-events-none overflow-hidden animate-in fade-in duration-500"
       >
         {/* Borde superior */}
         <div 
@@ -438,33 +437,78 @@ export function FloatingVoiceButton() {
             animation: "siriPulse 2s ease-in-out infinite 0.25s",
           }}
         />
+        {/* Resplandores coloridos tipo iOS 26 */}
         <div 
-          className="absolute bottom-0 left-0 w-16 md:w-20 h-16 md:h-20"
+          className="absolute bottom-0 left-0 w-20 md:w-28 h-20 md:h-28"
           style={{
-            background: `radial-gradient(ellipse 70% 70% at bottom left, rgba(${primaryColor},0.6), transparent 70%)`,
-            animation: "siriPulse 2s ease-in-out infinite 0.5s",
+            background: `radial-gradient(circle at center, rgba(59,130,246,0.8), rgba(99,102,241,0.4), transparent 70%)`,
+            animation: "siriPulseColorful 1.5s ease-out infinite",
           }}
         />
         <div 
-          className="absolute bottom-0 right-0 w-16 md:w-20 h-16 md:h-20"
+          className="absolute bottom-0 right-0 w-20 md:w-28 h-20 md:h-28"
           style={{
-            background: `radial-gradient(ellipse 70% 70% at bottom right, rgba(${primaryColor},0.6), transparent 70%)`,
-            animation: "siriPulse 2s ease-in-out infinite 0.75s",
+            background: `radial-gradient(circle at center, rgba(168,85,247,0.8), rgba(239,68,68,0.4), transparent 70%)`,
+            animation: "siriPulseColorful 1.5s ease-out infinite 0.3s",
           }}
         />
       </div>
+          )}
 
-      {/* Overlay blur del contenido cuando está abierto */}
+      {/* Overlay con glows circulares estilo Apple Intelligence */}
+      {open && (
       <div
-        className={`fixed inset-0 z-30 backdrop-blur-md bg-black/10 transition-all duration-500 ease-out ${
-          open ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
-        onClick={handleFloatingButtonClick}
-      />
+        className="fixed inset-0 z-30 pointer-events-none overflow-hidden animate-in fade-in duration-1000 backdrop-blur-sm"
+        style={{
+          background: "rgba(0,0,0,0.05)",
+        }}
+      >
+        {/* Orbe superior izquierdo - Azul */}
+        <div
+          className="absolute -top-32 -left-32 w-96 h-96 opacity-40 blur-3xl rounded-full"
+          style={{
+            background: "radial-gradient(circle at 30% 30%, rgba(59,130,246,0.8), rgba(59,130,246,0.3), transparent)",
+            animation: "appleOrbFloat 8s ease-in-out infinite",
+          }}
+        />
+        {/* Orbe superior derecho - Púrpura */}
+        <div
+          className="absolute -top-40 -right-40 w-80 h-80 opacity-35 blur-3xl rounded-full"
+          style={{
+            background: "radial-gradient(circle at 50% 50%, rgba(168,85,247,0.7), rgba(168,85,247,0.2), transparent)",
+            animation: "appleOrbFloat 10s ease-in-out infinite 1s",
+          }}
+        />
+        {/* Orbe inferior izquierdo - Cian */}
+        <div
+          className="absolute -bottom-32 -left-24 w-80 h-80 opacity-30 blur-3xl rounded-full"
+          style={{
+            background: "radial-gradient(circle at 40% 40%, rgba(6,182,212,0.6), rgba(6,182,212,0.2), transparent)",
+            animation: "appleOrbFloat 9s ease-in-out infinite 2s",
+          }}
+        />
+        {/* Orbe inferior derecho - Rosa/Magenta */}
+        <div
+          className="absolute -bottom-40 -right-32 w-96 h-96 opacity-35 blur-3xl rounded-full"
+          style={{
+            background: "radial-gradient(circle at 50% 50%, rgba(236,72,153,0.65), rgba(236,72,153,0.15), transparent)",
+            animation: "appleOrbFloat 11s ease-in-out infinite 1.5s",
+          }}
+        />
+        {/* Orbe central-derecho - Naranja/Dorado (como en el iPhone) */}
+        <div
+          className="absolute top-2/3 -right-48 w-96 h-96 opacity-25 blur-3xl rounded-full"
+          style={{
+            background: "radial-gradient(circle at 50% 50%, rgba(251,146,60,0.5), rgba(251,146,60,0.1), transparent)",
+            animation: "appleOrbFloat 12s ease-in-out infinite 0.5s",
+          }}
+        />
+      </div>
+      )}
 
-      {/* Transcripción estilo Liquid Glass iOS 26 */}
+      {/* Transcripción estilo Liquid Glass iOS 26 - Arriba de todo */}
       <div
-        className={`fixed bottom-24 right-6 z-40 w-[90%] max-w-md origin-bottom-right pointer-events-auto ${
+        className={`fixed bottom-40 right-6 z-50 w-[90%] max-w-md origin-bottom-right pointer-events-auto ${
           open
             ? "opacity-100 scale-100"
             : "opacity-0 scale-75 pointer-events-none"
@@ -473,11 +517,19 @@ export function FloatingVoiceButton() {
           transition: "opacity 400ms cubic-bezier(0.34, 1.56, 0.64, 1), transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)",
         }}
       >
-        {/* Resplandor exterior del liquid glass */}
+        {/* Resplandor exterior colorido estilo Siri iOS 26 */}
         <div 
-          className="absolute -inset-1 rounded-[28px] opacity-60 blur-xl"
+          className="absolute -inset-1.5 rounded-[28px] opacity-70 blur-2xl"
           style={{
-            background: `linear-gradient(135deg, rgba(${primaryColor},0.4), rgba(${primaryColor},0.2), rgba(${primaryColor},0.3))`,
+            background: `linear-gradient(135deg, rgba(59,130,246,0.5), rgba(168,85,247,0.4), rgba(239,68,68,0.3), rgba(34,197,94,0.3))`,
+            animation: "siriGlowSequential 3s ease-in-out infinite",
+          }}
+        />
+        <div 
+          className="absolute -inset-1 rounded-[28px] opacity-50 blur-xl"
+          style={{
+            background: `linear-gradient(225deg, rgba(34,197,94,0.4), rgba(6,182,212,0.3), rgba(59,130,246,0.3))`,
+            animation: "siriGlowSequential 3s ease-in-out infinite 0.5s",
           }}
         />
         <div 
@@ -635,12 +687,12 @@ export function FloatingVoiceButton() {
       >
         {open ? (
           isListening ? (
-            <Square className="h-5 w-5" />
+            <StopCircle className="h-5 w-5" fill="currentColor" />
           ) : (
             <X className="h-5 w-5" />
           )
         ) : (
-          <Mic className="h-5 w-5" />
+          <Waves className="h-5 w-5" />
         )}
         {/* Anillos de resplandor animados cuando está activo y escuchando */}
         {open && isListening && (

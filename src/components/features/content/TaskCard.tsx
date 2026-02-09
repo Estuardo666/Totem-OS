@@ -45,9 +45,10 @@ interface TaskCardProps {
   index: number;
   onCardClick: (task: ContentTaskWithClient) => void;
   optimisticPublish: (taskId: string) => Promise<void>;
+  isCompactView?: boolean;
 }
 
-export function TaskCard({ task, index, onCardClick, optimisticPublish }: TaskCardProps) {
+export function TaskCard({ task, index, onCardClick, optimisticPublish, isCompactView = false }: TaskCardProps) {
   const [isPublishing, setIsPublishing] = useState(false);
   const [shouldRender, setShouldRender] = useState(true);
 
@@ -109,7 +110,7 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish }: TaskCa
             ...provided.draggableProps.style,
           }}
         >
-          {/* Contenedor hijo con animación de desaparición fantasma */}
+          {/* Contenedor hijo con animación de desaparición fantasma + fade al cambiar vista */}
           <div
             className={`
               ${snapshot.isDragging 
@@ -118,6 +119,7 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish }: TaskCa
               ${isPublishing 
                 ? "opacity-0 scale-90 translate-y-4 blur-sm pointer-events-none" 
                 : "opacity-100 scale-100 translate-y-0 blur-0"}
+              animate-fade-in-view
             `}
           >
             <Card
@@ -233,22 +235,24 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish }: TaskCa
                       )}
                     </div>
 
-                    {/* Tipo e Icono */}
-                    <div className="flex items-center gap-1 text-[9px] md:text-[10px] text-muted-foreground mt-1">
-                      {getTypeIcon(task.type)}
-                      <span className="truncate">{getTypeLabel(task.type)}</span>
-                    </div>
+                    {/* Tipo e Icono - Oculto en vista compacta */}
+                    {!isCompactView && (
+                      <div className="flex items-center gap-1 text-[9px] md:text-[10px] text-muted-foreground mt-1">
+                        {getTypeIcon(task.type)}
+                        <span className="truncate">{getTypeLabel(task.type)}</span>
+                      </div>
+                    )}
 
-                    {/* Fecha de entrega (oculta en IDEA/Guión) */}
-                    {task.dueDate && task.status !== "IDEA" && (
+                    {/* Fecha de entrega - Oculta en vista compacta y en IDEA/Guión */}
+                    {!isCompactView && task.dueDate && task.status !== "IDEA" && (
                       <div className="text-[9px] md:text-[10px] text-muted-foreground truncate mt-1 flex items-center gap-1">
                         <span>⏰</span>
                         <span>{format(new Date(task.dueDate), "dd/MM/yy")}</span>
                       </div>
                     )}
 
-                    {/* Fecha programada (oculta en IDEA/Guión) */}
-                    {task.scheduledAt && task.status !== "IDEA" && (
+                    {/* Fecha programada - Oculta en vista compacta y en IDEA/Guión */}
+                    {!isCompactView && task.scheduledAt && task.status !== "IDEA" && (
                       <div className={`text-[9px] md:text-[10px] flex items-center gap-1 mt-1 ${
                         isToday(new Date(task.scheduledAt))
                           ? "text-orange-600 font-semibold"
