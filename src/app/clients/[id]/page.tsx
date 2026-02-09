@@ -338,6 +338,7 @@ export default async function ClientDetailPage({
             <KanbanBoard
               tasks={tasksForKanban}
               users={usersResult.success ? usersResult.data ?? [] : []}
+              clientId={client.id}
             />
           )}
         </TabsContent>

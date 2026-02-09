@@ -81,12 +81,17 @@ const config: Config = {
           "0%": { opacity: "1", transform: "translateX(0) scale(1)" },
           "100%": { opacity: "0", transform: "translateX(20px) scale(0.85)" },
         },
+        "pulse-slow": {
+          "0%, 100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.85", transform: "scale(0.97)" },
+        },
       },
       animation: {
         "hide-scrollbar": "hide-scrollbar 0.5s linear",
         "fade-in": "fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         "fade-in-up": "fade-in-up 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         "fade-out-slide": "fade-out-slide 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "pulse-slow": "pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
     },
   },

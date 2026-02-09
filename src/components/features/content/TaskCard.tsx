@@ -147,18 +147,15 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
                   : "cursor-grab hover:shadow-md"
               } ${
                 task.status === "REVIEW_CLIENT" || task.status === "APPROVED" || task.status === "CLIENT_APPROVED"
-                  ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 ring-1 ring-emerald-200 dark:ring-emerald-800"
+                  ? "bg-emerald-50/50 dark:bg-emerald-950/20 ring-1 ring-emerald-200 dark:ring-emerald-800"
                   : ""
               } ${
                 task.status === "PUBLISHED" 
-                  ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20" 
+                  ? "bg-emerald-50/50 dark:bg-emerald-950/20" 
                   : ""
               }`}
               style={{
-                borderColor:
-                  task.status === "REVIEW_CLIENT" || task.status === "APPROVED" || task.status === "CLIENT_APPROVED" || task.status === "PUBLISHED"
-                    ? undefined
-                    : `${task.client.color || "#000000"}80`,
+                borderColor: `${task.client.color || "#000000"}80`,
               }}
               onClick={(e) => {
                 // Si estamos publicando o arrastrando, no hacer nada

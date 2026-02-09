@@ -12,6 +12,7 @@ import {
 import type { Client } from "@prisma/client";
 import { updateClient } from "@/actions/client-actions";
 import { useToast } from "@/components/ui/use-toast";
+import { useRedirectOnAuthError } from "@/hooks";
 import { ShareReportButton } from "./share-report-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

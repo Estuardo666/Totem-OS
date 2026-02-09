@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useMemo, useRef } from "react";
+import { useState, useEffect, useTransition, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Loader2, X, Calendar, MapPin, Users, FileText, ChevronDown, ChevronUp, User as UserIcon } from "lucide-react";
@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { UploadButton } from "@/utils/uploadthing";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { useToast } from "@/components/ui/use-toast";
+import { useDebounce } from "@/hooks/use-debounce";
 import { createShooting, updateShooting, type CreateShootingInput, type UpdateShootingInput } from "@/actions/shooting-actions";
 import { getTasks } from "@/actions/content-actions";
 import { getUsers } from "@/actions/user.actions";
@@ -75,6 +76,7 @@ export function ShootingForm({
   const [audioBriefUrl, setAudioBriefUrl] = useState("");
   const [notes, setNotes] = useState(initialNotes ?? "");
   const [clientSearch, setClientSearch] = useState("");
+  const debouncedClientSearch = useDebounce(clientSearch, 300);
   const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([]);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [createCalendarEvent, setCreateCalendarEvent] = useState(true);
@@ -91,18 +93,26 @@ export function ShootingForm({
     return [paty?.id, stuart?.id].filter(Boolean) as string[];
   }, [users]);
 
-  const normalizeText = (text: string) =>
+  const normalizeText = useCallback((text: string) =>
     text
       .toLowerCase()
       .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "");
+      .replace(/\p{Diacritic}/gu, ""),
+    []
+  );
 
-  const sortedClients = [...clients].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
-  const filteredClients = sortedClients.filter((client) => {
-    const search = normalizeText(clientSearch).trim();
-    if (!search) return true;
-    return normalizeText(client.name).startsWith(search);
-  });
+  const sortedClients = useMemo(() => 
+    [...clients].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" })),
+    [clients]
+  );
+  
+  const filteredClients = useMemo(() => {
+    const search = normalizeText(debouncedClientSearch).trim();
+    if (!search) return sortedClients;
+    return sortedClients.filter((client) => 
+      normalizeText(client.name).startsWith(search)
+    );
+  }, [sortedClients, debouncedClientSearch, normalizeText]);
 
   // Cargar usuarios al montar
   useEffect(() => {
@@ -119,16 +129,24 @@ export function ShootingForm({
       }
     });
 
-    // Verificar estado de Google Calendar
-    fetch('/api/google-calendar/status')
+    // Verificar estado de Google Calendar con AbortController
+    const controller = new AbortController();
+    
+    fetch('/api/google-calendar/status', { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
-        setIsCalendarConnected(data.connected);
+        if (open) {  // Solo actualizar si aún está abierto
+          setIsCalendarConnected(data.connected);
+        }
       })
       .catch(error => {
-        console.error('Error verificando Google Calendar:', error);
+        if (error.name !== 'AbortError') {
+          console.error('Error verificando Google Calendar:', error);
+        }
       });
-  }, []);
+
+    return () => controller.abort();
+  }, [open]);
 
   // Cargar tareas cuando se selecciona un cliente
   useEffect(() => {

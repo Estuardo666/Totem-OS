@@ -359,8 +359,15 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
       where: whereClause,
       include: {
         client: {
-          // Incluir brandAssets con select específico, pero todos los demás campos del cliente se incluyen automáticamente
-          include: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+            color: true,
+            status: true,
+            editorId: true,
+            communityId: true,
+            brandDNA: true,  // Éste si es necesario incluso si es grande
             brandAssets: {
               select: {
                 id: true,
@@ -370,7 +377,6 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
               },
             },
           },
-          // Nota: brandDNA y todos los demás campos del modelo Client se incluyen automáticamente con include
         },
       },
       orderBy: {

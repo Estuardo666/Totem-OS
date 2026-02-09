@@ -24,6 +24,7 @@ interface KanbanBoardProps {
   users: User[];
   clients?: Array<{ id: string; name: string }>;
   isCompactView?: boolean;
+  clientId?: string; // Si se proporciona, filtra las tareas solo para este cliente
 }
 
 // Estados que se mostrarán en el Kanban
@@ -39,7 +40,7 @@ const KANBAN_COLUMNS: {
   { status: "PUBLISHED", label: "Publicado" },
 ];
 
-export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompactView = false }: KanbanBoardProps) {
+export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompactView = false, clientId }: KanbanBoardProps) {
   const { toast } = useToast();
   const [tasks, setTasks] = useState<ContentTaskWithClient[]>(initialTasks);
   const [isMounted, setIsMounted] = useState(false);
@@ -229,12 +230,16 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
         console.log("🔄 Recargando tareas desde getTasks()...");
         const result = await getTasks();
         if (result.success && result.data) {
-          console.log("✅ Tareas obtenidas del servidor:", result.data.length);
+          // Si hay clientId, filtrar solo las tareas de ese cliente
+          const filteredData = clientId 
+            ? result.data.filter(t => t.client.id === clientId)
+            : result.data;
+          console.log("✅ Tareas obtenidas del servidor:", filteredData.length, clientId ? `(filtradas para cliente ${clientId})` : "(todas)");
           
           // Fusionar: preservar el orden local, actualizar datos del servidor
           setTasks((prevTasks) => {
             // Crear un mapa de tareas nuevas por ID para fácil acceso
-            const newTasksMap = new Map(result.data!.map(t => [t.id, t]));
+            const newTasksMap = new Map(filteredData.map(t => [t.id, t]));
             
             // 1. Actualizar tareas existentes con datos nuevos (preservando orden)
             const updatedTasks = prevTasks.map(task => {
@@ -249,7 +254,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
             
             // 2. Agregar tareas nuevas que no están en el estado local
             const existingIds = new Set(prevTasks.map(t => t.id));
-            const newTasks = result.data!.filter(t => !existingIds.has(t.id));
+            const newTasks = filteredData.filter(t => !existingIds.has(t.id));
             
             // 3. Combinar y eliminar cualquier duplicado accidental
             const combined = [...updatedTasks, ...newTasks];
@@ -618,10 +623,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
                             {/* Versión simplificada sin Draggable para estado no montado */}
                             <Card className="border-l-2 md:border-l-4 cursor-pointer hover:shadow-md transition-all max-w-full overflow-hidden"
                               style={{
-                                borderLeftColor:
-                                  task.status === "REVIEW_CLIENT" || task.status === "APPROVED" || task.status === "CLIENT_APPROVED"
-                                    ? undefined
-                                    : task.client.color || "#000000",
+                                borderLeftColor: `${task.client.color || "#000000"}80`,
                               }}
                               onClick={() => {
                                 setSelectedTask(task);

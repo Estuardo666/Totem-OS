@@ -56,6 +56,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
 
   const form = useForm<CreateContentTaskInput>({
     resolver: zodResolver(createContentTaskSchema),
+    mode: "onBlur",
     defaultValues: {
       title: "",
       type: "REEL",
