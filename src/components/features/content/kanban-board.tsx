@@ -595,7 +595,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
   // Usamos una versión simplificada sin Droppable para evitar errores de contexto
   if (!isMounted) {
     return (
-      <div className="w-full h-full overflow-hidden">
+      <div className="w-full h-full overflow-visible">
         {/* Mobile: scroll horizontal | Desktop: grid con columnas fijas */}
         <div className="flex md:grid md:grid-cols-6 md:gap-4 w-full h-full items-start overflow-x-auto md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0">
           {KANBAN_COLUMNS.map((column) => {
@@ -682,7 +682,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
       onDragUpdate={handleDragUpdate}
       onDragEnd={handleDragEnd}
     >
-      <div className="w-full h-full overflow-hidden">
+      <div className="w-full h-full overflow-visible">
         {/* Mobile: scroll horizontal | Desktop: grid con columnas fijas */}
         <div
           ref={scrollRef}

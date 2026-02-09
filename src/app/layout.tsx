@@ -15,6 +15,7 @@ import { GoogleMapsScript } from "@/components/providers/google-maps-script";
 import { PwaServiceWorker } from "@/components/providers/pwa-service-worker";
 import { OneSignalProvider } from "@/components/providers/onesignal-provider";
 import { SplashProvider } from "@/components/providers/splash-provider";
+import { AppBadgeProvider } from "@/components/providers/app-badge-provider";
 import { getBrandSettings } from "@/actions/admin-actions";
 import { PRIMARY_COLOR_COOKIE, resolvePrimaryColor } from "@/lib/theme";
 import "./globals.css";
@@ -122,6 +123,7 @@ export default async function RootLayout({
         <NextAuthSessionProvider>
           <OneSignalProvider>
             <SplashProvider>
+              <AppBadgeProvider />
               <ThemeProvider>
                 <UploadThingProviderWrapper>
                   <ConditionalLayout>
