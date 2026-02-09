@@ -5,8 +5,13 @@
 /* Soluciona el body shift cuando se abre un modal/sheet */
 html {
   scrollbar-gutter: stable;
-  /* Deshabilitar zoom con dos dedos en mobile */
-  touch-action: none;
+  /* Deshabilitar pinch zoom en mobile - manipulation permite scroll pero no zoom */
+  touch-action: manipulation;
+}
+
+/* Bloquear zoom globalmente */
+* {
+  touch-action: manipulation;
 }
 
 /* Previene el layout shift cuando Radix aplica inline styles al body */
