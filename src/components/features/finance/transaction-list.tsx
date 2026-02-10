@@ -24,6 +24,21 @@ import { EditInvoiceDialog } from "./edit-invoice-dialog";
 import { EditExpenseDialog } from "./edit-expense-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
+const formatDateNatural = (value?: string | Date) => {
+  if (!value) return "";
+  const date = typeof value === "string" ? new Date(value) : value;
+  try {
+    return new Intl.DateTimeFormat("es-ES", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(date);
+  } catch (e) {
+    return date.toLocaleDateString("es-ES");
+  }
+};
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -673,10 +688,25 @@ export function TransactionList({ transactions }: TransactionListProps) {
                       />
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {format(new Date(transaction.date), "dd/MM/yyyy")}
+                      {formatDateNatural(transaction.date)}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {transaction.clientName || (
+                      {transaction.clientName ? (
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={(transaction as any).clientLogo || undefined} alt={transaction.clientName} />
+                            <AvatarFallback className="text-xs">
+                              {transaction.clientName
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .toUpperCase()
+                                .slice(0, 2) || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{transaction.clientName}</span>
+                        </div>
+                      ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
                       {transaction.assignedToName && transaction.description?.includes("(Compartido") && (

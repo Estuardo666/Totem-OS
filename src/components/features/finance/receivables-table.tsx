@@ -11,6 +11,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -143,7 +144,20 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
             return (
               <TableRow key={transaction.id}>
                 <TableCell className="font-medium">
-                  {transaction.clientName || "-"}
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={(transaction as any).clientLogo || undefined} alt={transaction.clientName || "Cliente"} />
+                      <AvatarFallback className="text-xs">
+                        {(transaction.clientName || "")
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2) || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{transaction.clientName || "-"}</span>
+                  </div>
                 </TableCell>
                 <TableCell>{transaction.description}</TableCell>
                 <TableCell className="text-muted-foreground">

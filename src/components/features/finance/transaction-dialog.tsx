@@ -105,6 +105,30 @@ const formatDateValue = (value?: Date | string) => {
   return `${year}-${month}-${day}`;
 };
 
+const formatDateNatural = (value?: Date | string) => {
+  if (!value) return "";
+  const date = typeof value === "string" ? new Date(value) : new Date(value);
+  try {
+    return new Intl.DateTimeFormat("es-ES", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(date);
+  } catch (e) {
+    return date.toLocaleDateString("es-ES");
+  }
+};
+
+// Parse a date-only input (YYYY-MM-DD) into a local Date at midnight
+const parseDateFromInput = (value?: string) => {
+  if (!value) return undefined;
+  const parts = value.split("-");
+  if (parts.length !== 3) return undefined;
+  const [y, m, d] = parts.map((p) => parseInt(p, 10));
+  if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return undefined;
+  return new Date(y, m - 1, d);
+};
+
 export function TransactionDialog({ children, defaultTab }: TransactionDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -604,13 +628,17 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                           value={formatDateValue(field.value as Date | string | undefined) || formatDateValue(getCurrentDateInEcuador())}
                           onChange={(e) => {
                             field.onChange(
-                              e.target.value ? new Date(e.target.value) : getCurrentDateInEcuador()
+                              e.target.value ? parseDateFromInput(e.target.value) : getCurrentDateInEcuador()
                             );
                           }}
                           disabled={isSubmitting}
                         />
                       </FormControl>
                       <FormMessage />
+                      {/** Natural language preview */}
+                      <div className="text-sm text-muted-foreground mt-1">
+                        {formatDateNatural(field.value as Date | string | undefined) || formatDateNatural(getCurrentDateInEcuador())}
+                      </div>
                     </FormItem>
                   )}
                 />
@@ -627,13 +655,16 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                           value={formatDateValue(field.value as Date | string | undefined)}
                           onChange={(e) => {
                             field.onChange(
-                              e.target.value ? new Date(e.target.value) : undefined
+                              e.target.value ? parseDateFromInput(e.target.value) : undefined
                             );
                           }}
                           disabled={isSubmitting}
                         />
                       </FormControl>
                       <FormMessage />
+                      <div className="text-sm text-muted-foreground mt-1">
+                        {formatDateNatural(field.value as Date | string | undefined)}
+                      </div>
                     </FormItem>
                   )}
                 />
@@ -753,13 +784,16 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                             value={formatDateValue(field.value as Date | string | undefined) || formatDateValue(getCurrentDateInEcuador())}
                             onChange={(e) => {
                               field.onChange(
-                                e.target.value ? new Date(e.target.value) : getCurrentDateInEcuador()
+                                e.target.value ? parseDateFromInput(e.target.value) : getCurrentDateInEcuador()
                               );
                             }}
                             disabled={isSubmitting}
                           />
                         </FormControl>
                         <FormMessage />
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {formatDateNatural(field.value as Date | string | undefined) || formatDateNatural(getCurrentDateInEcuador())}
+                        </div>
                       </FormItem>
                     )}
                   />
