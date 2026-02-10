@@ -156,7 +156,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
     resolver: zodResolver(createInvoiceSchema),
     defaultValues: {
       amount: 0,
-      status: "PENDING",
+      status: "PAID",
       clientId: "",
       dueDate: undefined,
       generatedAt: getCurrentDateInEcuador(),
