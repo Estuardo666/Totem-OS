@@ -178,11 +178,21 @@ export function EditTransactionDialog({
                       step="0.01"
                       min="0.01"
                       placeholder="0.00"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value) || 0)
-                      }
-                      value={field.value || 0}
+                      inputMode="decimal"
+                      value={field.value === 0 ? "" : field.value ?? ""}
+                      onChange={(e) => {
+                        if (e.target.value === "") {
+                          field.onChange(undefined);
+                        } else {
+                          field.onChange(parseFloat(e.target.value) || 0);
+                        }
+                      }}
+                      onFocus={(e) => {
+                        if (field.value === 0) {
+                          field.onChange(undefined);
+                          e.currentTarget.value = "";
+                        }
+                      }}
                       disabled={isSubmitting}
                     />
                   </FormControl>

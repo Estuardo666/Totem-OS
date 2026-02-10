@@ -16,6 +16,7 @@ import {
 } from "@/schemas/finance";
 import type { Client, User } from "@prisma/client";
 import { getClients } from "@/actions/client-actions";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getUsers } from "@/actions/user.actions";
 import { createInvoice, createExpense, createTransaction } from "@/actions/finance-actions";
 import { useToast } from "@/components/ui/use-toast";
@@ -119,9 +120,12 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
   const [activeTab, setActiveTab] = useState<string>(isAdmin ? "income" : "expense");
   const [incomeClientQuery, setIncomeClientQuery] = useState("");
   const [expenseClientQuery, setExpenseClientQuery] = useState("");
+  const debouncedIncomeClientQuery = useDebouncedValue(incomeClientQuery, 250);
+  const debouncedExpenseClientQuery = useDebouncedValue(expenseClientQuery, 250);
   const [incomeAmountInput, setIncomeAmountInput] = useState<string>("");
   const [expenseAmountInput, setExpenseAmountInput] = useState<string>("");
   const [honorariosAmountInput, setHonorariosAmountInput] = useState<string>("");
+  const [incomeAmountMode, setIncomeAmountMode] = useState<"100" | "50" | "other">("other");
 
   // Formulario de Ingreso
   const incomeForm = useForm<CreateInvoiceInput>({
@@ -131,6 +135,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
       status: "PENDING",
       clientId: "",
       dueDate: undefined,
+      generatedAt: getCurrentDateInEcuador(),
     },
   });
 
@@ -216,12 +221,41 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
   }, [open, incomeForm, expenseForm, honorariosForm]);
 
   const filteredIncomeClients = clients.filter((client) =>
-    client.name?.toLowerCase().includes(incomeClientQuery.trim().toLowerCase())
+    client.name
+      ?.toLowerCase()
+      .includes(debouncedIncomeClientQuery.trim().toLowerCase())
   );
 
   const filteredExpenseClients = clients.filter((client) =>
-    client.name?.toLowerCase().includes(expenseClientQuery.trim().toLowerCase())
+    client.name
+      ?.toLowerCase()
+      .includes(debouncedExpenseClientQuery.trim().toLowerCase())
   );
+
+  // Watch selected client for income form to populate percentage-based amount
+  const incomeSelectedClientId = incomeForm.watch("clientId");
+  const incomeSelectedClient = clients.find((c) => c.id === incomeSelectedClientId);
+  const incomeSelectedMonthly = incomeSelectedClient?.monthlyRate ?? 0;
+
+  useEffect(() => {
+    if (!incomeSelectedClientId) return;
+    const client = clients.find((c) => c.id === incomeSelectedClientId);
+    const monthly = client?.monthlyRate ?? 0;
+
+    if (incomeAmountMode === "100") {
+      const val = monthly;
+      setIncomeAmountInput(val ? String(val) : "");
+      incomeForm.setValue("amount", val || undefined);
+    } else if (incomeAmountMode === "50") {
+      const val = monthly ? monthly / 2 : 0;
+      setIncomeAmountInput(val ? String(val) : "");
+      incomeForm.setValue("amount", val || undefined);
+    } else if (incomeAmountMode === "other") {
+      // leave input as-is but if it's empty, clear form amount
+      if (!incomeAmountInput) incomeForm.setValue("amount", undefined);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomeSelectedClientId, incomeAmountMode, clients]);
 
   // Handler para auto-detectar categoría cuando se sale del campo de descripción
   const handleExpenseDescriptionBlur = (descriptionValue: string) => {
@@ -436,6 +470,47 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                   )}
                 />
 
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium">Monto pagado:</span>
+                  {[
+                    { key: "100", label: "100%" },
+                    { key: "50", label: "50%" },
+                    { key: "other", label: "Otro" },
+                  ].map((opt) => {
+                    const isPct = opt.key === "100" || opt.key === "50";
+                    const disabledPct = isPct && (!incomeSelectedClient || (incomeSelectedMonthly ?? 0) <= 0);
+                    const title = disabledPct
+                      ? !incomeSelectedClient
+                        ? "Selecciona un cliente con tarifa mensual"
+                        : "El cliente no tiene tarifa mensual"
+                      : `Rellenar ${opt.label}`;
+
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        disabled={disabledPct}
+                        title={title}
+                        onClick={() => {
+                          if (disabledPct) return;
+                          setIncomeAmountMode(opt.key as any);
+                          if (opt.key === "other") {
+                            setIncomeAmountInput("");
+                            incomeForm.setValue("amount", undefined);
+                          }
+                        }}
+                        className={`rounded-full px-3 py-1 text-sm border transition ${
+                          incomeAmountMode === opt.key
+                            ? "bg-primary/10 border-primary text-primary"
+                            : "border-muted-foreground/20 text-muted-foreground"
+                        } ${disabledPct ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div className="grid grid-cols-[2fr_3fr] gap-4">
                   <FormField
                     control={incomeForm.control}
@@ -516,6 +591,29 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={incomeForm.control}
+                  name="generatedAt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fecha (Factura)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          value={formatDateValue(field.value as Date | string | undefined) || formatDateValue(getCurrentDateInEcuador())}
+                          onChange={(e) => {
+                            field.onChange(
+                              e.target.value ? new Date(e.target.value) : getCurrentDateInEcuador()
+                            );
+                          }}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={incomeForm.control}

@@ -431,6 +431,38 @@ export async function bulkDeleteExpenses(
 }
 
 /**
+ * Borrar múltiples facturas (invoices) de forma permanente
+ */
+export async function bulkDeleteInvoices(
+  invoiceIds: string[]
+): Promise<ApiResponse<{ deleted: number }>> {
+  try {
+    if (!invoiceIds || invoiceIds.length === 0) {
+      return { success: false, error: "No se seleccionaron facturas" };
+    }
+
+    const result = await db.invoice.deleteMany({
+      where: {
+        id: {
+          in: invoiceIds,
+        },
+      },
+    });
+
+    revalidatePath("/finance");
+    return {
+      success: true,
+      data: { deleted: result.count },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al borrar facturas",
+    };
+  }
+}
+
+/**
  * Cambiar el estado de múltiples transacciones
  */
 export async function bulkUpdateTransactionStatus(

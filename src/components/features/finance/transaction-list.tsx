@@ -14,6 +14,7 @@ import {
   getInvoiceById,
   getExpenseById,
   bulkDeleteTransactions,
+  bulkDeleteInvoices,
   bulkDeleteExpenses,
   bulkUpdateTransactionStatus,
 } from "@/actions/finance-actions";
@@ -353,19 +354,20 @@ export function TransactionList({ transactions }: TransactionListProps) {
     } else {
       const newSelected = new Map(selectedItems);
       filteredTransactions.forEach(t => {
-        // Detectar si es un expense o una transacción
+        // Detectar si es un expense, invoice o una transacción
         const isExpense = t.type === "EXPENSE";
         const sourceType = t.sourceType || 
           (t.description?.startsWith("Factura") ? "INVOICE" : 
            isExpense ? "EXPENSE" :
            t.category ? "EXPENSE" : "TRANSACTION");
-        newSelected.set(t.id, sourceType === "EXPENSE" ? "expense" : "transaction");
+        const itemType = sourceType === "EXPENSE" ? "expense" : sourceType === "INVOICE" ? "invoice" : "transaction";
+        newSelected.set(t.id, itemType);
       });
       setSelectedItems(newSelected);
     }
   };
 
-  const toggleSelectTransaction = (id: string, itemType: "transaction" | "expense") => {
+  const toggleSelectTransaction = (id: string, itemType: "transaction" | "expense" | "invoice") => {
     const newSelected = new Map(selectedItems);
     if (newSelected.has(id)) {
       newSelected.delete(id);
@@ -389,10 +391,14 @@ export function TransactionList({ transactions }: TransactionListProps) {
         .filter(([_, type]) => type === "expense")
         .map(([id, _]) => id);
 
+      const invoiceIds = Array.from(selectedItems.entries())
+        .filter(([_, type]) => type === "invoice")
+        .map(([id, _]) => id);
+
       let deletedCount = 0;
       let hasError = false;
 
-      // Borrar transacciones
+      // Borrar transacciones (no invoices)
       if (transactionIds.length > 0) {
         const result = await bulkDeleteTransactions(transactionIds);
         if (!result.success) {
@@ -401,6 +407,21 @@ export function TransactionList({ transactions }: TransactionListProps) {
             variant: "destructive",
             title: "Error",
             description: result.error || "No se pudieron eliminar las transacciones",
+          });
+        } else {
+          deletedCount += result.data.deleted;
+        }
+      }
+
+      // Borrar facturas (invoices)
+      if (invoiceIds.length > 0) {
+        const result = await bulkDeleteInvoices(invoiceIds);
+        if (!result.success) {
+          hasError = true;
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: result.error || "No se pudieron eliminar las facturas",
           });
         } else {
           deletedCount += result.data.deleted;
@@ -640,7 +661,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                   (transaction.description?.startsWith("Factura") ? "INVOICE" : 
                    isExpenseType ? "EXPENSE" :
                    transaction.category ? "EXPENSE" : "TRANSACTION");
-                const itemType = sourceType === "EXPENSE" ? "expense" : "transaction";
+                const itemType = sourceType === "EXPENSE" ? "expense" : sourceType === "INVOICE" ? "invoice" : "transaction";
 
                 return (
                   <TableRow key={transaction.id}>

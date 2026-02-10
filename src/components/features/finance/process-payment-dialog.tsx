@@ -127,9 +127,21 @@ export function ProcessPaymentDialog({
                       type="number"
                       step="0.01"
                       placeholder="0.00"
-                      {...field}
-                      value={field.value}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
+                      inputMode="decimal"
+                      value={field.value === 0 ? "" : field.value ?? ""}
+                      onChange={(e) => {
+                        if (e.target.value === "") {
+                          field.onChange(undefined);
+                        } else {
+                          field.onChange(Number(e.target.value));
+                        }
+                      }}
+                      onFocus={(e) => {
+                        if (field.value === 0) {
+                          field.onChange(undefined);
+                          e.currentTarget.value = "";
+                        }
+                      }}
                       disabled={isSubmitting}
                     />
                   </FormControl>
