@@ -119,6 +119,9 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
   const [activeTab, setActiveTab] = useState<string>(isAdmin ? "income" : "expense");
   const [incomeClientQuery, setIncomeClientQuery] = useState("");
   const [expenseClientQuery, setExpenseClientQuery] = useState("");
+  const [incomeAmountInput, setIncomeAmountInput] = useState<string>("");
+  const [expenseAmountInput, setExpenseAmountInput] = useState<string>("");
+  const [honorariosAmountInput, setHonorariosAmountInput] = useState<string>("");
 
   // Formulario de Ingreso
   const incomeForm = useForm<CreateInvoiceInput>({
@@ -187,6 +190,14 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
           setLoadingClients(false);
           setLoadingUsers(false);
         });
+      // Inicializar los inputs locales de monto según valores del formulario
+      const incomeAmt = incomeForm.getValues("amount");
+      const expenseAmt = expenseForm.getValues("amount");
+      const honorAmt = honorariosForm.getValues("amount");
+
+      setIncomeAmountInput(incomeAmt && incomeAmt !== 0 ? String(incomeAmt) : "");
+      setExpenseAmountInput(expenseAmt && expenseAmt !== 0 ? String(expenseAmt) : "");
+      setHonorariosAmountInput(honorAmt && honorAmt !== 0 ? String(honorAmt) : "");
     }
   }, [open, expenseForm]);
 
@@ -198,6 +209,9 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
       honorariosForm.reset();
       setIncomeClientQuery("");
       setExpenseClientQuery("");
+      setIncomeAmountInput("");
+      setExpenseAmountInput("");
+      setHonorariosAmountInput("");
     }
   }, [open, incomeForm, expenseForm, honorariosForm]);
 
@@ -436,18 +450,21 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                             min="0.01"
                             placeholder="0.00"
                             className="text-2xl font-bold"
-                            value={field.value ?? ""}
-                            {...field}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value === ""
-                                  ? undefined
-                                  : parseFloat(e.target.value) || 0
-                              )
-                            }
-                            onFocus={() => {
-                              if (field.value === 0) {
+                            inputMode="decimal"
+                            value={incomeAmountInput}
+                            onChange={(e) => setIncomeAmountInput(e.target.value)}
+                            onBlur={(e) => {
+                              field.onBlur();
+                              if (e.target.value === "") {
                                 field.onChange(undefined);
+                              } else {
+                                field.onChange(parseFloat(e.target.value) || 0);
+                              }
+                            }}
+                            onFocus={(e) => {
+                              // allow clearing the 0 on focus
+                              if (field.value === 0) {
+                                setIncomeAmountInput("");
                               }
                             }}
                             disabled={isSubmitting}
@@ -600,18 +617,20 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                               min="0.01"
                               placeholder="0.00"
                               className="pl-8 text-2xl font-bold"
-                              value={field.value ?? ""}
-                              {...field}
-                              onChange={(e) =>
-                                field.onChange(
-                                  e.target.value === ""
-                                    ? undefined
-                                    : parseFloat(e.target.value) || 0
-                                )
-                              }
+                              inputMode="decimal"
+                              value={expenseAmountInput}
+                              onChange={(e) => setExpenseAmountInput(e.target.value)}
+                              onBlur={(e) => {
+                                field.onBlur();
+                                if (e.target.value === "") {
+                                  field.onChange(undefined);
+                                } else {
+                                  field.onChange(parseFloat(e.target.value) || 0);
+                                }
+                              }}
                               onFocus={() => {
                                 if (field.value === 0) {
-                                  field.onChange(undefined);
+                                  setExpenseAmountInput("");
                                 }
                               }}
                               disabled={isSubmitting}
@@ -877,10 +896,22 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                             step="0.01"
                             min="0.01"
                             placeholder="0.00"
-                            {...field}
-                            onChange={(e) =>
-                              field.onChange(parseFloat(e.target.value) || 0)
-                            }
+                            inputMode="decimal"
+                            value={honorariosAmountInput}
+                            onChange={(e) => setHonorariosAmountInput(e.target.value)}
+                            onBlur={(e) => {
+                              field.onBlur();
+                              if (e.target.value === "") {
+                                field.onChange(undefined);
+                              } else {
+                                field.onChange(parseFloat(e.target.value) || 0);
+                              }
+                            }}
+                            onFocus={() => {
+                              if (field.value === 0) {
+                                setHonorariosAmountInput("");
+                              }
+                            }}
                             disabled={isSubmitting}
                           />
                         </FormControl>

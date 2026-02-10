@@ -187,11 +187,22 @@ export function EditInvoiceDialog({
                       step="0.01"
                       min="0.01"
                       placeholder="0.00"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value) || 0)
-                      }
-                      value={field.value || 0}
+                      value={field.value === 0 ? "" : field.value ?? ""}
+                      onChange={(e) => {
+                        // Permitir borrar completamente
+                        if (e.target.value === "") {
+                          field.onChange(undefined);
+                        } else {
+                          field.onChange(parseFloat(e.target.value) || 0);
+                        }
+                      }}
+                      onFocus={(e) => {
+                        if (field.value === 0) {
+                          field.onChange(undefined);
+                          e.target.value = "";
+                        }
+                      }}
+                      inputMode="decimal"
                       disabled={isSubmitting}
                     />
                   </FormControl>
