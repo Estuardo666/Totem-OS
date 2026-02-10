@@ -117,6 +117,8 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
   const [loadingClients, setLoadingClients] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(isAdmin ? "income" : "expense");
+  const [incomeClientQuery, setIncomeClientQuery] = useState("");
+  const [expenseClientQuery, setExpenseClientQuery] = useState("");
 
   // Formulario de Ingreso
   const incomeForm = useForm<CreateInvoiceInput>({
@@ -194,8 +196,18 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
       incomeForm.reset();
       expenseForm.reset();
       honorariosForm.reset();
+      setIncomeClientQuery("");
+      setExpenseClientQuery("");
     }
   }, [open, incomeForm, expenseForm, honorariosForm]);
+
+  const filteredIncomeClients = clients.filter((client) =>
+    client.name?.toLowerCase().includes(incomeClientQuery.trim().toLowerCase())
+  );
+
+  const filteredExpenseClients = clients.filter((client) =>
+    client.name?.toLowerCase().includes(expenseClientQuery.trim().toLowerCase())
+  );
 
   // Handler para auto-detectar categoría cuando se sale del campo de descripción
   const handleExpenseDescriptionBlur = (descriptionValue: string) => {
@@ -364,11 +376,39 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {clients.map((client) => (
-                            <SelectItem key={client.id} value={client.id}>
-                              {client.name}
-                            </SelectItem>
-                          ))}
+                          <div className="p-2">
+                            <Input
+                              placeholder="Buscar cliente..."
+                              value={incomeClientQuery}
+                              onChange={(event) => setIncomeClientQuery(event.target.value)}
+                              onKeyDown={(event) => event.stopPropagation()}
+                              disabled={loadingClients}
+                            />
+                          </div>
+                          {filteredIncomeClients.length === 0 ? (
+                            <div className="px-2 pb-2 text-sm text-muted-foreground">
+                              Sin resultados
+                            </div>
+                          ) : (
+                            filteredIncomeClients.map((client) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6">
+                                    <AvatarImage src={client.logo || undefined} alt={client.name} />
+                                    <AvatarFallback className="text-xs">
+                                      {client.name
+                                        ?.split(" ")
+                                        .map((n) => n[0])
+                                        .join("")
+                                        .toUpperCase()
+                                        .slice(0, 2) || "??"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span>{client.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -376,55 +416,73 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                   )}
                 />
 
-                <FormField
-                  control={incomeForm.control}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Monto ($)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0.01"
-                          placeholder="0.00"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(parseFloat(e.target.value) || 0)
-                          }
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={incomeForm.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Estado</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        disabled={isSubmitting}
-                      >
+                <div className="grid grid-cols-[2fr_3fr] gap-4">
+                  <FormField
+                    control={incomeForm.control}
+                    name="amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Monto ($)</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona el estado" />
-                          </SelectTrigger>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            placeholder="0.00"
+                            className="text-2xl font-bold"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(parseFloat(e.target.value) || 0)
+                            }
+                            disabled={isSubmitting}
+                          />
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="PAID">Pagada</SelectItem>
-                          <SelectItem value="PENDING">Pendiente</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={incomeForm.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estado</FormLabel>
+                        <FormControl>
+                          <div className="flex gap-2">
+                            {[
+                              { value: "PAID", label: "Pagada" },
+                              { value: "PENDING", label: "Pendiente" },
+                            ].map((option) => (
+                              <label
+                                key={option.value}
+                                className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors ${
+                                  field.value === option.value
+                                    ? option.value === "PAID"
+                                      ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-600"
+                                      : "border-amber-500/70 bg-amber-500/15 text-amber-700"
+                                    : "border-muted-foreground/20 text-muted-foreground"
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={field.name}
+                                  value={option.value}
+                                  checked={field.value === option.value}
+                                  onChange={() => field.onChange(option.value)}
+                                  disabled={isSubmitting}
+                                  className="h-4 w-4"
+                                />
+                                <span>{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={incomeForm.control}
@@ -614,25 +672,40 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <div className="p-2">
+                            <Input
+                              placeholder="Buscar cliente..."
+                              value={expenseClientQuery}
+                              onChange={(event) => setExpenseClientQuery(event.target.value)}
+                              onKeyDown={(event) => event.stopPropagation()}
+                              disabled={loadingClients}
+                            />
+                          </div>
                           <SelectItem value="none">Sin cliente</SelectItem>
-                          {clients.map((client) => (
-                            <SelectItem key={client.id} value={client.id}>
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-6 w-6">
-                                  <AvatarImage src={client.logo || undefined} alt={client.name} />
-                                  <AvatarFallback className="text-xs">
-                                    {client.name
-                                      ?.split(' ')
-                                      .map(n => n[0])
-                                      .join('')
-                                      .toUpperCase()
-                                      .slice(0, 2) || '??'}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span>{client.name}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
+                          {filteredExpenseClients.length === 0 ? (
+                            <div className="px-2 pb-2 text-sm text-muted-foreground">
+                              Sin resultados
+                            </div>
+                          ) : (
+                            filteredExpenseClients.map((client) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6">
+                                    <AvatarImage src={client.logo || undefined} alt={client.name} />
+                                    <AvatarFallback className="text-xs">
+                                      {client.name
+                                        ?.split(" ")
+                                        .map((n) => n[0])
+                                        .join("")
+                                        .toUpperCase()
+                                        .slice(0, 2) || "??"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span>{client.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
