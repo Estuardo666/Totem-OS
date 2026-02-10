@@ -324,6 +324,12 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
     ? "expense"
     : defaultTab ?? (isAdmin ? "income" : "expense");
 
+  useEffect(() => {
+    if (open) {
+      setActiveTab(resolvedDefaultTab);
+    }
+  }, [open, resolvedDefaultTab]);
+
   const triggerContent = children ?? (
     <Button variant="outline" className="gap-2">
       <Plus className="h-4 w-4" />
@@ -344,7 +350,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue={resolvedDefaultTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className={`grid w-full h-12 items-center rounded-full bg-muted px-3 py-1 text-muted-foreground ${isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
             {isAdmin && <TabsTrigger value="income" className="rounded-full">Ingreso</TabsTrigger>}
             <TabsTrigger value="expense" className="rounded-full">Gasto</TabsTrigger>
@@ -430,10 +436,20 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                             min="0.01"
                             placeholder="0.00"
                             className="text-2xl font-bold"
+                            value={field.value ?? ""}
                             {...field}
                             onChange={(e) =>
-                              field.onChange(parseFloat(e.target.value) || 0)
+                              field.onChange(
+                                e.target.value === ""
+                                  ? undefined
+                                  : parseFloat(e.target.value) || 0
+                              )
                             }
+                            onFocus={() => {
+                              if (field.value === 0) {
+                                field.onChange(undefined);
+                              }
+                            }}
                             disabled={isSubmitting}
                           />
                         </FormControl>
@@ -584,10 +600,20 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                               min="0.01"
                               placeholder="0.00"
                               className="pl-8 text-2xl font-bold"
+                              value={field.value ?? ""}
                               {...field}
                               onChange={(e) =>
-                                field.onChange(parseFloat(e.target.value) || 0)
+                                field.onChange(
+                                  e.target.value === ""
+                                    ? undefined
+                                    : parseFloat(e.target.value) || 0
+                                )
                               }
+                              onFocus={() => {
+                                if (field.value === 0) {
+                                  field.onChange(undefined);
+                                }
+                              }}
                               disabled={isSubmitting}
                             />
                           </div>
