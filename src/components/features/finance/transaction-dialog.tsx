@@ -150,6 +150,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
   const [expenseAmountInput, setExpenseAmountInput] = useState<string>("");
   const [honorariosAmountInput, setHonorariosAmountInput] = useState<string>("");
   const [incomeAmountMode, setIncomeAmountMode] = useState<"100" | "50" | "other">("other");
+  const [honorariosUserIds, setHonorariosUserIds] = useState<string[]>([]);
 
   // Formulario de Ingreso
   const incomeForm = useForm<CreateInvoiceInput>({
@@ -241,6 +242,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
       setIncomeAmountInput("");
       setExpenseAmountInput("");
       setHonorariosAmountInput("");
+      setHonorariosUserIds([]);
     }
   }, [open, incomeForm, expenseForm, honorariosForm]);
 
@@ -362,20 +364,38 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
     setIsSubmitting(true);
 
     try {
-      const result = await createTransaction(data);
+      if (honorariosUserIds.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Selecciona usuarios",
+          description: "Debes seleccionar al menos un usuario para registrar honorarios.",
+        });
+        return;
+      }
 
-      if (result.success) {
+      const results = await Promise.all(
+        honorariosUserIds.map((userId) =>
+          createTransaction({
+            ...data,
+            userId,
+          })
+        )
+      );
+
+      const hasError = results.some((result) => !result.success);
+      if (!hasError) {
         toast({
           title: "Honorarios registrados",
-          description: "La transacción de honorarios se ha registrado correctamente.",
+          description: "Las transacciones de honorarios se han registrado correctamente.",
         });
         router.refresh();
         setOpen(false);
       } else {
+        const firstError = results.find((result) => !result.success);
         toast({
           variant: "destructive",
           title: "Error al registrar honorarios",
-          description: result.error || "Ocurrió un error inesperado",
+          description: firstError?.error || "Ocurrió un error inesperado",
         });
       }
     } catch (error) {
@@ -984,37 +1004,54 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                   onSubmit={honorariosForm.handleSubmit(onHonorariosSubmit)}
                   className="space-y-4"
                 >
-                  <FormField
-                    control={honorariosForm.control}
-                    name="userId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Usuario</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          disabled={isSubmitting || loadingUsers}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona un usuario" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {users.map((user) => (
-                              <SelectItem key={user.id} value={user.id}>
-                                {user.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        <p className="text-sm text-muted-foreground">
-                          Selecciona el usuario que recibirá el pago de honorarios
-                        </p>
-                      </FormItem>
-                    )}
-                  />
+                  <FormItem>
+                    <div className="space-y-3">
+                      <FormLabel>Usuarios</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Selecciona uno o más usuarios para registrar honorarios.
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {users.map((user) => {
+                          const firstName = user.name?.split(" ")[0] || user.name;
+                          const initials = user.name
+                            ?.split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()
+                            .slice(0, 2) || "??";
+
+                          const checked = honorariosUserIds.includes(user.id);
+
+                          return (
+                            <div key={user.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`honorarios-user-${user.id}`}
+                                checked={checked}
+                                onCheckedChange={(value) => {
+                                  if (value) {
+                                    setHonorariosUserIds((prev) => [...prev, user.id]);
+                                  } else {
+                                    setHonorariosUserIds((prev) => prev.filter((id) => id !== user.id));
+                                  }
+                                }}
+                                disabled={isSubmitting || loadingUsers}
+                              />
+                              <Label
+                                htmlFor={`honorarios-user-${user.id}`}
+                                className="flex items-center gap-2 cursor-pointer flex-1"
+                              >
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={user.image || undefined} alt={firstName || "Usuario"} />
+                                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm font-normal truncate">{firstName}</span>
+                              </Label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </FormItem>
 
                   <FormField
                     control={honorariosForm.control}
@@ -1029,6 +1066,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                             min="0.01"
                             placeholder="0.00"
                             inputMode="decimal"
+                            className="text-2xl font-bold"
                             value={honorariosAmountInput}
                             onChange={(e) => setHonorariosAmountInput(e.target.value)}
                             onBlur={(e) => {

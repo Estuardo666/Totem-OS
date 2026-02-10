@@ -10,7 +10,7 @@
 - **Think before coding:** Break down complex tasks into small, atomic steps.
 - **No Monoliths:** Do not generate single files with >300 lines of code. Split logic into hooks, utils, or sub-components.
 - **Feature-Based Architecture:** Respect the `/src/components/features/{module}` structure. Do not mix features.
-- **Mobile First:** All UI code must be mobile-responsive by default using Tailwind classes (e.g., `grid-cols-1 md:grid-cols-3`).
+- **Mobile First:** All UI code must be mobile-responsive by default using Tailwind classes (e.g., `grid-cols-1 md:grid-cols-3`).g
 
 
 ## Conventions & patterns
