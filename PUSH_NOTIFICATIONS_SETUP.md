@@ -5,9 +5,32 @@
 - ✅ Backend: Configurado y funcionando
 - ✅ OneSignal: Integrado correctamente  
 - ✅ Variables de entorno: Configuradas
-- ⚠️ **Frontend: Provider REACTIVADO (requiere reload de la app)**
+- ✅ **Frontend: Provider con soporte completo para iOS/Safari**
+- ⚠️ **iOS/Safari: Requiere configurar Safari Web ID en OneSignal**
+
+## 🍎 IMPORTANTE: Configuración para iOS
+
+**Si instalaste la app en iPhone desde Safari**, debes completar la configuración del **Safari Web ID**:
+
+👉 **[Lee la guía de configuración de iOS aquí](./ONESIGNAL_SAFARI_CONFIG.md)**
+
+Sin esto, **las notificaciones NO llegarán en iPhone**.
 
 ## 📋 Pasos para Probar
+
+### 0. Configura OneSignal (especialmente para iOS)
+
+Si aún no lo has hecho:
+1. Obtén tu App ID de OneSignal
+2. **Para iOS**: Obtén el Safari Web ID (muy importante)
+3. Agrega las variables a `.env`:
+
+```env
+NEXT_PUBLIC_ONESIGNAL_APP_ID=your_app_id
+NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID=web.onesignal.auto.XXXXX
+ONESIGNAL_APP_ID=your_app_id
+ONESIGNAL_REST_API_KEY=your_rest_api_key
+```
 
 ### 1. Limpia los Player IDs antiguos (opcional pero recomendado)
 
@@ -21,9 +44,9 @@ npx tsx clean-old-players.ts
 npm run dev
 ```
 
-### 3. Abre la app en el navegador
+### 3. Abre la app en el navegador/dispositivo
 
-- Ve a `http://localhost:3000`
+- Ve a `http://localhost:3000` (o tu URL de producción)
 - Inicia sesión como admin
 
 ### 4. Acepta el permiso de notificaciones

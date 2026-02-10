@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, Mic } from "lucide-react";
+import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, Mic, FileText } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getBrandSettings } from "@/actions/admin-actions";
@@ -107,6 +107,11 @@ const adminNavItems: NavItem[] = [
     href: "/admin/users",
     label: "Gestión de Usuarios",
     icon: Users,
+  },
+  {
+    href: "/admin/files",
+    label: "Gestión de Archivos",
+    icon: FileText,
   },
   {
     href: "/admin/voice-control",

@@ -58,6 +58,7 @@ interface NotificationEventData {
 }
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
+const ONESIGNAL_SAFARI_WEB_ID = process.env.NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID;
 
 /**
  * Carga dinámicamente el script de OneSignal desde el cliente
@@ -319,11 +320,21 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
         const oneSignal = await waitForOneSignal();
         if (!oneSignal || !mounted) return;
 
-        await oneSignal.init({
+        const initConfig: OneSignalConfig = {
           appId: ONESIGNAL_APP_ID!,
           allowLocalhostAsSecureOrigin: true,
           serviceWorkerPath: "/sw.js",
-        });
+        };
+
+        // Agregar Safari Web ID si está configurado (requerido para iOS)
+        if (ONESIGNAL_SAFARI_WEB_ID) {
+          initConfig.safari_web_id = ONESIGNAL_SAFARI_WEB_ID;
+          console.log("[OneSignal] Safari Web ID configurado para iOS");
+        } else {
+          console.warn("[OneSignal] ⚠️ Safari Web ID no configurado - notificaciones PUSH en iOS no funcionarán");
+        }
+
+        await oneSignal.init(initConfig);
 
         // Habilitar notificaciones en primer plano
         // El listener 'foregroundWillDisplay' permite mostrar notificaciones
@@ -377,17 +388,27 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
         console.log("[OneSignal] PlayerId obtenido:", playerId);
 
-        // Registrar en BD
-        await registerPlayerInDb(playerId, session.user.id);
+        // 1. Establecer el External ID (CRÍTICO para asociar al usuario)
+        // Esto es lo que permite que OneSignal emparejecorrectamente las notificaciones
+        await oneSignal.login(session.user.id);
+        console.log("[OneSignal] External ID configurado:", session.user.id);
 
-        // Agregar tags del usuario
+        // 2. Agregar tags del usuario
         await oneSignal.User.addTags({
           userId: session.user.id,
           userName: session.user.name || "Usuario",
           userRole: session.user.role || "EDITOR",
         });
+        console.log("[OneSignal] Tags agregados:", {
+          userId: session.user.id,
+          userName: session.user.name,
+          userRole: session.user.role,
+        });
 
-        console.log("[OneSignal] Usuario registrado y etiquetado");
+        // 3. Registrar en BD
+        await registerPlayerInDb(playerId, session.user.id);
+        console.log("[OneSignal] Usuario registrado en BD");
+
         return true; // Éxito
       } catch (error) {
         console.error("[OneSignal] Error al registrar usuario:", error);
