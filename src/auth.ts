@@ -174,32 +174,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       }
       
-      // Siempre obtener el rol actualizado desde la base de datos
-      // Esto asegura que si el rol cambia en la DB, se refleje en la sesión
+      // Sincronizar rol desde BD solo si es posible
+      // IMPORTANTE: Si hay error o no hay datos, MANTENER el rol actual del token
+      // para evitar downgrades accidentales durante deployments o problemas de BD
       if (token.id) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
             select: { roleLegacy: true, image: true, specialty: true },
           });
-          // Fuerza el valor por defecto "EDITOR" si no existe o es inválido
-          if (dbUser && dbUser.roleLegacy) {
+          
+          // Solo actualizar si la consulta fue exitosa Y hay un valor válido
+          if (dbUser?.roleLegacy) {
             token.role = dbUser.roleLegacy;
-          } else {
-            token.role = "EDITOR";
           }
-          // Sincronizar la imagen desde la base de datos
+          // Si dbUser es null o roleLegacy está vacío, mantener token.role actual
+          // (no hacer downgrade a EDITOR)
+          
+          // Sincronizar imagen solo si existe en BD
           if (dbUser?.image) {
             token.image = dbUser.image;
           }
-          // Sincronizar especialidad
+          // Sincronizar especialidad solo si el usuario existe
           if (dbUser) {
             token.specialty = dbUser.specialty;
           }
         } catch (error) {
           console.error("Error al obtener rol del usuario:", error);
-          // En caso de error, asegurar que el rol sea EDITOR
-          token.role = "EDITOR";
+          // ⚠️ En caso de error de BD, MANTENER el rol actual del token
+          // NO hacer downgrade a EDITOR - el usuario conserva sus permisos
+          console.warn("⚠️ Manteniendo rol actual del token debido a error de BD");
         }
       }
       

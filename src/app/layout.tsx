@@ -16,6 +16,7 @@ import { PwaServiceWorker } from "@/components/providers/pwa-service-worker";
 import { OneSignalProvider } from "@/components/providers/onesignal-provider";
 import { SplashProvider } from "@/components/providers/splash-provider";
 import { AppBadgeProvider } from "@/components/providers/app-badge-provider";
+import { RemoteLogoutProvider } from "@/components/providers/remote-logout-provider";
 import { getBrandSettings } from "@/actions/admin-actions";
 import { PRIMARY_COLOR_COOKIE, resolvePrimaryColor } from "@/lib/theme";
 import "./globals.css";
@@ -139,18 +140,20 @@ export default async function RootLayout({
         <PwaServiceWorker />
         <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
         <NextAuthSessionProvider>
-          <OneSignalProvider>
-            <SplashProvider>
-              <AppBadgeProvider />
-              <ThemeProvider>
-                <UploadThingProviderWrapper>
-                  <ConditionalLayout>
-                    {children}
-                  </ConditionalLayout>
-                </UploadThingProviderWrapper>
-              </ThemeProvider>
-            </SplashProvider>
-          </OneSignalProvider>
+          <RemoteLogoutProvider>
+            <OneSignalProvider>
+              <SplashProvider>
+                <AppBadgeProvider />
+                <ThemeProvider>
+                  <UploadThingProviderWrapper>
+                    <ConditionalLayout>
+                      {children}
+                    </ConditionalLayout>
+                  </UploadThingProviderWrapper>
+                </ThemeProvider>
+              </SplashProvider>
+            </OneSignalProvider>
+          </RemoteLogoutProvider>
         </NextAuthSessionProvider>
         <Toaster />
         <SpeedInsights />

@@ -2,28 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Soluciona el body shift cuando se abre un modal/sheet */
+/* ====== SCROLL LOCK FIX ====== */
+/* Previene el layout shift cuando se abren modales/dialogs/sheets/dropdowns */
+
 html {
+  /* Reservar espacio para scrollbar aunque esté oculta */
   scrollbar-gutter: stable;
-  /* Deshabilitar pinch zoom en mobile - manipulation permite scroll pero no zoom */
+  overflow-y: scroll;
   touch-action: manipulation;
+}
+
+/* Forzar body sin padding/margin derecho - anula estilos inline de Radix */
+body {
+  width: 100%;
+  overflow-x: hidden;
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Cuando está bloqueado por Radix, seguir sin padding */
+body[data-scroll-locked] {
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+  overflow: hidden !important;
+  touch-action: none !important;
 }
 
 /* Bloquear zoom globalmente */
 * {
   touch-action: manipulation;
-}
-
-/* Previene el layout shift cuando Radix aplica inline styles al body */
-body[data-scroll-locked] {
-  padding-right: 0 !important;
-  margin-right: 0 !important;
-  overflow: hidden !important; /* Radix necesita esto para el modal */
-}
-
-/* Alternativa: mantener scroll visible pero sin afectar el layout */
-html:has(body[data-scroll-locked]) {
-  overflow-y: scroll;
 }
 
 /* Google Sans Fonts */

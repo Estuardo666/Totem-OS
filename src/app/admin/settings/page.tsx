@@ -4,6 +4,7 @@ import { AppearanceForm } from "@/components/features/settings/appearance-form";
 import { NotificationSettings } from "@/components/features/settings/notification-settings";
 import { AiConfigForm } from "@/components/features/admin/ai-config-form";
 import { BrandingSettings } from "@/components/features/admin/branding-settings";
+import { SessionControlSettings } from "@/components/features/admin/session-control-settings";
 import { GoogleCalendarSettings } from "@/components/features/admin/google-calendar-settings";
 import { GoogleCalendarSuccessToast } from "@/components/features/admin/google-calendar-success-toast";
 import { SettingsSkeleton } from "@/components/features/settings/settings-skeleton";
@@ -68,6 +69,7 @@ async function SettingsContent() {
         <div className="mt-6 space-y-6">
           <BrandingSettings />
           <AiConfigForm />
+          <SessionControlSettings />
         </div>
       )}
     </div>

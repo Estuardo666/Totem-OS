@@ -55,6 +55,25 @@ interface TaskSheetProps {
   initialScheduledAt?: Date | string;
 }
 
+/**
+ * Convierte una fecha UTC a formato YYYY-MM-DDTHH:mm para datetime-local input
+ * ✨ Esto asegura que la fecha se muestre correctamente en la hora local del navegador
+ */
+const formatToDatetimeLocal = (date: Date | string | undefined): string => {
+  if (!date) return "";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (isNaN(d.getTime())) return "";
+  
+  // Usar getters locales (no UTC) para que el input muestre la hora correcta
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 export function TaskSheet({ task, open, onOpenChange, users, clients = [], initialScheduledAt }: TaskSheetProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -79,9 +98,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
           : new Date(task.dueDate).toISOString().split("T")[0]
         : undefined,
       scheduledAt: task?.scheduledAt
-        ? typeof task.scheduledAt === "string"
-          ? new Date(task.scheduledAt).toISOString().slice(0, 16)
-          : new Date(task.scheduledAt).toISOString().slice(0, 16)
+        ? formatToDatetimeLocal(task.scheduledAt)
         : undefined,
     },
   });
@@ -101,17 +118,13 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
             : new Date(task.dueDate).toISOString().split("T")[0]
           : undefined,
         scheduledAt: task.scheduledAt
-          ? typeof task.scheduledAt === "string"
-            ? new Date(task.scheduledAt).toISOString().slice(0, 16)
-            : new Date(task.scheduledAt).toISOString().slice(0, 16)
+          ? formatToDatetimeLocal(task.scheduledAt)
           : undefined,
       });
     } else {
       // Resetear para nueva tarea
       const scheduledAtValue = initialScheduledAt
-        ? typeof initialScheduledAt === "string"
-          ? new Date(initialScheduledAt).toISOString().slice(0, 16)
-          : new Date(initialScheduledAt).toISOString().slice(0, 16)
+        ? formatToDatetimeLocal(initialScheduledAt)
         : undefined;
       
       form.reset({

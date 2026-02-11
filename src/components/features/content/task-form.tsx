@@ -49,6 +49,25 @@ interface TaskFormProps {
   users: UserWithTaskCount[];
 }
 
+/**
+ * Convierte una fecha UTC a formato YYYY-MM-DDTHH:mm para datetime-local input
+ * ✨ Esto asegura que la fecha se muestre correctamente en la hora local del navegador
+ */
+const formatToDatetimeLocal = (value?: Date | string | null): string => {
+  if (!value) return "";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (isNaN(date.getTime())) return "";
+  
+  // Usar getters locales (no UTC) para que el input muestre la hora correcta
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 export function TaskForm({ clients, users }: TaskFormProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -468,13 +487,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
               <FormControl>
                 <Input
                   type="datetime-local"
-                  value={
-                    field.value
-                      ? typeof field.value === "string"
-                        ? new Date(field.value).toISOString().slice(0, 16)
-                        : new Date(field.value).toISOString().slice(0, 16)
-                      : ""
-                  }
+                  value={field.value ? formatToDatetimeLocal(field.value) : ""}
                   onChange={(e) => {
                     field.onChange(e.target.value || undefined);
                   }}

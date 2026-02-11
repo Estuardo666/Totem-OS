@@ -81,6 +81,8 @@ const SelectContent = React.forwardRef<
         className
       )}
       position={position}
+      // Evitar que Radix modifique el body y cause layout shift
+      onCloseAutoFocus={(e) => e.preventDefault()}
       {...props}
     >
       <SelectScrollUpButton />
