@@ -21,7 +21,10 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/40 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:duration-300 data-[state=open]:duration-300 ease-in-out",
+      // Combine Tailwind animate utilities (from tailwindcss-animate) with fallback transitions
+      "fixed inset-0 z-50 bg-black/40 backdrop-blur-md transition-opacity duration-300 ease-in-out",
+      "data-[state=open]:opacity-100 data-[state=closed]:opacity-0",
+      "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}
@@ -53,7 +56,13 @@ const DialogContent = React.forwardRef<
           onOpenAutoFocus?.(event);
         }}
         className={cn(
-          "relative z-50 grid w-full max-w-lg gap-4 border border-black/5 dark:border-white/10 bg-white dark:bg-background/5 dark:backdrop-blur-xl rounded-[2.5rem] shadow-2xl duration-200 ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 max-h-[85vh] overflow-hidden p-6 flex flex-col min-h-0",
+          // Smooth opacity + transform transitions for open/close
+          "relative z-50 grid w-full max-w-lg gap-4 border border-black/5 dark:border-white/10 bg-white dark:bg-background/5 dark:backdrop-blur-xl rounded-[2.5rem] shadow-2xl max-h-[85vh] overflow-hidden p-6 flex flex-col min-h-0",
+          "transition-transform transition-opacity duration-300 ease-[cubic-bezier(0.2,0,0.2,1)]",
+          // state helpers
+          "data-[state=open]:opacity-100 data-[state=closed]:opacity-0",
+          "data-[state=open]:translate-y-0 data-[state=closed]:translate-y-6",
+          "data-[state=open]:scale-100 data-[state=closed]:scale-95",
           className
         )}
         {...props}
@@ -75,7 +84,7 @@ const DialogHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left -mx-6 -mt-6 px-6 py-6 border-b mb-6",
+      "flex flex-col space-y-1.5 text-center sm:text-left px-6 py-6 border-b mb-6",
       className
     )}
     {...props}

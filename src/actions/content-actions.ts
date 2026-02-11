@@ -78,6 +78,11 @@ export type ContentTaskWithClient = ContentTask & {
       fileType: string;
     }>;
   };
+  assignedEditor: {
+    id: string;
+    name: string;
+    image: string | null;
+  } | null;
 };
 
 async function persistTask(validatedData: ReturnType<typeof createContentTaskSchema.parse>) {
@@ -376,6 +381,13 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
                 fileType: true,
               },
             },
+          },
+        },
+        assignedEditor: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
           },
         },
       },

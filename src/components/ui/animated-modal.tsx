@@ -64,10 +64,22 @@ export function AnimatedModal({ open, onOpenChange, children, title, description
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/20 backdrop-blur-3xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:duration-300 data-[state=open]:duration-300 ease-in-out" />
+        <DialogPrimitive.Overlay
+          className={cn(
+            "fixed inset-0 z-50 bg-black/20 backdrop-blur-3xl transition-opacity duration-300 ease-in-out",
+            "data-[state=open]:opacity-100 data-[state=closed]:opacity-0",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          )}
+        />
         <DialogPrimitive.Content
           className={cn(
             "fixed left-1/2 top-1/2 z-50 w-[93vw] sm:w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[2.5rem] border border-white/20 bg-white/10 dark:bg-black/10 text-black dark:text-white shadow-2xl backdrop-blur-[40px]",
+            // Use tailwindcss-animate utilities for entry/exit + fallback transitions
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "transition-transform transition-opacity duration-400 ease-[cubic-bezier(0.2,0,0.2,1)]",
+            "data-[state=open]:opacity-100 data-[state=closed]:opacity-0",
+            "data-[state=open]:translate-y-0 data-[state=closed]:translate-y-6",
+            "data-[state=open]:scale-100 data-[state=closed]:scale-95",
             shouldAnimateScale
               ? shouldAnimateHeight
                 ? `transition-[height,transform,opacity] ${animateClassBase}`

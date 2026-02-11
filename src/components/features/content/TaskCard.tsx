@@ -11,6 +11,17 @@ import {
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+function getUserInitials(name: string | null | undefined) {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
 
 // Función para obtener el icono según el tipo
 function getTypeIcon(type: string) {
@@ -199,22 +210,34 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
                   
                   {/* Botón de Promover a siguiente estado */}
                   {onPromoteTask && (
-                    <button
-                      onClick={handlePromote}
-                      disabled={isPromoting || isPublishing}
-                      className={`group relative flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all
-                        ${isPromoting 
-                          ? "bg-primary border-primary cursor-wait" 
-                          : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 hover:border-primary hover:ring-2 hover:ring-primary/30"
-                        }`}
-                      title={isPromoting ? "Moviendo..." : "Avanzar al siguiente estado"}
-                    >
-                      {isPromoting ? (
-                        <div className="w-3 h-3 border-2 border-white rounded-full animate-spin" />
-                      ) : (
-                        <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-primary transition-colors" />
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={handlePromote}
+                        disabled={isPromoting || isPublishing}
+                        className={`group relative flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all
+                          ${isPromoting 
+                            ? "bg-primary border-primary cursor-wait" 
+                            : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 hover:border-primary hover:ring-2 hover:ring-primary/30"
+                          }`}
+                        title={isPromoting ? "Moviendo..." : "Avanzar al siguiente estado"}
+                      >
+                        {isPromoting ? (
+                          <div className="w-3 h-3 border-2 border-white rounded-full animate-spin" />
+                        ) : (
+                          <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-primary transition-colors" />
+                        )}
+                      </button>
+                      
+                      {/* Editor Profile Photo */}
+                      {task.assignedEditor && (
+                        <Avatar className="h-6 w-6" title={task.assignedEditor.name}>
+                          <AvatarImage src={task.assignedEditor.image || undefined} alt={task.assignedEditor.name} />
+                          <AvatarFallback className="text-[10px] font-semibold">
+                            {getUserInitials(task.assignedEditor.name)}
+                          </AvatarFallback>
+                        </Avatar>
                       )}
-                    </button>
+                    </div>
                   )}
                 </div>
               )}
