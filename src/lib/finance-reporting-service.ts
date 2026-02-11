@@ -36,6 +36,7 @@ export interface FinancialStats {
     description: string;
     date: Date;
     clientName?: string;
+    clientLogo?: string | null;
     status?: string;
     category?: string;
     sourceType?: "INVOICE" | "EXPENSE" | "TRANSACTION";
@@ -476,6 +477,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
             description: `Factura - ${invoice.client.name}`,
             date: invoice.generatedAt,
             clientName: invoice.client.name,
+            clientLogo: invoice.client.logo ?? undefined,
             status: invoice.status,
             category: undefined as string | undefined,
             sourceType: "INVOICE" as const,
@@ -490,10 +492,12 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         description: expense.description,
         date: expense.date,
         clientName: expense.client?.name,
+        clientLogo: expense.client?.logo ?? undefined,
         status: expense.reimbursed ? "PAID" : "PENDING",
         category: expense.category,
         sourceType: "EXPENSE" as const,
         assignedToName: expense.paidByUser?.name,
+        assignedToImage: expense.paidByUser?.image ?? undefined,
         assignedToId: expense.paidByUserId ?? undefined,
         userId: expense.paidByUserId ?? undefined,
       })),
@@ -504,6 +508,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         description: transaction.description || "Transacción",
         date: transaction.createdAt,
         clientName: transaction.relatedClient?.name,
+        clientLogo: transaction.relatedClient?.logo ?? undefined,
         status: transaction.status,
         category: transaction.category ?? undefined,
         sourceType: "TRANSACTION" as const,

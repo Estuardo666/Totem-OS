@@ -827,11 +827,11 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                       .slice(0, 2) || "?"}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span>{transaction.assignedToName}</span>
+                                <span className="hidden md:inline">{transaction.assignedToName}</span>
                               </div>
                               {/* Cliente secundario */}
                               {transaction.clientName && (
-                                <div className="text-xs text-muted-foreground pl-11">
+                                <div className="text-xs text-muted-foreground pl-11 hidden md:block">
                                   Cliente: {transaction.clientName}
                                 </div>
                               )}
@@ -845,7 +845,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                             <div className="space-y-1">
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8">
-                                  <AvatarImage src={(transaction as any).clientLogo || undefined} alt={transaction.clientName} />
+                                  <AvatarImage src={(transaction as any).clientLogo ?? undefined} alt={transaction.clientName} />
                                   <AvatarFallback className="text-xs">
                                     {transaction.clientName
                                       .split(" ")
@@ -855,11 +855,11 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                       .slice(0, 2) || "?"}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span>{transaction.clientName}</span>
+                                <span className="hidden md:inline">{transaction.clientName}</span>
                               </div>
                               {/* Si es un reembolso compartido, mostrar info del usuario */}
                               {transaction.assignedToName && transaction.description?.includes("(Compartido") && (
-                                <div className="text-xs text-muted-foreground pl-11">
+                                <div className="text-xs text-muted-foreground pl-11 hidden md:block">
                                   {(() => {
                                     const match = transaction.description?.match(/\(Compartido - (\d+) personas\)/);
                                     const numPeople = match ? parseInt(match[1]) : 2;
@@ -870,7 +870,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                               )}
                               {/* Si es un reembolso simple, mostrar info del usuario */}
                               {transaction.assignedToName && !transaction.description?.includes("(Compartido") && (
-                                <div className="text-xs text-muted-foreground pl-11">
+                                <div className="text-xs text-muted-foreground pl-11 hidden md:block">
                                   Reembolso a: {transaction.assignedToName}
                                 </div>
                               )}
