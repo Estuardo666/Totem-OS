@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { LogOut, AlertTriangle, Users } from "lucide-react";
+import { LogOut, AlertTriangle, Users, Shield } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -54,40 +53,63 @@ export function SessionControlSettings() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          Control de Sesiones
-        </CardTitle>
-        <CardDescription>
-          Administra las sesiones activas de todos los usuarios
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-destructive">
-                Zona de Peligro
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Cerrar todas las sesiones forzará a todos los usuarios a volver a iniciar sesión.
-              </p>
-            </div>
+    <div className="rounded-xl border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-slate-600 to-slate-800">
+            <Shield className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium">Control de Sesiones</h3>
+            <p className="text-xs text-muted-foreground">Administra las sesiones activas</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="divide-y">
+        {/* Info Row */}
+        <div className="flex items-center gap-3 px-4 py-3">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/10">
+            <Users className="h-4 w-4 text-blue-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">Sesiones activas</p>
+            <p className="text-xs text-muted-foreground">Todos los usuarios conectados actualmente</p>
           </div>
         </div>
 
+        {/* Danger Zone Row */}
+        <div className="px-4 py-3">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+            <div className="flex items-start gap-3">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-destructive/10 shrink-0">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-destructive">Zona de peligro</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Esta acción cerrará la sesión de todos los usuarios, incluyendo la tuya.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-4 py-3 border-t bg-muted/30">
         <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <AlertDialogTrigger asChild>
             <Button 
               variant="destructive" 
+              size="sm"
               className="w-full"
               disabled={isLoading}
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Cerrar Todas las Sesiones
+              Cerrar todas las sesiones
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -110,12 +132,12 @@ export function SessionControlSettings() {
                 disabled={isLoading}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                {isLoading ? "Enviando..." : "Confirmar Cierre"}
+                {isLoading ? "Enviando..." : "Confirmar cierre"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -43,26 +43,28 @@ const DialogContent = React.forwardRef<
 >(({ className, children, disableAutoFocus = true, onOpenAutoFocus, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      onOpenAutoFocus={(event) => {
-        if (disableAutoFocus) {
-          event.preventDefault();
-        }
-        onOpenAutoFocus?.(event);
-      }}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg sm:w-full translate-x-[-50%] translate-y-[-50%] gap-4 border border-black/5 dark:border-white/10 bg-white dark:bg-background/5 dark:backdrop-blur-xl rounded-[2.5rem] shadow-2xl duration-200 ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] max-h-[90vh] overflow-hidden p-6 transition-[height,max-height] duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height] flex flex-col min-h-0",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 z-50 flex h-8 w-8 items-center justify-center rounded-[1.25rem] bg-red-500 p-1 text-white hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-red-500 data-[state=open]:text-white">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <DialogPrimitive.Content
+        ref={ref}
+        onOpenAutoFocus={(event) => {
+          if (disableAutoFocus) {
+            event.preventDefault();
+          }
+          onOpenAutoFocus?.(event);
+        }}
+        className={cn(
+          "relative z-50 grid w-full max-w-lg gap-4 border border-black/5 dark:border-white/10 bg-white dark:bg-background/5 dark:backdrop-blur-xl rounded-[2.5rem] shadow-2xl duration-200 ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 max-h-[85vh] overflow-hidden p-6 flex flex-col min-h-0",
+          className
+        )}
+        {...props}
+      >
+        {children}
+        <DialogPrimitive.Close className="absolute right-4 top-4 z-50 flex h-8 w-8 items-center justify-center rounded-[1.25rem] bg-red-500 p-1 text-white hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-red-500 data-[state=open]:text-white">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+    </div>
   </DialogPortal>
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;

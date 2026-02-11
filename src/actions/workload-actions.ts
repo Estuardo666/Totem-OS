@@ -7,6 +7,7 @@ export interface UserWorkload {
   userId: string;
   userName: string;
   userRole: string;
+  userImage: string | null;
   pendingTasksCount: number;
   weeklyCapacity: number; // Capacidad semanal estimada (ej: 10 tareas)
 }
@@ -38,6 +39,7 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
         name: true,
         roleLegacy: true,
         specialty: true,
+        image: true,
       },
     });
 
@@ -91,6 +93,7 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
           userId: user.id,
           userName: user.name,
           userRole: user.roleLegacy,
+          userImage: user.image,
           pendingTasksCount,
           weeklyCapacity,
         };

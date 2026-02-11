@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { UploadButton } from "@uploadthing/react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save, Image as ImageIcon, X, Palette } from "lucide-react";
+import { Loader2, Save, Image as ImageIcon, X, Sun, Moon, Sparkles, ImagePlus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { updateBrandSettings, getBrandSettings, updateLoginBackground, getLoginBackground } from "@/actions/admin-actions";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
@@ -23,7 +22,6 @@ export function BrandingSettings() {
   const [isUploadingBackground, setIsUploadingBackground] = useState(false);
   const { toast } = useToast();
 
-  // Cargar configuración existente
   useEffect(() => {
     let isMounted = true;
 
@@ -84,10 +82,10 @@ export function BrandingSettings() {
       if (brandResult.success && backgroundResult.success) {
         toast({
           title: "Configuración guardada",
-          description: "La configuración de marca y background se han guardado correctamente",
+          description: "La configuración de marca se ha guardado correctamente",
         });
       } else {
-        const errorMessage = brandResult.error || backgroundResult.error || "No se pudo guardar la configuración";
+        const errorMessage = brandResult.error || backgroundResult.error || "No se pudo guardar";
         toast({
           variant: "destructive",
           title: "Error",
@@ -121,270 +119,252 @@ export function BrandingSettings() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+              <ImageIcon className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <h3 className="text-sm font-medium">Identidad de Marca</h3>
+              <p className="text-xs text-muted-foreground">Cargando configuración...</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="p-8 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ImageIcon className="h-5 w-5" />
-          Identidad de Marca
-        </CardTitle>
-        <CardDescription>
-          Configura los logos de la aplicación y el background de login. El logo claro se mostrará sobre fondos blancos y el logo oscuro sobre fondos oscuros.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Grid de 4 columnas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Logo Modo Claro - Columna 1 */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Logo Modo Claro</label>
-              {logoLightUrl && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveLogo("light")}
-                  className="h-8 text-destructive hover:text-destructive"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Eliminar
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Se verá sobre fondos blancos
-            </p>
+    <div className="rounded-xl border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+            <ImageIcon className="h-4 w-4 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-medium">Identidad de Marca</h3>
+            <p className="text-xs text-muted-foreground">Logos, favicon y fondo de login</p>
+          </div>
+        </div>
+      </div>
 
+      {/* Content - Grid de logos */}
+      <div className="p-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Logo Modo Claro */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Sun className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-xs font-medium">Logo Claro</span>
+            </div>
+            
             {logoLightUrl ? (
-              <div className="flex flex-col gap-3">
-                <div className="relative w-full h-32 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+              <div className="relative group">
+                <div className="relative w-full aspect-video bg-white border-2 border-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
                   <Image
                     src={logoLightUrl}
                     alt="Logo modo claro"
                     fill
-                    className="object-contain"
+                    className="object-contain p-2"
                   />
                 </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => handleRemoveLogo("light")}
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
-                <div className="text-xs text-red-500 bg-red-50 p-2 rounded">
-                  Debug: logoLightUrl is {logoLightUrl ? 'set' : 'null'}, isUploadingLight: {isUploadingLight.toString()}
-                </div>
-                <div className="flex items-center gap-2">
-                  {isUploadingLight && (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  )}
-                  <UploadButton<OurFileRouter>
-                    endpoint="brandLogo"
-                    onUploadBegin={() => {
-                      console.log("Upload begin");
-                      setIsUploadingLight(true);
-                    }}
-                    onClientUploadComplete={(res) => {
-                      console.log("Upload complete:", res);
-                      if (res && res.length > 0) {
-                        setLogoLightUrl(res[0].url);
+              <div className="relative w-full aspect-video border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center overflow-hidden hover:border-primary/50 transition-colors">
+                {isUploadingLight ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <div className="text-center">
+                    <ImagePlus className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+                    <UploadButton<OurFileRouter>
+                      endpoint="brandLogo"
+                      onUploadBegin={() => setIsUploadingLight(true)}
+                      onClientUploadComplete={(res) => {
+                        if (res && res.length > 0) {
+                          setLogoLightUrl(res[0].url);
+                          setIsUploadingLight(false);
+                          toast({
+                            title: "Logo subido",
+                            description: "No olvides guardar los cambios.",
+                          });
+                        }
+                      }}
+                      onUploadError={(error: Error) => {
                         setIsUploadingLight(false);
                         toast({
-                          title: "Logo subido",
-                          description: "El logo modo claro se ha subido correctamente. No olvides guardar los cambios.",
+                          variant: "destructive",
+                          title: "Error",
+                          description: error.message,
                         });
-                      }
-                    }}
-                    onUploadError={(error: Error) => {
-                      console.error("Upload error:", error);
-                      setIsUploadingLight(false);
-                      toast({
-                        variant: "destructive",
-                        title: "Error al subir logo",
-                        description: error.message,
-                      });
-                    }}
-                  />
-                </div>
+                      }}
+                      appearance={{
+                        button: "text-xs h-6 px-2",
+                        allowedContent: "hidden",
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Logo Modo Oscuro - Columna 2 */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Logo Modo Oscuro</label>
-              {logoDarkUrl && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveLogo("dark")}
-                  className="h-8 text-destructive hover:text-destructive"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Eliminar
-                </Button>
-              )}
+          {/* Logo Modo Oscuro */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Moon className="h-3.5 w-3.5 text-slate-500" />
+              <span className="text-xs font-medium">Logo Oscuro</span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Se verá sobre fondos oscuros
-            </p>
-
+            
             {logoDarkUrl ? (
-              <div className="flex flex-col gap-3">
-                <div className="relative w-full h-32 bg-gray-900 border-2 border-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
+              <div className="relative group">
+                <div className="relative w-full aspect-video bg-gray-900 border-2 border-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
                   <Image
                     src={logoDarkUrl}
                     alt="Logo modo oscuro"
                     fill
-                    className="object-contain"
+                    className="object-contain p-2"
                   />
                 </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => handleRemoveLogo("dark")}
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
-                <div className="text-xs text-red-500 bg-red-50 p-2 rounded">
-                  Debug: logoDarkUrl is {logoDarkUrl ? 'set' : 'null'}, isUploadingDark: {isUploadingDark.toString()}
-                </div>
-                <div className="flex items-center gap-2">
-                  {isUploadingDark && (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  )}
-                  <UploadButton<OurFileRouter>
-                    endpoint="brandLogo"
-                    onUploadBegin={() => {
-                      console.log("Upload begin");
-                      setIsUploadingDark(true);
-                    }}
-                    onClientUploadComplete={(res) => {
-                      console.log("Upload complete:", res);
-                      if (res && res.length > 0) {
-                        setLogoDarkUrl(res[0].url);
+              <div className="relative w-full aspect-video border-2 border-dashed border-gray-600 bg-gray-800 rounded-lg flex items-center justify-center overflow-hidden hover:border-primary/50 transition-colors">
+                {isUploadingDark ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <div className="text-center">
+                    <ImagePlus className="h-5 w-5 mx-auto text-gray-400 mb-1" />
+                    <UploadButton<OurFileRouter>
+                      endpoint="brandLogo"
+                      onUploadBegin={() => setIsUploadingDark(true)}
+                      onClientUploadComplete={(res) => {
+                        if (res && res.length > 0) {
+                          setLogoDarkUrl(res[0].url);
+                          setIsUploadingDark(false);
+                          toast({
+                            title: "Logo subido",
+                            description: "No olvides guardar los cambios.",
+                          });
+                        }
+                      }}
+                      onUploadError={(error: Error) => {
                         setIsUploadingDark(false);
                         toast({
-                          title: "Logo subido",
-                          description: "El logo modo oscuro se ha subido correctamente. No olvides guardar los cambios.",
+                          variant: "destructive",
+                          title: "Error",
+                          description: error.message,
                         });
-                      }
-                    }}
-                    onUploadError={(error: Error) => {
-                      console.error("Upload error:", error);
-                      setIsUploadingDark(false);
-                      toast({
-                        variant: "destructive",
-                        title: "Error al subir logo",
-                        description: error.message,
-                      });
-                    }}
-                  />
-                </div>
+                      }}
+                      appearance={{
+                        button: "text-xs h-6 px-2",
+                        allowedContent: "hidden",
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Favicon - Columna 3 */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Favicon</label>
-              {faviconUrl && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveLogo("favicon")}
-                  className="h-8 text-destructive hover:text-destructive"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Eliminar
-                </Button>
-              )}
+          {/* Favicon */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-3.5 w-3.5 text-blue-500" />
+              <span className="text-xs font-medium">Favicon</span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Icono del navegador (32x32px recomendado)
-            </p>
-
+            
             {faviconUrl ? (
-              <div className="flex flex-col gap-3">
-                <div className="relative w-full h-32 border-2 border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
+              <div className="relative group">
+                <div className="relative w-full aspect-video border-2 border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
                   <Image
                     src={faviconUrl}
                     alt="Favicon"
                     fill
-                    className="object-contain"
+                    className="object-contain p-2"
                   />
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  {isUploadingFavicon && (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  )}
-                  <UploadButton<OurFileRouter>
-                    endpoint="favicon"
-                    onUploadBegin={() => {
-                      setIsUploadingFavicon(true);
-                    }}
-                    onClientUploadComplete={(res) => {
-                      if (res && res.length > 0) {
-                        setFaviconUrl(res[0].url);
-                        setIsUploadingFavicon(false);
-                        toast({
-                          title: "Favicon subido",
-                          description: "El favicon se ha subido correctamente. No olvides guardar los cambios.",
-                        });
-                      }
-                    }}
-                    onUploadError={(error: Error) => {
-                      setIsUploadingFavicon(false);
-                      toast({
-                        variant: "destructive",
-                        title: "Error al subir favicon",
-                        description: error.message,
-                      });
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Background del Login - Columna 4 */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Palette className="h-4 w-4" />
-                Background Login
-              </label>
-              {backgroundUrl && (
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRemoveBackground}
-                  className="h-8 text-destructive hover:text-destructive"
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => handleRemoveLogo("favicon")}
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <X className="h-4 w-4 mr-1" />
-                  Eliminar
+                  <X className="h-3 w-3" />
                 </Button>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Imagen de fondo para login/registro
-            </p>
+              </div>
+            ) : (
+              <div className="relative w-full aspect-video border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center overflow-hidden hover:border-primary/50 transition-colors">
+                {isUploadingFavicon ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <div className="text-center">
+                    <ImagePlus className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+                    <UploadButton<OurFileRouter>
+                      endpoint="favicon"
+                      onUploadBegin={() => setIsUploadingFavicon(true)}
+                      onClientUploadComplete={(res) => {
+                        if (res && res.length > 0) {
+                          setFaviconUrl(res[0].url);
+                          setIsUploadingFavicon(false);
+                          toast({
+                            title: "Favicon subido",
+                            description: "No olvides guardar los cambios.",
+                          });
+                        }
+                      }}
+                      onUploadError={(error: Error) => {
+                        setIsUploadingFavicon(false);
+                        toast({
+                          variant: "destructive",
+                          title: "Error",
+                          description: error.message,
+                        });
+                      }}
+                      appearance={{
+                        button: "text-xs h-6 px-2",
+                        allowedContent: "hidden",
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground">32x32px recomendado</p>
+          </div>
 
+          {/* Background Login */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-3.5 w-3.5 text-green-500" />
+              <span className="text-xs font-medium">Fondo Login</span>
+            </div>
+            
             {backgroundUrl ? (
-              <div className="flex flex-col gap-3">
-                <div className="relative w-full h-32 border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+              <div className="relative group">
+                <div className="relative w-full aspect-video border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                   <Image
                     src={backgroundUrl}
                     alt="Background del login"
@@ -392,54 +372,64 @@ export function BrandingSettings() {
                     className="object-cover"
                   />
                 </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  onClick={handleRemoveBackground}
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
-                <div className="text-xs text-red-500 bg-red-50 p-2 rounded">
-                  Debug: backgroundUrl is {backgroundUrl ? 'set' : 'null'}, isUploadingBackground: {isUploadingBackground.toString()}
-                </div>
-                <div className="flex items-center gap-2">
-                  {isUploadingBackground && (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  )}
-                  <UploadButton<OurFileRouter>
-                    endpoint="loginBackground"
-                    onUploadBegin={() => {
-                      console.log("Upload begin");
-                      setIsUploadingBackground(true);
-                    }}
-                    onClientUploadComplete={(res) => {
-                      console.log("Upload complete:", res);
-                      if (res && res.length > 0) {
-                        setBackgroundUrl(res[0].url);
+              <div className="relative w-full aspect-video border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center overflow-hidden hover:border-primary/50 transition-colors">
+                {isUploadingBackground ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <div className="text-center">
+                    <ImagePlus className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+                    <UploadButton<OurFileRouter>
+                      endpoint="loginBackground"
+                      onUploadBegin={() => setIsUploadingBackground(true)}
+                      onClientUploadComplete={(res) => {
+                        if (res && res.length > 0) {
+                          setBackgroundUrl(res[0].url);
+                          setIsUploadingBackground(false);
+                          toast({
+                            title: "Background subido",
+                            description: "No olvides guardar los cambios.",
+                          });
+                        }
+                      }}
+                      onUploadError={(error: Error) => {
                         setIsUploadingBackground(false);
                         toast({
-                          title: "Background subido",
-                          description: "El background se ha subido correctamente. No olvides guardar los cambios.",
+                          variant: "destructive",
+                          title: "Error",
+                          description: error.message,
                         });
-                      }
-                    }}
-                    onUploadError={(error: Error) => {
-                      console.error("Upload error:", error);
-                      setIsUploadingBackground(false);
-                      toast({
-                        variant: "destructive",
-                        title: "Error al subir background",
-                        description: error.message,
-                      });
-                    }}
-                  />
-                </div>
+                      }}
+                      appearance={{
+                        button: "text-xs h-6 px-2",
+                        allowedContent: "hidden",
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
+      </div>
 
-        {/* Botón Guardar - Fuera del grid */}
+      {/* Footer */}
+      <div className="px-4 py-3 border-t bg-muted/30">
         <Button
           type="button"
           onClick={handleSave}
           disabled={isSaving}
+          size="sm"
           className="w-full"
         >
           {isSaving ? (
@@ -454,8 +444,8 @@ export function BrandingSettings() {
             </>
           )}
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 

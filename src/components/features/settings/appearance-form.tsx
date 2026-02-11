@@ -4,14 +4,13 @@ import { useState, useTransition, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/features/clients/color-picker";
 import { updateUserSettings } from "@/actions/user.actions";
 import { useToast } from "@/components/ui/use-toast";
-import { Palette, Moon } from "lucide-react";
+import { Moon, Palette, Check } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 
 const appearanceSchema = z.object({
@@ -32,7 +31,7 @@ export function AppearanceForm({ primaryColor: initialPrimaryColor, darkMode: in
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const { handleSubmit, setValue, watch } = useForm<AppearanceFormValues>({
+  const { handleSubmit, setValue } = useForm<AppearanceFormValues>({
     resolver: zodResolver(appearanceSchema),
     defaultValues: {
       primaryColor: initialPrimaryColor,
@@ -40,7 +39,6 @@ export function AppearanceForm({ primaryColor: initialPrimaryColor, darkMode: in
     },
   });
 
-  // Actualizar variable CSS en tiempo real cuando cambia el color (debounced)
   const debouncedColor = useDebounce(primaryColor, 300);
 
   useEffect(() => {
@@ -85,7 +83,6 @@ export function AppearanceForm({ primaryColor: initialPrimaryColor, darkMode: in
     }
   }, [debouncedColor, initialPrimaryColor]);
 
-  // Sincronizar darkMode con la clase .dark en tiempo real
   useEffect(() => {
     const htmlElement = document.documentElement;
     if (darkMode) {
@@ -101,7 +98,6 @@ export function AppearanceForm({ primaryColor: initialPrimaryColor, darkMode: in
   }, [setValue]);
 
   const handleDarkModeToggle = (checked: boolean) => {
-    // Optimistic update
     setDarkMode(checked);
     setValue("darkMode", checked);
 
@@ -116,7 +112,6 @@ export function AppearanceForm({ primaryColor: initialPrimaryColor, darkMode: in
             : "El modo oscuro está desactivado",
         });
       } else {
-        // Revert on error
         setDarkMode(!checked);
         setValue("darkMode", !checked);
         toast({
@@ -138,7 +133,7 @@ export function AppearanceForm({ primaryColor: initialPrimaryColor, darkMode: in
       if (result.success) {
         toast({
           title: "Apariencia actualizada",
-          description: "Tus preferencias de apariencia se han guardado correctamente",
+          description: "Tus preferencias se han guardado",
         });
       } else {
         toast({
@@ -151,30 +146,33 @@ export function AppearanceForm({ primaryColor: initialPrimaryColor, darkMode: in
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <div className="rounded-xl border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b bg-muted/30">
         <div className="flex items-center gap-2">
-          <Palette className="h-5 w-5 text-muted-foreground" />
-          <CardTitle>Apariencia</CardTitle>
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
+            <Palette className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium">Apariencia</h3>
+            <p className="text-xs text-muted-foreground">Personaliza el estilo visual</p>
+          </div>
         </div>
-        <CardDescription>
-          Personaliza el color principal y el modo oscuro
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Modo Oscuro */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <Moon className="h-4 w-4 text-muted-foreground" />
-                <Label htmlFor="dark-mode" className="text-base">
-                  Modo oscuro
-                </Label>
+      </div>
+
+      {/* Content */}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="divide-y">
+          {/* Dark Mode Row */}
+          <div className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900">
+                <Moon className="h-4 w-4 text-white" />
               </div>
-              <p className="text-sm text-muted-foreground">
-                Activa el tema oscuro para una mejor experiencia visual
-              </p>
+              <div>
+                <p className="text-sm font-medium">Modo oscuro</p>
+                <p className="text-xs text-muted-foreground">Reduce el brillo de la pantalla</p>
+              </div>
             </div>
             <Switch
               id="dark-mode"
@@ -184,25 +182,46 @@ export function AppearanceForm({ primaryColor: initialPrimaryColor, darkMode: in
             />
           </div>
 
-          {/* Color Principal */}
-          <div className="space-y-2">
-            <Label htmlFor="primary-color">Color principal</Label>
-            <p className="text-sm text-muted-foreground">
-              Selecciona el color principal de la interfaz
-            </p>
+          {/* Primary Color Row */}
+          <div className="px-4 py-3 space-y-3">
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-8 h-8 rounded-lg border-2 border-white shadow-sm"
+                style={{ backgroundColor: primaryColor }}
+              />
+              <div>
+                <p className="text-sm font-medium">Color principal</p>
+                <p className="text-xs text-muted-foreground">Personaliza el color de acento</p>
+              </div>
+            </div>
             <ColorPicker
               value={primaryColor}
               onChange={handleColorChange}
               disabled={isPending}
             />
           </div>
+        </div>
 
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "Guardando..." : "Guardar cambios"}
+        {/* Footer */}
+        <div className="px-4 py-3 border-t bg-muted/30">
+          <Button 
+            type="submit" 
+            disabled={isPending} 
+            size="sm" 
+            className="w-full"
+          >
+            {isPending ? (
+              "Guardando..."
+            ) : (
+              <>
+                <Check className="h-4 w-4 mr-2" />
+                Guardar cambios
+              </>
+            )}
           </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+      </form>
+    </div>
   );
 }
 

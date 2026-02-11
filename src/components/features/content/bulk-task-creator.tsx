@@ -4,8 +4,6 @@ import { useMemo, useState, useTransition } from "react";
 import type { Client } from "@prisma/client";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import { createTasksBatch } from "@/actions/content-actions";
 import type { ContentTaskType } from "@/types";
@@ -338,91 +336,94 @@ export function BulkTaskCreator({ clients, variant = "card", showHeader = true, 
   };
 
   const body = (
-    <div className={isDialog ? "space-y-2.5" : "space-y-4"}>
-      <div className={isDialog ? "space-y-2.5" : "space-y-3"}>
+    <div className="space-y-4">
+      <div className="space-y-3.5">
         <Textarea
           value={rawInput}
           onChange={(event) => setRawInput(event.target.value)}
           placeholder={`Ejemplo:\nGermania\nReel,Nombre de la tarea, 03/02\nFlyer,Otra tarea, 15-02\nStory,Nueva campaña, 12 de febrero`}
-          className="min-h-[160px] border border-input focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0 bg-background text-foreground"
+          className="min-h-[160px] border-2 border-border rounded-2xl focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0 bg-background/50 text-foreground placeholder:text-muted-foreground/60 resize-none"
         />
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-2.5">
+          <div className="grid grid-cols-2 gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={handleParse}
               disabled={isPending}
-              className="w-full border-muted-foreground/30 hover:border-muted-foreground/40 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0"
+              className="w-full border-2 border-border rounded-full h-11 font-medium hover:bg-muted/50 hover:border-border/60"
             >
               Analizar texto
             </Button>
-            <Button type="button" onClick={handleCreate} disabled={!hasRows || isPending} className="w-full">
-              {isPending ? "Creando..." : `Crear ${validRows.length} tareas`}
+            <Button 
+              type="button" 
+              onClick={handleCreate} 
+              disabled={!hasRows || isPending} 
+              className="w-full rounded-full h-11 font-medium bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-md hover:shadow-lg transition-all"
+            >
+              {isPending ? "Creando..." : `Crear ${validRows.length}`}
             </Button>
           </div>
           {hasRows && (
-            <Badge variant="secondary" className="w-full justify-center">
-              {validRows.length} válidas / {parsedRows.length} totales
-            </Badge>
+            <div className="px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50">
+              <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                ✓ {validRows.length} válidas / {parsedRows.length} totales
+              </p>
+            </div>
           )}
         </div>
       </div>
 
       {hasRows && (
-        <div className="rounded-lg border bg-card">
-          <div className="max-h-[320px] overflow-y-auto overflow-x-hidden px-3 md:px-6 transition-[height,max-height] duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height]">
+        <div className="rounded-2xl border border-border bg-gradient-to-br from-background to-background/50 overflow-hidden">
+          <div className="max-h-[300px] overflow-y-auto custom-scroll">
             {currentClient && (
-              <div className="flex flex-col items-center gap-2 px-3 py-3 text-center">
+              <div className="flex flex-col items-center gap-2 px-6 py-4 text-center border-b border-border/50">
                 {currentClient.logo ? (
-                  <img src={currentClient.logo} alt={currentClient.name} className="h-9 w-9 rounded-lg object-cover" />
+                  <img src={currentClient.logo} alt={currentClient.name} className="h-10 w-10 rounded-lg object-cover ring-2 ring-border/30" />
                 ) : (
                   <div
-                    className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold uppercase text-white"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold uppercase text-white shadow-md"
                     style={{ backgroundColor: currentClient.color || "var(--primary)" }}
                   >
                     {currentClient.initial}
                   </div>
                 )}
-                <div className="text-base font-semibold leading-tight">{currentClient.name}</div>
+                <div className="text-base font-semibold">{currentClient.name}</div>
               </div>
             )}
-            <Table className="w-full text-sm md:text-base table-fixed">
-              <TableHeader>
-                <TableRow className="[&_th]:py-0.5 [&_th]:px-1">
-                  <TableHead className="w-[18%] pl-1">Tipo</TableHead>
-                  <TableHead className="w-[42%]">Título</TableHead>
-                  <TableHead className="w-[20%]">Fecha</TableHead>
-                  <TableHead className="w-[20%]">Estado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {parsedRows.map((row, index) => (
-                  <TableRow
-                    key={`${row.rawLine}-${index}`}
-                    className={`${row.error ? "bg-destructive/5" : ""} animate-fade-in [&_td]:py-0.5 [&_td]:px-1`}
-                    style={{ animationDelay: `${index * 40}ms` }}
-                  >
-                    <TableCell className="whitespace-nowrap text-xs md:text-sm pl-2">{formatTypeLabel(row.type ?? row.typeLabel)}</TableCell>
-                    <TableCell className="whitespace-normal break-words font-semibold text-sm md:text-base leading-tight max-h-[2.6em] overflow-hidden" title={row.title ?? undefined}>
-                      {capitalizeFirst(row.title) ?? "-"}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-xs md:text-sm text-muted-foreground">
-                      {row.scheduledAt
-                        ? row.scheduledAt.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" })
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-xs md:text-sm">
-                      {row.error ? (
-                        <Badge variant="destructive">{row.error}</Badge>
-                      ) : (
-                        <Badge className="bg-emerald-100 text-emerald-700">Listo</Badge>
+            <div className="divide-y divide-border/50">
+              {parsedRows.map((row, index) => (
+                <div
+                  key={`${row.rawLine}-${index}`}
+                  className={`px-6 py-3 flex items-start gap-3 hover:bg-muted/50 transition-colors ${
+                    row.error ? "bg-destructive/5 hover:bg-destructive/10" : ""
+                  }`}
+                >
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase text-primary px-2 py-1 bg-primary/10 rounded-lg">
+                        {formatTypeLabel(row.type ?? row.typeLabel)}
+                      </span>
+                      {!row.error && (
+                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Listo</span>
                       )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                    <p className="text-sm font-semibold text-foreground truncate">{capitalizeFirst(row.title) ?? "-"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {row.scheduledAt
+                        ? row.scheduledAt.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "numeric" })
+                        : "-"}
+                    </p>
+                  </div>
+                  {row.error && (
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-xs font-medium text-destructive max-w-[100px]">{row.error}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -430,18 +431,14 @@ export function BulkTaskCreator({ clients, variant = "card", showHeader = true, 
   );
 
   if (isDialog) {
-    return (
-      <div className="space-y-3">
-        {body}
-      </div>
-    );
+    return body;
   }
 
   return (
-    <div className="rounded-lg border bg-card p-4 space-y-4">
+    <div className="rounded-2xl border border-border bg-gradient-to-br from-background to-background/50 p-6 space-y-4">
       {shouldShowHeader && (
-        <div className="space-y-1">
-          <h3 className="text-2xl font-semibold leading-none tracking-tight">Crear tareas en lote</h3>
+        <div className="space-y-1.5">
+          <h3 className="text-2xl font-bold">Crear tareas en lote</h3>
           <p className="text-sm text-muted-foreground">Pega un listado de tareas para crear múltiples tareas a la vez</p>
         </div>
       )}

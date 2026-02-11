@@ -1,11 +1,9 @@
 import { auth } from "@/auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Zap, FileText, Plus, Video } from "lucide-react";
+import { Zap, FileText, Plus, Video, Home as HomeIcon, DollarSign } from "lucide-react";
 import { TodayScheduledTasks } from "@/components/features/content/today-scheduled-tasks";
 import { WorkloadPanel } from "@/components/features/content/workload-panel";
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
-import { VoiceNotesWidget } from "@/components/features/dashboard/voice-notes-widget";
 import { DashboardRefresh } from "@/components/features/content/dashboard-refresh";
 import { KPICards } from "@/components/features/dashboard/kpi-cards";
 import { PriorityTasks } from "@/components/features/dashboard/priority-tasks";
@@ -16,7 +14,6 @@ import { getUserWorkloads } from "@/actions/workload-actions";
 import Link from "next/link";
 import { Suspense } from "react";
 import { MetricSkeleton, CardSkeleton } from "@/components/ui/skeletons-composite";
-import { PageHeader } from "@/components/shared";
 
 export default async function Home() {
   // Obtener sesión del usuario autenticado
@@ -37,92 +34,111 @@ export default async function Home() {
     : workloads;
 
   return (
-    <div className="w-full max-w-full overflow-x-hidden">
-      <PageHeader
-        title={`Hola, ${firstName} 👋`}
-        description="Aquí tienes el estado de tu agencia hoy."
-        actions={<DashboardRefresh />}
-        showBackButton={false}
-      />
-
-      {/* Acciones Rápidas - Solo para ADMIN */}
-      {isAdmin && (
-        <Card className="mb-6 border-primary/20 bg-primary/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-primary" />
-              ⚡ Acciones Rápidas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-              <Button asChild variant="outline" className="justify-start">
-                <Link href="/content">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Ver tareas
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-start">
-                <Link href="/content?bulk=1">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Crear tareas en lote
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-start">
-                <Link href="/content/shoots?new=1">
-                  <Video className="mr-2 h-4 w-4" />
-                  Crear rodaje
-                </Link>
-              </Button>
-              <TransactionDialog />
+    <div className="min-h-screen bg-muted/30">
+      {/* Header iOS-style con sticky */}
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                <HomeIcon className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold">Hola, {firstName} 👋</h1>
+                <p className="text-xs text-muted-foreground">
+                  Aquí tienes el estado de tu agencia hoy
+                </p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Resumen Rápido - Grid de Tarjetas con Suspense */}
-      <div className={`grid grid-cols-1 gap-6 mb-10 ${isEditor ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
-        <Suspense fallback={
-          <>
-            {isAdmin && <MetricSkeleton />}
-            <MetricSkeleton />
-            <MetricSkeleton />
-          </>
-        }>
-          <KPICards />
-        </Suspense>
-      </div>
-
-      {/* Bloque de tres tarjetas (30% c/u en desktop): Mis Ideas, Tareas Prioritarias, Últimas Transacciones */}
-      <div className="grid grid-cols-1 gap-6 mb-10 lg:grid-cols-3">
-        <div className="w-full">
-          <VoiceNotesWidget />
+            <DashboardRefresh />
+          </div>
         </div>
-        <Suspense fallback={<CardSkeleton />}>
-          <PriorityTasks />
-        </Suspense>
-        <Suspense fallback={<CardSkeleton />}>
-          <RecentTransactions />
-        </Suspense>
       </div>
 
-      {/* Widget: Hoy en Redes */}
-      <Suspense fallback={<CardSkeleton />}>
-        <TodayScheduledTasksWrapper />
-      </Suspense>
-      
-      {/* Mi Billetera (Solo para ADMIN) */}
-      <Suspense fallback={null}>
-        <AdminWallet />
-      </Suspense>
+      {/* Contenido principal */}
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        
+        {/* Acciones Rápidas - Solo para ADMIN */}
+        {isAdmin && (
+          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                <Zap className="h-4 w-4 text-white" />
+              </div>
+              <h2 className="font-semibold">Acciones Rápidas</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <Button asChild variant="outline" className="h-auto py-3 rounded-xl justify-start hover:shadow-md transition-shadow">
+                <Link href="/content" className="flex flex-col items-start gap-1">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Ver tareas</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-auto py-3 rounded-xl justify-start hover:shadow-md transition-shadow">
+                <Link href="/content?bulk=1" className="flex flex-col items-start gap-1">
+                  <Plus className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Tareas en lote</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-auto py-3 rounded-xl justify-start hover:shadow-md transition-shadow">
+                <Link href="/content/shoots?new=1" className="flex flex-col items-start gap-1">
+                  <Video className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Crear rodaje</span>
+                </Link>
+              </Button>
+              <TransactionDialog>
+                <Button variant="outline" className="h-auto py-3 rounded-xl justify-start hover:shadow-md transition-shadow w-full">
+                  <div className="flex flex-col items-start gap-1">
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Transacción</span>
+                  </div>
+                </Button>
+              </TransactionDialog>
+            </div>
+          </div>
+        )}
 
-      {/* Panel de Carga de Trabajo */}
-      {filteredWorkloads.length > 0 && <WorkloadPanel workloads={filteredWorkloads} />}
+        {/* KPI Cards Grid */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 items-stretch">
+          <Suspense fallback={
+            <>
+              {isAdmin && <MetricSkeleton />}
+              <MetricSkeleton />
+              <MetricSkeleton />
+            </>
+          }>
+            <KPICards />
+          </Suspense>
+        </div>
 
-      {/* Alertas de Feedback de Clientes */}
-      <Suspense fallback={null}>
-        <PendingFeedbacks />
-      </Suspense>
+        {/* Grid de dos columnas: Tareas Prioritarias y Transacciones */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Suspense fallback={<CardSkeleton />}>
+            <PriorityTasks />
+          </Suspense>
+          <Suspense fallback={<CardSkeleton />}>
+            <RecentTransactions />
+          </Suspense>
+        </div>
+
+        {/* Grid: Hoy en Redes y Carga de Trabajo */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Suspense fallback={<CardSkeleton />}>
+            <TodayScheduledTasksWrapper />
+          </Suspense>
+          {filteredWorkloads.length > 0 && <WorkloadPanel workloads={filteredWorkloads} />}
+        </div>
+        
+        {/* Mi Billetera (Solo para ADMIN) */}
+        <Suspense fallback={null}>
+          <AdminWallet />
+        </Suspense>
+
+        {/* Alertas de Feedback de Clientes */}
+        <Suspense fallback={null}>
+          <PendingFeedbacks />
+        </Suspense>
+      </div>
     </div>
   );
 }

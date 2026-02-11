@@ -28,8 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { TaskMetrics } from "@prisma/client";
 import { calculateMonthlyEngagement, calculateMonthlyEfficiency, formatCurrency } from "@/lib/metrics-calculations";
-import { TrendingUp, Brain, BarChart3 } from "lucide-react";
-import { PageHeader } from "@/components/shared";
+import { TrendingUp, Brain, BarChart3, ArrowLeft } from "lucide-react";
 
 interface TaskWithMetrics {
   id: string;
@@ -78,25 +77,19 @@ export default async function ClientDetailPage({
   // Check if user is authenticated
   if (!session?.user?.id) {
     return (
-      <div className="container mx-auto px-2 md:px-3">
-        <PageHeader 
-          title="Cliente"
-          breadcrumbs={[
-            { label: "Inicio", href: "/" },
-            { label: "Clientes", href: "/clients" },
-            { label: "Cliente" }
-          ]}
-        />
-        <div className="flex flex-col items-center justify-center py-12">
-          <h2 className="text-2xl font-bold mb-4">Acceso Restringido</h2>
-          <p className="text-muted-foreground text-center mb-6">
-            Inicia sesión para ver la información de los clientes.
-          </p>
-          <Button asChild>
-            <Link href="/clients">
-              Ver Dashboard General
-            </Link>
-          </Button>
+      <div className="min-h-screen bg-muted/30">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="flex flex-col items-center justify-center py-12 rounded-xl border bg-card">
+            <h2 className="text-2xl font-bold mb-4">Acceso Restringido</h2>
+            <p className="text-muted-foreground text-center mb-6">
+              Inicia sesión para ver la información de los clientes.
+            </p>
+            <Button asChild>
+              <Link href="/clients">
+                Ver Dashboard General
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -177,230 +170,282 @@ export default async function ClientDetailPage({
   }
 
   return (
-    <div className="container mx-auto px-2 md:px-3">
-      <PageHeader 
-        breadcrumbs={[
-          { label: "Inicio", href: "/" },
-          { label: "Clientes", href: "/clients" },
-          { label: client.name }
-        ]}
-        actions={isAdmin ? <ClientDeleteButton clientId={client.id} clientName={client.name} /> : undefined}
-      />
-      <div className="mb-6">
-        <ClientHeader client={client} users={users} isAdmin={isAdmin} canEditClient={canEditClient} />
-      </div>
-
-      <Tabs defaultValue="summary" className="w-full">
-        <div className="sticky top-[64px] z-30 w-full bg-background/95 backdrop-blur py-2 border-b border-border/50">
-          <TabsList className="inline-flex w-full items-center justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide px-1 h-12 items-center rounded-full bg-muted px-3 py-1 text-muted-foreground">
-            <TabsTrigger value="summary" className="flex-shrink-0 rounded-full">Resumen</TabsTrigger>
-            <TabsTrigger value="brand-kit" className="flex-shrink-0 rounded-full">Brand Kit</TabsTrigger>
-            <TabsTrigger value="vault" className="flex-shrink-0 rounded-full">Bóveda</TabsTrigger>
-            <TabsTrigger value="strategy" className="flex-shrink-0 rounded-full">Estrategia de Marca</TabsTrigger>
+    <div className="min-h-screen bg-muted/30">
+      {/* Header iOS-style con navegación */}
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b">
+        <div className="max-w-6xl mx-auto px-4">
+          {/* Breadcrumb simple */}
+          <div className="flex items-center gap-2 py-2 text-sm">
+            <Link 
+              href="/clients" 
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Clientes</span>
+            </Link>
+            <span className="text-muted-foreground/50">/</span>
+            <span className="font-medium truncate">{client.name}</span>
             {isAdmin && (
-              <>
-                <TabsTrigger value="performance" className="flex-shrink-0 rounded-full">Performance</TabsTrigger>
-                <TabsTrigger value="metrics" className="flex-shrink-0 rounded-full">Métricas & Rendimiento</TabsTrigger>
-                <TabsTrigger value="account" className="flex-shrink-0 rounded-full">Estado de Cuenta</TabsTrigger>
-              </>
-            )}
-          </TabsList>
-        </div>
-
-        {isAdmin && (
-          <TabsContent value="performance" className="mt-6 space-y-6">
-            {globalMetricsResult.success && globalMetricsResult.data && recentTasks.length > 0 ? (
-              <>
-                {/* IA Performance Overview */}
-                <AiOverviewCard
-                  clientId={client.id}
-                  initialOverview={client.lastAiOverview}
-                  initialOverviewDate={client.lastAiOverviewDate}
-                  userRole={session?.user?.role as "ADMIN" | "EDITOR" | "VIEWER" | undefined}
-                />
-
-                {/* Resumen Ejecutivo */}
-                {globalMetricsResult.data.businessMetrics.totalRevenue > 0 && (
-                  <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800">
-                    <CardContent className="pt-6">
-                      <p className="text-lg font-semibold text-center">
-                        Este mes, el contenido de Totem generó{" "}
-                        <span className="text-green-600 dark:text-green-400 font-bold">
-                          {formatCurrency(globalMetricsResult.data.businessMetrics.totalRevenue)}
-                        </span>{" "}
-                        en ventas directas para tu marca con una tasa de conversión del{" "}
-                        <span className="text-green-600 dark:text-green-400 font-bold">
-                          {globalMetricsResult.data.businessMetrics.averageConversionRate.toFixed(2)}%
-                        </span>
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                <StrategyCorePanel
-                  totalImpressions={globalMetricsResult.data.totalImpressions}
-                  totalCommunityGrowth={globalMetricsResult.data.totalCommunityGrowth}
-                  globalVirality={globalMetricsResult.data.globalVirality}
-                  crossPlatformEfficiency={globalMetricsResult.data.crossPlatformEfficiency}
-                  metaMetrics={globalMetricsResult.data.metaMetrics}
-                  tiktokMetrics={globalMetricsResult.data.tiktokMetrics}
-                />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <MetaPanel tasks={recentTasks} />
-                  <TikTokPanel tasks={recentTasks} />
-                </div>
-                <RevenueROIPanel
-                  tasks={recentTasks}
-                  totalRevenue={globalMetricsResult.data.businessMetrics.totalRevenue}
-                  totalConversions={globalMetricsResult.data.businessMetrics.totalConversions}
-                  totalSales={globalMetricsResult.data.businessMetrics.totalSales}
-                  averageConversionRate={globalMetricsResult.data.businessMetrics.averageConversionRate}
-                  averageCPA={globalMetricsResult.data.businessMetrics.averageCPA}
-                  averageROAS={globalMetricsResult.data.businessMetrics.averageROAS}
-                />
-                <MetricsBulkEditor clientId={client.id} />
-              </>
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
-                  <BarChart3 className="h-16 w-16 text-muted-foreground/30" />
-                  <div className="text-center space-y-2">
-                    <h3 className="font-semibold text-lg">Sin datos de performance</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Aún no hay tareas publicadas o métricas sincronizadas para este cliente.
-                    </p>
-                  </div>
-                  <SyncMetricsButton clientId={client.id} />
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        )}
-
-        <TabsContent value="summary" className="mt-6 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ContractFulfillment
-              clientId={client.id}
-              monthlyReels={client.monthlyReels}
-              monthlyFlyers={client.monthlyFlyers}
-            />
-            
-            {isAdmin && profitabilityResult.success && profitabilityResult.data && (
-              <ClientProfitability
-                income={profitabilityResult.data.income}
-                expenses={profitabilityResult.data.expenses}
-              />
+              <div className="ml-auto">
+                <ClientDeleteButton clientId={client.id} clientName={client.name} />
+              </div>
             )}
           </div>
+        </div>
+      </div>
 
-          {/* Eficiencia Mensual */}
-          {monthlyEngagement > 0 && client.monthlyRate > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Eficiencia Mensual
-                  <Brain className="h-4 w-4 text-muted-foreground" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-3xl font-bold">
-                      {formatCurrency(monthlyEfficiency)}
-                    </p>
-                    <CardDescription className="text-sm text-muted-foreground mt-2">
-                      Cada interacción con un cliente potencial le costó{" "}
-                      {formatCurrency(monthlyEfficiency)} este mes
-                    </CardDescription>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    <p>Engagement Total del Mes: {monthlyEngagement.toLocaleString()} interacciones</p>
-                    <p>Inversión Mensual: {formatCurrency(client.monthlyRate)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {tasksForKanban.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <p className="text-muted-foreground text-center text-lg">
-                  No hay tareas para este cliente
-                </p>
-                <p className="text-muted-foreground mt-2 text-center text-sm">
-                  Las tareas de contenido aparecerán aquí
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <KanbanBoard
-              tasks={tasksForKanban}
-              users={usersResult.success ? usersResult.data ?? [] : []}
-              clientId={client.id}
-            />
-          )}
-        </TabsContent>
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Client Header */}
+        <ClientHeader client={client} users={users} isAdmin={isAdmin} canEditClient={canEditClient} />
 
-        {isAdmin && (
-          <TabsContent value="metrics" className="mt-6 space-y-6">
-            {facebookMetricsResult.success && facebookMetricsResult.data ? (
-              <>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold">Métricas de Facebook</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Datos sincronizados desde la API de Meta
-                    </p>
-                  </div>
-                  <SyncMetricsButton clientId={client.id} />
-                </div>
+        {/* Tabs Navigation iOS-style */}
+        <Tabs defaultValue="summary" className="w-full">
+          <div className="sticky top-[52px] z-30 -mx-4 px-4 bg-muted/30 backdrop-blur-sm py-2">
+            <TabsList className="inline-flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide h-11 rounded-xl bg-card border p-1">
+              <TabsTrigger 
+                value="summary" 
+                className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+              >
+                Resumen
+              </TabsTrigger>
+              <TabsTrigger 
+                value="brand-kit" 
+                className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+              >
+                Brand Kit
+              </TabsTrigger>
+              <TabsTrigger 
+                value="vault" 
+                className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+              >
+                Bóveda
+              </TabsTrigger>
+              <TabsTrigger 
+                value="strategy" 
+                className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+              >
+                Estrategia de Marca
+              </TabsTrigger>
+              {isAdmin && (
+                <>
+                  <TabsTrigger 
+                    value="performance" 
+                    className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                  >
+                    Performance
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="metrics" 
+                    className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                  >
+                    Métricas & Rendimiento
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="account" 
+                    className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                  >
+                    Estado de Cuenta
+                  </TabsTrigger>
+                </>
+              )}
+            </TabsList>
+          </div>
 
-                <MetricsOverview
-                  impressions={facebookMetricsResult.data.overview.impressions}
-                  engagements={facebookMetricsResult.data.overview.engagements}
-                  fans={facebookMetricsResult.data.overview.fans}
+          <TabsContent value="summary" className="mt-6 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ContractFulfillment
+                clientId={client.id}
+                monthlyReels={client.monthlyReels}
+                monthlyFlyers={client.monthlyFlyers}
+              />
+              
+              {isAdmin && profitabilityResult.success && profitabilityResult.data && (
+                <ClientProfitability
+                  income={profitabilityResult.data.income}
+                  expenses={profitabilityResult.data.expenses}
                 />
+              )}
+            </div>
 
-                <MetricsChart data={facebookMetricsResult.data.chartData} />
-              </>
-            ) : (
+            {/* Eficiencia Mensual */}
+            {monthlyEngagement > 0 && client.monthlyRate > 0 && (
               <Card>
-                <CardContent className="py-12">
-                  <div className="flex flex-col items-center justify-center space-y-4">
-                    <p className="text-muted-foreground text-center">
-                      {facebookMetricsResult.error || "No hay métricas disponibles"}
-                    </p>
-                    <SyncMetricsButton clientId={client.id} />
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    Eficiencia Mensual
+                    <Brain className="h-4 w-4 text-muted-foreground" />
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-3xl font-bold">
+                        {formatCurrency(monthlyEfficiency)}
+                      </p>
+                      <CardDescription className="text-sm text-muted-foreground mt-2">
+                        Cada interacción con un cliente potencial le costó{" "}
+                        {formatCurrency(monthlyEfficiency)} este mes
+                      </CardDescription>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <p>Engagement Total del Mes: {monthlyEngagement.toLocaleString()} interacciones</p>
+                      <p>Inversión Mensual: {formatCurrency(client.monthlyRate)}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             )}
+            
+            {tasksForKanban.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <p className="text-muted-foreground text-center text-lg">
+                    No hay tareas para este cliente
+                  </p>
+                  <p className="text-muted-foreground mt-2 text-center text-sm">
+                    Las tareas de contenido aparecerán aquí
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <KanbanBoard
+                tasks={tasksForKanban}
+                users={usersResult.success ? usersResult.data ?? [] : []}
+                clientId={client.id}
+              />
+            )}
           </TabsContent>
-        )}
 
-        <TabsContent value="strategy" className="mt-6">
-          <ClientStrategyForm
-            clientId={client.id}
-            initialData={brandDNA}
-          />
-        </TabsContent>
+          {isAdmin && (
+            <TabsContent value="performance" className="mt-6 space-y-6">
+              {globalMetricsResult.success && globalMetricsResult.data && recentTasks.length > 0 ? (
+                <>
+                  {/* IA Performance Overview */}
+                  <AiOverviewCard
+                    clientId={client.id}
+                    initialOverview={client.lastAiOverview}
+                    initialOverviewDate={client.lastAiOverviewDate}
+                    userRole={session?.user?.role as "ADMIN" | "EDITOR" | "VIEWER" | undefined}
+                  />
 
-        <TabsContent value="brand-kit" className="mt-6">
-          <BrandKit assets={client.brandAssets} clientId={client.id} />
-        </TabsContent>
+                  {/* Resumen Ejecutivo */}
+                  {globalMetricsResult.data.businessMetrics.totalRevenue > 0 && (
+                    <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800">
+                      <CardContent className="pt-6">
+                        <p className="text-lg font-semibold text-center">
+                          Este mes, el contenido de Totem generó{" "}
+                          <span className="text-green-600 dark:text-green-400 font-bold">
+                            {formatCurrency(globalMetricsResult.data.businessMetrics.totalRevenue)}
+                          </span>{" "}
+                          en ventas directas para tu marca con una tasa de conversión del{" "}
+                          <span className="text-green-600 dark:text-green-400 font-bold">
+                            {globalMetricsResult.data.businessMetrics.averageConversionRate.toFixed(2)}%
+                          </span>
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
 
-        <TabsContent value="vault" className="mt-6">
-          <VaultList credentials={client.credentials} clientId={client.id} />
-        </TabsContent>
+                  <StrategyCorePanel
+                    totalImpressions={globalMetricsResult.data.totalImpressions}
+                    totalCommunityGrowth={globalMetricsResult.data.totalCommunityGrowth}
+                    globalVirality={globalMetricsResult.data.globalVirality}
+                    crossPlatformEfficiency={globalMetricsResult.data.crossPlatformEfficiency}
+                    metaMetrics={globalMetricsResult.data.metaMetrics}
+                    tiktokMetrics={globalMetricsResult.data.tiktokMetrics}
+                  />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <MetaPanel tasks={recentTasks} />
+                    <TikTokPanel tasks={recentTasks} />
+                  </div>
+                  <RevenueROIPanel
+                    tasks={recentTasks}
+                    totalRevenue={globalMetricsResult.data.businessMetrics.totalRevenue}
+                    totalConversions={globalMetricsResult.data.businessMetrics.totalConversions}
+                    totalSales={globalMetricsResult.data.businessMetrics.totalSales}
+                    averageConversionRate={globalMetricsResult.data.businessMetrics.averageConversionRate}
+                    averageCPA={globalMetricsResult.data.businessMetrics.averageCPA}
+                    averageROAS={globalMetricsResult.data.businessMetrics.averageROAS}
+                  />
+                  <MetricsBulkEditor clientId={client.id} />
+                </>
+              ) : (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
+                    <BarChart3 className="h-16 w-16 text-muted-foreground/30" />
+                    <div className="text-center space-y-2">
+                      <h3 className="font-semibold text-lg">Sin datos de performance</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Aún no hay tareas publicadas o métricas sincronizadas para este cliente.
+                      </p>
+                    </div>
+                    <SyncMetricsButton clientId={client.id} />
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          )}
 
-        {isAdmin && (
-          <TabsContent value="account" className="mt-6">
-            <AccountStatus clientId={client.id} />
+          {isAdmin && (
+            <TabsContent value="metrics" className="mt-6 space-y-6">
+              {facebookMetricsResult.success && facebookMetricsResult.data ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold">Métricas de Facebook</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Datos sincronizados desde la API de Meta
+                      </p>
+                    </div>
+                    <SyncMetricsButton clientId={client.id} />
+                  </div>
+
+                  <MetricsOverview
+                    impressions={facebookMetricsResult.data.overview.impressions}
+                    engagements={facebookMetricsResult.data.overview.engagements}
+                    fans={facebookMetricsResult.data.overview.fans}
+                  />
+
+                  <MetricsChart data={facebookMetricsResult.data.chartData} />
+                </>
+              ) : (
+                <Card>
+                  <CardContent className="py-12">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <p className="text-muted-foreground text-center">
+                        {facebookMetricsResult.error || "No hay métricas disponibles"}
+                      </p>
+                      <SyncMetricsButton clientId={client.id} />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          )}
+
+          <TabsContent value="strategy" className="mt-6">
+            <ClientStrategyForm
+              clientId={client.id}
+              initialData={brandDNA}
+            />
           </TabsContent>
-        )}
-      </Tabs>
+
+          <TabsContent value="brand-kit" className="mt-6">
+            <BrandKit assets={client.brandAssets} clientId={client.id} />
+          </TabsContent>
+
+          <TabsContent value="vault" className="mt-6">
+            <VaultList credentials={client.credentials} clientId={client.id} />
+          </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="account" className="mt-6">
+              <AccountStatus clientId={client.id} />
+            </TabsContent>
+          )}
+        </Tabs>
+      </div>
     </div>
   );
 }

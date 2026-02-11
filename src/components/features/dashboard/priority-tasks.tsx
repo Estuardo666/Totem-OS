@@ -1,7 +1,6 @@
 import { getTasks } from "@/actions/content-actions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ListTodo } from "lucide-react";
 import { auth } from "@/auth";
 import { format, isToday, isYesterday, differenceInHours, startOfDay, endOfDay, addDays } from "date-fns";
 import Link from "next/link";
@@ -54,103 +53,101 @@ export async function PriorityTasks() {
     .slice(0, 5);
 
   return (
-    <Card>
-      <CardHeader>
+    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+      <div className="p-5 border-b">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CardTitle>Tareas Prioritarias</CardTitle>
-            <Badge variant="outline" className="text-xs">
-              {urgentTasks.length} próximos 3 días
-            </Badge>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center">
+              <ListTodo className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Tareas Prioritarias</h3>
+              <p className="text-xs text-muted-foreground">{urgentTasks.length} próximos 3 días</p>
+            </div>
           </div>
           <Link
             href="/content"
-            className="text-sm text-primary hover:underline"
+            className="text-sm text-primary hover:underline font-medium"
           >
             Ver todas
           </Link>
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="divide-y">
         {urgentTasks.length > 0 ? (
-          <div className="space-y-3">
-            {urgentTasks.map((task) => {
-              // Calcular si la tarea vence en menos de 24 horas
-              const now = new Date();
-              const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-              const hoursUntilDue = dueDate
-                ? differenceInHours(dueDate, now)
-                : Infinity;
-              const isUrgent = hoursUntilDue < 24 && hoursUntilDue >= 0;
-              
-              return (
-                <div
-                  key={task.id}
-                  className={`flex items-start justify-between gap-3 p-3 rounded-lg border transition-colors ${
-                    isUrgent
-                      ? "border-rose-500 bg-rose-50/50 hover:bg-rose-100/50 animate-pulse"
-                      : "hover:bg-accent/50"
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className={`font-medium text-sm leading-tight ${
-                        isUrgent ? "text-rose-700 font-semibold" : ""
-                      }`}>
-                        {task.title}
-                      </h4>
-                      {isUrgent && (
-                        <AlertCircle className="h-4 w-4 text-rose-500 flex-shrink-0" />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className="text-xs">
-                        {task.client.name}
-                      </Badge>
-                      {task.dueDate && (
-                        <span
-                          className={`text-xs font-medium ${
-                            isUrgent
-                              ? "text-rose-600 font-semibold"
-                              : getDateColor(new Date(task.dueDate))
-                          }`}
-                        >
-                          {isToday(new Date(task.dueDate))
-                            ? "Hoy"
-                            : isYesterday(new Date(task.dueDate))
-                              ? "Ayer"
-                              : hoursUntilDue < 24 && hoursUntilDue >= 0
-                                ? `Mañana (${Math.round(hoursUntilDue)}h)`
-                                : format(new Date(task.dueDate), "dd/MM/yyyy")}
-                        </span>
-                      )}
-                    </div>
+          urgentTasks.map((task) => {
+            // Calcular si la tarea vence en menos de 24 horas
+            const now = new Date();
+            const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+            const hoursUntilDue = dueDate
+              ? differenceInHours(dueDate, now)
+              : Infinity;
+            const isUrgent = hoursUntilDue < 24 && hoursUntilDue >= 0;
+            
+            return (
+              <div
+                key={task.id}
+                className={`flex items-start justify-between gap-3 p-4 transition-colors ${
+                  isUrgent
+                    ? "bg-rose-50/50 dark:bg-rose-950/20"
+                    : "hover:bg-muted/50"
+                }`}
+              >
+                <div 
+                  className="w-1 h-12 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: isUrgent ? "#f43f5e" : (task.client.color || "#6366f1") }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className={`font-medium text-sm leading-tight truncate ${
+                      isUrgent ? "text-rose-700 dark:text-rose-400" : ""
+                    }`}>
+                      {task.title}
+                    </h4>
+                    {isUrgent && (
+                      <AlertCircle className="h-4 w-4 text-rose-500 flex-shrink-0" />
+                    )}
                   </div>
-                  <div
-                    className={`w-1 h-full rounded-full flex-shrink-0 ${
-                      isUrgent ? "bg-rose-500" : ""
-                    }`}
-                    style={{
-                      backgroundColor: isUrgent
-                        ? undefined
-                        : task.client.color || "#000000",
-                    }}
-                  />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="secondary" className="text-xs rounded-lg">
+                      {task.client.name}
+                    </Badge>
+                    {task.dueDate && (
+                      <span
+                        className={`text-xs font-medium ${
+                          isUrgent
+                            ? "text-rose-600 dark:text-rose-400"
+                            : getDateColor(new Date(task.dueDate))
+                        }`}
+                      >
+                        {isToday(new Date(task.dueDate))
+                          ? "Hoy"
+                          : isYesterday(new Date(task.dueDate))
+                            ? "Ayer"
+                            : hoursUntilDue < 24 && hoursUntilDue >= 0
+                              ? `Mañana (${Math.round(hoursUntilDue)}h)`
+                              : format(new Date(task.dueDate), "dd/MM/yyyy")}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })
         ) : (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground mb-2">
-              No hay tareas prioritarias esta semana
+          <div className="text-center py-10 px-4">
+            <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
+              <ListTodo className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground mb-1">
+              No hay tareas prioritarias
             </p>
             <p className="text-xs text-muted-foreground">
               ¡Todo al día! 🎉
             </p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

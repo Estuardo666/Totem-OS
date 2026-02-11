@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Calendar, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function GoogleCalendarSettings() {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
@@ -20,7 +18,7 @@ export function GoogleCalendarSettings() {
       setIsConnected(Boolean(data.connected));
     } catch (fetchError) {
       console.error("Error verificando Google Calendar:", fetchError);
-      setError("No se pudo verificar el estado de Google Calendar");
+      setError("No se pudo verificar el estado");
       setIsConnected(false);
     }
   };
@@ -45,53 +43,101 @@ export function GoogleCalendarSettings() {
       setIsConnected(false);
     } catch (disconnectError) {
       console.error("Error desconectando Google Calendar:", disconnectError);
-      setError("No se pudo desconectar Google Calendar");
+      setError("No se pudo desconectar");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span>Google Calendar</span>
-        </CardTitle>
-        <CardDescription>
-          Conecta tu Google Calendar para crear eventos automáticamente y sincronizar con el cliente y el equipo.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        <div className="flex items-center justify-between gap-3 p-3 border rounded-lg">
-          <div className="text-sm">
-            {isConnected ? "Tu calendario está conectado." : "Tu calendario aún no está conectado."}
+    <div className="rounded-xl border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600">
+            <Calendar className="h-4 w-4 text-white" />
           </div>
-          {isConnected === null ? (
-            <Badge variant="secondary" className="text-xs">
-              Verificando...
-            </Badge>
-          ) : isConnected ? (
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="text-xs">
-                Conectado
-              </Badge>
-              <Button type="button" variant="outline" size="sm" onClick={handleDisconnect} disabled={isLoading}>
-                Desconectar
-              </Button>
-            </div>
-          ) : (
-            <Button type="button" variant="outline" size="sm" onClick={handleConnect} disabled={isLoading}>
-              Conectar Calendar
-            </Button>
-          )}
+          <div>
+            <h3 className="text-sm font-medium">Google Calendar</h3>
+            <p className="text-xs text-muted-foreground">Sincroniza eventos automáticamente</p>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Content */}
+      <div className="divide-y">
+        {/* Connection Status Row */}
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {isConnected === null ? (
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : isConnected ? (
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-500/10">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-500/10">
+                <XCircle className="h-4 w-4 text-yellow-600" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">
+                {isConnected === null 
+                  ? "Verificando conexión..." 
+                  : isConnected 
+                    ? "Calendario conectado" 
+                    : "Sin conexión"}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {error 
+                  ? error 
+                  : isConnected 
+                    ? "Los eventos se sincronizan automáticamente" 
+                    : "Conecta para crear eventos automáticamente"}
+              </p>
+            </div>
+          </div>
+          
+          <div className="shrink-0">
+            {isConnected === null ? (
+              <Badge variant="secondary" className="text-xs">
+                Verificando...
+              </Badge>
+            ) : isConnected ? (
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={handleDisconnect} 
+                disabled={isLoading}
+                className="h-8"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  "Desconectar"
+                )}
+              </Button>
+            ) : (
+              <Button 
+                type="button" 
+                size="sm" 
+                onClick={handleConnect} 
+                disabled={isLoading}
+                className="h-8"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  "Conectar"
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

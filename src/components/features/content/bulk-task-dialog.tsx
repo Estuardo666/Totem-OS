@@ -13,11 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { BulkTaskCreator } from "./bulk-task-creator";
-
-// Client-only icon to avoid hydration mismatch
-const LayersIcon = dynamic(() => import("lucide-react").then((mod) => ({ default: mod.Layers })), {
-  ssr: false,
-});
+import { Layers } from "lucide-react";
 
 interface BulkTaskDialogProps {
   clients: Client[];
@@ -50,22 +46,22 @@ export function BulkTaskDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant={buttonVariant} size={buttonSize} className={className}>
-          {showIcon && isClient && <LayersIcon className={`${buttonSize === "sm" ? "mr-1.5 h-3.5 w-3.5" : "mr-2 h-4 w-4"}`} />}
+          {showIcon && isClient && <Layers className={`${buttonSize === "sm" ? "mr-1.5 h-3.5 w-3.5" : "mr-2 h-4 w-4"}`} />}
           {label}
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[90vw] sm:w-[78vw] md:w-[62vw] lg:w-[42vw] xl:w-[35vw] max-w-2xl max-h-[90vh] p-0 overflow-hidden mx-auto">
-        <div className="px-8 pt-[2em] pb-2 md:px-6 md:pt-3 md:pb-0">
-          <DialogHeader className="px-0 w-full mb-0">
-            <div className="flex flex-col gap-0.5 w-full items-start text-left md:items-center md:text-center pl-4 md:pl-0 pb-2 md:pb-0">
-              <DialogTitle className="text-xl md:text-3xl font-semibold leading-tight">Crear tareas en lote</DialogTitle>
-              <DialogDescription className="text-sm md:text-lg leading-snug break-words w-full">
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col min-h-0">
+        <div className="sticky top-0 z-10 -mx-6 -mt-6 px-6 pt-6 pb-4 border-b bg-white/50 dark:bg-background/50 backdrop-blur-xl rounded-t-[2.5rem]">
+          <DialogHeader>
+            <div className="flex flex-col gap-1.5">
+              <DialogTitle className="text-2xl font-bold">Crear tareas en lote</DialogTitle>
+              <DialogDescription className="text-sm">
                 Pega un listado de tareas para crear múltiples tareas a la vez
               </DialogDescription>
             </div>
           </DialogHeader>
         </div>
-        <div className="px-4 pb-4 pt-0 md:px-6 md:pb-5 transition-[height,max-height] duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height]">
+        <div className="overflow-y-auto px-6 py-4 flex-1 custom-scroll">
           <BulkTaskCreator clients={clients} variant="dialog" showHeader={false} onSuccess={() => setOpen(false)} />
         </div>
       </DialogContent>

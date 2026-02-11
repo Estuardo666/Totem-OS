@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getFinancialStats } from "@/actions/finance-actions";
 import { getPendingTasksCount } from "@/actions/content-actions";
 import { getClients } from "@/actions/client-actions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, CheckCircle2, Users, AlertCircle } from "lucide-react";
 import { auth } from "@/auth";
 
@@ -69,24 +68,24 @@ export async function KPICards() {
     cards.push({
       key: "income",
       content: (
-        <Card className="animate-fade-in">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+        <div className="h-full rounded-2xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow animate-fade-in">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-muted-foreground">
               Ingresos del Mes
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {financialStats
-                ? formatCurrency(financialStats.totalIncome)
-                : "$0.00"}
+            </span>
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-white" />
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Facturas pagadas
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="text-3xl font-bold text-emerald-600">
+            {financialStats
+              ? formatCurrency(financialStats.totalIncome)
+              : "$0.00"}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Facturas pagadas
+          </p>
+        </div>
       ),
     });
   }
@@ -95,54 +94,60 @@ export async function KPICards() {
     {
       key: "pending",
       content: (
-        <Card className="animate-fade-in">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+        <div className="h-full rounded-2xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow animate-fade-in">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-muted-foreground">
               Tareas Pendientes
-            </CardTitle>
-            <CheckCircle2 className={`h-4 w-4 ${getCountColor(pendingTasksCount)}`} />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-6xl font-bold ${getCountColor(pendingTasksCount)}`}>
-              {pendingTasksCount}
+            </span>
+            <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${
+              pendingTasksCount === 0 
+                ? 'bg-gradient-to-br from-emerald-500 to-green-600' 
+                : pendingTasksCount >= 10 
+                  ? 'bg-gradient-to-br from-red-500 to-rose-600' 
+                  : 'bg-gradient-to-br from-amber-500 to-orange-600'
+            }`}>
+              <CheckCircle2 className="h-4 w-4 text-white" />
             </div>
-            <div className="flex items-center gap-2 mt-2">
-              <p className={`text-xs font-medium ${getCountColor(pendingTasksCount)}`}>
-                {getCountMessage(pendingTasksCount)}
-              </p>
-              {pendingTasksCount >= 10 && (
-                <AlertCircle className="h-3 w-3 text-red-500" />
-              )}
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className={`text-5xl font-bold ${getCountColor(pendingTasksCount)}`}>
+            {pendingTasksCount}
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <p className={`text-xs font-medium ${getCountColor(pendingTasksCount)}`}>
+              {getCountMessage(pendingTasksCount)}
+            </p>
+            {pendingTasksCount >= 10 && (
+              <AlertCircle className="h-3 w-3 text-red-500" />
+            )}
+          </div>
+        </div>
       ),
     },
     {
       key: "clients",
       content: (
-        <Card className="animate-fade-in">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+        <div className="h-full rounded-2xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow animate-fade-in">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-muted-foreground">
               Clientes Activos
-            </CardTitle>
-            <Users className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {activeClientsCount}
+            </span>
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+              <Users className="h-4 w-4 text-white" />
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Activos en el sistema
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="text-3xl font-bold text-violet-600">
+            {activeClientsCount}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Activos en el sistema
+          </p>
+        </div>
       ),
     }
   );
 
   return cards.map((card, index) => (
-    <div key={card.key} className="w-full" style={{ animationDelay: `${index * 120}ms` }}>
+    <div key={card.key} className="w-full h-full" style={{ animationDelay: `${index * 120}ms` }}>
       {card.content}
     </div>
   ));

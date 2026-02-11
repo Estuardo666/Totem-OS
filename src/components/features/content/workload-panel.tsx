@@ -1,8 +1,8 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, AlertCircle } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { UserWorkload } from "@/actions/workload-actions";
 
 interface WorkloadPanelProps {
@@ -35,29 +35,36 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "ADMIN":
-        return <Badge variant="default" className="bg-purple-600">Admin</Badge>;
+        return <Badge variant="default" className="bg-purple-600 text-xs rounded-lg">Admin</Badge>;
       case "EDITOR":
-        return <Badge variant="default" className="bg-blue-600">Editor</Badge>;
+        return <Badge variant="default" className="bg-blue-600 text-xs rounded-lg">Editor</Badge>;
       case "VIEWER":
-        return <Badge variant="outline">Viewer</Badge>;
+        return <Badge variant="secondary" className="text-xs rounded-lg">Viewer</Badge>;
       default:
-        return <Badge variant="outline">{role}</Badge>;
+        return <Badge variant="secondary" className="text-xs rounded-lg">{role}</Badge>;
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          Carga de Trabajo por Socio
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+      <div className="p-5 border-b">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
+            <Users className="h-4 w-4 text-white" />
+          </div>
+          <h3 className="font-semibold">Carga de Trabajo por Socio</h3>
+        </div>
+      </div>
+      <div className="divide-y">
         {workloads.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            No hay usuarios en el equipo
-          </p>
+          <div className="text-center py-10 px-4">
+            <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
+              <Users className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground">
+              No hay usuarios en el equipo
+            </p>
+          </div>
         ) : (
           workloads.map((workload) => {
             const percentage = getWorkloadPercentage(
@@ -67,33 +74,41 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
             const isOverCapacity = workload.pendingTasksCount >= workload.weeklyCapacity;
 
             return (
-              <div key={workload.userId} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{workload.userName}</span>
-                    {getRoleBadge(workload.userRole)}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isOverCapacity && (
-                      <AlertCircle className="h-4 w-4 text-red-500" />
-                    )}
-                    <span
-                      className={`text-sm font-semibold ${getWorkloadTextColor(
-                        percentage
-                      )}`}
-                    >
-                      {workload.pendingTasksCount} / {workload.weeklyCapacity}
-                    </span>
+              <div key={workload.userId} className="p-4 hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-3 mb-3">
+                  <Avatar className="h-10 w-10 ring-2 ring-border/30">
+                    <AvatarImage src={workload.userImage || undefined} alt={workload.userName} />
+                    <AvatarFallback className="text-sm font-medium">
+                      {workload.userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-sm truncate">{workload.userName}</span>
+                      {getRoleBadge(workload.userRole)}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isOverCapacity && (
+                        <AlertCircle className="h-3 w-3 text-red-500" />
+                      )}
+                      <span
+                        className={`text-xs font-semibold ${getWorkloadTextColor(
+                          percentage
+                        )}`}
+                      >
+                        {workload.pendingTasksCount} / {workload.weeklyCapacity}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary">
+                <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
                   <div
                     className={`h-full transition-all ${getWorkloadColor(percentage)}`}
                     style={{ width: `${percentage}%` }}
                   />
                 </div>
                 {isOverCapacity && (
-                  <p className="text-xs text-red-600 flex items-center gap-1">
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-2">
                     <AlertCircle className="h-3 w-3" />
                     Capacidad semanal excedida
                   </p>
@@ -102,8 +117,8 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
             );
           })
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 

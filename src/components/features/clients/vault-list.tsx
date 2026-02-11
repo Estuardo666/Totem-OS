@@ -8,6 +8,7 @@ import { Copy, Eye, EyeOff, Loader2, Plus, Trash2, ExternalLink } from "lucide-r
 import type { Credential } from "@prisma/client";
 import { createCredentialSchema, type CreateCredentialInput } from "@/schemas/client";
 import { addCredential, deleteCredential } from "@/actions/client-actions";
+import { useRedirectOnAuthError } from "@/hooks/use-redirect-on-auth-error";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

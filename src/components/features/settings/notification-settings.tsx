@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { updateUserSettings } from "@/actions/user.actions";
 import { useToast } from "@/components/ui/use-toast";
-import { Bell } from "lucide-react";
+import { Bell, Volume2 } from "lucide-react";
 
 interface NotificationSettingsProps {
   soundNotifications: boolean;
@@ -18,7 +16,6 @@ export function NotificationSettings({ soundNotifications: initialValue }: Notif
   const { toast } = useToast();
 
   const handleToggle = (checked: boolean) => {
-    // Optimistic update
     setSoundNotifications(checked);
 
     startTransition(async () => {
@@ -32,7 +29,6 @@ export function NotificationSettings({ soundNotifications: initialValue }: Notif
             : "Las notificaciones de sonido están desactivadas",
         });
       } else {
-        // Revert on error
         setSoundNotifications(!checked);
         toast({
           title: "Error",
@@ -44,25 +40,32 @@ export function NotificationSettings({ soundNotifications: initialValue }: Notif
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <div className="rounded-xl border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b bg-muted/30">
         <div className="flex items-center gap-2">
-          <Bell className="h-5 w-5 text-muted-foreground" />
-          <CardTitle>Notificaciones</CardTitle>
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-pink-600">
+            <Bell className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium">Notificaciones</h3>
+            <p className="text-xs text-muted-foreground">Controla cómo recibes alertas</p>
+          </div>
         </div>
-        <CardDescription>
-          Controla las notificaciones de sonido
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="sound-notifications" className="text-base">
-              Sonido de notificaciones
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Reproducir un sonido cuando recibas una notificación
-            </p>
+      </div>
+
+      {/* Content */}
+      <div className="divide-y">
+        {/* Sound Notifications Row */}
+        <div className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/30 transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600">
+              <Volume2 className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Sonidos</p>
+              <p className="text-xs text-muted-foreground">Reproduce sonido con cada notificación</p>
+            </div>
           </div>
           <Switch
             id="sound-notifications"
@@ -71,8 +74,8 @@ export function NotificationSettings({ soundNotifications: initialValue }: Notif
             disabled={isPending}
           />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 

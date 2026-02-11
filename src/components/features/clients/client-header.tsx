@@ -62,133 +62,152 @@ export function ClientHeader({ client, users, isAdmin = false, canEditClient = f
     }
   };
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case "ACTIVE":
-        return "default";
-      case "PAUSED":
-        return "secondary";
-      case "DEBT":
-        return "destructive";
-      case "INACTIVE":
-        return "secondary";
-      default:
-        return "secondary";
-    }
-  };
-
   return (
-    <Card className="border-none shadow-sm">
-      <CardContent className="flex flex-col gap-4 p-4 md:p-6 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            {/* Logo/Avatar */}
-            <div className="relative h-24 w-24 rounded-lg overflow-hidden bg-muted/50 flex items-center justify-center flex-shrink-0">
-              {client.logo ? (
-                <Image
-                  src={client.logo}
-                  alt={client.name}
-                  fill
-                  className="object-cover"
-                  sizes="96px"
-                />
-              ) : (
-                <div 
-                  className="h-full w-full rounded-lg flex items-center justify-center text-white font-bold text-3xl"
-                  style={{ backgroundColor: hexToRgba(client.color || "#000000", 0.2) }}
-                >
-                  {client.name.charAt(0).toUpperCase()}
+    <Card className="overflow-hidden rounded-xl border bg-card shadow-sm">
+      <CardContent className="p-0">
+        {/* Header con color de marca */}
+        {client.color && (
+          <div 
+            className="h-2"
+            style={{ backgroundColor: client.color }}
+          />
+        )}
+        
+        <div className="p-4 md:p-6">
+          <div className="flex flex-col md:flex-row md:items-start gap-4">
+            {/* Logo y info principal */}
+            <div className="flex items-start gap-4 flex-1">
+              {/* Logo/Avatar iOS style */}
+              <div 
+                className="relative h-20 w-20 md:h-24 md:w-24 rounded-2xl overflow-hidden flex-shrink-0 ring-2 ring-border/50 shadow-md"
+                style={{ 
+                  backgroundColor: client.color ? hexToRgba(client.color, 0.1) : 'var(--muted)' 
+                }}
+              >
+                {client.logo ? (
+                  <Image
+                    src={client.logo}
+                    alt={client.name}
+                    fill
+                    className="object-cover"
+                    sizes="96px"
+                  />
+                ) : (
+                  <div 
+                    className="h-full w-full flex items-center justify-center text-3xl md:text-4xl font-bold"
+                    style={{ color: client.color || 'var(--muted-foreground)' }}
+                  >
+                    {client.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              
+              {/* Nombre y status */}
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl md:text-3xl font-bold truncate">
+                    {client.name}
+                  </h1>
+                  {client.hasPendingFeedback && (
+                    <div className="relative flex-shrink-0">
+                      <Bell className="h-5 w-5 text-orange-500" />
+                      <span className="absolute -top-1 -right-1 h-2.5 w-2.5 bg-orange-500 rounded-full animate-pulse" />
+                    </div>
+                  )}
                 </div>
+                
+                {/* Badges */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge
+                    className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${
+                      client.status === "ACTIVE"
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : client.status === "PAUSED"
+                          ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                          : client.status === "DEBT"
+                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                    }`}
+                  >
+                    {getStatusLabel(client.status)}
+                  </Badge>
+                  {client.hasPendingFeedback && (
+                    <Badge 
+                      variant="outline" 
+                      className="text-xs bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800"
+                    >
+                      Feedback pendiente
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Emails de contacto */}
+                {contactEmails.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    {contactEmails.map((email) => (
+                      <span 
+                        key={email} 
+                        className="inline-flex items-center rounded-md bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground"
+                      >
+                        {email}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Acciones - layout mejorado */}
+            <div className="flex flex-wrap gap-2 md:flex-col lg:flex-row">
+              {isAdmin && (
+                <>
+                  <ShareReportButton
+                    clientId={client.id}
+                    shareToken={currentShareToken}
+                    onTokenGenerated={(token) => {
+                      setCurrentShareToken(token);
+                      router.refresh();
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="rounded-lg h-9"
+                  >
+                    <Link 
+                      href={`/clients/${client.id}/report`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FileText className="h-4 w-4 mr-1.5" />
+                      Reporte
+                    </Link>
+                  </Button>
+                </>
+              )}
+              {canEditClient && (
+                <>
+                  <BulkTaskDialog
+                    clients={[client]}
+                    label="Crear tareas"
+                    buttonVariant="outline"
+                    buttonSize="sm"
+                    className="rounded-lg h-9"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditDialogOpen(true)}
+                    className="rounded-lg h-9"
+                  >
+                    <Edit className="h-4 w-4 mr-1.5" />
+                    Editar
+                  </Button>
+                </>
               )}
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold">{client.name}</h1>
-            {client.hasPendingFeedback && (
-              <div className="relative">
-                <Bell className="h-5 w-5 text-red-600" />
-                <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-600 rounded-full border-2 border-white"></span>
-              </div>
-            )}
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge
-              variant={getStatusVariant(client.status)}
-              className={
-                client.status === "ACTIVE"
-                  ? "w-fit bg-green-500 hover:bg-green-600 text-white border-transparent"
-                  : client.status === "PAUSED"
-                    ? "w-fit bg-gray-500 hover:bg-gray-600 text-white border-transparent"
-                    : client.status === "INACTIVE"
-                      ? "w-fit bg-slate-400 hover:bg-slate-500 text-white border-transparent"
-                    : "w-fit"
-              }
-            >
-              {getStatusLabel(client.status)}
-            </Badge>
-            {client.hasPendingFeedback && (
-              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
-                Feedback pendiente de revisar
-              </Badge>
-            )}
-          </div>
-          {contactEmails.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Correos electrónicos:</span>
-              {contactEmails.map((email) => (
-                <span key={email} className="rounded-full border px-2 py-0.5 text-xs">
-                  {email}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
-          {isAdmin && (
-            <>
-              <ShareReportButton
-                clientId={client.id}
-                shareToken={currentShareToken}
-                onTokenGenerated={(token) => {
-                  setCurrentShareToken(token);
-                  router.refresh();
-                }}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                className="justify-center rounded-full"
-              >
-                <Link 
-                  href={`/clients/${client.id}/report`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <FileText className="h-4 w-4 mr-1.5" />
-                  Reporte
-                </Link>
-              </Button>
-            </>
-          )}
-          {canEditClient && (
-            <>
-              <BulkTaskDialog
-                clients={[client]}
-                label="Crear tareas"
-                buttonVariant="outline"
-                buttonSize="sm"
-                className="justify-center rounded-full"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditDialogOpen(true)}
-                className="justify-center rounded-full"
-              >
-                <Edit className="h-4 w-4 mr-1.5" />
-                Editar
-              </Button>
-            </>
-          )}
         </div>
       </CardContent>
 

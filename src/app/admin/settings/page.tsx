@@ -10,18 +10,15 @@ import { GoogleCalendarSuccessToast } from "@/components/features/admin/google-c
 import { SettingsSkeleton } from "@/components/features/settings/settings-skeleton";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { PageHeader } from "@/components/shared";
+import { Settings, Palette, Bell, Link2, Sparkles, Shield } from "lucide-react";
 
 async function SettingsContent() {
-  // ✅ Verificar sesión PRIMERO (antes de cualquier otra lógica)
   const session = await auth();
 
-  // ✅ Redirect ANTES de cualquier llamada a Prisma
   if (!session?.user?.id) {
     redirect("/sign-in");
   }
 
-  // ✅ Obtener datos del usuario desde la BD
   const user = await db.user.findUnique({
     where: { id: session.user.id },
     select: {
@@ -35,43 +32,108 @@ async function SettingsContent() {
     },
   });
 
-  // ✅ Verificar usuario después de la query
   if (!user) {
     redirect("/sign-in");
   }
 
-  // ✅ Verificar rol de ADMIN para acceder a configuración de admin
   if (user.roleLegacy !== "ADMIN") {
     redirect("/");
   }
 
-  return (
-    <div className="space-y-6 p-2 md:p-3">
-      <GoogleCalendarSuccessToast />
-      <PageHeader
-        title="Configuración"
-        description="Personaliza tu experiencia en Totem OS"
-      />
+  const isAdmin = user.roleLegacy === "ADMIN";
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <AppearanceForm
-          primaryColor={user.primaryColor || "#2563eb"}
-          darkMode={user.darkMode ?? false}
-        />
-        <NotificationSettings
-          soundNotifications={user.soundNotifications ?? true}
-        />
-        <GoogleCalendarSettings />
+  return (
+    <div className="min-h-screen bg-muted/30">
+      <GoogleCalendarSuccessToast />
+      
+      {/* Header iOS-style */}
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-xl border-b">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
+              <Settings className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight">Configuración</h1>
+              <p className="text-xs text-muted-foreground">Personaliza tu experiencia</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Configuración de IA - Solo para ADMIN */}
-      {user.roleLegacy === "ADMIN" && (
-        <div className="mt-6 space-y-6">
-          <BrandingSettings />
-          <AiConfigForm />
-          <SessionControlSettings />
-        </div>
-      )}
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
+        {/* SECCIÓN: Apariencia y Preferencias */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <Palette className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Apariencia y Preferencias
+            </h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <AppearanceForm
+              primaryColor={user.primaryColor || "#2563eb"}
+              darkMode={user.darkMode ?? false}
+            />
+            <NotificationSettings
+              soundNotifications={user.soundNotifications ?? true}
+            />
+          </div>
+        </section>
+
+        {/* SECCIÓN: Integraciones */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <Link2 className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Integraciones
+            </h2>
+          </div>
+          <GoogleCalendarSettings />
+        </section>
+
+        {/* SECCIÓN: Identidad de Marca (Solo Admin) */}
+        {isAdmin && (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Identidad de Marca
+              </h2>
+            </div>
+            <BrandingSettings />
+          </section>
+        )}
+
+        {/* SECCIÓN: Inteligencia Artificial (Solo Admin) */}
+        {isAdmin && (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Inteligencia Artificial
+              </h2>
+            </div>
+            <AiConfigForm />
+          </section>
+        )}
+
+        {/* SECCIÓN: Seguridad y Control (Solo Admin) */}
+        {isAdmin && (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Seguridad y Control
+              </h2>
+            </div>
+            <SessionControlSettings />
+          </section>
+        )}
+
+        {/* Spacer para scroll */}
+        <div className="h-8" />
+      </div>
     </div>
   );
 }

@@ -4,10 +4,8 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -15,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Eye, EyeOff, Sparkles } from "lucide-react";
+import { Loader2, Save, Eye, EyeOff, Sparkles, Zap, Brain, CheckCircle2, XCircle, Key } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { updateGlobalAiConfig, getGlobalAiConfig, testAIConnection } from "@/actions/admin-actions";
 import {
@@ -65,7 +63,6 @@ export function AiConfigForm() {
     },
   });
 
-  // Cargar configuración existente
   useEffect(() => {
     let isMounted = true;
 
@@ -86,7 +83,6 @@ export function AiConfigForm() {
             googleApiKey: result.data.googleApiKey || "",
           });
         } else if (!result.success) {
-          // Si no hay configuración, usar valores por defecto
           form.reset({
             activeProvider: "openai",
             openaiApiKey: "",
@@ -105,7 +101,6 @@ export function AiConfigForm() {
           title: "Error",
           description: "No se pudo cargar la configuración",
         });
-        // Usar valores por defecto en caso de error
         form.reset({
           activeProvider: "openai",
           openaiApiKey: "",
@@ -166,7 +161,6 @@ export function AiConfigForm() {
     const apiKey = formData.openaiApiKey || "";
     const baseUrl = formData.openaiBaseUrl || "";
 
-    // Validar que hay API Key
     if (!apiKey.trim()) {
       setTestResult({
         success: false,
@@ -185,13 +179,10 @@ export function AiConfigForm() {
       const result = await testAIConnection(apiKey, baseUrl || undefined);
 
       if (result.success && result.data) {
-        // Guardar modelos disponibles
         if (result.data.models && result.data.models.length > 0) {
           setAvailableModels(result.data.models);
           
-          // Si no hay modelo seleccionado, sugerir el primero o uno común
           if (!formData.openaiModel && result.data.models.length > 0) {
-            // Buscar un modelo común o usar el primero
             const commonModel = result.data.models.find(m => 
               m.id.includes("gpt-4o-mini") || 
               m.id.includes("gpt-3.5-turbo") || 
@@ -204,7 +195,7 @@ export function AiConfigForm() {
 
         setTestResult({
           success: true,
-          message: `✅ Conexión exitosa. ${result.data.models.length} modelos disponibles.`,
+          message: `${result.data.models.length} modelos disponibles`,
         });
         toast({
           title: "Conexión exitosa",
@@ -213,7 +204,7 @@ export function AiConfigForm() {
       } else {
         setTestResult({
           success: false,
-          message: `❌ Error: ${result.error}`,
+          message: result.error || "Error de conexión",
         });
         toast({
           variant: "destructive",
@@ -225,7 +216,7 @@ export function AiConfigForm() {
       const errorMessage = error instanceof Error ? error.message : "Error desconocido";
       setTestResult({
         success: false,
-        message: `❌ Error: ${errorMessage}`,
+        message: errorMessage,
       });
       toast({
         variant: "destructive",
@@ -243,76 +234,107 @@ export function AiConfigForm() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <h3 className="text-sm font-medium">Inteligencia Artificial</h3>
+              <p className="text-xs text-muted-foreground">Cargando configuración...</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="p-8 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5" />
-          Configuración de Inteligencia Artificial
-        </CardTitle>
-        <CardDescription>
-          Configura los proveedores de IA y sus API Keys. Solo visible para administradores.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="activeProvider"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Proveedor Activo</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un proveedor" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="openai">OpenAI (GPT-4o-mini)</SelectItem>
-                      <SelectItem value="grok">Grok (xAI)</SelectItem>
-                      <SelectItem value="deepseek">DeepSeek</SelectItem>
-                      <SelectItem value="google">Google (Gemini)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+    <div className="rounded-xl border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600">
+            <Sparkles className="h-4 w-4 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-medium">Inteligencia Artificial</h3>
+            <p className="text-xs text-muted-foreground">Configura proveedores y API Keys</p>
+          </div>
+        </div>
+      </div>
 
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold">API Keys</h3>
-              <div className="rounded-lg bg-muted p-3">
-                <p className="text-xs text-muted-foreground">
-                  <strong>Seguridad:</strong> Las API Keys se almacenan de forma segura en el servidor y solo se usan dentro de funciones "use server". Nunca se utilizan directamente en el navegador para hacer llamadas a APIs externas.
-                </p>
+      {/* Content */}
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="divide-y">
+            {/* Provider Selection Row */}
+            <div className="px-4 py-3">
+              <FormField
+                control={form.control}
+                name="activeProvider"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
+                        <Zap className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <FormLabel className="text-sm font-medium">Proveedor activo</FormLabel>
+                        <p className="text-xs text-muted-foreground">Selecciona el servicio de IA a utilizar</p>
+                      </div>
+                    </div>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Selecciona un proveedor" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="openai">OpenAI (GPT-4o-mini)</SelectItem>
+                        <SelectItem value="grok">Grok (xAI)</SelectItem>
+                        <SelectItem value="deepseek">DeepSeek</SelectItem>
+                        <SelectItem value="google">Google (Gemini)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* API Keys Section */}
+            <div className="px-4 py-3 space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
+                  <Key className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">API Keys</p>
+                  <p className="text-xs text-muted-foreground">Las claves se almacenan de forma segura en el servidor</p>
+                </div>
               </div>
 
+              {/* OpenAI API Key */}
               <FormField
                 control={form.control}
                 name="openaiApiKey"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>OpenAI API Key</FormLabel>
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-xs">OpenAI API Key</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showKeys.openai ? "text" : "password"}
                           placeholder="sk-..."
+                          className="h-9 pr-10"
                           {...field}
                           disabled={isSaving}
                         />
@@ -320,7 +342,7 @@ export function AiConfigForm() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="absolute right-0 top-0 h-full"
+                          className="absolute right-0 top-0 h-9 w-9"
                           onClick={() => toggleShowKey("openai")}
                         >
                           {showKeys.openai ? (
@@ -336,45 +358,62 @@ export function AiConfigForm() {
                 )}
               />
 
+              {/* OpenAI Base URL */}
               <FormField
                 control={form.control}
                 name="openaiBaseUrl"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>OpenAI Base URL (Opcional)</FormLabel>
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-xs">OpenAI Base URL (Opcional)</FormLabel>
                     <FormControl>
                       <Input
                         type="text"
                         placeholder="https://api.openai.com/v1"
+                        className="h-9"
                         {...field}
                         value={field.value || ""}
                         disabled={isSaving}
                       />
                     </FormControl>
-                    <p className="text-xs text-muted-foreground">
-                      URL personalizada para OpenAI. Por defecto: https://api.openai.com/v1
-                      <br />
-                      Ejemplos: https://openrouter.ai/api/v1, https://api.together.xyz/v1
+                    <p className="text-[10px] text-muted-foreground">
+                      Compatible con OpenRouter, Together AI, etc.
                     </p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* Campo de Modelo - Solo para OpenAI */}
+              {/* Model Selection */}
               <FormField
                 control={form.control}
                 name="openaiModel"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Modelo de IA (OpenAI)</FormLabel>
+                  <FormItem className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-xs">Modelo de IA</FormLabel>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleTestConnection}
+                        disabled={isTesting || isSaving}
+                        className="h-7 text-xs"
+                      >
+                        {isTesting ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <Zap className="h-3 w-3 mr-1" />
+                        )}
+                        Probar
+                      </Button>
+                    </div>
                     <FormControl>
                       {availableModels.length > 0 ? (
                         <Select
                           onValueChange={field.onChange}
                           value={field.value || ""}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="h-9">
                             <SelectValue placeholder="Selecciona un modelo" />
                           </SelectTrigger>
                           <SelectContent>
@@ -389,85 +428,47 @@ export function AiConfigForm() {
                         <Input
                           type="text"
                           placeholder="gpt-4o-mini"
+                          className="h-9"
                           {...field}
                           value={field.value || ""}
                           disabled={isSaving}
                         />
                       )}
                     </FormControl>
-                    <p className="text-xs text-muted-foreground">
-                      {availableModels.length > 0 
-                        ? `Modelos disponibles: ${availableModels.length}. Selecciona uno de la lista.`
-                        : `Modelo a usar. Haz clic en "Probar Conexión" para cargar la lista de modelos disponibles.`}
-                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* Botón de Prueba de Conexión */}
-              <div className="flex gap-2 items-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleTestConnection}
-                  disabled={isTesting || isSaving}
-                  className="flex-1"
-                >
-                  {isTesting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Probando...
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="mr-2 h-4 w-4" />
-                      Probar Conexión
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Resultado de la Prueba */}
+              {/* Test Result */}
               {testResult && (
-                <div className={`p-3 rounded-lg border ${
+                <div className={`flex items-center gap-2 p-2 rounded-lg text-xs ${
                   testResult.success 
-                    ? 'bg-green-50 border-green-200 text-green-800' 
-                    : 'bg-red-50 border-red-200 text-red-800'
+                    ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' 
+                    : 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
                 }`}>
-                  <p className="text-sm font-medium">{testResult.message}</p>
-                  {testResult.success && availableModels.length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-xs font-semibold mb-1">Modelos disponibles:</p>
-                      <div className="max-h-32 overflow-y-auto text-xs space-y-1">
-                        {availableModels.slice(0, 10).map((model) => (
-                          <div key={model.id} className="flex items-center gap-2">
-                            <span className="font-mono bg-white/50 px-1 rounded">{model.id}</span>
-                            {model.name && model.name !== model.id && (
-                              <span className="opacity-75">- {model.name}</span>
-                            )}
-                          </div>
-                        ))}
-                        {availableModels.length > 10 && (
-                          <div className="opacity-75">...y {availableModels.length - 10} más</div>
-                        )}
-                      </div>
-                    </div>
+                  {testResult.success ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  ) : (
+                    <XCircle className="h-3.5 w-3.5 shrink-0" />
                   )}
+                  <span>{testResult.message}</span>
                 </div>
               )}
 
+              {/* Grok API Key */}
               <FormField
                 control={form.control}
                 name="grokApiKey"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Grok (xAI) API Key</FormLabel>
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-xs">Grok (xAI) API Key</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showKeys.grok ? "text" : "password"}
                           placeholder="xai-..."
+                          className="h-9 pr-10"
                           {...field}
                           disabled={isSaving}
                         />
@@ -475,7 +476,7 @@ export function AiConfigForm() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="absolute right-0 top-0 h-full"
+                          className="absolute right-0 top-0 h-9 w-9"
                           onClick={() => toggleShowKey("grok")}
                         >
                           {showKeys.grok ? (
@@ -491,17 +492,19 @@ export function AiConfigForm() {
                 )}
               />
 
+              {/* DeepSeek API Key */}
               <FormField
                 control={form.control}
                 name="deepseekApiKey"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>DeepSeek API Key</FormLabel>
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-xs">DeepSeek API Key</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showKeys.deepseek ? "text" : "password"}
                           placeholder="sk-..."
+                          className="h-9 pr-10"
                           {...field}
                           disabled={isSaving}
                         />
@@ -509,7 +512,7 @@ export function AiConfigForm() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="absolute right-0 top-0 h-full"
+                          className="absolute right-0 top-0 h-9 w-9"
                           onClick={() => toggleShowKey("deepseek")}
                         >
                           {showKeys.deepseek ? (
@@ -525,17 +528,19 @@ export function AiConfigForm() {
                 )}
               />
 
+              {/* Google API Key */}
               <FormField
                 control={form.control}
                 name="googleApiKey"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Google (Gemini) API Key</FormLabel>
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-xs">Google (Gemini) API Key</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showKeys.google ? "text" : "password"}
                           placeholder="AIza..."
+                          className="h-9 pr-10"
                           {...field}
                           disabled={isSaving}
                         />
@@ -543,7 +548,7 @@ export function AiConfigForm() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="absolute right-0 top-0 h-full"
+                          className="absolute right-0 top-0 h-9 w-9"
                           onClick={() => toggleShowKey("google")}
                         >
                           {showKeys.google ? (
@@ -559,10 +564,14 @@ export function AiConfigForm() {
                 )}
               />
             </div>
+          </div>
 
+          {/* Footer */}
+          <div className="px-4 py-3 border-t bg-muted/30">
             <Button 
               type="submit" 
               disabled={isSaving || (isTesting === false && testResult === null)} 
+              size="sm"
               className="w-full"
               title={(isTesting === false && testResult === null) ? "Primero prueba la conexión" : ""}
             >
@@ -574,14 +583,14 @@ export function AiConfigForm() {
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Guardar Configuración de IA
+                  Guardar Configuración
                 </>
               )}
             </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }
 
