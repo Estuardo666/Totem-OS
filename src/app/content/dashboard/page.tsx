@@ -9,7 +9,7 @@ import { WarRoom } from "@/components/features/content/WarRoom";
 import { HybridCalendar } from "@/components/features/content/HybridCalendar";
 import { QuickActions } from "@/components/features/content/QuickActions";
 import { DashboardRefresh } from "@/components/features/content/dashboard-refresh";
-import { Card, CardContent } from "@/components/ui/card";
+import { Video } from "lucide-react";
 
 export default async function ContentDashboardPage() {
   const session = await auth();
@@ -25,14 +25,14 @@ export default async function ContentDashboardPage() {
 
   if (!dashboardResult.success || !dashboardResult.data) {
     return (
-      <div className="container mx-auto py-3 px-2 md:px-3">
-        <Card>
-          <CardContent className="py-12">
-            <p className="text-destructive text-center">
+      <div className="min-h-screen bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="rounded-xl border bg-card p-8">
+            <p className="text-destructive text-center font-medium">
               {dashboardResult.error || "Error al cargar los datos del dashboard"}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -41,40 +41,48 @@ export default async function ContentDashboardPage() {
   const clients = clientsResult.success ? (clientsResult.data ?? []) : [];
 
   return (
-      <div className="container mx-auto py-3 px-2 md:px-3 space-y-6">
-      {/* Header con QuickActions */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <div>
-              <h1 className="text-3xl font-bold">Dashboard Content Factory</h1>
-              <p className="text-muted-foreground">
-                Vista general de producción y estado de clientes
-              </p>
+    <div className="min-h-screen bg-muted/30">
+      {/* Header iOS-style con sticky */}
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
+                <Video className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold">Content Factory</h1>
+                <p className="text-xs text-muted-foreground">
+                  Vista general de producción y estado
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <DashboardRefresh />
+              <QuickActions clients={clients} />
             </div>
           </div>
-          <div className="mt-2">
-            <DashboardRefresh />
-          </div>
         </div>
-        <QuickActions clients={clients} />
       </div>
 
-      {/* Radar de Producción (ancho completo) */}
-      <ProductionRadar radar={radar} />
+      {/* Contenido principal */}
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        {/* Radar de Producción */}
+        <ProductionRadar radar={radar} />
 
-      {/* Grid Principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        {/* Columna Izquierda: Calendario amplio pero sin ocupar todo */}
-        <div className="lg:col-span-3">
-          <HybridCalendar shoots={calendar.shoots} tasks={calendar.tasks} />
-        </div>
+        {/* Grid Principal */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+          {/* Columna Izquierda: Calendario */}
+          <div className="lg:col-span-3">
+            <HybridCalendar shoots={calendar.shoots} tasks={calendar.tasks} />
+          </div>
 
-        {/* Columna Derecha: Stack vertical más angosta */}
-        <div className="space-y-6 lg:col-span-1 lg:max-w-sm lg:w-full">
-          <NextShootWidget shoots={nextShoots} />
-          <ClientHealthList semaphore={semaphore} />
-          <WarRoom warRoom={warRoom} />
+          {/* Columna Derecha: Stack vertical */}
+          <div className="space-y-6 lg:col-span-1">
+            <NextShootWidget shoots={nextShoots} />
+            <ClientHealthList semaphore={semaphore} />
+            <WarRoom warRoom={warRoom} />
+          </div>
         </div>
       </div>
     </div>

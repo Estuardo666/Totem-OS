@@ -278,16 +278,16 @@ export function ContentFilters({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
       {/* Filtro rápido: Mis Tareas / Todo el Equipo (solo visible para ADMIN) */}
       {userRole === "ADMIN" && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant={viewMode === "my-tasks" ? "default" : "outline"}
             size="sm"
             onClick={() => setViewMode("my-tasks")}
             disabled={!userId}
-            className="gap-2"
+            className="gap-2 rounded-full"
           >
             <Avatar className="h-5 w-5">
               <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || "Usuario"} />
@@ -301,6 +301,7 @@ export function ContentFilters({
             variant={viewMode === "all" ? "default" : "outline"}
             size="sm"
             onClick={() => setViewMode("all")}
+            className="rounded-full"
           >
             Ver todo el equipo
           </Button>
@@ -311,7 +312,7 @@ export function ContentFilters({
         <Button
           variant="outline"
           size="sm"
-          className="w-full justify-between"
+          className="w-full justify-between rounded-full"
           onClick={() => setMobileFiltersOpen((prev) => !prev)}
         >
           <span>Filtros</span>

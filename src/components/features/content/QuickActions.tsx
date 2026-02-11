@@ -14,26 +14,38 @@ export function QuickActions({ clients }: QuickActionsProps) {
   return (
     <div className="flex flex-wrap gap-2">
       <Link href="/content">
-        <Button variant="outline" size="sm">
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="rounded-full border-2 border-border font-medium hover:bg-muted/50"
+        >
           <Layout className="w-4 h-4 mr-2" />
           Ver Tablero
         </Button>
       </Link>
       <Link href="/content/shoots">
-        <Button variant="outline" size="sm">
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="rounded-full border-2 border-border font-medium hover:bg-muted/50"
+        >
           <Video className="w-4 h-4 mr-2" />
           Ver Rodajes
         </Button>
       </Link>
       <Link href="/content/new">
-        <Button variant="outline" size="sm">
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="rounded-full border-2 border-border font-medium hover:bg-muted/50"
+        >
           <Plus className="w-4 h-4 mr-2" />
           Nueva Tarea
         </Button>
       </Link>
       <BulkTaskDialog
         clients={activeClients}
-        label="Crear tareas en lote"
+        label="Crear en lote"
         buttonVariant="outline"
         buttonSize="sm"
       />

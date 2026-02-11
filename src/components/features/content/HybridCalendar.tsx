@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -201,8 +200,8 @@ export function HybridCalendar({ shoots, tasks }: HybridCalendarProps) {
   };
 
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-3">
+    <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
+      <div className="pb-3 p-6 border-b border-gray-200 dark:border-gray-800">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
             <Button
@@ -213,10 +212,10 @@ export function HybridCalendar({ shoots, tasks }: HybridCalendarProps) {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <CardTitle className="text-2xl md:text-3xl font-semibold text-center flex-1">
+            <h2 className="text-2xl md:text-3xl font-semibold text-center flex-1">
               {format(currentMonth, "MMMM yyyy", { locale: es }).charAt(0).toUpperCase() +
                 format(currentMonth, "MMMM yyyy", { locale: es }).slice(1)}
-            </CardTitle>
+            </h2>
             <Button
               variant="ghost"
               size="icon"
@@ -233,15 +232,15 @@ export function HybridCalendar({ shoots, tasks }: HybridCalendarProps) {
                 variant={filter === option.key ? "default" : "outline"}
                 size="sm"
                 onClick={() => setFilter(option.key)}
-                className="px-3"
+                className="px-4 rounded-full"
               >
                 {option.label}
               </Button>
             ))}
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="pt-2">
+      </div>
+      <div className="pt-2 px-6 pb-6 flex-1">
         <TooltipProvider>
         <div className="grid grid-cols-7 gap-3 text-base">
           {/* Días de la semana */}
@@ -322,7 +321,7 @@ export function HybridCalendar({ shoots, tasks }: HybridCalendarProps) {
           </div>
         </div>
         </TooltipProvider>
-      </CardContent>
+      </div>
 
       {/* Dialogo para Rodajes */}
       <Dialog open={!!selectedShoot} onOpenChange={(open) => !open && setSelectedShoot(null)}>
@@ -480,7 +479,7 @@ export function HybridCalendar({ shoots, tasks }: HybridCalendarProps) {
           )}
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 }
 

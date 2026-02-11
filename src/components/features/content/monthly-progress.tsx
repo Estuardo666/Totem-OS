@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { getContractFulfillment } from "@/actions/client-actions";
@@ -80,48 +79,40 @@ export function MonthlyProgress({
       : 0;
 
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">
-              Progreso del Mes - {selectedClient.name}
-            </h3>
-            {loading && (
-              <Badge variant="secondary" className="text-xs">
-                Cargando...
-              </Badge>
-            )}
-          </div>
-
-          <div className="space-y-3">
-            {selectedClient.monthlyReels > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Reels</span>
-                  <span className="font-medium">
-                    {publishedReels}/{selectedClient.monthlyReels}
-                  </span>
-                </div>
-                <Progress value={reelsProgress} className="h-2" />
-              </div>
-            )}
-
-            {selectedClient.monthlyFlyers > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Flyers</span>
-                  <span className="font-medium">
-                    {publishedFlyers}/{selectedClient.monthlyFlyers}
-                  </span>
-                </div>
-                <Progress value={flyersProgress} className="h-2" />
-              </div>
-            )}
-          </div>
+    <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Progreso del Mes - {selectedClient.name}</h3>
+          {loading && (
+            <Badge variant="secondary" className="text-xs">
+              Cargando...
+            </Badge>
+          )}
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="space-y-3">
+          {selectedClient.monthlyReels > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Reels</span>
+                <span className="font-medium">{publishedReels}/{selectedClient.monthlyReels}</span>
+              </div>
+              <Progress value={reelsProgress} className="h-2" />
+            </div>
+          )}
+
+          {selectedClient.monthlyFlyers > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Flyers</span>
+                <span className="font-medium">{publishedFlyers}/{selectedClient.monthlyFlyers}</span>
+              </div>
+              <Progress value={flyersProgress} className="h-2" />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

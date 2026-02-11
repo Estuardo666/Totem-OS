@@ -29,7 +29,7 @@ export function ContentFactoryWrapper({
   const [isCompactView, setIsCompactView] = useState(false);
 
   return (
-    <div className="space-y-4">
+    <div className="px-4 md:px-0 md:max-w-7xl md:mx-auto py-6 space-y-6">
       <ContentFilters
         tasks={tasks}
         clients={activeClients}
@@ -51,10 +51,10 @@ export function ContentFactoryWrapper({
               variant="outline"
               size="sm"
               onClick={() => setIsCompactView(!isCompactView)}
-              className="gap-2"
+              className="gap-2 rounded-full"
             >
               <Settings2 className="h-4 w-4" />
-              {isCompactView ? "Vista Compacta" : "Vista Normal"}
+              <span className="hidden sm:inline">{isCompactView ? "Vista Compacta" : "Vista Normal"}</span>
             </Button>
           )}
         </div>
