@@ -17,6 +17,7 @@ export default auth((req) => {
     const isAuth = !!req.auth;
     const isAuthPage = req.nextUrl.pathname.startsWith("/sign-in") || req.nextUrl.pathname.startsWith("/sign-up");
     const isPublicReport = req.nextUrl.pathname.startsWith("/reports/share");
+    const isPolicyPage = req.nextUrl.pathname.startsWith("/privacy") || req.nextUrl.pathname.startsWith("/terms");
     // Intentar leer roleLegacy primero, luego role como fallback
     // Si ambos son null/undefined, asumir EDITOR para no bloquear el acceso
     const userRole = req.auth?.user?.roleLegacy || req.auth?.user?.role || "EDITOR";
@@ -24,6 +25,11 @@ export default auth((req) => {
 
     // Permitir acceso público a reportes compartidos
     if (isPublicReport) {
+      return NextResponse.next();
+    }
+
+    // Permitir acceso público a páginas de políticas (para verificación con Google, etc)
+    if (isPolicyPage) {
       return NextResponse.next();
     }
 

@@ -43,6 +43,9 @@ export {
 } from "./finance-actions";
 export type { FinancialStats } from "./finance-actions";
 
+// Exportar acciones de IA
+export { generateFinancialPredictionsAction } from "./ai-actions";
+
 // Exportar acciones de OneSignal Push Notifications
 export {
   sendPushNotification,

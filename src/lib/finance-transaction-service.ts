@@ -132,29 +132,35 @@ export async function updateTransactionInDb(
  */
 export async function getTransactionByIdFromDb(
   transactionId: string
-): Promise<ApiResponse<Transaction>> {
+): Promise<Transaction & { user?: { id: string; name: string | null; image: string | null } | null }> {
   try {
     const transaction = await db.transaction.findUnique({
       where: { id: transactionId },
       include: {
         relatedClient: true,
+        user: {
+          select: { id: true, name: true, image: true },
+        },
       },
     });
 
     if (!transaction) {
-      return {
-        success: false,
-        error: "Transacción no encontrada",
-      };
+      throw new Error("Transacción no encontrada");
     }
 
-    return { success: true, data: transaction };
+    console.log("🗄️ Transaction from DB:", {
+      id: transaction.id,
+      amount: transaction.amount,
+      type: transaction.type,
+      userId: transaction.userId,
+      status: transaction.status,
+      description: transaction.description,
+      userRelation: transaction.user,
+    });
+
+    return transaction;
   } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Error al obtener transacción",
-    };
+    throw error instanceof Error ? error : new Error("Error al obtener transacción");
   }
 }
 

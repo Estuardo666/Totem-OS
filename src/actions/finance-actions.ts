@@ -508,9 +508,6 @@ export async function getTransactionById(
 ): Promise<ApiResponse<any>> {
   try {
     const transaction = await getTransactionByIdFromDb(transactionId);
-    if (!transaction) {
-      return { success: false, error: "Transacción no encontrada" };
-    }
     return { success: true, data: transaction };
   } catch (error) {
     return {

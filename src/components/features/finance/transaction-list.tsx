@@ -22,6 +22,7 @@ import type { Transaction, Invoice } from "@prisma/client";
 import { EditTransactionDialog } from "./edit-transaction-dialog";
 import { EditInvoiceDialog } from "./edit-invoice-dialog";
 import { EditExpenseDialog } from "./edit-expense-dialog";
+import { EditHonorarioDialog } from "./edit-honorario-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -158,12 +159,17 @@ export function TransactionList({ transactions }: TransactionListProps) {
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all"); // todos, ingreso, gasto, reembolso
+  const [usuarioFilter, setUsuarioFilter] = useState<string>("all");
+  const [clienteFilter, setClienteFilter] = useState<string>("all");
+  const [mesFilter, setMesFilter] = useState<string>("all");
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<(Transaction & { user?: { id: string; name: string | null; image: string | null } | null; relatedClient?: any }) | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [editingHonorarioId, setEditingHonorarioId] = useState<string | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isEditInvoiceDialogOpen, setIsEditInvoiceDialogOpen] = useState(false);
+  const [isEditHonorarioDialogOpen, setIsEditHonorarioDialogOpen] = useState(false);
   
   // Estados para selección múltiple
   const [selectedItems, setSelectedItems] = useState<Map<string, string>>(new Map()); // id -> tipo (transaction|expense)
@@ -193,8 +199,53 @@ export function TransactionList({ transactions }: TransactionListProps) {
       filtered = filtered.filter((t) => t.type === "HONORARIOS");
     }
 
+    // Filtrar por usuario
+    if (usuarioFilter !== "all") {
+      filtered = filtered.filter(
+        (t) => t.assignedToName === usuarioFilter || t.assignedToId === usuarioFilter
+      );
+    }
+
+    // Filtrar por cliente
+    if (clienteFilter !== "all") {
+      filtered = filtered.filter((t) => t.clientName === clienteFilter);
+    }
+
+    // Filtrar por mes
+    if (mesFilter !== "all") {
+      filtered = filtered.filter((t) => {
+        const [year, month] = mesFilter.split("-");
+        const transactionMonth = new Date(t.date).toISOString().slice(0, 7);
+        return transactionMonth === mesFilter;
+      });
+    }
+
     return filtered;
-  }, [transactions, statusFilter, typeFilter]);
+  }, [transactions, statusFilter, typeFilter, usuarioFilter, clienteFilter, mesFilter]);
+
+  // Extraer valores únicos para los filtros
+  const filterOptions = useMemo(() => {
+    const usuarios = new Set<string>();
+    const clientes = new Set<string>();
+    const meses = new Set<string>();
+
+    transactions.forEach((t) => {
+      if (t.assignedToName) {
+        usuarios.add(t.assignedToName);
+      }
+      if (t.clientName) {
+        clientes.add(t.clientName);
+      }
+      const mes = new Date(t.date).toISOString().slice(0, 7);
+      meses.add(mes);
+    });
+
+    return {
+      usuarios: Array.from(usuarios).sort(),
+      clientes: Array.from(clientes).sort(),
+      meses: Array.from(meses).sort().reverse(), // Ordenar descendente (meses más recientes primero)
+    };
+  }, [transactions]);
 
   const handleMarkAsPaid = async (transactionId: string, sourceType?: string) => {
     setProcessingId(transactionId);
@@ -278,10 +329,28 @@ export function TransactionList({ transactions }: TransactionListProps) {
       
       // Determinar el tipo de transacción
       const isExpense = sourceType === "EXPENSE";
+      const isHonorario = sourceType === "HONORARIOS" || 
+        (!sourceType && transactionId && transactions.find(t => t.id === transactionId)?.type === "HONORARIOS");
       const isInvoice = sourceType === "INVOICE" || 
         (!sourceType && transactionId && transactions.find(t => t.id === transactionId)?.description?.startsWith("Factura"));
       
-      if (isExpense) {
+      // Si es honorario, cargar como transacción pero mostrar el diálogo específico
+      if (isHonorario) {
+        const transactionResult = await getTransactionById(transactionId);
+        if (transactionResult.success && transactionResult.data) {
+          console.log("✅ Honorario cargado:", transactionResult.data);
+          console.log("   - ID:", transactionResult.data.id, "Amount:", transactionResult.data.amount, "UserId:", transactionResult.data.userId);
+          setEditingHonorarioId(transactionId);
+          setEditingTransaction(transactionResult.data);
+          setIsEditHonorarioDialogOpen(true);
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: transactionResult.error || "No se pudo cargar el honorario",
+          });
+        }
+      } else if (isExpense) {
         // Intentar cargar como gasto
         const expenseResult = await getExpenseById(transactionId);
         console.log("🔍 Resultado de getExpenseById:", expenseResult);
@@ -541,9 +610,9 @@ export function TransactionList({ transactions }: TransactionListProps) {
       {/* Filtros y acciones en lote */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Filtrar por estado" />
               </SelectTrigger>
               <SelectContent>
@@ -554,7 +623,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Filtrar por tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -563,6 +632,52 @@ export function TransactionList({ transactions }: TransactionListProps) {
                 <SelectItem value="expense">Gastos</SelectItem>
                 <SelectItem value="honorarios">Honorarios</SelectItem>
                 <SelectItem value="reimbursement">Reembolsos</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={usuarioFilter} onValueChange={setUsuarioFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Filtrar por usuario" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los usuarios</SelectItem>
+                {filterOptions.usuarios.map((usuario) => (
+                  <SelectItem key={usuario} value={usuario}>
+                    {usuario}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={clienteFilter} onValueChange={setClienteFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Filtrar por cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los clientes</SelectItem>
+                {filterOptions.clientes.map((cliente) => (
+                  <SelectItem key={cliente} value={cliente}>
+                    {cliente}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={mesFilter} onValueChange={setMesFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Filtrar por mes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los meses</SelectItem>
+                {filterOptions.meses.map((mes) => {
+                  const date = new Date(mes + "-01");
+                  const mesLabel = new Intl.DateTimeFormat("es-ES", {
+                    month: "long",
+                    year: "numeric",
+                  }).format(date);
+                  return (
+                    <SelectItem key={mes} value={mes}>
+                      {mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1)}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -648,7 +763,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                 />
               </TableHead>
               <TableHead>Fecha</TableHead>
-              <TableHead>Cliente</TableHead>
+              <TableHead>Cliente/Usuario</TableHead>
               <TableHead>Concepto</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Estado</TableHead>
@@ -672,7 +787,10 @@ export function TransactionList({ transactions }: TransactionListProps) {
 
                 // Detectar tipo (transaction o expense)
                 const isExpenseType = transaction.type === "EXPENSE";
-                const sourceType = transaction.sourceType || 
+                // IMPORTANTE: Priorizar transaction.type para HONORARIOS sobre sourceType guardado
+                const sourceType = 
+                  transaction.type === "HONORARIOS" ? "HONORARIOS" :
+                  transaction.sourceType || 
                   (transaction.description?.startsWith("Factura") ? "INVOICE" : 
                    isExpenseType ? "EXPENSE" :
                    transaction.category ? "EXPENSE" : "TRANSACTION");
@@ -691,40 +809,78 @@ export function TransactionList({ transactions }: TransactionListProps) {
                       {formatDateNatural(transaction.date)}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {transaction.clientName ? (
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={(transaction as any).clientLogo || undefined} alt={transaction.clientName} />
-                            <AvatarFallback className="text-xs">
-                              {transaction.clientName
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                                .toUpperCase()
-                                .slice(0, 2) || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span>{transaction.clientName}</span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                      {transaction.assignedToName && transaction.description?.includes("(Compartido") && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {(() => {
-                            // Extraer el número de personas del texto "(Compartido - X personas)"
-                            const match = transaction.description?.match(/\(Compartido - (\d+) personas\)/);
-                            const numPeople = match ? parseInt(match[1]) : 2;
-                            const percentage = Math.round((1 / numPeople) * 100);
-                            return `Reembolso ${percentage}% a: ${transaction.assignedToName}`;
-                          })()}
-                        </div>
-                      )}
-                      {transaction.assignedToName && !transaction.description?.includes("(Compartido") && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Reembolso a: {transaction.assignedToName}
-                        </div>
-                      )}
+                      {(() => {
+                        // Para gastos u honorarios: mostrar usuario principal, cliente secundario
+                        if ((transaction.type === "EXPENSE" || transaction.type === "HONORARIOS") && transaction.assignedToName) {
+                          return (
+                            <div className="space-y-1">
+                              {/* Usuario principal */}
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={(transaction as any).assignedToImage || undefined} alt={transaction.assignedToName} />
+                                  <AvatarFallback className="text-xs">
+                                    {transaction.assignedToName
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")
+                                      .toUpperCase()
+                                      .slice(0, 2) || "?"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span>{transaction.assignedToName}</span>
+                              </div>
+                              {/* Cliente secundario */}
+                              {transaction.clientName && (
+                                <div className="text-xs text-muted-foreground pl-11">
+                                  Cliente: {transaction.clientName}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        // Para otros tipos: mostrar cliente principal
+                        if (transaction.clientName) {
+                          return (
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={(transaction as any).clientLogo || undefined} alt={transaction.clientName} />
+                                  <AvatarFallback className="text-xs">
+                                    {transaction.clientName
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")
+                                      .toUpperCase()
+                                      .slice(0, 2) || "?"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span>{transaction.clientName}</span>
+                              </div>
+                              {/* Si es un reembolso compartido, mostrar info del usuario */}
+                              {transaction.assignedToName && transaction.description?.includes("(Compartido") && (
+                                <div className="text-xs text-muted-foreground pl-11">
+                                  {(() => {
+                                    const match = transaction.description?.match(/\(Compartido - (\d+) personas\)/);
+                                    const numPeople = match ? parseInt(match[1]) : 2;
+                                    const percentage = Math.round((1 / numPeople) * 100);
+                                    return `Reembolso ${percentage}% a: ${transaction.assignedToName}`;
+                                  })()}
+                                </div>
+                              )}
+                              {/* Si es un reembolso simple, mostrar info del usuario */}
+                              {transaction.assignedToName && !transaction.description?.includes("(Compartido") && (
+                                <div className="text-xs text-muted-foreground pl-11">
+                                  Reembolso a: {transaction.assignedToName}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        // Si no hay cliente ni usuario
+                        return <span className="text-muted-foreground">-</span>;
+                      })()}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
@@ -798,17 +954,21 @@ export function TransactionList({ transactions }: TransactionListProps) {
                           // Detectar si es un gasto basándose en el tipo de transacción
                           const isExpenseType = transaction.type === "EXPENSE";
                           
-                          const sourceType = transaction.sourceType || 
+                          // IMPORTANTE: Priorizar transaction.type para HONORARIOS sobre sourceType guardado
+                          const sourceType = 
+                            transaction.type === "HONORARIOS" ? "HONORARIOS" :
+                            transaction.sourceType || 
                             (transaction.description?.startsWith("Factura") ? "INVOICE" : 
                              isExpenseType ? "EXPENSE" :
                              transaction.category ? "EXPENSE" : "TRANSACTION");
                           const isInvoice = sourceType === "INVOICE";
                           const isTransaction = sourceType === "TRANSACTION";
+                          const isHonorario = transaction.type === "HONORARIOS" || sourceType === "HONORARIOS";
                           // Es un gasto si el tipo es EXPENSE (prioritario) o si el sourceType es EXPENSE
                           const isExpense = transaction.type === "EXPENSE" || sourceType === "EXPENSE";
 
-                          // Mostrar acciones para facturas pendientes, transacciones y gastos
-                          if ((isInvoice || isTransaction || isExpense) && isPending) {
+                          // Mostrar acciones para facturas pendientes, transacciones, gastos y honorarios
+                          if ((isInvoice || isTransaction || isExpense || isHonorario) && isPending) {
                             return (
                               <>
                                 <Button
@@ -823,11 +983,11 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                   ) : (
                                     <>
                                       <Check className="h-3 w-3 mr-1" />
-                                      {isExpense ? "Reembolsado" : "Marcar como Pagada"}
+                                      {isExpense ? "Reembolsado" : isHonorario ? "Marcar como Pagada" : "Marcar como Pagada"}
                                     </>
                                   )}
                                 </Button>
-                                {/* Botón Editar para transacciones y facturas pendientes */}
+                                {/* Botón Editar para transacciones, facturas, gastos y honorarios pendientes */}
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -839,7 +999,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                   Editar
                                 </Button>
                                 {/* Solo mostrar cancelar para transacciones, no para facturas ni gastos del modelo Expense */}
-                                {isTransaction && !isExpense && (
+                                {isTransaction && !isExpense && !isHonorario && (
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                       <Button
@@ -946,6 +1106,31 @@ export function TransactionList({ transactions }: TransactionListProps) {
                             );
                           }
 
+                          // Mostrar acciones para honorarios pagados (pueden editarse)
+                          if (isHonorario && isPaid) {
+                            return (
+                              <>
+                                <Badge
+                                  variant="default"
+                                  className="bg-green-500 hover:bg-green-600 text-white"
+                                >
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Pagada
+                                </Badge>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isProcessing}
+                                  className="h-8"
+                                  onClick={() => handleEdit(transaction.id, sourceType)}
+                                >
+                                  <Edit className="h-3 w-3 mr-1" />
+                                  Editar
+                                </Button>
+                              </>
+                            );
+                          }
+
                           // Mostrar acciones para transacciones canceladas (pueden editarse)
                           if (isTransaction && isCancelled) {
                             return (
@@ -1015,6 +1200,19 @@ export function TransactionList({ transactions }: TransactionListProps) {
         onOpenChange={(open) => {
           if (!open) {
             setEditingExpenseId(null);
+          }
+        }}
+      />
+
+      {/* Diálogo de edición de honorarios */}
+      <EditHonorarioDialog
+        transaction={editingTransaction}
+        open={isEditHonorarioDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditHonorarioDialogOpen(open);
+          if (!open) {
+            setEditingTransaction(null);
+            setEditingHonorarioId(null);
           }
         }}
       />

@@ -5,6 +5,16 @@ import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
 
 /**
+ * Interfaz para datos del mapa de calor operativo
+ */
+export interface HeatmapCell {
+  week: number; // 1-4 (semanas del mes)
+  category: string; // Categoría del gasto
+  amount: number; // Monto total
+  count: number; // Número de transacciones
+}
+
+/**
  * Interfaz para estadísticas financieras
  */
 export interface FinancialStats {
@@ -17,6 +27,8 @@ export interface FinancialStats {
   marginDeltaPct?: number;
   pendingReimbursementsDeltaPct?: number;
   honorariosDeltaPct?: number;
+  totalHonorariosPaid?: number;
+  totalHonorariosPaidDeltaPct?: number;
   recentTransactions: Array<{
     id: string;
     type: "INCOME" | "EXPENSE" | "HONORARIOS";
@@ -28,12 +40,12 @@ export interface FinancialStats {
     category?: string;
     sourceType?: "INVOICE" | "EXPENSE" | "TRANSACTION";
     assignedToName?: string;
+    assignedToImage?: string | null;
     assignedToId?: string;
     userId?: string;
   }>;
   pendingReimbursements?: number;
-  honorariosReceived?: number;
-}
+  honorariosReceived?: number;  heatmapData?: HeatmapCell[];}
 
 /**
  * Interfaz para estadísticas de gastos
@@ -282,6 +294,16 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
     const prevMargin = prevTotalIncome > 0 ? (prevNetProfit / prevTotalIncome) * 100 : 0;
     const marginDeltaPct = calculateDeltaPct(currentMargin, prevMargin);
 
+    // Calcular honorarios totales pagados (para ADMIN)
+    let totalHonorariosPaid: number | undefined;
+    let totalHonorariosPaidDeltaPct: number | undefined;
+
+    if (isAdmin) {
+      totalHonorariosPaid = paidHonorariosThisMonth.reduce((sum, t) => sum + t.amount, 0);
+      const prevTotalHonorariosPaid = paidHonorariosPrevMonth.reduce((sum, t) => sum + t.amount, 0);
+      totalHonorariosPaidDeltaPct = calculateDeltaPct(totalHonorariosPaid, prevTotalHonorariosPaid);
+    }
+
     // Estadísticas específicas del usuario
     let pendingReimbursements: number | undefined;
     let honorariosReceived: number | undefined;
@@ -429,6 +451,13 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         assignedTo: {
           select: {
             name: true,
+            image: true,
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            image: true,
           },
         },
       },
@@ -478,7 +507,14 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         status: transaction.status,
         category: transaction.category ?? undefined,
         sourceType: "TRANSACTION" as const,
-        assignedToName: transaction.assignedTo?.name,
+        assignedToName:
+          transaction.type === "HONORARIOS"
+            ? transaction.user?.name
+            : transaction.assignedTo?.name,
+        assignedToImage:
+          transaction.type === "HONORARIOS"
+            ? transaction.user?.image
+            : transaction.assignedTo?.image ?? undefined,
         assignedToId:
           transaction.type === "HONORARIOS"
             ? transaction.userId ?? transaction.assignedToId ?? undefined
@@ -510,6 +546,61 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
       })
       .sort((a, b) => b.date.getTime() - a.date.getTime()) as FinancialStats["recentTransactions"];
 
+    // Calcular datos del mapa de calor (solo para ADMIN)
+    let heatmapData: HeatmapCell[] | undefined;
+    
+    if (isAdmin) {
+      // Función para obtener el número de semana del mes (1-4)
+      const getWeekOfMonth = (date: Date): number => {
+        const dayOfMonth = date.getDate();
+        return Math.ceil(dayOfMonth / 7);
+      };
+
+      // Combinar todos los gastos del mes actual
+      const allExpensesThisMonth = [
+        ...paidExpensesThisMonth.map((e) => ({
+          date: e.date,
+          category: e.category || "Otros",
+          amount: e.amount,
+        })),
+        ...paidExpenseTransactionsThisMonth.map((t) => ({
+          date: t.createdAt,
+          category: t.category || "Otros",
+          amount: t.amount,
+        })),
+        ...paidHonorariosThisMonth.map((t) => ({
+          date: t.createdAt,
+          category: "Honorarios",
+          amount: t.amount,
+        })),
+      ];
+
+      // Agrupar por semana y categoría
+      const heatmapMap = new Map<string, { amount: number; count: number }>();
+
+      allExpensesThisMonth.forEach((expense) => {
+        const week = getWeekOfMonth(expense.date);
+        const key = `${week}-${expense.category}`;
+        
+        const existing = heatmapMap.get(key) || { amount: 0, count: 0 };
+        heatmapMap.set(key, {
+          amount: existing.amount + expense.amount,
+          count: existing.count + 1,
+        });
+      });
+
+      // Convertir a array
+      heatmapData = Array.from(heatmapMap.entries()).map(([key, data]) => {
+        const [week, category] = key.split("-");
+        return {
+          week: parseInt(week, 10),
+          category,
+          amount: data.amount,
+          count: data.count,
+        };
+      });
+    }
+
     return {
       success: true,
       data: {
@@ -521,6 +612,11 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         netProfitDeltaPct,
         marginDeltaPct,
         recentTransactions: transactions,
+        ...(isAdmin && {
+          totalHonorariosPaid,
+          totalHonorariosPaidDeltaPct,
+          heatmapData,
+        }),
         ...(userId && {
           pendingReimbursements,
           honorariosReceived,

@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
 import { SimpleAIInsights } from "@/components/features/finance/ai-insights-simple";
 import { cn } from "@/lib/utils";
@@ -176,7 +177,7 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
 
     return () => clearTimeout(timer);
   }, [stats, profitability, clientPlans]);
-  const [period, setPeriod] = useState("last_6_months");
+  const [period, setPeriod] = useState("current_month");
   const [client, setClient] = useState("all");
   const [service, setService] = useState("all");
 
@@ -247,16 +248,85 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
     }));
   }, [stats]);
 
+  // Datos del mapa de calor
+  const heatmapGrid = useMemo(() => {
+    if (!stats.heatmapData || stats.heatmapData.length === 0) {
+      return { grid: [], categories: [], maxAmount: 0 };
+    }
+
+    // Obtener todas las categorías únicas
+    const categories = Array.from(new Set(stats.heatmapData.map((d) => d.category))).sort();
+    
+    // Calcular el monto máximo para normalizar los colores
+    const maxAmount = Math.max(...stats.heatmapData.map((d) => d.amount), 1);
+
+    // Crear grid de 4 semanas x N categorías
+    const grid = [];
+    for (let week = 1; week <= 4; week++) {
+      for (const category of categories) {
+        const cell = stats.heatmapData.find((d) => d.week === week && d.category === category);
+        grid.push({
+          week,
+          category,
+          amount: cell?.amount || 0,
+          count: cell?.count || 0,
+          intensity: cell ? (cell.amount / maxAmount) : 0,
+        });
+      }
+    }
+
+    return { grid, categories, maxAmount };
+  }, [stats.heatmapData]);
+
   const costDistributionData = useMemo(() => {
-    // Mock cost distribution by category
-    return [
-      { name: 'Producción', value: 35, color: '#10b981' },
-      { name: 'Personal', value: 28, color: '#3b82f6' },
-      { name: 'Marketing', value: 18, color: '#f59e0b' },
-      { name: 'Operación', value: 12, color: '#8b5cf6' },
-      { name: 'Otros', value: 7, color: '#6b7280' },
-    ];
-  }, []);
+    // Calcular distribución real de costos por categoría
+    const categoryMap = new Map<string, number>();
+    
+    // Procesar transacciones recientes para agrupar por categoría
+    stats.recentTransactions.forEach((transaction) => {
+      if (transaction.type === "EXPENSE" || transaction.type === "HONORARIOS") {
+        const category = transaction.category || (transaction.type === "HONORARIOS" ? "Honorarios" : "Otros");
+        const current = categoryMap.get(category) || 0;
+        categoryMap.set(category, current + transaction.amount);
+      }
+    });
+
+    // Calcular total de gastos
+    const totalExpenses = Array.from(categoryMap.values()).reduce((sum, val) => sum + val, 0);
+
+    // Si no hay gastos, retornar datos mock
+    if (totalExpenses === 0 || categoryMap.size === 0) {
+      return [
+        { name: 'Sin datos', value: 100, color: '#6b7280' },
+      ];
+    }
+
+    // Definir colores para categorías comunes
+    const categoryColors: Record<string, string> = {
+      'Comida': '#f59e0b',
+      'Transporte': '#3b82f6',
+      'Software': '#8b5cf6',
+      'Honorarios': '#10b981',
+      'Producción': '#10b981',
+      'Marketing': '#f59e0b',
+      'Personal': '#3b82f6',
+      'Operación': '#8b5cf6',
+      'Invitaciones': '#ec4899',
+      'Otros': '#6b7280',
+    };
+
+    // Convertir a array y calcular porcentajes
+    const distribution = Array.from(categoryMap.entries())
+      .map(([name, amount]) => ({
+        name,
+        value: Math.round((amount / totalExpenses) * 100),
+        amount,
+        color: categoryColors[name] || '#6b7280',
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    return distribution;
+  }, [stats.recentTransactions]);
 
   const clientComparisonData = useMemo(() => {
     return topClients.map((plan, index) => ({
@@ -336,6 +406,15 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
         tooltip: "Utilidad neta = Ingresos brutos - Gastos operativos. Es el dinero real que te queda para reinvertir, pagar dividendos o ahorrar. Si es negativa, estás perdiendo dinero y necesitas reducir gastos o aumentar ingresos.",
       },
       {
+        title: "Saldo en Caja",
+        value: stats.netProfit,
+        delta: stats.netProfitDeltaPct ?? 0,
+        tone: stats.netProfit >= 0 ? "positive" : "negative",
+        compareLabel: "vs. mes anterior",
+        explanation: "Flujo de efectivo neto disponible. Diferencia entre lo que entra y lo que sale del negocio.",
+        tooltip: "Saldo en Caja = Flujo neto de efectivo (Ingresos - Gastos). Representa el dinero disponible después de todas las operaciones. Un saldo positivo indica liquidez saludable; negativo requiere atención inmediata para evitar problemas de caja.",
+      },
+      {
         title: "Margen operativo",
         value: profitability?.profitMargin ?? null,
         delta: stats.marginDeltaPct ?? 0,
@@ -358,12 +437,12 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
       },
       {
         title: "Honorarios pagados",
-        value: stats.honorariosReceived ?? null,
-        delta: stats.honorariosDeltaPct ?? 0,
+        value: stats.totalHonorariosPaid ?? null,
+        delta: stats.totalHonorariosPaidDeltaPct ?? 0,
         tone: "positive",
         compareLabel: "vs. mes anterior",
-        explanation: "Pagos realizados a usuarios por trabajo extraordinario: proyectos especiales, horas extra, servicios adicionales.",
-        tooltip: "Honorarios pagados = total de pagos extra realizados a colaboradores. Se suma cada honorario pagado a cualquier usuario durante el mes.",
+        explanation: "Pagos realizados a todos los colaboradores por trabajo extraordinario: proyectos especiales, horas extra, servicios adicionales.",
+        tooltip: "Honorarios pagados = total de pagos extra realizados a TODOS los colaboradores de la empresa. Se suma cada honorario pagado a cualquier usuario durante el mes.",
       },
     ];
 
@@ -713,7 +792,12 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <RechartsTooltip formatter={(value: number) => `${value}%`} />
+                <RechartsTooltip 
+                  formatter={(value: number, name: string, props: any) => {
+                    const amount = props.payload.amount || 0;
+                    return [`${value}% (${formatCurrency(amount)})`, name];
+                  }} 
+                />
               </RePieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -760,15 +844,86 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
             <p className="text-sm text-muted-foreground">Patrones de costos por semana y servicio.</p>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-7 gap-2">
-              {Array.from({ length: 28 }).map((_, index) => (
-                <div
-                  key={`heat-${index}`}
-                  className="h-6 rounded-md bg-emerald-100/70"
-                  style={{ opacity: 0.3 + (index % 7) * 0.1 }}
-                />
-              ))}
-            </div>
+            {!heatmapGrid.grid || heatmapGrid.grid.length === 0 ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-7 gap-2">
+                  {Array.from({ length: 28 }).map((_, index) => (
+                    <div
+                      key={`heat-skeleton-${index}`}
+                      className="h-8 rounded-md bg-muted/30"
+                    />
+                  ))}
+                </div>
+                <p className="text-xs text-center text-muted-foreground mt-4">
+                  No hay datos de gastos este mes
+                </p>
+              </div>
+            ) : (
+              <TooltipProvider>
+                <div className="space-y-3">
+                  {/* Encabezados de categorías */}
+                  <div className="flex gap-2 items-center text-xs font-medium text-muted-foreground">
+                    <div className="w-16 text-right">Semana</div>
+                    <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: `repeat(${heatmapGrid.categories.length}, 1fr)` }}>
+                      {heatmapGrid.categories.map((cat) => (
+                        <div key={cat} className="text-center truncate" title={cat}>
+                          {cat}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Grid de celdas */}
+                  {[1, 2, 3, 4].map((week) => (
+                    <div key={`week-${week}`} className="flex gap-2 items-center">
+                      <div className="w-16 text-right text-xs font-medium text-muted-foreground">
+                        S{week}
+                      </div>
+                      <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: `repeat(${heatmapGrid.categories.length}, 1fr)` }}>
+                        {heatmapGrid.categories.map((category) => {
+                          const cell = heatmapGrid.grid.find(
+                            (c) => c.week === week && c.category === category
+                          );
+                          const intensity = cell?.intensity || 0;
+                          const amount = cell?.amount || 0;
+                          const count = cell?.count || 0;
+
+                          return (
+                            <Tooltip key={`${week}-${category}`}>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className={cn(
+                                    "h-10 rounded-md transition-all cursor-help",
+                                    amount === 0
+                                      ? "bg-muted/20 border border-dashed border-muted-foreground/20"
+                                      : "bg-gradient-to-br from-emerald-400 to-emerald-600"
+                                  )}
+                                  style={{
+                                    opacity: amount === 0 ? 0.3 : 0.4 + intensity * 0.6,
+                                  }}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="space-y-1">
+                                  <p className="font-semibold">{category}</p>
+                                  <p className="text-xs">Semana {week}</p>
+                                  <p className="text-xs font-mono">
+                                    {formatCurrency(amount)}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {count} transacción{count !== 1 ? 'es' : ''}
+                                  </p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </TooltipProvider>
+            )}
             <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
               <span>Bajo</span>
               <span>Alto</span>

@@ -345,3 +345,127 @@ export async function refineTaskContentAction(
   }
 }
 
+/**
+ * Genera predicciones financieras usando IA (Groq)
+ */
+export async function generateFinancialPredictionsAction(
+  stats: {
+    totalIncome: number;
+    totalExpenses: number;
+    netProfit: number;
+    incomeDeltaPct?: number;
+    expensesDeltaPct?: number;
+  }
+): Promise<ApiResponse<any>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    const userRole = session.user.role;
+    if (userRole !== "ADMIN") {
+      return { success: false, error: "Solo Admin puede acceder a predicciones IA" };
+    }
+
+    // Obtener configuración de Groq
+    const groqApiKey = process.env.GROQ_API_KEY;
+    const groqBaseUrl = process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1";
+
+    if (!groqApiKey) {
+      return { success: false, error: "GROQ_API_KEY no configurado" };
+    }
+
+    // Preparar contexto financiero
+    const context = `
+Datos financieros actuales:
+- Ingresos totales: $${stats.totalIncome}
+- Gastos totales: $${stats.totalExpenses}
+- Utilidad neta: $${stats.netProfit}
+- Cambio en ingresos: ${stats.incomeDeltaPct?.toFixed(1) || 0}%
+- Cambio en gastos: ${stats.expensesDeltaPct?.toFixed(1) || 0}%
+
+Genera predicciones financieras para los próximos 6 meses con:
+1. Predicción de ingresos mensuales
+2. Nivel de confianza (0-1)
+3. Tres recomendaciones priorizadas para mejorar salud financiera
+
+Responde SOLO con JSON válido en este formato exacto:
+{
+  "predictions": [
+    {"month": 1, "revenue": number, "confidence": number},
+    {"month": 2, "revenue": number, "confidence": number},
+    {"month": 3, "revenue": number, "confidence": number},
+    {"month": 4, "revenue": number, "confidence": number},
+    {"month": 5, "revenue": number, "confidence": number},
+    {"month": 6, "revenue": number, "confidence": number}
+  ],
+  "recommendations": [
+    {"title": "string", "description": "string", "priority": "high|medium|low", "impact": number, "timeline": "string"},
+    {"title": "string", "description": "string", "priority": "high|medium|low", "impact": number, "timeline": "string"},
+    {"title": "string", "description": "string", "priority": "high|medium|low", "impact": number, "timeline": "string"}
+  ]
+}
+`;
+
+    // Llamar a Groq API
+    const response = await fetch(`${groqBaseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${groqApiKey}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "system",
+            content: "Eres un analista financiero experto. Respondes SOLO con JSON válido, sin markdown ni explicaciones adicionales.",
+          },
+          {
+            role: "user",
+            content: context,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 1500,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Groq API error:", errorText);
+      return { success: false, error: `Error de Groq API: ${response.statusText}` };
+    }
+
+    const data = await response.json();
+    const aiResponse = data.choices?.[0]?.message?.content;
+
+    if (!aiResponse) {
+      return { success: false, error: "No se recibió respuesta de IA" };
+    }
+
+    // Parsear respuesta JSON
+    let parsedData;
+    try {
+      // Limpiar markdown si existe
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      const cleanedResponse = jsonMatch ? jsonMatch[0] : aiResponse;
+      parsedData = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error("Error parsing AI response:", aiResponse);
+      return { success: false, error: "Error al parsear respuesta de IA" };
+    }
+
+    return {
+      success: true,
+      data: parsedData,
+    };
+  } catch (error) {
+    console.error("Error en predicciones IA:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error desconocido",
+    };
+  }
+}

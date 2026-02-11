@@ -21,6 +21,7 @@ import {
   HelpCircle
 } from "lucide-react";
 import type { FinancialStats, GlobalProfitabilityStats, StrategicClientPlan } from "@/actions/finance-actions";
+import { generateFinancialPredictionsAction } from "@/actions";
 
 interface SimpleAIInsightsProps {
   stats: FinancialStats;
@@ -28,33 +29,89 @@ interface SimpleAIInsightsProps {
   clientPlans: StrategicClientPlan[];
 }
 
+/**
+ * Componente de Inteligencia Financiera con IA Groq
+ * 
+ * COMPORTAMIENTO DE LLAMADAS A IA:
+ * - Se ejecuta 1 vez automáticamente al cargar /finance
+ * - Solo se actualiza al hacer clic en el botón "Actualizar"
+ * - No se re-ejecuta automáticamente cuando cambian los datos
+ * 
+ * Esto evita llamadas excesivas a la API de Groq y da control total al usuario.
+ */
 export function SimpleAIInsights({ stats, profitability, clientPlans }: SimpleAIInsightsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [insights, setInsights] = useState<any>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [error, setError] = useState<string | null>(null);
 
+  // Solo se ejecuta 1 vez al montar el componente
   useEffect(() => {
     loadSimpleInsights();
-  }, [stats, clientPlans]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Array vacío = solo al montar
 
-  const loadSimpleInsights = () => {
+  const loadSimpleInsights = async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      // Generación síncrona instantánea - sin llamadas API
-      const mockInsights = {
-        ai_predictions: generatePredictions(stats),
-        benchmarks: generateBenchmarks(stats),
-        recommendations: generateRecommendations(stats, clientPlans),
-        sentiment: generateSentiment(clientPlans)
-      };
+      // Llamar a la IA para predicciones reales
+      const aiResult = await generateFinancialPredictionsAction({
+        totalIncome: stats.totalIncome,
+        totalExpenses: stats.totalExpenses,
+        netProfit: stats.netProfit,
+        incomeDeltaPct: stats.incomeDeltaPct,
+        expensesDeltaPct: stats.expensesDeltaPct,
+      });
 
-      setInsights(mockInsights);
+      if (aiResult.success && aiResult.data) {
+        // Transformar datos de IA al formato esperado
+        const aiPredictions = aiResult.data.predictions.map((p: any) => ({
+          period: `Mes +${p.month}`,
+          predicted: Math.round(p.revenue),
+          confidence: p.confidence,
+          factors: ['IA Groq', 'Análisis de tendencias']
+        }));
+
+        const aiRecommendations = aiResult.data.recommendations.map((r: any) => ({
+          title: r.title,
+          description: r.description,
+          priority: r.priority,
+          potential_savings: r.impact,
+          timeline: r.timeline
+        }));
+
+        setInsights({
+          ai_predictions: aiPredictions,
+          benchmarks: generateBenchmarks(stats),
+          recommendations: aiRecommendations,
+          sentiment: generateSentiment(clientPlans)
+        });
+      } else {
+        // Fallback a datos mock si falla la IA
+        console.warn("Usando datos mock - Error IA:", aiResult.error);
+        setError(aiResult.error || "Error al generar predicciones");
+        fallbackToMockData();
+      }
+
       setLastUpdated(new Date());
     } catch (error) {
       console.error("Error loading insights:", error);
+      setError("Error al cargar predicciones");
+      fallbackToMockData();
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fallbackToMockData = () => {
+    const mockInsights = {
+      ai_predictions: generatePredictions(stats),
+      benchmarks: generateBenchmarks(stats),
+      recommendations: generateRecommendations(stats, clientPlans),
+      sentiment: generateSentiment(clientPlans)
+    };
+    setInsights(mockInsights);
   };
 
   const generatePredictions = (currentStats: FinancialStats) => {
@@ -162,8 +219,8 @@ export function SimpleAIInsights({ stats, profitability, clientPlans }: SimpleAI
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5" />
-            Inteligencia Financiera
+            <Brain className="h-5 w-5 animate-pulse" />
+            Generando predicciones con IA...
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -186,20 +243,45 @@ export function SimpleAIInsights({ stats, profitability, clientPlans }: SimpleAI
             <Brain className="h-6 w-6 text-blue-600" />
             Inteligencia Financiera Avanzada
           </h2>
-          <p className="text-muted-foreground">
-            Insights predictivos y análisis competitivo
+          <p className="text-muted-foreground text-sm">
+            {error ? "Usando datos de respaldo" : "Predicciones generadas con IA Groq"}
+            {lastUpdated && (
+              <span className="ml-2 text-xs">
+                · Última actualización: {lastUpdated.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs">
-            Actualizado hace minutos
-          </Badge>
-          <Button variant="outline" size="sm" onClick={loadSimpleInsights}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Actualizar
+          {error ? (
+            <Badge variant="destructive" className="text-xs">
+              Sin conexión IA
+            </Badge>
+          ) : (
+            <Badge variant="default" className="text-xs bg-green-600">
+              IA conectada
+            </Badge>
+          )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={loadSimpleInsights}
+            disabled={isLoading}
+            title="Regenerar predicciones con IA (usa 1 llamada a Groq)"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            {isLoading ? 'Generando...' : 'Actualizar'}
           </Button>
         </div>
       </div>
+
+      {error && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-sm text-amber-800">
+            <strong>⚠️ Modo offline:</strong> {error}. Mostrando estimaciones locales.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* AI Predictions */}
@@ -208,9 +290,15 @@ export function SimpleAIInsights({ stats, profitability, clientPlans }: SimpleAI
             <CardTitle className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-blue-600" />
               Predicciones de IA
-              <Badge variant="secondary" className="text-xs">
-                85% precisión
-              </Badge>
+              {error ? (
+                <Badge variant="outline" className="text-xs">
+                  Modo respaldo
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                  Groq IA · 85% precisión
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
