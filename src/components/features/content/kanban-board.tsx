@@ -686,7 +686,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
         {/* Mobile: scroll horizontal 98vw | Desktop: grid con columnas fijas */}
         <div
           ref={scrollRef}
-          className="flex md:grid md:grid-cols-6 md:gap-4 w-[98vw] md:w-full h-full items-start overflow-x-auto md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
+          className="flex md:grid md:grid-cols-6 md:gap-4 w-[98vw] md:w-full h-full items-start overflow-x-auto overflow-y-visible md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
         >
           {KANBAN_COLUMNS.map((column) => {
             const columnTasks = tasksByStatus[column.status] || [];

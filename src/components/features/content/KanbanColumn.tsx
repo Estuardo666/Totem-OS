@@ -51,7 +51,7 @@ export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPubl
               ref={provided.innerRef}
               {...provided.droppableProps}
               data-droppable-id={status}
-              className={`flex-1 overflow-y-auto pr-1 scrollbar-hide transition-colors ${ 
+              className={`flex-1 overflow-visible md:overflow-y-auto pr-1 scrollbar-hide transition-colors ${ 
                 snapshot.isDraggingOver
                   ? "bg-primary/5 border-2 border-dashed border-primary rounded-md"
                   : ""
