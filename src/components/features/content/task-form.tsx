@@ -361,43 +361,6 @@ export function TaskForm({ clients, users }: TaskFormProps) {
               </FormItem>
             )}
           />
-
-          <FormField
-            control={form.control}
-            name="priority"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Prioridad</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value || "MEDIUM"}
-                  disabled={isPending}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona la prioridad" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {(["LOW", "MEDIUM", "HIGH", "URGENT"] as const).map((priority) => (
-                      <SelectItem key={priority} value={priority}>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={cn(
-                              "h-3 w-3 rounded-full",
-                              getPriorityColor(priority)
-                            )}
-                          />
-                          <span>{getPriorityLabel(priority)}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

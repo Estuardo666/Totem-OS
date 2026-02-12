@@ -679,8 +679,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     />
                   )}
 
-                  {/* Fila 1: Tipo y Prioridad */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-7 mt-[17px]">
+                  {/* Fila 1: Tipo de Contenido */}
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-7 mt-[17px]">
                     <FormField
                       control={form.control}
                       name="type"
@@ -701,43 +701,6 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                               <SelectItem value="REEL">Reel</SelectItem>
                               <SelectItem value="FLYER">Flyer</SelectItem>
                               <SelectItem value="STORY">Story</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="priority"
-                      render={({ field }) => (
-                        <FormItem className="space-y-0.5">
-                          <FormLabel>Prioridad</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value || "MEDIUM"}
-                            disabled={isPending}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona la prioridad" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {(["LOW", "MEDIUM", "HIGH", "URGENT"] as const).map((priority) => (
-                                <SelectItem key={priority} value={priority}>
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className={cn(
-                                        "h-3 w-3 rounded-full",
-                                        getPriorityColor(priority)
-                                      )}
-                                    />
-                                    <span>{getPriorityLabel(priority)}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
