@@ -830,7 +830,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     render={({ field }) => (
                       <FormItem className="space-y-0.5 mt-4">
                         <FormLabel className={task?.status === "CLIENT_APPROVED" ? "text-orange-600 font-semibold" : ""}>
-                          Fecha Programada de Publicación
+                          Fecha de Entrega Interna
                           {task?.status === "CLIENT_APPROVED" && (
                             <span className="ml-2 text-xs text-orange-600">⚠️ No olvides programarla</span>
                           )}
@@ -856,7 +856,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                         </FormControl>
                         <FormMessage />
                         <p className="text-xs text-muted-foreground">
-                          La fecha de entrega se calculará automáticamente (24 horas antes de la publicación)
+                          Fecha cuando debe estar lista la tarea para publicar
                         </p>
                       </FormItem>
                     )}

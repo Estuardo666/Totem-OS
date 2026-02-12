@@ -187,58 +187,15 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
                 onCardClick(task);
               }}
             >
-              {/* Botones de acción rápida - Solo si no está publicada */}
-              {task.status !== "PUBLISHED" && (
-                <div className="absolute top-2 right-2 z-20 flex flex-col gap-1">
-                  {/* Checkbox de Publicación Rápida */}
-                  <button
-                    onClick={handleQuickPublish}
-                    disabled={isPublishing}
-                    className={`group relative flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all
-                      ${isPublishing 
-                        ? "bg-emerald-500 border-emerald-500 cursor-wait" 
-                        : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 hover:border-emerald-500 hover:ring-2 hover:ring-emerald-200"
-                      }`}
-                    title={isPublishing ? "Publicando..." : "Publicar rápidamente (Quick Publish)"}
-                  >
-                    {isPublishing ? (
-                      <div className="w-3 h-3 border-2 border-white rounded-full animate-spin" />
-                    ) : (
-                      <div className="w-2 h-2 rounded-full bg-slate-400 group-hover:bg-emerald-500 transition-colors" />
-                    )}
-                  </button>
-                  
-                  {/* Botón de Promover a siguiente estado */}
-                  {onPromoteTask && (
-                    <div className="flex flex-col gap-2">
-                      <button
-                        onClick={handlePromote}
-                        disabled={isPromoting || isPublishing}
-                        className={`group relative flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all
-                          ${isPromoting 
-                            ? "bg-primary border-primary cursor-wait" 
-                            : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 hover:border-primary hover:ring-2 hover:ring-primary/30"
-                          }`}
-                        title={isPromoting ? "Moviendo..." : "Avanzar al siguiente estado"}
-                      >
-                        {isPromoting ? (
-                          <div className="w-3 h-3 border-2 border-white rounded-full animate-spin" />
-                        ) : (
-                          <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-primary transition-colors" />
-                        )}
-                      </button>
-                      
-                      {/* Editor Profile Photo */}
-                      {task.assignedEditor && (
-                        <Avatar className="h-6 w-6" title={task.assignedEditor.name}>
-                          <AvatarImage src={task.assignedEditor.image || undefined} alt={task.assignedEditor.name} />
-                          <AvatarFallback className="text-[10px] font-semibold">
-                            {getUserInitials(task.assignedEditor.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                    </div>
-                  )}
+              {/* Foto del Editor Asignado */}
+              {task.assignedEditor && (
+                <div className="absolute top-2 right-2 z-20">
+                  <Avatar className="h-6 w-6" title={task.assignedEditor.name}>
+                    <AvatarImage src={task.assignedEditor.image || undefined} alt={task.assignedEditor.name} />
+                    <AvatarFallback className="text-[10px] font-semibold">
+                      {getUserInitials(task.assignedEditor.name)}
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
               )}
 
@@ -302,15 +259,7 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
                       </div>
                     )}
 
-                    {/* Fecha de entrega - Oculta en vista compacta y en IDEA/Guión */}
-                    {!isCompactView && task.dueDate && task.status !== "IDEA" && (
-                      <div className="text-[9px] md:text-[10px] text-muted-foreground truncate mt-1 flex items-center gap-1">
-                        <span>⏰</span>
-                        <span>{format(new Date(task.dueDate), "dd/MM/yy")}</span>
-                      </div>
-                    )}
-
-                    {/* Fecha programada - Oculta en vista compacta y en IDEA/Guión */}
+                    {/* Fecha de entrega interna - Oculta en vista compacta y en IDEA/Guión */}
                     {!isCompactView && task.scheduledAt && task.status !== "IDEA" && (
                       <div className={`text-[9px] md:text-[10px] flex items-center gap-1 mt-1 ${
                         isToday(new Date(task.scheduledAt))

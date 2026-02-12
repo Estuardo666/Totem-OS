@@ -483,7 +483,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
           name="scheduledAt"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Fecha Programada de Publicación</FormLabel>
+              <FormLabel>Fecha de Entrega Interna</FormLabel>
               <FormControl>
                 <Input
                   type="datetime-local"
@@ -496,7 +496,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
               </FormControl>
               <FormMessage />
               <p className="text-xs text-muted-foreground">
-                La fecha de entrega se calculará automáticamente (24 horas antes de la publicación)
+                Fecha cuando debe estar lista la tarea para publicar
               </p>
             </FormItem>
           )}
