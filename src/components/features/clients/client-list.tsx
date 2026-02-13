@@ -4,7 +4,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useMemo, useState } from "react";
-import type { Client } from "@prisma/client";
+import type { Client, User } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -43,6 +43,7 @@ interface ClientListProps {
   }>;
   isAdmin: boolean;
   canEditClient?: boolean;
+  users: User[];
 }
 
 // Helper para convertir hex a rgba con opacidad
@@ -68,7 +69,7 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function ClientList({ clients, isAdmin, canEditClient = false }: ClientListProps) {
+export function ClientList({ clients, isAdmin, canEditClient = false, users }: ClientListProps) {
   const [query, setQuery] = useState("");
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
 
@@ -365,7 +366,7 @@ export function ClientList({ clients, isAdmin, canEditClient = false }: ClientLi
               client={client}
               open={isEditOpen}
               onOpenChange={(open) => setEditingClientId(open ? client.id : null)}
-              users={[]}
+              users={users}
             />
           </div>
         );

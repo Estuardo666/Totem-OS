@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus, Users } from "lucide-react";
 import { getClients } from "@/actions/client-actions";
+import { getUsers } from "@/actions/user.actions";
 import { ClientList } from "@/components/features/clients/client-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,17 +12,20 @@ export default async function ClientsPage() {
   const isAdmin = session?.user?.role === "ADMIN";
   const canEditClient = isAdmin || session?.user?.role === "EDITOR" || session?.user?.role === "COMMUNITY";
   
-  const result = await getClients();
+  const [clientsResult, usersResult] = await Promise.all([
+    getClients(),
+    getUsers(),
+  ]);
 
   // Si hay error, mostrar mensaje (en producción podrías redirigir o mostrar error boundary)
-  if (!result.success || !result.data) {
+  if (!clientsResult.success || !clientsResult.data) {
     return (
       <div className="min-h-screen bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <Card className="rounded-xl">
             <CardContent className="py-12">
               <p className="text-destructive text-center">
-                {result.error || "Error al cargar los clientes"}
+                {clientsResult.error || "Error al cargar los clientes"}
               </p>
             </CardContent>
           </Card>
@@ -29,6 +33,9 @@ export default async function ClientsPage() {
       </div>
     );
   }
+
+  // Obtener usuarios, por defecto array vacío si hay error
+  const users = usersResult.success && usersResult.data ? usersResult.data : [];
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -63,7 +70,7 @@ export default async function ClientsPage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 pt-6 pb-6">
-        <ClientList clients={result.data} isAdmin={isAdmin} canEditClient={canEditClient} />
+        <ClientList clients={clientsResult.data} isAdmin={isAdmin} canEditClient={canEditClient} users={users} />
       </div>
     </div>
   );
