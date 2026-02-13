@@ -377,6 +377,13 @@ export async function deleteShooting(
       return { success: false, error: "No autenticado" };
     }
 
+    // Validar permisos: solo ADMIN puede eliminar
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return { success: false, error: "Solo los administradores pueden eliminar rodajes" };
+    }
+
     // 1. Verificar que existe
     const existingResult = await validateShootingExists(id);
     if (!existingResult.valid) {

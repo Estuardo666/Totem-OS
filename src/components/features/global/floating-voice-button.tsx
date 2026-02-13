@@ -61,7 +61,7 @@ const normalizeText = (text: string) =>
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
 
-const matchClientId = (clients: { id: string; name: string }[], name?: string) => {
+const matchClientId = (clients: { id: string; name: string; logo?: string | null; color?: string | null }[], name?: string) => {
   if (!name) return undefined;
   const normalized = normalizeText(name);
   const exact = clients.find((c) => normalizeText(c.name) === normalized);
@@ -74,7 +74,7 @@ const matchClientId = (clients: { id: string; name: string }[], name?: string) =
 };
 
 const matchClientIdWithFallback = (
-  clients: { id: string; name: string }[],
+  clients: { id: string; name: string; logo?: string | null; color?: string | null }[],
   primary?: string,
   fallbackText?: string
 ) => {
@@ -111,7 +111,7 @@ export function FloatingVoiceButton() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string; logo?: string | null; color?: string | null }[]>([]);
   const [users, setUsers] = useState<{
     id: string;
     name: string;

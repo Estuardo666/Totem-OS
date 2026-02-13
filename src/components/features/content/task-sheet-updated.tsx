@@ -51,7 +51,7 @@ interface TaskSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   users: User[];
-  clients?: Array<{ id: string; name: string }>;
+  clients?: Array<{ id: string; name: string; logo?: string | null; color?: string | null }>;
   initialScheduledAt?: Date | string;
 }
 

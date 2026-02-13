@@ -1161,9 +1161,19 @@ export async function quickPublishTask(taskId: string): Promise<ApiResponse<Cont
 
 /**
  * Server Action para eliminar una tarea de contenido
+ * Solo accesible para ADMIN
  */
 export async function deleteTask(id: string): Promise<ApiResponse<void>> {
   try {
+    // Validar autenticación y permisos
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+    if (session.user.role !== "ADMIN") {
+      return { success: false, error: "Solo los administradores pueden eliminar tareas" };
+    }
+
     await db.contentTask.delete({
       where: { id },
     });

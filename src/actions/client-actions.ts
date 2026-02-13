@@ -1050,11 +1050,14 @@ export async function deleteClient(
   clientId: string
 ): Promise<ApiResponse<void>> {
   try {
-    // 0. Verificar autenticación
+    // 0. Verificar autenticación y permisos
     const { auth } = await import("@/auth");
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autenticado" };
+    }
+    if (session.user.role !== "ADMIN") {
+      return { success: false, error: "Solo los administradores pueden eliminar clientes" };
     }
 
     const client = await db.client.findUnique({

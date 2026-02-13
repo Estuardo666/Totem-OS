@@ -63,7 +63,7 @@ export function ContentFactoryWrapper({
           <KanbanBoard 
             tasks={filteredTasks} 
             users={users} 
-            clients={activeClients.map(c => ({ id: c.id, name: c.name }))}
+            clients={activeClients.map(c => ({ id: c.id, name: c.name, logo: c.logo, color: c.color }))}
             isCompactView={isCompactView}
           />
         </TabsContent>
@@ -72,7 +72,7 @@ export function ContentFactoryWrapper({
           <ContentCalendar 
             tasks={filteredTasks} 
             users={users} 
-            clients={activeClients.map(c => ({ id: c.id, name: c.name }))}
+            clients={activeClients.map(c => ({ id: c.id, name: c.name, logo: c.logo, color: c.color }))}
           />
         </TabsContent>
       </Tabs>

@@ -22,7 +22,7 @@ import { TaskSheet } from "./task-sheet";
 interface KanbanBoardProps {
   tasks: ContentTaskWithClient[];
   users: User[];
-  clients?: Array<{ id: string; name: string }>;
+  clients?: Array<{ id: string; name: string; logo?: string | null; color?: string | null }>;
   isCompactView?: boolean;
   clientId?: string; // Si se proporciona, filtra las tareas solo para este cliente
 }

@@ -26,7 +26,7 @@ import type { User } from "@prisma/client";
 interface ContentCalendarProps {
   tasks: ContentTaskWithClient[];
   users: User[];
-  clients: Array<{ id: string; name: string }>;
+  clients: Array<{ id: string; name: string; logo?: string | null; color?: string | null }>;
 }
 
 // Colores por tipo de contenido

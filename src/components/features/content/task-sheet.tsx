@@ -597,148 +597,161 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
             </TabsList>
 
             {/* Tab Detalles */}
-            <TabsContent value="details" className="mt-6">
+            <TabsContent value="details" className="mt-4 space-y-6">
+              {/* SECCIÓN: Título y Cliente */}
+              <div className="space-y-4">
+                {/* Título */}
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Título</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Título de la tarea"
+                          {...field}
+                          disabled={isPending}
+                          className="text-xl md:text-2xl font-semibold border border-input rounded-xl px-4 py-3 md:py-4 bg-white dark:bg-slate-950 focus:border-primary transition-all"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Cliente - Card prominente */}
+                {clients.length > 0 && (
                   <FormField
                     control={form.control}
-                    name="title"
+                    name="clientId"
                     render={({ field }) => (
-                      <FormItem className="mb-6">
-                        <FormLabel>Título</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Título de la tarea"
-                            {...field}
-                            disabled={isPending}
-                            className="text-2xl font-medium border-0 border-b-2 border-input rounded-none px-0 pb-2 bg-transparent focus:border-primary"
-                            style={{ fontSize: '1.5rem', fontWeight: '500' }}
-                          />
-                        </FormControl>
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cliente</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={!isNewTask || isPending}
+                        >
+                          <FormControl>
+                            <SelectTrigger className={`justify-start rounded-xl px-4 py-3 md:py-4 border-2 transition-all ${selectedClient ? 'border-opacity-30 bg-opacity-5' : 'border-input'}`}
+                              style={selectedClient ? {
+                                borderColor: selectedClient.color || '#2563eb',
+                                backgroundColor: `${selectedClient.color || '#2563eb'}0d`
+                              } : undefined}
+                            >
+                              {selectedClient ? (
+                                <div className="flex items-center gap-3 w-full">
+                                  <div className="relative flex-shrink-0">
+                                    <Avatar className="h-10 w-10 md:h-12 md:w-12 border-2" style={{ borderColor: selectedClient.color || '#2563eb' }}>
+                                      {selectedClient.logo ? (
+                                        <AvatarImage src={selectedClient.logo} alt={selectedClient.name} />
+                                      ) : null}
+                                      <AvatarFallback className="text-white text-sm font-bold" style={{ backgroundColor: selectedClient.color || '#2563eb' }}>
+                                        {selectedClient.name?.slice(0, 2).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{selectedClient.name}</p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <SelectValue placeholder="Selecciona un cliente" className="text-muted-foreground" />
+                              )}
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="rounded-xl">
+                            <div className="px-3 py-3" onKeyDown={(e) => e.stopPropagation()}>
+                              <Input
+                                placeholder="Buscar cliente"
+                                value={clientSearch}
+                                onChange={(e) => setClientSearch(e.target.value)}
+                                autoFocus
+                                className="rounded-lg h-9"
+                              />
+                            </div>
+                            <div className="max-h-64 overflow-y-auto">
+                              {filteredClients.map((client) => (
+                                <SelectItem key={client.id} value={client.id} className="rounded-lg">
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="h-8 w-8 border" style={{ borderColor: client.color || '#2563eb' }}>
+                                      {client.logo ? (
+                                        <AvatarImage src={client.logo} alt={client.name} />
+                                      ) : null}
+                                      <AvatarFallback className="text-white text-xs font-bold" style={{ backgroundColor: client.color || '#2563eb' }}>
+                                        {client.name.slice(0, 2).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-medium">{client.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </div>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                )}
+              </div>
 
-                  {clients.length > 0 && (
-                    <FormField
-                      control={form.control}
-                      name="clientId"
-                      render={({ field }) => (
-                        <FormItem className="mb-8 space-y-0.5">
-                          <FormLabel className="text-sm font-medium leading-none">Cliente</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            disabled={!isNewTask || isPending}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="justify-start">
-                                <div className="flex items-center gap-2 w-full truncate">
-                                  {selectedClient ? (
-                                    <>
-                                      <Avatar className="h-7 w-7">
-                                        <AvatarImage src={(selectedClient as any).logo || undefined} alt={(selectedClient as any).name} />
-                                        <AvatarFallback className="bg-primary text-white text-xs font-medium">
-                                          {(selectedClient as any).name?.slice(0, 2).toUpperCase()}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <span className="truncate">{(selectedClient as any).name}</span>
-                                    </>
-                                  ) : (
-                                    <SelectValue placeholder="Selecciona un cliente" />
-                                  )}
-                                </div>
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <div className="px-3 pt-3 pb-2" onKeyDown={(e) => e.stopPropagation()}>
-                                <Input
-                                  placeholder="Buscar cliente"
-                                  value={clientSearch}
-                                  onChange={(e) => setClientSearch(e.target.value)}
-                                  autoFocus
-                                />
-                              </div>
-                              {filteredClients.map((client) => (
-                                <SelectItem key={client.id} value={client.id}>
-                                  <div className="flex items-center gap-2">
-                                    <Avatar className="h-7 w-7">
-                                      <AvatarImage src={client.logo || undefined} alt={client.name} />
-                                      <AvatarFallback className="bg-primary text-white text-xs font-medium">
-                                        {client.name.slice(0, 2).toUpperCase()}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <span>{client.name}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
+              {/* SECCIÓN: Detalles Básicos - OCULTO */}
+              <div className="hidden"></div>
 
-                  {/* Fila 1: Tipo de Contenido */}
-                  <div className="grid grid-cols-1 gap-x-6 gap-y-7 mt-[17px]">
-                    <FormField
-                      control={form.control}
-                      name="type"
-                      render={({ field }) => (
-                        <FormItem className="space-y-0.5">
-                          <FormLabel>Tipo de Contenido</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            disabled={isPending}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona el tipo" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="REEL">Reel</SelectItem>
-                              <SelectItem value="FLYER">Flyer</SelectItem>
-                              <SelectItem value="STORY">Story</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Fila 2: Editor y Community */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-7">
+              {/* SECCIÓN: Asignaciones */}
+              <div className="space-y-4 pt-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Asignaciones</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="assignedEditorId"
                       render={({ field }) => (
-                        <FormItem className="space-y-0.5">
-                          <FormLabel>Editor Asignado</FormLabel>
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Editor Asignado</FormLabel>
                           <Select
                             onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
                             value={field.value || "none"}
                             disabled={isPending}
                           >
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un editor (opcional)" />
+                              <SelectTrigger className="rounded-lg border-input">
+                                {field.value !== "none" && field.value ? (
+                                  <div className="flex items-center gap-2 w-full">
+                                    {(() => {
+                                      const user = users.find(u => u.id === field.value);
+                                      return user ? (
+                                        <>
+                                          <Avatar className="h-8 w-8">
+                                            <AvatarImage src={user.image || undefined} alt={user.name} />
+                                            <AvatarFallback className="text-xs font-semibold bg-primary text-white">
+                                              {getUserInitials(user.name)}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <span className="truncate text-sm">{user.name}</span>
+                                        </>
+                                      ) : null;
+                                    })()}
+                                  </div>
+                                ) : (
+                                  <SelectValue placeholder="Sin asignar" />
+                                )}
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
-                              <SelectItem value="none">Sin asignar</SelectItem>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="none" className="rounded-lg">Sin asignar</SelectItem>
                               {users.map((user) => (
-                                <SelectItem key={user.id} value={user.id}>
+                                <SelectItem key={user.id} value={user.id} className="rounded-lg">
                                   <div className="flex items-center gap-2">
                                     <Avatar className="h-7 w-7">
                                       <AvatarImage src={user.image || undefined} alt={user.name} />
-                                      <AvatarFallback className="text-xs font-semibold">
+                                      <AvatarFallback className="text-xs font-semibold bg-primary text-white">
                                         {getUserInitials(user.name)}
                                       </AvatarFallback>
                                     </Avatar>
-                                    <span>{user.name}</span>
+                                    <span className="text-sm">{user.name}</span>
                                   </div>
                                 </SelectItem>
                               ))}
@@ -753,30 +766,49 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                       control={form.control}
                       name="assignedCommunityId"
                       render={({ field }) => (
-                        <FormItem className="space-y-0.5">
-                          <FormLabel>Community Asignado</FormLabel>
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Community Asignado</FormLabel>
                           <Select
                             onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
                             value={field.value || "none"}
                             disabled={isPending}
                           >
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un community (opcional)" />
+                              <SelectTrigger className="rounded-lg border-input">
+                                {field.value !== "none" && field.value ? (
+                                  <div className="flex items-center gap-2 w-full">
+                                    {(() => {
+                                      const user = users.find(u => u.id === field.value);
+                                      return user ? (
+                                        <>
+                                          <Avatar className="h-8 w-8">
+                                            <AvatarImage src={user.image || undefined} alt={user.name} />
+                                            <AvatarFallback className="text-xs font-semibold bg-primary text-white">
+                                              {getUserInitials(user.name)}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <span className="truncate text-sm">{user.name}</span>
+                                        </>
+                                      ) : null;
+                                    })()}
+                                  </div>
+                                ) : (
+                                  <SelectValue placeholder="Sin asignar" />
+                                )}
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
-                              <SelectItem value="none">Sin asignar</SelectItem>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="none" className="rounded-lg">Sin asignar</SelectItem>
                               {users.map((user) => (
-                                <SelectItem key={user.id} value={user.id}>
+                                <SelectItem key={user.id} value={user.id} className="rounded-lg">
                                   <div className="flex items-center gap-2">
                                     <Avatar className="h-7 w-7">
                                       <AvatarImage src={user.image || undefined} alt={user.name} />
-                                      <AvatarFallback className="text-xs font-semibold">
+                                      <AvatarFallback className="text-xs font-semibold bg-primary text-white">
                                         {getUserInitials(user.name)}
                                       </AvatarFallback>
                                     </Avatar>
-                                    <span>{user.name}</span>
+                                    <span className="text-sm">{user.name}</span>
                                   </div>
                                 </SelectItem>
                               ))}
@@ -787,15 +819,22 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                       )}
                     />
                   </div>
+                </div>
+
+              {/* SECCIÓN: Fechas y Prioridad */}
+              <div className="space-y-4 pt-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cronograma</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="scheduledAt"
                     render={({ field }) => (
-                      <FormItem className="space-y-0.5 mt-4">
-                        <FormLabel className={task?.status === "CLIENT_APPROVED" ? "text-orange-600 font-semibold" : ""}>
+                      <FormItem className="space-y-2">
+                        <FormLabel className={task?.status === "CLIENT_APPROVED" ? "text-orange-600 font-semibold text-xs uppercase tracking-wider" : "text-xs font-semibold uppercase tracking-wider text-muted-foreground"}>
                           Fecha de Entrega Interna
                           {task?.status === "CLIENT_APPROVED" && (
-                            <span className="ml-2 text-xs text-orange-600">⚠️ No olvides programarla</span>
+                            <span className="ml-2 text-xs text-orange-600 font-normal">⚠️ No olvides programarla</span>
                           )}
                         </FormLabel>
                         <FormControl>
@@ -814,7 +853,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                               }
                             }}
                             disabled={isPending}
-                            className={task?.status === "CLIENT_APPROVED" ? "border-orange-300 focus:border-orange-500 focus:ring-orange-500" : ""}
+                            className={`rounded-lg ${task?.status === "CLIENT_APPROVED" ? "border-orange-300 focus:border-orange-500 focus:ring-orange-500" : "border-input"}`}
                           />
                         </FormControl>
                         <FormMessage />
@@ -825,229 +864,299 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     )}
                   />
 
+                  {/* Prioridad - OCULTO */}
+                  <div className="hidden">
+                  <FormField
+                    control={form.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prioridad</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || "MEDIUM"}
+                          disabled={isPending}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="rounded-lg border-input">
+                              <SelectValue placeholder="Selecciona la prioridad" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="LOW" className="rounded-lg">🟢 Baja</SelectItem>
+                            <SelectItem value="MEDIUM" className="rounded-lg">🟡 Media</SelectItem>
+                            <SelectItem value="HIGH" className="rounded-lg">🟠 Alta</SelectItem>
+                            <SelectItem value="URGENT" className="rounded-lg">🔴 Urgente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECCIÓN: Estado - OCULTO */}
+              <div className="hidden">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Estado</h3>
+                
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Estado de la Tarea</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={isPending}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="rounded-lg border-input">
+                            <SelectValue placeholder="Selecciona el estado" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="IDEA" className="rounded-lg">💡 Idea</SelectItem>
+                          <SelectItem value="RECORDED" className="rounded-lg">🎥 Grabado</SelectItem>
+                          <SelectItem value="EDITING" className="rounded-lg">✏️ Editando</SelectItem>
+                          <SelectItem value="REVIEW_INTERNAL" className="rounded-lg">👀 Revisión Interna</SelectItem>
+                          <SelectItem value="REVIEW_CLIENT" className="rounded-lg">📋 Revisión Cliente</SelectItem>
+                          <SelectItem value="CLIENT_APPROVED" className="rounded-lg">✅ Aprobado Cliente</SelectItem>
+                          <SelectItem value="APPROVED" className="rounded-lg">✅ Aprobado</SelectItem>
+                          <SelectItem value="PUBLISHED" className="rounded-lg">🚀 Publicado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </TabsContent>
 
             {/* Tab Recursos Creativos */}
-            <TabsContent value="creative" className="mt-6">
-                  {/* Copy con IA */}
-                  <FormField
-                    control={form.control}
-                    name="postCopy"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex items-center justify-between">
-                          <FormLabel>Copy del Post</FormLabel>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={async () => {
-                              const copyText = form.getValues("postCopy");
-                              if (!copyText) {
-                                toast({
-                                  variant: "destructive",
-                                  title: "Sin contenido",
-                                  description: "No hay texto para copiar",
-                                });
-                                return;
-                              }
+            <TabsContent value="creative" className="mt-4 space-y-6">
+                  {/* SECCIÓN: Copy del Post */}
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Texto del Post</h3>
+                    <FormField
+                      control={form.control}
+                      name="postCopy"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Copy</FormLabel>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={async () => {
+                                const copyText = form.getValues("postCopy");
+                                if (!copyText) {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "Sin contenido",
+                                    description: "No hay texto para copiar",
+                                  });
+                                  return;
+                                }
 
-                              try {
-                                await navigator.clipboard.writeText(copyText);
-                                setCopiedPostCopy(true);
-                                toast({
-                                  title: "Copiado 📋",
-                                  description: "El texto se ha copiado al portapapeles",
-                                  duration: 2000,
-                                });
-                                setTimeout(() => setCopiedPostCopy(false), 2000);
-                              } catch (error) {
-                                toast({
-                                  variant: "destructive",
-                                  title: "Error",
-                                  description: "No se pudo copiar el texto",
-                                });
-                              }
-                            }}
-                            disabled={!field.value || isPending}
-                          >
-                            {copiedPostCopy ? (
-                              <Check className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                        <FormControl>
-                          <div className="relative">
+                                try {
+                                  await navigator.clipboard.writeText(copyText);
+                                  setCopiedPostCopy(true);
+                                  toast({
+                                    title: "Copiado 📋",
+                                    description: "El texto se ha copiado al portapapeles",
+                                    duration: 2000,
+                                  });
+                                  setTimeout(() => setCopiedPostCopy(false), 2000);
+                                } catch (error) {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "Error",
+                                    description: "No se pudo copiar el texto",
+                                  });
+                                }
+                              }}
+                              disabled={!field.value || isPending}
+                            >
+                              {copiedPostCopy ? (
+                                <Check className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                          <FormControl>
                             <Textarea
                               placeholder="Escribe el texto del post aquí..."
                               {...field}
                               disabled={isPending}
-                              className="min-h-[120px] resize-y"
+                              className="min-h-[140px] resize-y rounded-lg border-input"
                             />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                        <p className="text-xs text-muted-foreground">
-                          Usa el botón de copiar para copiar el texto al portapapeles
-                        </p>
-                        
-                        {/* IA Content Assistant */}
-                        {task ? (
-                          <AiContentAssistant
-                            taskId={task.id}
-                            currentCopy={field.value}
-                            onInsertCopy={(content) => {
-                              // Actualizar el valor del formulario sin disparar validación ni re-renders innecesarios
-                              form.setValue("postCopy", content, {
-                                shouldDirty: true,
-                                shouldTouch: true,
-                                shouldValidate: false,
-                              });
-                              // Enfocar el textarea después de insertar
-                              setTimeout(() => {
-                                const textarea = document.querySelector(
-                                  'textarea[name="postCopy"]'
-                                ) as HTMLTextAreaElement;
-                                if (textarea) {
-                                  textarea.focus();
-                                  // Mover el cursor al final del texto
-                                  const length = textarea.value.length;
-                                  textarea.setSelectionRange(length, length);
-                                }
-                              }, 100);
-                            }}
-                            hasCompleteBrandDNA={task.client.brandDNA ? isBrandDNAComplete(task.client.brandDNA) : false}
-                            brandDNAError={task.client.brandDNA ? getBrandDNAError(task.client.brandDNA) : "El cliente no tiene configurado el ADN de Marca"}
-                          />
-                        ) : (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-block w-full">
-                                <Button 
-                                  type="button"
-                                  variant="outline" 
-                                  className="w-full opacity-50 cursor-not-allowed"
-                                  disabled={true}
-                                >
-                                  <Sparkles className="h-4 w-4 mr-2" />
-                                  Generar con IA
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Configura el ADN de Marca en el perfil del cliente para habilitar la IA</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Imagen de Portada */}
-                  <FormField
-                    control={form.control}
-                    name="coverImageUrl"
-                    render={({ field }) => {
-                      const hasImage = !!coverImageUrl && coverImageUrl !== "";
-                      return (
-                        <FormItem>
-                          <FormLabel>Imagen de Portada</FormLabel>
-                          <FormControl>
-                            {hasImage ? (
-                              <div className="relative rounded-lg border border-input overflow-hidden">
-                                <div className="relative w-full h-64">
-                                  <NextImage
-                                    src={coverImageUrl}
-                                    alt="Imagen de portada"
-                                    fill
-                                    className="object-cover"
-                                  />
-                                  <div className="absolute top-2 right-2 flex gap-2">
-                                    <Button
-                                      type="button"
-                                      variant="secondary"
-                                      size="icon"
-                                      className="h-8 w-8 bg-background/80 backdrop-blur-sm"
-                                      asChild
-                                    >
-                                      <Link href={coverImageUrl} target="_blank" rel="noopener noreferrer">
-                                        <Download className="h-4 w-4" />
-                                      </Link>
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="destructive"
-                                      size="icon"
-                                      className="h-8 w-8 bg-background/80 backdrop-blur-sm"
-                                      onClick={() => {
-                                        field.onChange("");
-                                        toast({
-                                          title: "Imagen eliminada",
-                                          description: "Guarda cambios para confirmar.",
-                                        });
-                                      }}
-                                      disabled={isPending}
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center gap-4 bg-gray-50 relative">
-                                {isUploadingImage && (
-                                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg flex flex-col items-center justify-center gap-3 z-10">
-                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                    <p className="text-sm font-medium text-muted-foreground">Subiendo imagen...</p>
-                                  </div>
-                                )}
-                                <UploadButton
-                                  endpoint="brandAsset"
-                                  appearance={{
-                                    button: "bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-                                    allowedContent: "hidden"
-                                  }}
-                                  content={{ button: "Subir Portada" }}
-                                  onUploadBegin={() => {
-                                    setIsUploadingImage(true);
-                                  }}
-                                  onClientUploadComplete={(res) => {
-                                    setIsUploadingImage(false);
-                                    console.log("✅ Archivos: ", res);
-                                    if (res && res[0]) {
-                                      const newUrl = res[0].ufsUrl || res[0].url;
-                                      form.setValue("coverImageUrl", newUrl, {
-                                        shouldDirty: true,
-                                        shouldTouch: true,
-                                        shouldValidate: true
-                                      });
-                                      toast({
-                                        title: "✅ Imagen subida",
-                                        description: "La imagen se ha subido correctamente",
-                                      });
-                                    }
-                                  }}
-                                  onUploadError={(error: Error) => {
-                                    setIsUploadingImage(false);
-                                    console.error("❌ Error subiendo:", error);
-                                    toast({
-                                      variant: "destructive",
-                                      title: "❌ Error al subir",
-                                      description: error.message,
-                                    });
-                                  }}
-                                />
-                              </div>
-                            )}
                           </FormControl>
                           <FormMessage />
+                          <p className="text-xs text-muted-foreground">
+                            Usa el botón de copiar para copiar el texto al portapapeles
+                          </p>
+                          
+                          {/* IA Content Assistant */}
+                          {task ? (
+                            <AiContentAssistant
+                              taskId={task.id}
+                              currentCopy={field.value}
+                              onInsertCopy={(content) => {
+                                form.setValue("postCopy", content, {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: false,
+                                });
+                                setTimeout(() => {
+                                  const textarea = document.querySelector(
+                                    'textarea[name="postCopy"]'
+                                  ) as HTMLTextAreaElement;
+                                  if (textarea) {
+                                    textarea.focus();
+                                    const length = textarea.value.length;
+                                    textarea.setSelectionRange(length, length);
+                                  }
+                                }, 100);
+                              }}
+                              hasCompleteBrandDNA={task.client.brandDNA ? isBrandDNAComplete(task.client.brandDNA) : false}
+                              brandDNAError={task.client.brandDNA ? getBrandDNAError(task.client.brandDNA) : "El cliente no tiene configurado el ADN de Marca"}
+                            />
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-block w-full">
+                                  <Button 
+                                    type="button"
+                                    variant="outline" 
+                                    className="w-full opacity-50 cursor-not-allowed"
+                                    disabled={true}
+                                  >
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                    Generar con IA
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Configura el ADN de Marca en el perfil del cliente para habilitar la IA</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </FormItem>
-                      );
-                    }}
-                  />
+                      )}
+                    />
+                  </div>
+
+                  {/* SECCIÓN: Imagen de Portada */}
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recursos Visuales</h3>
+                    <FormField
+                      control={form.control}
+                      name="coverImageUrl"
+                      render={({ field }) => {
+                        const hasImage = !!coverImageUrl && coverImageUrl !== "";
+                        return (
+                          <FormItem className="space-y-2">
+                            <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Imagen de Portada</FormLabel>
+                            <FormControl>
+                              {hasImage ? (
+                                <div className="relative rounded-xl border border-input overflow-hidden">
+                                  <div className="relative w-full h-64 md:h-80">
+                                    <NextImage
+                                      src={coverImageUrl}
+                                      alt="Imagen de portada"
+                                      fill
+                                      className="object-cover"
+                                    />
+                                    <div className="absolute top-3 right-3 flex gap-2">
+                                      <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="icon"
+                                        className="h-10 w-10 bg-background/90 hover:bg-background backdrop-blur-md rounded-lg"
+                                        asChild
+                                      >
+                                        <Link href={coverImageUrl} target="_blank" rel="noopener noreferrer">
+                                          <Download className="h-5 w-5" />
+                                        </Link>
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="icon"
+                                        className="h-10 w-10 bg-red-500/90 hover:bg-red-600 backdrop-blur-md rounded-lg"
+                                        onClick={() => {
+                                          field.onChange("");
+                                          toast({
+                                            title: "Imagen eliminada",
+                                            description: "Guarda cambios para confirmar.",
+                                          });
+                                        }}
+                                        disabled={isPending}
+                                      >
+                                        <X className="h-5 w-5" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-8 flex flex-col items-center justify-center gap-4 bg-muted/30 relative hover:border-muted-foreground/50 transition-colors">
+                                  {isUploadingImage && (
+                                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg flex flex-col items-center justify-center gap-3 z-10">
+                                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                      <p className="text-sm font-medium text-muted-foreground">Subiendo imagen...</p>
+                                    </div>
+                                  )}
+                                  <UploadButton
+                                    endpoint="brandAsset"
+                                    appearance={{
+                                      button: "bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+                                      allowedContent: "hidden"
+                                    }}
+                                    content={{ button: "Subir Portada" }}
+                                    onUploadBegin={() => {
+                                      setIsUploadingImage(true);
+                                    }}
+                                    onClientUploadComplete={(res) => {
+                                      setIsUploadingImage(false);
+                                      console.log("✅ Archivos: ", res);
+                                      if (res && res[0]) {
+                                        const newUrl = res[0].ufsUrl || res[0].url;
+                                        form.setValue("coverImageUrl", newUrl, {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true
+                                        });
+                                        toast({
+                                          title: "✅ Imagen subida",
+                                          description: "La imagen se ha subido correctamente",
+                                        });
+                                      }
+                                    }}
+                                    onUploadError={(error: Error) => {
+                                      setIsUploadingImage(false);
+                                      console.error("❌ Error subiendo:", error);
+                                      toast({
+                                        variant: "destructive",
+                                        title: "❌ Error al subir",
+                                        description: error.message,
+                                      });
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+                  </div>
 
                   {/* Guión del contenido */}
                   <FormField
@@ -1071,139 +1180,146 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                       };
                       
                       return (
-                        <FormItem>
-                          <FormLabel>Guión del Contenido</FormLabel>
-                          <FormControl>
-                            {hasScript ? (
-                              <div className="border border-input rounded-lg p-4 bg-gray-50">
-                                <div className="flex items-center gap-3">
-                                  <div className="flex-shrink-0 w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                                    <FileText className="h-6 w-6 text-primary" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">
-                                      {getFileName(scriptUrl)}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      {getFileExtension(scriptUrl)}
-                                    </p>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="icon"
-                                      className="h-9 w-9"
-                                      asChild
-                                    >
-                                      <Link href={scriptUrl} target="_blank" rel="noopener noreferrer">
-                                        <Download className="h-4 w-4" />
-                                      </Link>
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="icon"
-                                      className="h-9 w-9"
-                                      onClick={async () => {
-                                        try {
-                                          await navigator.clipboard.writeText(scriptUrl);
+                        <div className="space-y-3">
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Documentos</h3>
+                          <FormItem className="space-y-2">
+                            <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Guión del Contenido</FormLabel>
+                            <FormControl>
+                              {hasScript ? (
+                                <div className="border border-input rounded-xl p-4 bg-muted/50 hover:bg-muted/70 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex-shrink-0 w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                                      <FileText className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate">
+                                        {getFileName(scriptUrl)}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {getFileExtension(scriptUrl)}
+                                      </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-9 w-9 hover:bg-background"
+                                        asChild
+                                      >
+                                        <Link href={scriptUrl} target="_blank" rel="noopener noreferrer">
+                                          <Download className="h-5 w-5" />
+                                        </Link>
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-9 w-9 hover:bg-background"
+                                        onClick={async () => {
+                                          try {
+                                            await navigator.clipboard.writeText(scriptUrl);
+                                            toast({
+                                              title: "Link copiado",
+                                              description: "El enlace del guión se copió al portapapeles",
+                                            });
+                                          } catch (error) {
+                                            toast({
+                                              variant: "destructive",
+                                              title: "Error",
+                                              description: "No se pudo copiar el enlace",
+                                            });
+                                          }
+                                        }}
+                                      >
+                                        <Copy className="h-5 w-5" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="icon"
+                                        className="h-9 w-9 bg-red-600/90 hover:bg-red-700"
+                                        onClick={() => {
+                                          field.onChange("");
                                           toast({
-                                            title: "Link copiado",
-                                            description: "El enlace del guión se copió al portapapeles",
+                                            title: "Guión eliminado",
+                                            description: "Guarda cambios para confirmar.",
                                           });
-                                        } catch (error) {
-                                          toast({
-                                            variant: "destructive",
-                                            title: "Error",
-                                            description: "No se pudo copiar el enlace",
-                                          });
-                                        }
-                                      }}
-                                    >
-                                      <Share2 className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="destructive"
-                                      size="icon"
-                                      className="h-9 w-9"
-                                      onClick={() => {
-                                        field.onChange("");
-                                        toast({
-                                          title: "Guión eliminado",
-                                          description: "Guarda cambios para confirmar.",
-                                        });
-                                      }}
-                                      disabled={isPending}
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
+                                        }}
+                                        disabled={isPending}
+                                      >
+                                        <X className="h-5 w-5" />
+                                      </Button>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex justify-center bg-gray-50">
-                                <UploadButton
-                                  endpoint="brandAsset"
-                                  appearance={{
-                                    button: "bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-                                    allowedContent: "hidden"
-                                  }}
-                                  content={{ button: "Subir Guión" }}
-                                  onClientUploadComplete={(res) => {
-                                    console.log("✅ Guión subido: ", res);
-                                    if (res && res[0]) {
-                                      const newUrl = res[0].url;
-                                      form.setValue("scriptUrl", newUrl, {
-                                        shouldDirty: true,
-                                        shouldTouch: true,
-                                        shouldValidate: true
-                                      });
+                              ) : (
+                                <div className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-8 flex justify-center bg-muted/30 hover:border-muted-foreground/50 transition-colors">
+                                  <UploadButton
+                                    endpoint="brandAsset"
+                                    appearance={{
+                                      button: "bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+                                      allowedContent: "hidden"
+                                    }}
+                                    content={{ button: "Subir Guión" }}
+                                    onClientUploadComplete={(res) => {
+                                      console.log("✅ Guión subido: ", res);
+                                      if (res && res[0]) {
+                                        const newUrl = res[0].url;
+                                        form.setValue("scriptUrl", newUrl, {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true
+                                        });
+                                        toast({
+                                          title: "Guión subido",
+                                          description: "El archivo se ha subido correctamente",
+                                        });
+                                      }
+                                    }}
+                                    onUploadError={(error: Error) => {
+                                      console.error("❌ Error subiendo guión:", error);
                                       toast({
-                                        title: "Guión subido",
-                                        description: "El archivo se ha subido correctamente",
+                                        variant: "destructive",
+                                        title: "Error al subir",
+                                        description: `Error: ${error.message}`,
                                       });
-                                    }
-                                  }}
-                                  onUploadError={(error: Error) => {
-                                    console.error("❌ Error subiendo guión:", error);
-                                    toast({
-                                      variant: "destructive",
-                                      title: "Error al subir",
-                                      description: `Error: ${error.message}`,
-                                    });
-                                  }}
-                                />
-                              </div>
-                            )}
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        </div>
                       );
                     }}
                   />
             </TabsContent>
 
             {/* Tab Métricas */}
-            <TabsContent value="metrics" className="mt-6">
+            <TabsContent value="metrics" className="mt-4 space-y-6">
               {isLoadingMetrics ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
               ) : (
                 <>
                   {enabledMetrics.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">
+                    <div className="text-center py-12 px-4">
+                      <p className="text-muted-foreground text-sm">
                         Este cliente no tiene métricas configuradas en su perfil.
                       </p>
                     </div>
                   ) : (
                     <Form {...metricsForm}>
-                      <div className="space-y-6">
-                        {/* Grid de 2 columnas para inputs de métricas */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <form className="space-y-6">
+                        {/* SECCIÓN: Métricas */}
+                        <div className="space-y-4">
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rendimiento</h3>
+                          
+                          {/* Grid de 2 columnas para inputs de métricas */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {enabledMetrics.map((metricName) => {
                             // Mapear nombres amigables para las métricas
                             const metricLabels: Record<string, string> = {
@@ -1243,8 +1359,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                                 control={metricsForm.control}
                                 name={metricName}
                                 render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>{label}</FormLabel>
+                                  <FormItem className="space-y-2">
+                                    <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</FormLabel>
                                     <FormControl>
                                       {isSelect ? (
                                         <Select
@@ -1252,16 +1368,16 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                                           value={field.value || ""}
                                           disabled={isSavingMetrics}
                                         >
-                                          <SelectTrigger>
+                                          <SelectTrigger className="rounded-lg border-input">
                                             <SelectValue placeholder="Selecciona fuente" />
                                           </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="WhatsApp">WhatsApp</SelectItem>
-                                            <SelectItem value="Web">Web</SelectItem>
-                                            <SelectItem value="DM">DM</SelectItem>
-                                            <SelectItem value="Link en Bio">Link en Bio</SelectItem>
-                                            <SelectItem value="Local Físico">Local Físico</SelectItem>
-                                            <SelectItem value="Otro">Otro</SelectItem>
+                                          <SelectContent className="rounded-xl">
+                                            <SelectItem value="WhatsApp" className="rounded-lg">WhatsApp</SelectItem>
+                                            <SelectItem value="Web" className="rounded-lg">Web</SelectItem>
+                                            <SelectItem value="DM" className="rounded-lg">DM</SelectItem>
+                                            <SelectItem value="Link en Bio" className="rounded-lg">Link en Bio</SelectItem>
+                                            <SelectItem value="Local Físico" className="rounded-lg">Local Físico</SelectItem>
+                                            <SelectItem value="Otro" className="rounded-lg">Otro</SelectItem>
                                           </SelectContent>
                                         </Select>
                                       ) : isNumber ? (
@@ -1284,6 +1400,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                                           }}
                                           value={field.value || ""}
                                           disabled={isSavingMetrics}
+                                          className="rounded-lg border-input"
                                         />
                                       ) : (
                                         <Input
@@ -1292,6 +1409,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                                           {...field}
                                           value={field.value || ""}
                                           disabled={isSavingMetrics}
+                                          className="rounded-lg border-input"
                                         />
                                       )}
                                     </FormControl>
@@ -1301,26 +1419,28 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                               />
                             );
                           })}
+                          </div>
                         </div>
 
-                        {/* Botón Guardar Métricas - Estilo corregido */}
-                        <Button
-                          type="button"
-                          onClick={() => metricsForm.handleSubmit(onMetricsSubmit)()}
-                          disabled={isSavingMetrics}
-                          className="w-full bg-user-color text-white hover:bg-user-color/90"
-                          style={{ backgroundColor: 'var(--user-color, #2563eb)' }}
-                        >
-                          {isSavingMetrics ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Guardando...
-                            </>
-                          ) : (
-                            "Guardar Métricas"
-                          )}
-                        </Button>
-                      </div>
+                        {/* Botón Guardar Métricas */}
+                        <div className="flex gap-3 pt-4">
+                          <Button
+                            type="button"
+                            onClick={() => metricsForm.handleSubmit(onMetricsSubmit)()}
+                            disabled={isSavingMetrics}
+                            className="flex-1 bg-primary text-white hover:bg-primary/90 rounded-lg h-10 font-medium"
+                          >
+                            {isSavingMetrics ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Guardando...
+                              </>
+                            ) : (
+                              "Guardar Métricas"
+                            )}
+                          </Button>
+                        </div>
+                      </form>
                     </Form>
                   )}
                 </>
