@@ -261,7 +261,7 @@ export async function cancelTransactionInDb(
 
 /**
  * Obtiene el resumen de cuentas por cobrar
- * Incluye facturas pendientes y transacciones INCOME
+ * Incluye facturas pendientes, transacciones INCOME y tarifas mensuales recurrentes
  */
 export async function getReceivablesFromDb(
   userId: string
@@ -277,7 +277,8 @@ export async function getReceivablesFromDb(
       amount: number;
       date: Date;
       daysOverdue: number;
-      sourceType: "INVOICE" | "TRANSACTION";
+      status: "PENDING" | "PAID";
+      sourceType: "INVOICE" | "TRANSACTION" | "RECURRING";
     }>;
   }>
 > {
@@ -287,10 +288,13 @@ export async function getReceivablesFromDb(
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    // Obtener facturas pendientes
-    const pendingInvoices = await db.invoice.findMany({
+    // Obtener TODAS las facturas del mes (PENDING + PAID)
+    const allInvoicesThisMonth = await db.invoice.findMany({
       where: {
-        status: "PENDING",
+        generatedAt: {
+          gte: monthStart,
+          lte: monthEnd,
+        },
       },
       include: {
         client: true,
@@ -300,11 +304,14 @@ export async function getReceivablesFromDb(
       },
     });
 
-    // Obtener transacciones pendientes de tipo INCOME
-    const pendingTransactions = await db.transaction.findMany({
+    // Obtener TODAS las transacciones INCOME del mes (PENDING + PAID)
+    const allTransactionsThisMonth = await db.transaction.findMany({
       where: {
         type: "INCOME",
-        status: "PENDING",
+        createdAt: {
+          gte: monthStart,
+          lte: monthEnd,
+        },
         OR: [
           { assignedToId: userId },
           { assignedToId: null }, // Transacciones sin asignar
@@ -318,109 +325,157 @@ export async function getReceivablesFromDb(
       },
     });
 
-    // Facturas pagadas en el mes actual
-    const paidInvoicesThisMonth = await db.invoice.findMany({
+    // Obtener clientes con tarifas mensuales recurrentes (excluyendo inactivos)
+    const recurringClients = await db.client.findMany({
       where: {
-        status: "PAID",
-        generatedAt: {
-          gte: monthStart,
-          lte: monthEnd,
-        },
+        monthlyRate: { gt: 0 },
+        paymentDay: { not: null },
+        status: { not: "INACTIVE" },
+      },
+      orderBy: {
+        name: "asc",
       },
     });
 
-    // Transacciones INCOME pagadas en el mes actual
-    const paidTransactionsThisMonth = await db.transaction.findMany({
-      where: {
-        type: "INCOME",
-        status: "PAID",
-        createdAt: {
-          gte: monthStart,
-          lte: monthEnd,
-        },
-        OR: [
-          { assignedToId: userId },
-          { assignedToId: null },
-        ],
-      },
-    });
+    // Set de IDs de clientes recurrentes para excluirlos de otras listas
+    const recurringClientIds = new Set(recurringClients.map(c => c.id));
 
-    // Facturas pendientes en el mes actual
-    const pendingInvoicesThisMonth = await db.invoice.findMany({
-      where: {
-        status: "PENDING",
-        generatedAt: {
-          gte: monthStart,
-          lte: monthEnd,
-        },
-      },
-    });
+    // Calcular el saldo restante de cada cliente recurrente
+    const recurringClientBalances = recurringClients
+      .filter(client => client.paymentDay && client.monthlyRate > 0)
+      .map(client => {
+        // Sumar todos los pagos (PAID) de este cliente en este mes
+        const paidFromInvoices = allInvoicesThisMonth
+          .filter(inv => inv.clientId === client.id && inv.status === "PAID")
+          .reduce((sum, inv) => sum + inv.amount, 0);
 
-    // Transacciones INCOME pendientes en el mes actual
-    const pendingTransactionsThisMonth = await db.transaction.findMany({
-      where: {
-        type: "INCOME",
-        status: "PENDING",
-        createdAt: {
-          gte: monthStart,
-          lte: monthEnd,
-        },
-        OR: [
-          { assignedToId: userId },
-          { assignedToId: null },
-        ],
-      },
-    });
+        const paidFromTransactions = allTransactionsThisMonth
+          .filter(t => t.relatedClientId === client.id && t.status === "PAID")
+          .reduce((sum, t) => sum + t.amount, 0);
 
-    // Calcular métricas
-    const totalReceivable =
-      pendingInvoices.reduce((sum, inv) => sum + inv.amount, 0) +
-      pendingTransactions.reduce((sum, t) => sum + t.amount, 0);
+        const totalPaid = paidFromInvoices + paidFromTransactions;
+        const remaining = client.monthlyRate - totalPaid;
 
-    const clientsWithDebtSet = new Set<string>();
-    pendingInvoices.forEach((inv) => {
-      if (inv.clientId) clientsWithDebtSet.add(inv.clientId);
-    });
-    pendingTransactions.forEach((t) => {
-      if (t.relatedClientId) clientsWithDebtSet.add(t.relatedClientId);
-    });
-    const clientsWithDebt = clientsWithDebtSet.size;
+        const paymentDayThisMonth = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          client.paymentDay!
+        );
+        const daysDiff = Math.floor(
+          (today.getTime() - paymentDayThisMonth.getTime()) / (1000 * 60 * 60 * 24)
+        );
 
-    const monthProjection =
-      paidInvoicesThisMonth.reduce((sum, inv) => sum + inv.amount, 0) +
-      paidTransactionsThisMonth.reduce((sum, t) => sum + t.amount, 0) +
-      pendingInvoicesThisMonth.reduce((sum, inv) => sum + inv.amount, 0) +
-      pendingTransactionsThisMonth.reduce((sum, t) => sum + t.amount, 0);
+        return {
+          client,
+          totalPaid,
+          remaining: Math.max(0, remaining), // No puede ser negativo
+          paymentDayThisMonth,
+          daysDiff,
+          isFullyPaid: remaining <= 0,
+        };
+      });
 
-    // Preparar lista de transacciones pendientes
-    const pendingList = [
-      ...pendingInvoices.map((inv) => {
+    // Crear transacciones recurrentes SOLO para clientes con saldo pendiente
+    const recurringTransactions = recurringClientBalances
+      .filter(cb => !cb.isFullyPaid) // Solo mostrar si no está completamente pagado
+      .map(cb => ({
+        id: `recurring-${cb.client.id}`,
+        clientName: cb.client.name || "Cliente sin nombre",
+        description: cb.totalPaid > 0 
+          ? `Saldo pendiente - ${cb.client.name || "Cliente"} (Pagó $${cb.totalPaid.toFixed(2)})`
+          : `Tarifa mensual - ${cb.client.name || "Cliente"}`,
+        amount: cb.remaining, // Mostrar saldo restante, no el monto total
+        date: cb.paymentDayThisMonth,
+        daysOverdue: cb.daysDiff,
+        status: "PENDING" as const,
+        sourceType: "RECURRING" as const,
+      }));
+
+    // Facturas PENDING de clientes NO recurrentes (los recurrentes ya están contabilizados arriba)
+    const pendingInvoicesNonRecurring = allInvoicesThisMonth
+      .filter(inv => {
+        // Excluir facturas de clientes recurrentes (ya contabilizadas en recurringTransactions)
+        if (inv.clientId && recurringClientIds.has(inv.clientId)) return false;
+        // Solo mostrar PENDING
+        return inv.status === "PENDING";
+      })
+      .map(inv => {
         const invoiceDate = new Date(inv.generatedAt);
         const daysDiff = Math.floor((today.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24));
         return {
           id: inv.id,
-          clientName: inv.client.name,
-          description: `Factura - ${inv.client.name}`,
+          clientName: inv.client?.name || "Cliente sin nombre",
+          description: `Factura - ${inv.client?.name || "Cliente"}`,
           amount: inv.amount,
           date: invoiceDate,
-          daysOverdue: daysDiff > 0 ? daysDiff : 0,
+          daysOverdue: daysDiff,
+          status: "PENDING" as const,
           sourceType: "INVOICE" as const,
         };
-      }),
-      ...pendingTransactions.map((t) => {
+      });
+
+    // Transacciones PENDING de clientes NO recurrentes
+    const pendingTransactionsNonRecurring = allTransactionsThisMonth
+      .filter(t => {
+        // Excluir transacciones de clientes recurrentes
+        if (t.relatedClientId && recurringClientIds.has(t.relatedClientId)) return false;
+        // Solo mostrar PENDING
+        return t.status === "PENDING";
+      })
+      .map(t => {
         const transactionDate = new Date(t.createdAt);
         const daysDiff = Math.floor((today.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24));
         return {
           id: t.id,
-          clientName: t.relatedClient?.name,
+          clientName: t.relatedClient?.name || "Sin cliente asignado",
           description: t.description || "Transacción",
           amount: t.amount,
           date: transactionDate,
-          daysOverdue: daysDiff > 0 ? daysDiff : 0,
+          daysOverdue: daysDiff,
+          status: "PENDING" as const,
           sourceType: "TRANSACTION" as const,
         };
-      }),
-    ].sort((a, b) => b.daysOverdue - a.daysOverdue);
+      });
+
+    // Calcular métricas - Solo lo PENDIENTE cuenta como "por cobrar"
+    const totalReceivable =
+      pendingInvoicesNonRecurring.reduce((sum, inv) => sum + inv.amount, 0) +
+      pendingTransactionsNonRecurring.reduce((sum, t) => sum + t.amount, 0) +
+      recurringTransactions.reduce((sum, rt) => sum + rt.amount, 0);
+
+    // Clientes con deuda
+    const clientsWithDebtSet = new Set<string>();
+    pendingInvoicesNonRecurring.forEach(inv => {
+      // El clientId se puede obtener del id original
+      const originalInv = allInvoicesThisMonth.find(i => i.id === inv.id);
+      if (originalInv?.clientId) clientsWithDebtSet.add(originalInv.clientId);
+    });
+    pendingTransactionsNonRecurring.forEach(t => {
+      const originalT = allTransactionsThisMonth.find(tr => tr.id === t.id);
+      if (originalT?.relatedClientId) clientsWithDebtSet.add(originalT.relatedClientId);
+    });
+    recurringTransactions.forEach(rt => {
+      const clientId = rt.id.replace("recurring-", "");
+      clientsWithDebtSet.add(clientId);
+    });
+    const clientsWithDebt = clientsWithDebtSet.size;
+
+    // Proyección del mes: total esperado de clientes recurrentes + facturas/transacciones no recurrentes
+    const monthProjection =
+      recurringClients.reduce((sum, c) => sum + c.monthlyRate, 0) +
+      allInvoicesThisMonth
+        .filter(inv => !inv.clientId || !recurringClientIds.has(inv.clientId))
+        .reduce((sum, inv) => sum + inv.amount, 0) +
+      allTransactionsThisMonth
+        .filter(t => !t.relatedClientId || !recurringClientIds.has(t.relatedClientId))
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    // Lista final: solo items PENDING (proyectados + atrasados)
+    const pendingList = [
+      ...pendingInvoicesNonRecurring,
+      ...pendingTransactionsNonRecurring,
+      ...recurringTransactions,
+    ].sort((a, b) => a.daysOverdue - b.daysOverdue); // Ordenar: próximos primero, atrasados después
 
     return {
       success: true,

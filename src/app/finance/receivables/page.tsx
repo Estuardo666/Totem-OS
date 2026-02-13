@@ -22,6 +22,14 @@ export default async function ReceivablesPage() {
     );
   }
 
+  // Ensure all required fields exist with defaults
+  const {
+    totalReceivable = 0,
+    clientsWithDebt = 0,
+    monthProjection = 0,
+    pendingTransactions = [],
+  } = result.data;
+
   return (
     <div className="container mx-auto p-3">
       <PageHeader
@@ -32,16 +40,16 @@ export default async function ReceivablesPage() {
       {/* Resumen de métricas (KPIs) */}
       <div className="mb-8">
         <ReceivablesSummary
-          totalReceivable={result.data.totalReceivable}
-          clientsWithDebt={result.data.clientsWithDebt}
-          monthProjection={result.data.monthProjection}
+          totalReceivable={totalReceivable}
+          clientsWithDebt={clientsWithDebt}
+          monthProjection={monthProjection}
         />
       </div>
 
       {/* Tabla de seguimiento */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Transacciones Pendientes</h2>
-        <ReceivablesTable transactions={result.data.pendingTransactions} />
+        <ReceivablesTable transactions={pendingTransactions} />
       </div>
     </div>
   );

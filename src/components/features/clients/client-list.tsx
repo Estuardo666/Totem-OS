@@ -6,6 +6,7 @@ import { es } from "date-fns/locale";
 import { useMemo, useState } from "react";
 import type { Client } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import {
   Bell,
@@ -16,7 +17,8 @@ import {
   Clock,
   Film,
   Eye,
-  Search
+  Search,
+  Edit
 } from "lucide-react";
 import {
   Tooltip,
@@ -25,6 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
+import { EditClientDialog } from "./edit-client-dialog";
 
 interface ClientListProps {
   clients: Array<Client & {
@@ -53,6 +56,16 @@ function hexToRgba(hex: string, opacity: number): string {
 // Función para formatear fechas en español natural
 function formatDateNatural(date: Date): string {
   return format(date, "d 'de' MMMM 'a las' HH:mm", { locale: es });
+}
+
+// Helper para formatear dinero
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 export function ClientList({ clients, isAdmin, canEditClient = false }: ClientListProps) {
@@ -110,6 +123,7 @@ export function ClientList({ clients, isAdmin, canEditClient = false }: ClientLi
         const userColor = client.color || "#6366f1";
         const monthlyReels = client.monthlyReels || 0;
         const monthlyFlyers = client.monthlyFlyers || 0;
+        const [isEditOpen, setIsEditOpen] = useState(false);
         
         const clientCard = (
           <div
@@ -158,32 +172,56 @@ export function ClientList({ clients, isAdmin, canEditClient = false }: ClientLi
             <div className="mb-4">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <h2 className="text-xl font-bold leading-tight line-clamp-1">{client.name}</h2>
-                {client.hasPendingFeedback && (
-                  <div className="relative shrink-0">
-                    <Bell className="h-4 w-4 text-orange-500" />
-                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-orange-500 rounded-full animate-pulse" />
-                  </div>
+                <div className="flex items-center gap-1">
+                  {client.hasPendingFeedback && (
+                    <div className="relative shrink-0">
+                      <Bell className="h-4 w-4 text-orange-500" />
+                      <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-orange-500 rounded-full animate-pulse" />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    client.status === "ACTIVE"
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : client.status === "PAUSED"
+                        ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                        : client.status === "DEBT"
+                          ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                          : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                  }`}
+                >
+                  {client.status === "ACTIVE"
+                    ? "Activo"
+                    : client.status === "PAUSED"
+                      ? "Pausado"
+                      : client.status === "INACTIVE"
+                        ? "Inactivo"
+                        : "En Deuda"}
+                </Badge>
+                
+                {/* Mostrar fecha de cobro si existe tarifa mensual */}
+                {client.monthlyRate && client.monthlyRate > 0 && client.paymentDay && (
+                  <>
+                    <Badge 
+                      variant="outline" 
+                      className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+                    >
+                      Cobro: día {client.paymentDay}
+                    </Badge>
+                    {isAdmin && (
+                      <Badge 
+                        variant="outline" 
+                        className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+                      >
+                        {formatCurrency(client.monthlyRate)}
+                      </Badge>
+                    )}
+                  </>
                 )}
               </div>
-              <Badge
-                className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                  client.status === "ACTIVE"
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                    : client.status === "PAUSED"
-                      ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                      : client.status === "DEBT"
-                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-                }`}
-              >
-                {client.status === "ACTIVE"
-                  ? "Activo"
-                  : client.status === "PAUSED"
-                    ? "Pausado"
-                    : client.status === "INACTIVE"
-                      ? "Inactivo"
-                      : "En Deuda"}
-              </Badge>
             </div>
 
             {/* Métricas */}
@@ -295,13 +333,39 @@ export function ClientList({ clients, isAdmin, canEditClient = false }: ClientLi
           </div>
         );
 
-        return canEditClient ? (
-          <Link key={client.id} href={`/clients/${client.id}`}>
-            {clientCard}
-          </Link>
-        ) : (
-          <div key={client.id}>
-            {clientCard}
+        return (
+          <div key={client.id} className="relative">
+            {canEditClient ? (
+              <Link href={`/clients/${client.id}`}>
+                <div className="pointer-events-auto">
+                  {clientCard}
+                </div>
+              </Link>
+            ) : (
+              clientCard
+            )}
+            {isAdmin && (
+              <div 
+                className="absolute top-4 right-4 z-10"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditOpen(true)}
+                  className="h-6 w-6 p-0"
+                  title="Editar cliente"
+                >
+                  <Edit className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+            <EditClientDialog
+              client={client}
+              open={isEditOpen}
+              onOpenChange={setIsEditOpen}
+              users={[]}
+            />
           </div>
         );
       })}

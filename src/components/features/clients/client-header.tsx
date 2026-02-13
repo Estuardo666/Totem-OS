@@ -22,6 +22,16 @@ const hexToRgba = (hex: string, alpha: number) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
+// Helper para formatear dinero
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
 interface ClientHeaderProps {
   client: Client & { hasPendingFeedback?: boolean };
   users: User[];
@@ -131,6 +141,27 @@ export function ClientHeader({ client, users, isAdmin = false, canEditClient = f
                   >
                     {getStatusLabel(client.status)}
                   </Badge>
+                  
+                  {/* Mostrar fecha de cobro si existe tarifa mensual */}
+                  {client.monthlyRate && client.monthlyRate > 0 && client.paymentDay && (
+                    <>
+                      <Badge 
+                        variant="outline" 
+                        className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+                      >
+                        Cobro: día {client.paymentDay}
+                      </Badge>
+                      {isAdmin && (
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+                        >
+                          {formatCurrency(client.monthlyRate)}
+                        </Badge>
+                      )}
+                    </>
+                  )}
+                  
                   {client.hasPendingFeedback && (
                     <Badge 
                       variant="outline" 
@@ -161,6 +192,18 @@ export function ClientHeader({ client, users, isAdmin = false, canEditClient = f
             <div className="flex flex-wrap gap-2 md:flex-col lg:flex-row">
               {isAdmin && (
                 <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditDialogOpen(true);
+                    }}
+                    className="rounded-lg h-9 w-9 p-0"
+                    title="Editar cliente"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
                   <ShareReportButton
                     clientId={client.id}
                     shareToken={currentShareToken}
@@ -195,15 +238,6 @@ export function ClientHeader({ client, users, isAdmin = false, canEditClient = f
                     buttonSize="sm"
                     className="rounded-lg h-9"
                   />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditDialogOpen(true)}
-                    className="rounded-lg h-9"
-                  >
-                    <Edit className="h-4 w-4 mr-1.5" />
-                    Editar
-                  </Button>
                 </>
               )}
             </div>
@@ -211,7 +245,7 @@ export function ClientHeader({ client, users, isAdmin = false, canEditClient = f
         </div>
       </CardContent>
 
-      {canEditClient && (
+      {isAdmin && (
         <EditClientDialog
           client={client}
           open={isEditDialogOpen}

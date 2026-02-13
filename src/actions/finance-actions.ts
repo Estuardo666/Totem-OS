@@ -518,7 +518,23 @@ export async function getTransactionById(
   }
 }
 
-export async function getReceivables(): Promise<ApiResponse<any>> {
+export async function getReceivables(): Promise<
+  ApiResponse<{
+    totalReceivable: number;
+    clientsWithDebt: number;
+    monthProjection: number;
+    pendingTransactions: Array<{
+      id: string;
+      clientName: string;
+      description: string;
+      amount: number;
+      date: Date;
+      daysOverdue: number;
+      status: "PENDING" | "PAID";
+      sourceType: "INVOICE" | "TRANSACTION" | "RECURRING";
+    }>;
+  }>
+> {
   try {
     const session = await auth();
     const userId = session?.user?.id;
@@ -528,7 +544,7 @@ export async function getReceivables(): Promise<ApiResponse<any>> {
     }
 
     const result = await getReceivablesFromDb(userId);
-    return { success: true, data: result };
+    return result;
   } catch (error) {
     return {
       success: false,

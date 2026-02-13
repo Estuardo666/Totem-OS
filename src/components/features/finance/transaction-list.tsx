@@ -607,10 +607,37 @@ export function TransactionList({ transactions }: TransactionListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Filtros y acciones en lote */}
+      {/* Filtro de tipo - Estilo iOS 26 Segmented Control */}
+      <div className="flex justify-center">
+        <div className="inline-flex items-center gap-1 p-1 bg-muted/60 dark:bg-muted/30 rounded-full backdrop-blur-sm">
+          {[
+            { value: "all", label: "Todos" },
+            { value: "income", label: "Ingresos" },
+            { value: "expense", label: "Gastos" },
+            { value: "honorarios", label: "Honorarios" },
+            { value: "reimbursement", label: "Reembolsos" },
+          ].map((option) => (
+            <button
+              key={option.value}
+              onClick={() => setTypeFilter(option.value)}
+              className={`
+                px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ease-out
+                ${typeFilter === option.value
+                  ? "bg-white dark:bg-gray-800 text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-gray-800/50"
+                }
+              `}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Filtros adicionales y acciones en lote */}
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-center">
+          <div className="flex flex-wrap items-center justify-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Filtrar por estado" />
@@ -620,18 +647,6 @@ export function TransactionList({ transactions }: TransactionListProps) {
                 <SelectItem value="PENDING">Pendientes</SelectItem>
                 <SelectItem value="PAID">Pagadas</SelectItem>
                 <SelectItem value="CANCELLED">Canceladas</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Filtrar por tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los tipos</SelectItem>
-                <SelectItem value="income">Ingresos</SelectItem>
-                <SelectItem value="expense">Gastos</SelectItem>
-                <SelectItem value="honorarios">Honorarios</SelectItem>
-                <SelectItem value="reimbursement">Reembolsos</SelectItem>
               </SelectContent>
             </Select>
             <Select value={usuarioFilter} onValueChange={setUsuarioFilter}>

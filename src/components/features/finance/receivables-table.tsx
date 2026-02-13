@@ -30,7 +30,8 @@ interface ReceivablesTableProps {
     amount: number;
     date: Date;
     daysOverdue: number;
-    sourceType: "INVOICE" | "TRANSACTION";
+    status: "PENDING" | "PAID";
+    sourceType: "INVOICE" | "TRANSACTION" | "RECURRING";
   }>;
 }
 
@@ -48,23 +49,33 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
   const { toast } = useToast();
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const handleMarkAsPaid = async (transactionId: string, sourceType: "INVOICE" | "TRANSACTION") => {
+  // Ensure transactions is an array
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+
+  const handleMarkAsPaid = async (transactionId: string, sourceType: "INVOICE" | "TRANSACTION" | "RECURRING") => {
     setProcessingId(transactionId);
     try {
       let result;
       if (sourceType === "INVOICE") {
         result = await markInvoiceAsPaid(transactionId);
-      } else {
+      } else if (sourceType === "TRANSACTION") {
         result = await markTransactionAsPaid(transactionId);
+      } else if (sourceType === "RECURRING") {
+        // Para transacciones recurrentes, mostrar un toast informativo
+        toast({
+          title: "Pago recurrente",
+          description: "Esta es una tarifa mensual del cliente. Registra el pago en Transacciones.",
+        });
+        return;
       }
 
-      if (result.success) {
+      if (result && result.success) {
         toast({
           title: "Transacción actualizada",
           description: "La transacción ha sido marcada como pagada.",
         });
         router.refresh();
-      } else {
+      } else if (result) {
         toast({
           variant: "destructive",
           title: "Error",
@@ -100,7 +111,7 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
     });
   };
 
-  if (transactions.length === 0) {
+  if (!safeTransactions || safeTransactions.length === 0) {
     return (
       <Card>
         <CardContent className="py-12">
@@ -126,19 +137,21 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {transactions.map((transaction) => {
+          {safeTransactions.map((transaction) => {
             const isProcessing = processingId === transaction.id;
             const daysOverdue = transaction.daysOverdue;
-            const isOverdue = daysOverdue > 0;
             const isVeryOverdue = daysOverdue > 15;
-            const isModeratelyOverdue = daysOverdue > 5;
+            const isModeratelyOverdue = daysOverdue > 5 && daysOverdue <= 15;
+            const isUpcoming = daysOverdue < 0;
 
-            // Determinar color del monto
+            // Determinar color del monto basado en estado
             let amountColor = "";
             if (isVeryOverdue) {
               amountColor = "text-red-600 font-bold";
             } else if (isModeratelyOverdue) {
               amountColor = "text-orange-600 font-semibold";
+            } else if (isUpcoming) {
+              amountColor = "text-blue-600 font-semibold";
             }
 
             return (
@@ -148,12 +161,16 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={(transaction as any).clientLogo || undefined} alt={transaction.clientName || "Cliente"} />
                       <AvatarFallback className="text-xs">
-                        {(transaction.clientName || "")
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase()
-                          .slice(0, 2) || "?"}
+                        {(() => {
+                          const initials = (transaction.clientName || "")
+                            .split(" ")
+                            .filter((n) => n.length > 0)
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()
+                            .slice(0, 2);
+                          return initials || "?";
+                        })()}
                       </AvatarFallback>
                     </Avatar>
                     <span>{transaction.clientName || "-"}</span>
@@ -164,23 +181,26 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
                   {format(new Date(transaction.date), "dd/MM/yyyy")}
                 </TableCell>
                 <TableCell>
-                  {isOverdue ? (
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant={isVeryOverdue ? "destructive" : "secondary"}
-                        className={
-                          isVeryOverdue
-                            ? "bg-red-500 hover:bg-red-600 text-white"
-                            : isModeratelyOverdue
-                              ? "bg-orange-500 hover:bg-orange-600 text-white"
-                              : ""
-                        }
-                      >
-                        {isVeryOverdue ? "Vencido" : `${daysOverdue} días`}
-                      </Badge>
-                    </div>
+                  {isVeryOverdue ? (
+                    <Badge className="bg-red-500 hover:bg-red-600 text-white">
+                      Vencido ({daysOverdue} días)
+                    </Badge>
+                  ) : isModeratelyOverdue ? (
+                    <Badge className="bg-orange-500 hover:bg-orange-600 text-white">
+                      {daysOverdue} días atrasado
+                    </Badge>
+                  ) : isUpcoming ? (
+                    <Badge className="bg-blue-500 hover:bg-blue-600 text-white">
+                      Próximo {Math.abs(daysOverdue)} días
+                    </Badge>
+                  ) : daysOverdue === 0 ? (
+                    <Badge className="bg-blue-500 hover:bg-blue-600 text-white">
+                      Hoy
+                    </Badge>
                   ) : (
-                    <span className="text-muted-foreground text-sm">Al día</span>
+                    <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white">
+                      {daysOverdue} días atrasado
+                    </Badge>
                   )}
                 </TableCell>
                 <TableCell className={`text-right font-semibold ${amountColor}`}>
@@ -188,33 +208,41 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSendWhatsApp(transaction)}
-                      className="h-8 bg-green-500 hover:bg-green-600 text-white"
-                    >
-                      <MessageCircle className="h-3 w-3 mr-1" />
-                      WhatsApp
-                    </Button>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() =>
-                        handleMarkAsPaid(transaction.id, transaction.sourceType)
-                      }
-                      disabled={isProcessing}
-                      className="h-8 bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      {isProcessing ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <>
-                          <Check className="h-3 w-3 mr-1" />
-                          Marcar como Pagada
-                        </>
-                      )}
-                    </Button>
+                    {transaction.sourceType === "RECURRING" ? (
+                      <Badge className="bg-purple-500 hover:bg-purple-600 text-white">
+                        Tarifa Mensual
+                      </Badge>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSendWhatsApp(transaction)}
+                          className="h-8 bg-green-500 hover:bg-green-600 text-white"
+                        >
+                          <MessageCircle className="h-3 w-3 mr-1" />
+                          WhatsApp
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() =>
+                            handleMarkAsPaid(transaction.id, transaction.sourceType)
+                          }
+                          disabled={isProcessing}
+                          className="h-8 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          {isProcessing ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <>
+                              <Check className="h-3 w-3 mr-1" />
+                              Marcar como Pagada
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
