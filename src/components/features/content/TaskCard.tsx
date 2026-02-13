@@ -188,7 +188,7 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
               }}
             >
               {/* Foto del Editor Asignado */}
-              {task.assignedEditor && (
+              {task.assignedEditor && task.status !== "PUBLISHED" && (
                 <div className="absolute top-2 right-2 z-20">
                   <Avatar className="h-6 w-6" title={task.assignedEditor.name}>
                     <AvatarImage src={task.assignedEditor.image || undefined} alt={task.assignedEditor.name} />
@@ -268,7 +268,7 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
                       }`}>
                         <span>📅</span>
                         <span className="truncate">
-                          {format(new Date(task.scheduledAt), "dd MMM HH:mm")}
+                          {format(new Date(task.scheduledAt), "dd MMM")}
                         </span>
                       </div>
                     )}
