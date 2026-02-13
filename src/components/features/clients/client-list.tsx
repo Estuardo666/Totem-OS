@@ -70,6 +70,7 @@ function formatCurrency(amount: number): string {
 
 export function ClientList({ clients, isAdmin, canEditClient = false }: ClientListProps) {
   const [query, setQuery] = useState("");
+  const [editingClientId, setEditingClientId] = useState<string | null>(null);
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredClients = useMemo(() => {
@@ -123,7 +124,7 @@ export function ClientList({ clients, isAdmin, canEditClient = false }: ClientLi
         const userColor = client.color || "#6366f1";
         const monthlyReels = client.monthlyReels || 0;
         const monthlyFlyers = client.monthlyFlyers || 0;
-        const [isEditOpen, setIsEditOpen] = useState(false);
+        const isEditOpen = editingClientId === client.id;
         
         const clientCard = (
           <div
@@ -352,7 +353,7 @@ export function ClientList({ clients, isAdmin, canEditClient = false }: ClientLi
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setIsEditOpen(true)}
+                  onClick={() => setEditingClientId(client.id)}
                   className="h-6 w-6 p-0"
                   title="Editar cliente"
                 >
@@ -363,7 +364,7 @@ export function ClientList({ clients, isAdmin, canEditClient = false }: ClientLi
             <EditClientDialog
               client={client}
               open={isEditOpen}
-              onOpenChange={setIsEditOpen}
+              onOpenChange={(open) => setEditingClientId(open ? client.id : null)}
               users={[]}
             />
           </div>
