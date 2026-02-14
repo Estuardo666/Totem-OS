@@ -28,6 +28,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { deleteUser } from "@/actions/admin/user-actions";
 import { UserSheet } from "./user-sheet";
 import type { AdminUserWithRelations } from "@/actions/admin/user-actions";
+import { UserRowContextMenu } from "./user-row-context-menu";
 
 interface UsersDataTableProps {
   users: AdminUserWithRelations[];
@@ -110,49 +111,56 @@ export function UsersDataTable({ users }: UsersDataTableProps) {
               </TableRow>
             ) : (
               users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <Avatar className="h-14 w-14">
-                      <AvatarImage src={user.image || undefined} />
-                      <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                  </TableCell>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
-                  <TableCell>
-                    <Badge variant={getRoleBadgeVariant(user.roleLegacy || "EDITOR")}>
-                      {user.roleLegacy || "EDITOR"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {user.specialty ? (
-                      <Badge variant="outline">{user.specialty}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{getWorkloadBadge(user)}</TableCell>
-                  <TableCell>
-                    {format(new Date(user.createdAt), "dd/MM/yyyy", { locale: es })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleEdit(user)}>
-                          <Pencil className="h-4 w-4 mr-2" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDelete(user.id, user.name)} className="text-red-600 focus:text-red-600">
-                          <Trash2 className="h-4 w-4 mr-2" /> Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+                <UserRowContextMenu
+                  key={user.id}
+                  user={user}
+                  onEdit={() => handleEdit(user)}
+                  onDelete={() => handleDelete(user.id, user.name)}
+                >
+                  <TableRow>
+                    <TableCell>
+                      <Avatar className="h-14 w-14">
+                        <AvatarImage src={user.image || undefined} />
+                        <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                    </TableCell>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={getRoleBadgeVariant(user.roleLegacy || "EDITOR")}>
+                        {user.roleLegacy || "EDITOR"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {user.specialty ? (
+                        <Badge variant="outline">{user.specialty}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{getWorkloadBadge(user)}</TableCell>
+                    <TableCell>
+                      {format(new Date(user.createdAt), "dd/MM/yyyy", { locale: es })}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleEdit(user)}>
+                            <Pencil className="h-4 w-4 mr-2" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDelete(user.id, user.name)} className="text-red-600 focus:text-red-600">
+                            <Trash2 className="h-4 w-4 mr-2" /> Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                </UserRowContextMenu>
               ))
             )}
           </TableBody>

@@ -576,7 +576,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
   return (
     <TooltipProvider>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[93vw] sm:w-[70vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh] gap-4 border border-black/5 dark:border-white/10 bg-white dark:bg-background/5 dark:backdrop-blur-xl rounded-[2.5rem] shadow-2xl overflow-hidden p-6 transition-all duration-300 flex flex-col min-h-0">
+        <DialogContent className="w-[93vw] sm:w-[70vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh] gap-4 overflow-hidden p-6 flex flex-col min-h-0">
           <DialogHeader className="pl-0 pr-0 pt-0 pb-4 space-y-1 text-center px-0">
             <DialogTitle className="text-2xl md:text-3xl font-semibold leading-tight">
               {isNewTask ? "Nueva Tarea" : "Editar Tarea"}
@@ -586,7 +586,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
             </DialogDescription>
           </DialogHeader>
 
-          <div className="px-0 pb-4 transition-[height,max-height] duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height] overflow-y-auto max-h-[calc(90vh-180px)] pr-2 flex-1 min-h-0">
+          <div className="px-0 pb-4 transition-[height,max-height] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-[height] overflow-y-auto max-h-[calc(90vh-180px)] pr-2 flex-1 min-h-0">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <Tabs defaultValue="details" className="w-full">

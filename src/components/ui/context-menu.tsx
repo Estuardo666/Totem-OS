@@ -28,10 +28,10 @@ const ContextMenuSubTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       "flex cursor-default select-none items-center rounded-lg px-2.5 py-1.5 text-sm outline-none",
-      "focus:bg-primary/10 dark:focus:bg-white/15 data-[state=open]:bg-primary/15 dark:data-[state=open]:bg-white/20",
-      "focus:text-primary dark:focus:text-slate-100 data-[state=open]:text-primary dark:data-[state=open]:text-slate-100",
+      "hover:bg-[color:hsl(var(--primary)/0.15)] dark:hover:bg-white/20 hover:text-[color:hsl(var(--primary))] dark:hover:text-slate-100",
+      "focus:bg-[color:hsl(var(--primary)/0.1)] dark:focus:bg-white/15 data-[state=open]:bg-[color:hsl(var(--primary)/0.15)] dark:data-[state=open]:bg-white/20",
+      "focus:text-[color:hsl(var(--primary))] dark:focus:text-slate-100 data-[state=open]:text-[color:hsl(var(--primary))] dark:data-[state=open]:text-slate-100",
       "transition-all duration-150 ease-out",
-      "context-menu-item-hover hover:text-primary dark:hover:text-slate-100",
       inset && "pl-8",
       className
     )}
@@ -58,12 +58,8 @@ const ContextMenuSubContent = React.forwardRef<
         "border-white/40 dark:border-white/10",
         "shadow-[0_8px_30px_rgb(0,0,0,0.12),0_0_1px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.4),inset_0_-1px_0_rgba(0,0,0,0.1)]",
         "dark:shadow-[0_8px_30px_rgb(0,0,0,0.4),0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.3)]",
-        // Animation
-        "data-[state=open]:animate-in data-[state=closed]:animate-out",
-        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-        "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
-        "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "data-[state=open]:animate-[scaleIn_300ms_cubic-bezier(0.32,0.72,0,1)]",
+        "data-[state=closed]:animate-[scaleOut_200ms_cubic-bezier(0.32,0.72,0,1)]",
         className
       )}
       {...props}
@@ -90,12 +86,8 @@ const ContextMenuContent = React.forwardRef<
         // Before pseudo for extra glass effect
         "before:absolute before:inset-0 before:rounded-xl before:bg-gradient-to-b before:from-white/10 before:to-transparent before:pointer-events-none",
         "dark:before:from-white/3",
-        // Animation
-        "data-[state=open]:animate-in data-[state=closed]:animate-out",
-        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-        "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
-        "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "data-[state=open]:animate-[scaleIn_300ms_cubic-bezier(0.32,0.72,0,1)]",
+        "data-[state=closed]:animate-[scaleOut_200ms_cubic-bezier(0.32,0.72,0,1)]",
         className
       )}
       {...props}
@@ -116,13 +108,13 @@ const ContextMenuItem = React.forwardRef<
     className={cn(
       "relative flex cursor-default select-none items-center rounded-lg px-2.5 py-1.5 text-sm outline-none",
       "transition-all duration-150 ease-out",
-      "focus:bg-primary/10 dark:focus:bg-white/15 focus:text-primary dark:focus:text-slate-100",
+      "hover:bg-[color:hsl(var(--primary)/0.15)] dark:hover:bg-white/20 hover:text-[color:hsl(var(--primary))] dark:hover:text-slate-100",
+      "focus:bg-[color:hsl(var(--primary)/0.1)] dark:focus:bg-white/15 focus:text-[color:hsl(var(--primary))] dark:focus:text-slate-100",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
-      "context-menu-item-hover hover:text-primary dark:hover:text-slate-100",
       variant === "destructive" && [
         "text-red-600 dark:text-red-400",
-        "focus:bg-red-500/15 dark:focus:bg-red-500/20 focus:text-red-700 dark:focus:text-red-300",
-        "hover:bg-red-500/15 dark:hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300"
+        "hover:bg-red-500/20 dark:hover:bg-red-500/25 hover:text-red-700 dark:hover:text-red-300",
+        "focus:bg-red-500/15 dark:focus:bg-red-500/20 focus:text-red-700 dark:focus:text-red-300"
       ],
       inset && "pl-8",
       className

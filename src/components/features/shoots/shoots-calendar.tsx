@@ -27,6 +27,13 @@ import {
   ChevronRight,
   Clock,
   MapPin,
+  Pencil,
+  Copy,
+  CheckCircle,
+  XCircle,
+  Trash2,
+  Calendar as CalendarIcon,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,6 +43,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import type { ShootWithRelations } from "@/lib/shooting-service";
 
 export type CalendarViewType = "day" | "week" | "month" | "agenda";
@@ -44,6 +61,10 @@ interface ShootsCalendarProps {
   shootings: ShootWithRelations[];
   onShootingClick: (shooting: ShootWithRelations) => void;
   onCreateClick: (date: Date, startTime?: string, endTime?: string) => void;
+  onEditShooting?: (shooting: ShootWithRelations) => void;
+  onDuplicateShooting?: (shooting: ShootWithRelations, newDate?: Date) => void;
+  onQuickStatusChange?: (shooting: ShootWithRelations, status: "SCHEDULED" | "COMPLETED" | "CANCELED") => void;
+  onDeleteShooting?: (shooting: ShootWithRelations) => void;
 }
 
 // Constants
@@ -65,6 +86,10 @@ export function ShootsCalendar({
   shootings,
   onShootingClick,
   onCreateClick,
+  onEditShooting,
+  onDuplicateShooting,
+  onQuickStatusChange,
+  onDeleteShooting,
 }: ShootsCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarViewType>("month");
@@ -201,6 +226,10 @@ export function ShootsCalendar({
             shootings={shootings}
             onShootingClick={onShootingClick}
             onDayClick={onCreateClick}
+            onEditShooting={onEditShooting}
+            onDuplicateShooting={onDuplicateShooting}
+            onQuickStatusChange={onQuickStatusChange}
+            onDeleteShooting={onDeleteShooting}
           />
         )}
         {view === "week" && (
@@ -237,6 +266,10 @@ interface MonthViewProps {
   shootings: ShootWithRelations[];
   onShootingClick: (shooting: ShootWithRelations) => void;
   onDayClick: (date: Date) => void;
+  onEditShooting?: (shooting: ShootWithRelations) => void;
+  onDuplicateShooting?: (shooting: ShootWithRelations, newDate?: Date) => void;
+  onQuickStatusChange?: (shooting: ShootWithRelations, status: "SCHEDULED" | "COMPLETED" | "CANCELED") => void;
+  onDeleteShooting?: (shooting: ShootWithRelations) => void;
 }
 
 function MonthView({
@@ -244,6 +277,10 @@ function MonthView({
   shootings,
   onShootingClick,
   onDayClick,
+  onEditShooting,
+  onDuplicateShooting,
+  onQuickStatusChange,
+  onDeleteShooting,
 }: MonthViewProps) {
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
@@ -300,69 +337,178 @@ function MonthView({
           const isToday = isSameDay(day, new Date());
 
           return (
-            <div
-              key={day.toISOString()}
-              onClick={(e) => handleDayClick(day, e)}
-              className={`min-h-[100px] border rounded-lg p-1 cursor-pointer transition-colors hover:bg-accent/50 ${
-                isCurrentMonth ? "bg-background" : "bg-muted/30"
-              }`}
-            >
-              <div
-                className={`text-sm mb-1 w-7 h-7 flex items-center justify-center rounded-full ${
-                  isToday
-                    ? "bg-primary text-primary-foreground"
-                    : isCurrentMonth
-                    ? ""
-                    : "text-muted-foreground"
-                }`}
-              >
-                {format(day, "d")}
-              </div>
-              <div className="space-y-1">
-                {(() => {
-                  const dayKey = format(day, "yyyy-MM-dd");
-                  const isExpanded = expandedDays.has(dayKey);
-                  const shootingsToShow = isExpanded ? dayShootings : dayShootings.slice(0, 3);
+            <ContextMenu key={day.toISOString()}>
+              <ContextMenuTrigger>
+                <div
+                  onClick={(e) => handleDayClick(day, e)}
+                  className={`min-h-[100px] border rounded-lg p-1 cursor-pointer transition-colors hover:bg-accent/50 ${
+                    isCurrentMonth ? "bg-background" : "bg-muted/30"
+                  }`}
+                >
+                  <div
+                    className={`text-sm mb-1 w-7 h-7 flex items-center justify-center rounded-full ${
+                      isToday
+                        ? "bg-primary text-primary-foreground"
+                        : isCurrentMonth
+                        ? ""
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {format(day, "d")}
+                  </div>
+                  <div className="space-y-1">
+                    {(() => {
+                      const dayKey = format(day, "yyyy-MM-dd");
+                      const isExpanded = expandedDays.has(dayKey);
+                      const shootingsToShow = isExpanded ? dayShootings : dayShootings.slice(0, 3);
 
-                  return (
-                    <>
-                      {shootingsToShow.map((shooting, idx) => (
-                        <div
-                          key={shooting.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onShootingClick(shooting);
-                          }}
-                          className="shooting-item text-xs p-1 rounded bg-primary text-primary-foreground cursor-pointer hover:opacity-80 truncate transition-all duration-300 opacity-100 animate-in fade-in slide-in-from-top-1"
-                          style={{
-                            animationDelay: `${idx * 50}ms`,
-                          }}
-                          title={shooting.title}
-                        >
-                          <span className="font-medium">
-                            {format(new Date(shooting.startTime), "HH:mm")}
-                          </span>{" "}
-                          {shooting.title}
-                        </div>
-                      ))}
-                      {dayShootings.length > 3 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleExpandDay(day);
-                          }}
-                          className="text-xs text-primary hover:text-primary/80 font-medium pl-1 hover:underline transition-all duration-300"
-                        >
-                          {isExpanded
-                            ? "▲ Mostrar menos"
-                            : `+${dayShootings.length - 3} más`}
-                        </button>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
+                      return (
+                        <>
+                          {shootingsToShow.map((shooting, idx) => (
+                            <ContextMenu key={shooting.id}>
+                              <ContextMenuTrigger>
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onShootingClick(shooting);
+                                  }}
+                                  className="shooting-item text-xs p-1 rounded bg-primary text-primary-foreground cursor-pointer hover:opacity-80 truncate transition-all duration-300 opacity-100 animate-in fade-in slide-in-from-top-1"
+                                  style={{
+                                    animationDelay: `${idx * 50}ms`,
+                                  }}
+                                  title={shooting.title}
+                                >
+                                  <span className="font-medium">
+                                    {format(new Date(shooting.startTime), "HH:mm")}
+                                  </span>{" "}
+                                  {shooting.title}
+                                </div>
+                              </ContextMenuTrigger>
+                              <ContextMenuContent>
+                                <ContextMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onShootingClick(shooting);
+                                  }}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  Ver detalles
+                                </ContextMenuItem>
+                                {onEditShooting && (
+                                  <ContextMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onEditShooting(shooting);
+                                    }}
+                                  >
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Editar
+                                  </ContextMenuItem>
+                                )}
+                                {onDuplicateShooting && (
+                                  <ContextMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDuplicateShooting(shooting);
+                                    }}
+                                  >
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Duplicar
+                                  </ContextMenuItem>
+                                )}
+                                {onQuickStatusChange && (
+                                  <>
+                                    <ContextMenuSeparator />
+                                    <ContextMenuSub>
+                                      <ContextMenuSubTrigger>
+                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                        Cambiar estado
+                                      </ContextMenuSubTrigger>
+                                      <ContextMenuSubContent>
+                                        <ContextMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onQuickStatusChange(shooting, "SCHEDULED");
+                                          }}
+                                        >
+                                          <CalendarIcon className="mr-2 h-4 w-4" />
+                                          Programado
+                                        </ContextMenuItem>
+                                        <ContextMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onQuickStatusChange(shooting, "COMPLETED");
+                                          }}
+                                        >
+                                          <CheckCircle className="mr-2 h-4 w-4" />
+                                          Completado
+                                        </ContextMenuItem>
+                                        <ContextMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onQuickStatusChange(shooting, "CANCELED");
+                                          }}
+                                        >
+                                          <XCircle className="mr-2 h-4 w-4" />
+                                          Cancelado
+                                        </ContextMenuItem>
+                                      </ContextMenuSubContent>
+                                    </ContextMenuSub>
+                                  </>
+                                )}
+                                {onDeleteShooting && (
+                                  <>
+                                    <ContextMenuSeparator />
+                                    <ContextMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (confirm("¿Estás seguro de eliminar este rodaje?")) {
+                                          onDeleteShooting(shooting);
+                                        }
+                                      }}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Eliminar
+                                    </ContextMenuItem>
+                                  </>
+                                )}
+                              </ContextMenuContent>
+                            </ContextMenu>
+                          ))}
+                          {dayShootings.length > 3 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpandDay(day);
+                              }}
+                              className="text-xs text-primary hover:text-primary/80 font-medium pl-1 hover:underline transition-all duration-300"
+                            >
+                              {isExpanded
+                                ? "▲ Mostrar menos"
+                                : `+${dayShootings.length - 3} más`}
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </ContextMenuTrigger>
+              {dayShootings.length === 0 && (
+                <ContextMenuContent>
+                  <ContextMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDayClick(day);
+                    }}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    Crear rodaje aquí
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              )}
+            </ContextMenu>
           );
         })}
       </div>

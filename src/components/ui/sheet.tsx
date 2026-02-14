@@ -22,14 +22,14 @@ const SheetOverlay = React.forwardRef<
   <SheetPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 backdrop-blur-[10px] transition-opacity duration-300 ease-in-out",
-      "data-[state=open]:opacity-100 data-[state=closed]:opacity-0",
-      "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 backdrop-blur-[10px]",
+      "data-[state=open]:animate-[overlayShow_500ms_cubic-bezier(0.32,0.72,0,1)]",
+      "data-[state=closed]:animate-[overlayHide_400ms_cubic-bezier(0.32,0.72,0,1)]",
       className
     )}
     style={{
       background: "rgba(0,0,0,0.08)",
-      WebkitBackdropFilter: "blur(10px) saturate(180%)",
+      WebkitBackdropFilter: "blur(10px) saturate(180%)"
     }}
     {...props}
   />
@@ -37,16 +37,14 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition-transform transition-opacity ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-400 rounded-[2.5rem]",
+  "fixed z-50 gap-4 bg-background p-6 shadow-lg rounded-[2.5rem]",
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b data-[state=closed]:translate-y-4 data-[state=open]:translate-y-0 data-[state=closed]:opacity-0 data-[state=open]:opacity-100",
-        bottom:
-          "inset-x-0 bottom-0 border-t data-[state=closed]:translate-y-4 data-[state=open]:translate-y-0 data-[state=closed]:opacity-0 data-[state=open]:opacity-100",
-        left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:translate-x-4 data-[state=open]:translate-x-0 sm:max-w-sm data-[state=closed]:opacity-0 data-[state=open]:opacity-100",
-        right:
-          "inset-y-0 right-0 h-full w-3/4  border-l data-[state=closed]:translate-x-4 data-[state=open]:translate-x-0 sm:max-w-sm data-[state=closed]:opacity-0 data-[state=open]:opacity-100",
+        top: "inset-x-0 top-0 border-b data-[state=open]:animate-[slideInFromTop_500ms_cubic-bezier(0.32,0.72,0,1)] data-[state=closed]:animate-[slideOutToTop_400ms_cubic-bezier(0.32,0.72,0,1)]",
+        bottom: "inset-x-0 bottom-0 border-t data-[state=open]:animate-[slideInFromBottom_500ms_cubic-bezier(0.32,0.72,0,1)] data-[state=closed]:animate-[slideOutToBottom_400ms_cubic-bezier(0.32,0.72,0,1)]",
+        left: "inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm data-[state=open]:animate-[slideInFromLeft_500ms_cubic-bezier(0.32,0.72,0,1)] data-[state=closed]:animate-[slideOutToLeft_400ms_cubic-bezier(0.32,0.72,0,1)]",
+        right: "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm data-[state=open]:animate-[slideInFromRight_500ms_cubic-bezier(0.32,0.72,0,1)] data-[state=closed]:animate-[slideOutToRight_400ms_cubic-bezier(0.32,0.72,0,1)]",
       },
     },
     defaultVariants: {

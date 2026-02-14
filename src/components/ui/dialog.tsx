@@ -21,10 +21,9 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      // Combine Tailwind animate utilities (from tailwindcss-animate) with fallback transitions
-      "fixed inset-0 z-50 bg-black/40 backdrop-blur-md transition-opacity duration-300 ease-in-out",
-      "data-[state=open]:opacity-100 data-[state=closed]:opacity-0",
-      "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/40 backdrop-blur-md",
+      "data-[state=open]:animate-[overlayShow_500ms_cubic-bezier(0.32,0.72,0,1)]",
+      "data-[state=closed]:animate-[overlayHide_400ms_cubic-bezier(0.32,0.72,0,1)]",
       className
     )}
     {...props}
@@ -56,13 +55,9 @@ const DialogContent = React.forwardRef<
           onOpenAutoFocus?.(event);
         }}
         className={cn(
-          // Smooth opacity + transform transitions for open/close
           "relative z-50 grid w-full max-w-lg gap-4 border border-black/5 dark:border-white/10 bg-white dark:bg-background/5 dark:backdrop-blur-xl rounded-[2.5rem] shadow-2xl max-h-[85vh] overflow-hidden p-6 flex flex-col min-h-0",
-          "transition-transform transition-opacity duration-300 ease-[cubic-bezier(0.2,0,0.2,1)]",
-          // state helpers
-          "data-[state=open]:opacity-100 data-[state=closed]:opacity-0",
-          "data-[state=open]:translate-y-0 data-[state=closed]:translate-y-6",
-          "data-[state=open]:scale-100 data-[state=closed]:scale-95",
+          "data-[state=open]:animate-[dialogShow_500ms_cubic-bezier(0.32,0.72,0,1)]",
+          "data-[state=closed]:animate-[dialogHide_400ms_cubic-bezier(0.32,0.72,0,1)]",
           className
         )}
         {...props}

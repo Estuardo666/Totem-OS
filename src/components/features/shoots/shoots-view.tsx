@@ -15,7 +15,12 @@ import { ShootingForm } from "./shooting-form";
 import { ShootingDetail } from "./shooting-detail";
 import { ShootsCalendar } from "./shoots-calendar";
 import { Pagination } from "@/components/ui/pagination-simple";
-import { cancelShooting, deleteShooting } from "@/actions/shooting-actions";
+import { 
+  cancelShooting, 
+  deleteShooting, 
+  duplicateShooting, 
+  changeShootingStatus 
+} from "@/actions/shooting-actions";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ShootWithRelations } from "@/lib/shooting-service";
@@ -150,6 +155,50 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
     }
   };
 
+  const handleDuplicate = async (shooting: ShootWithRelations, newDate?: Date) => {
+    const result = await duplicateShooting(shooting.id, newDate);
+    if (result.success) {
+      toast({
+        title: "Rodaje duplicado",
+        description: "El rodaje se ha duplicado correctamente",
+      });
+      router.refresh();
+      // Abrir el nuevo rodaje en detalle
+      if (result.data) {
+        setSelectedShooting(result.data);
+        setIsDetailOpen(true);
+      }
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: result.error || "No se pudo duplicar el rodaje",
+      });
+    }
+  };
+
+  const handleQuickStatusChange = async (shooting: ShootWithRelations, status: "SCHEDULED" | "COMPLETED" | "CANCELED") => {
+    const result = await changeShootingStatus(shooting.id, status);
+    if (result.success) {
+      const statusLabels = {
+        SCHEDULED: "Programado",
+        COMPLETED: "Completado",
+        CANCELED: "Cancelado",
+      };
+      toast({
+        title: "Estado actualizado",
+        description: `El rodaje ahora está ${statusLabels[status]}`,
+      });
+      router.refresh();
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: result.error || "No se pudo cambiar el estado",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Botón Nuevo Rodaje */}
@@ -202,6 +251,16 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
           shootings={paginatedShootings}
           onShootingClick={handleShootingClick}
           onCreateClick={handleCreateFromCalendar}
+          onEditShooting={(shooting) => {
+            setEditingShooting(shooting);
+            setIsFormOpen(true);
+          }}
+          onDuplicateShooting={handleDuplicate}
+          onQuickStatusChange={handleQuickStatusChange}
+          onDeleteShooting={async (shooting) => {
+            setSelectedShooting(shooting);
+            await handleDelete();
+          }}
         />
       ) : (
         <div className="text-center py-12 text-muted-foreground">

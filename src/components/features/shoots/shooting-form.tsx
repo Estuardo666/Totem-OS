@@ -366,7 +366,7 @@ export function ShootingForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[93vw] sm:w-[62vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh] gap-4 border border-black/5 dark:border-white/10 bg-white dark:bg-background/5 dark:backdrop-blur-xl rounded-[2.5rem] shadow-2xl duration-200 ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 overflow-hidden p-6 transition-[height,max-height] duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height]">
+      <DialogContent className="w-[93vw] sm:w-[62vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh] gap-4 overflow-hidden p-6">
         <DialogHeader className="pl-12 pr-4 pt-12 pb-3 space-y-1 text-left md:text-center md:px-10 md:pt-10">
           <DialogTitle className="text-2xl md:text-3xl font-semibold leading-tight">
             {shooting ? "Editar Rodaje" : "Nuevo Rodaje"}
@@ -378,7 +378,7 @@ export function ShootingForm({
 
         <div
           ref={scrollAreaRef}
-          className="px-4 pb-4 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)] transition-[height,max-height] duration-600 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[height]
+          className="px-4 pb-4 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)] transition-[height,max-height] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-[height]
           scrollbar-track-transparent scrollbar-thumb-transparent hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40 hover:[&::-webkit-scrollbar-thumb]:transition hover:[&::-webkit-scrollbar-thumb]:duration-500 md:scrollbar-thin"
           style={{ scrollbarGutter: "stable" }}
         >

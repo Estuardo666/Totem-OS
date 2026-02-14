@@ -413,6 +413,100 @@ export async function deleteShooting(
 }
 
 /**
+ * Duplica un rodaje existente
+ */
+export async function duplicateShooting(
+  id: string,
+  newStartTime?: Date
+): Promise<ApiResponse<ShootWithRelations>> {
+  try {
+    const sessionUserId = await getAuthenticatedUserId();
+    if (!sessionUserId) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    // 1. Obtener rodaje original
+    const originalResult = await validateShootingExists(id);
+    if (!originalResult.valid || !originalResult.shooting) {
+      return { success: false, error: "Rodaje original no encontrado" };
+    }
+
+    const original = originalResult.shooting;
+
+    // 2. Calcular nueva fecha si no se proporciona
+    let duplicateStartTime = newStartTime;
+    let duplicateEndTime: Date;
+
+    if (!duplicateStartTime) {
+      // Si no se proporciona fecha, duplicar 1 semana después
+      duplicateStartTime = new Date(original.startTime);
+      duplicateStartTime.setDate(duplicateStartTime.getDate() + 7);
+    }
+
+    // Calcular duración del rodaje original
+    const duration = new Date(original.endTime).getTime() - new Date(original.startTime).getTime();
+    duplicateEndTime = new Date(duplicateStartTime.getTime() + duration);
+
+    // 3. Crear nuevo rodaje con los mismos datos
+    const createInput: CreateShootingInput = {
+      title: `${original.title} (Copia)`,
+      startTime: duplicateStartTime,
+      endTime: duplicateEndTime,
+      address: original.address ?? undefined,
+      mapLink: original.mapLink ?? undefined,
+      scriptUrl: original.scriptUrl ?? undefined,
+      audioBriefUrl: original.audioBriefUrl ?? undefined,
+      notes: original.notes ?? undefined,
+      clientId: original.clientId,
+      crewIds: original.crew.map((c) => c.id),
+      taskIds: original.tasks.map((t) => t.id),
+      createCalendarEvent: false, // No crear evento automáticamente en la duplicación
+    };
+
+    return await createShooting(createInput);
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al duplicar el rodaje",
+    };
+  }
+}
+
+/**
+ * Cambia el estado de un rodaje
+ */
+export async function changeShootingStatus(
+  id: string,
+  status: "SCHEDULED" | "COMPLETED" | "CANCELED"
+): Promise<ApiResponse<ShootWithRelations>> {
+  try {
+    const sessionUserId = await getAuthenticatedUserId();
+    if (!sessionUserId) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    // 1. Verificar que existe
+    const existingResult = await validateShootingExists(id);
+    if (!existingResult.valid) {
+      return { success: false, error: existingResult.error };
+    }
+
+    // 2. Actualizar estado
+    const shooting = await updateShootingInDb(id, { status });
+
+    // 3. Revalidar
+    revalidateShootingPaths();
+
+    return { success: true, data: shooting };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al cambiar el estado",
+    };
+  }
+}
+
+/**
  * Verifica rodajes próximos (dentro de 12 horas) y envía notificaciones
  */
 export async function checkUpcomingShoots(): Promise<

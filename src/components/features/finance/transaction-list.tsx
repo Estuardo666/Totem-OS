@@ -74,6 +74,7 @@ interface TransactionListProps {
   transactions: FinancialStats["recentTransactions"];
 }
 
+
 // Función para formatear dinero como USD
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-ES", {
@@ -545,6 +546,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
       setIsBulkProcessing(false);
     }
   };
+
 
   const handleBulkStatusChange = async (newStatus: "PENDING" | "PAID" | "CANCELLED") => {
     if (selectedItems.size === 0) return;

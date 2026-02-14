@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { EditClientDialog } from "./edit-client-dialog";
+import { ClientCardContextMenu } from "./client-card-context-menu";
 
 interface ClientListProps {
   clients: Array<Client & {
@@ -337,17 +338,22 @@ export function ClientList({ clients, isAdmin, canEditClient = false, users }: C
 
         return (
           <div key={client.id} className="relative">
-            {canEditClient ? (
-              <Link href={`/clients/${client.id}`}>
-                <div className="pointer-events-auto">
-                  {clientCard}
-                </div>
-              </Link>
-            ) : (
-              clientCard
-            )}
+            <ClientCardContextMenu
+              client={client}
+              onEdit={() => setEditingClientId(client.id)}
+              canEdit={canEditClient}
+              isAdmin={isAdmin}
+            >
+              {canEditClient ? (
+                <Link href={`/clients/${client.id}`}>
+                  <div className="pointer-events-auto">{clientCard}</div>
+                </Link>
+              ) : (
+                clientCard
+              )}
+            </ClientCardContextMenu>
             {isAdmin && (
-              <div 
+              <div
                 className="absolute top-4 right-4 z-10"
                 onClick={(e) => e.stopPropagation()}
               >

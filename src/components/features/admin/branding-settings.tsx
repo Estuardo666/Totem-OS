@@ -120,20 +120,20 @@ export function BrandingSettings() {
   if (isLoading) {
     return (
       <div className="rounded-xl border bg-card overflow-hidden">
-        <div className="px-4 py-3 border-b bg-muted/30">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
-              <ImageIcon className="h-4 w-4 text-white" />
-            </div>
-            <div>
-              <h3 className="text-sm font-medium">Identidad de Marca</h3>
-              <p className="text-xs text-muted-foreground">Cargando configuración...</p>
+          <div className="px-4 py-3 border-b bg-muted/30">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+                <ImageIcon className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium">Identidad de Marca</h3>
+                <p className="text-xs text-muted-foreground">Cargando configuración...</p>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="p-8 flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+          <div className="p-8 flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
       </div>
     );
   }

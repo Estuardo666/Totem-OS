@@ -173,78 +173,78 @@ export function ExpensesTable({ expenses, onUpdate }: ExpensesTableProps) {
 
             return (
               <TableRow key={expense.id}>
-                <TableCell className="font-medium">
-                  {expense.description}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {getCategoryLabel(expense.category)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {format(new Date(expense.date), "dd/MM/yyyy")}
-                </TableCell>
-                <TableCell>
-                  {expense.clientName ? (
-                    <span className="text-sm font-medium">{expense.clientName}</span>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {expense.assignedToName ? (
-                    <span className="text-sm">{expense.assignedToName}</span>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={isReimbursed ? "default" : "secondary"}
-                    className={
-                      isReimbursed
-                        ? "bg-green-500 hover:bg-green-600 text-white"
-                        : "bg-yellow-500 hover:bg-yellow-600 text-white"
-                    }
-                  >
-                    {getStatusLabel(expense.status, expense.reimbursed)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right font-semibold text-red-600">
-                  -{formatCurrency(expense.amount)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditingExpenseId(expense.id)}
-                      disabled={isProcessing}
-                      className="h-8"
-                    >
-                      <Edit className="h-3 w-3 mr-1" />
-                      Editar
-                    </Button>
-                    {canReimburse && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleMarkAsReimbursed(expense.id, isTransaction)}
-                        disabled={isProcessing}
-                        className="h-8 bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        {isProcessing ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <>
-                            <Check className="h-3 w-3 mr-1" />
-                            Reembolsado
-                          </>
-                        )}
-                      </Button>
+                  <TableCell className="font-medium">
+                    {expense.description}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {getCategoryLabel(expense.category)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {format(new Date(expense.date), "dd/MM/yyyy")}
+                  </TableCell>
+                  <TableCell>
+                    {expense.clientName ? (
+                      <span className="text-sm font-medium">{expense.clientName}</span>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">-</span>
                     )}
-                  </div>
-                </TableCell>
+                  </TableCell>
+                  <TableCell>
+                    {expense.assignedToName ? (
+                      <span className="text-sm">{expense.assignedToName}</span>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={isReimbursed ? "default" : "secondary"}
+                      className={
+                        isReimbursed
+                          ? "bg-green-500 hover:bg-green-600 text-white"
+                          : "bg-yellow-500 hover:bg-yellow-600 text-white"
+                      }
+                    >
+                      {getStatusLabel(expense.status, expense.reimbursed)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-red-600">
+                    -{formatCurrency(expense.amount)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingExpenseId(expense.id)}
+                        disabled={isProcessing}
+                        className="h-8"
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Editar
+                      </Button>
+                      {canReimburse && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleMarkAsReimbursed(expense.id, isTransaction)}
+                          disabled={isProcessing}
+                          className="h-8 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          {isProcessing ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <>
+                              <Check className="h-3 w-3 mr-1" />
+                              Reembolsado
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
               </TableRow>
             );
           })}
