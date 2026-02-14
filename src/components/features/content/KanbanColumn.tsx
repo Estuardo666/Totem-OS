@@ -15,10 +15,12 @@ interface KanbanColumnProps {
   onCardClick: (task: ContentTaskWithClient) => void;
   optimisticPublish: (taskId: string) => Promise<void>;
   onPromoteTask?: (taskId: string) => Promise<void>;
+  onOptimisticStatusChange?: (taskId: string, newStatus: ContentTaskStatus) => Promise<void>;
   isCompactView?: boolean;
+  clients?: Array<{ id: string; name: string; logo?: string | null }>;
 }
 
-export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPublish, onPromoteTask, isCompactView = false }: KanbanColumnProps) {
+export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPublish, onPromoteTask, onOptimisticStatusChange, isCompactView = false, clients = [] }: KanbanColumnProps) {
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Gatillar transición cuando isCompactView cambia
@@ -76,7 +78,9 @@ export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPubl
                         onCardClick={onCardClick}
                         optimisticPublish={optimisticPublish}
                         onPromoteTask={onPromoteTask}
+                        onOptimisticStatusChange={onOptimisticStatusChange}
                         isCompactView={isCompactView}
+                        clients={clients}
                       />
                     </div>
                   ))

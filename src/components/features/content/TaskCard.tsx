@@ -12,6 +12,7 @@ import type { ContentTaskWithClient } from "@/actions/content-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ContentCardContextMenu } from "./content-card-context-menu";
 
 function getUserInitials(name: string | null | undefined) {
   if (!name) return "?";
@@ -57,10 +58,12 @@ interface TaskCardProps {
   onCardClick: (task: ContentTaskWithClient) => void;
   optimisticPublish: (taskId: string) => Promise<void>;
   onPromoteTask?: (taskId: string) => Promise<void>;
+  onOptimisticStatusChange?: (taskId: string, newStatus: import("@/types").ContentTaskStatus) => Promise<void>;
   isCompactView?: boolean;
+  clients?: Array<{ id: string; name: string; logo?: string | null }>;
 }
 
-export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromoteTask, isCompactView = false }: TaskCardProps) {
+export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromoteTask, onOptimisticStatusChange, isCompactView = false, clients = [] }: TaskCardProps) {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isPromoting, setIsPromoting] = useState(false);
   const [shouldRender, setShouldRender] = useState(true);
@@ -151,42 +154,48 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
               animate-fade-in-view
             `}
           >
-            <Card
-              className={`relative max-w-full overflow-hidden border transition-all duration-200 ${
-                snapshot.isDragging
-                  ? "cursor-grabbing shadow-lg ring-2 ring-primary z-50 scale-[1.02] opacity-95"
-                  : "cursor-grab hover:shadow-md"
-              } ${
-                task.status === "REVIEW_CLIENT" || task.status === "APPROVED" || task.status === "CLIENT_APPROVED"
-                  ? "bg-emerald-50/50 dark:bg-emerald-950/20 ring-1 ring-emerald-200 dark:ring-emerald-800"
-                  : ""
-              } ${
-                task.status === "PUBLISHED" 
-                  ? "bg-emerald-50/50 dark:bg-emerald-950/20" 
-                  : ""
-              }`}
-              style={{
-                borderColor: `${task.client.color || "#000000"}80`,
-              }}
-              onClick={(e) => {
-                // Si estamos publicando o arrastrando, no hacer nada
-                if (isPublishing || snapshot.isDragging) {
-                  e.stopPropagation();
-                  return;
-                }
-                
-                // Si es tarea publicada, abrir el sheet
-                if (task.status === "PUBLISHED") {
+            <ContentCardContextMenu
+              task={task}
+              clients={clients}
+              onEdit={() => onCardClick(task)}
+              onOptimisticStatusChange={onOptimisticStatusChange}
+            >
+              <Card
+                className={`relative max-w-full overflow-hidden border transition-all duration-200 ${
+                  snapshot.isDragging
+                    ? "cursor-grabbing shadow-lg ring-2 ring-primary z-50 scale-[1.02] opacity-95"
+                    : "cursor-grab hover:shadow-md"
+                } ${
+                  task.status === "REVIEW_CLIENT" || task.status === "APPROVED" || task.status === "CLIENT_APPROVED"
+                    ? "bg-emerald-50/50 dark:bg-emerald-950/20 ring-1 ring-emerald-200 dark:ring-emerald-800"
+                    : ""
+                } ${
+                  task.status === "PUBLISHED" 
+                    ? "bg-emerald-50/50 dark:bg-emerald-950/20" 
+                    : ""
+                }`}
+                style={{
+                  borderColor: `${task.client.color || "#000000"}80`,
+                }}
+                onClick={(e) => {
+                  // Si estamos publicando o arrastrando, no hacer nada
+                  if (isPublishing || snapshot.isDragging) {
+                    e.stopPropagation();
+                    return;
+                  }
+                  
+                  // Si es tarea publicada, abrir el sheet
+                  if (task.status === "PUBLISHED") {
+                    e.stopPropagation();
+                    onCardClick(task);
+                    return;
+                  }
+                  
+                  // Para tareas no publicadas, abrir sheet normalmente
                   e.stopPropagation();
                   onCardClick(task);
-                  return;
-                }
-                
-                // Para tareas no publicadas, abrir sheet normalmente
-                e.stopPropagation();
-                onCardClick(task);
-              }}
-            >
+                }}
+              >
               {/* Foto del Editor Asignado */}
               {task.assignedEditor && task.status !== "PUBLISHED" && (
                 <div className="absolute top-2 right-2 z-20">
@@ -276,6 +285,7 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
                 )}
               </CardContent>
             </Card>
+            </ContentCardContextMenu>
           </div>
         </div>
       )}

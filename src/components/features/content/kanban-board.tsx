@@ -483,6 +483,53 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
       });
     }
   };
+
+  // Función OPTIMISTIC para cambiar el estado de una tarea desde el context menu
+  const handleOptimisticStatusChange = async (taskId: string, newStatus: ContentTaskStatus) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task || task.status === newStatus) return;
+
+    const previousTasks = [...tasks];
+
+    // 1. Actualización optimista local
+    startTransition(() => {
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+      );
+      setOptimisticTasks({ taskId, newStatus });
+    });
+
+    // 2. Llamar al servidor en segundo plano
+    try {
+      const result = await updateTaskStatus(taskId, newStatus);
+
+      if (!result.success) {
+        // REVERSIÓN
+        setTasks(previousTasks);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error || "No se pudo actualizar el estado",
+        });
+      } else {
+        // Dispatch evento
+        window.dispatchEvent(
+          new CustomEvent("taskStatusUpdated", {
+            detail: { taskId, oldStatus: task.status, newStatus },
+          })
+        );
+      }
+    } catch (error) {
+      // REVERSIÓN
+      setTasks(previousTasks);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo actualizar la tarea",
+      });
+    }
+  };
+
   // Manejar el final del drag con hoverColumn como respaldo
   const handleDragEnd = async (result: DropResult) => {
     setIsDragging(false);
@@ -703,7 +750,9 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
                 }}
                 optimisticPublish={optimisticPublish}
                 onPromoteTask={promoteTask}
+                onOptimisticStatusChange={handleOptimisticStatusChange}
                 isCompactView={isCompactView}
+                clients={clients}
               />
             );
           })}

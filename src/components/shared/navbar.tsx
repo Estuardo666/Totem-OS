@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
-import { Menu, Settings, Plug, LogOut } from "lucide-react";
+import { Menu, Settings, Plug, LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -25,10 +25,12 @@ import { NotificationBell } from "./notification-bell";
 import { TaskBell } from "./task-bell";
 import { Sidebar } from "./sidebar";
 import { getPublicBrandSettings } from "@/actions/admin-actions";
+import { updateUserSettings } from "@/actions/user.actions";
 
 export function Navbar() {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [brandSettings, setBrandSettings] = useState<{
     logoLight: string | null;
     logoDark: string | null;
@@ -56,6 +58,44 @@ export function Navbar() {
       isMounted = false;
     };
   }, []);
+
+  // Sincronizar estado de dark mode
+  useEffect(() => {
+    const htmlElement = document.documentElement;
+    setIsDarkMode(htmlElement.classList.contains("dark"));
+
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(htmlElement.classList.contains("dark"));
+    });
+
+    observer.observe(htmlElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const toggleTheme = async () => {
+    const newDarkMode = !isDarkMode;
+    
+    const htmlElement = document.documentElement;
+    if (newDarkMode) {
+      htmlElement.classList.add("dark");
+      localStorage.setItem('theme', 'dark');
+    } else {
+      htmlElement.classList.remove("dark");
+      localStorage.setItem('theme', 'light');
+    }
+    
+    setIsDarkMode(newDarkMode);
+    
+    try {
+      await updateUserSettings({ darkMode: newDarkMode });
+    } catch (error) {
+      console.error("Error al actualizar tema:", error);
+    }
+  };
 
   const userInitials = useMemo(() => {
     const name = session?.user?.name;
@@ -119,6 +159,17 @@ export function Navbar() {
         </Link>
       </div>
       <div className="flex items-center gap-3">
+        <button
+          onClick={toggleTheme}
+          className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
+          title={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+        >
+          {isDarkMode ? (
+            <Sun className="h-4 w-4 text-yellow-500" />
+          ) : (
+            <Moon className="h-4 w-4 text-slate-700" />
+          )}
+        </button>
         <TaskBell />
         <NotificationBell side="bottom" align="end" />
         <DropdownMenu>

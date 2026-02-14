@@ -1619,3 +1619,152 @@ export async function bulkUpdateTasks(
     };
   }
 }
+
+/**
+ * Duplica una tarea de contenido
+ */
+export async function duplicateTask(id: string): Promise<ApiResponse<ContentTask>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    // Obtener la tarea original
+    const originalTask = await db.contentTask.findUnique({
+      where: { id },
+      include: { metrics: true },
+    });
+
+    if (!originalTask) {
+      return { success: false, error: "Tarea no encontrada" };
+    }
+
+    // Crear la tarea duplicada con estado IDEA
+    const duplicatedTask = await db.contentTask.create({
+      data: {
+        title: `${originalTask.title} (Copia)`,
+        type: originalTask.type,
+        status: "IDEA", // Siempre empezar en IDEA
+        priority: originalTask.priority,
+        postCopy: originalTask.postCopy,
+        scriptUrl: originalTask.scriptUrl,
+        audioBriefUrl: originalTask.audioBriefUrl,
+        coverImageUrl: originalTask.coverImageUrl,
+        clientId: originalTask.clientId,
+        assignedEditorId: originalTask.assignedEditorId,
+        assignedCommunityId: originalTask.assignedCommunityId,
+      },
+    });
+
+    // Revalidar rutas
+    revalidatePath("/content");
+    revalidatePath("/");
+
+    // Enviar evento Pusher
+    try {
+      await pusherServer.trigger("kanban-channel", "update-event", {
+        message: "refresh",
+        taskId: duplicatedTask.id,
+        action: "task_duplicated",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (pusherError) {
+      console.error("❌ Error al enviar evento de Pusher:", pusherError);
+    }
+
+    return { success: true, data: duplicatedTask };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al duplicar tarea",
+    };
+  }
+}
+
+/**
+ * Actualiza el cliente de una tarea
+ */
+export async function updateTaskClient(
+  taskId: string,
+  clientId: string
+): Promise<ApiResponse<ContentTask>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    const updatedTask = await db.contentTask.update({
+      where: { id: taskId },
+      data: { clientId },
+    });
+
+    revalidatePath("/content");
+    revalidatePath("/");
+
+    try {
+      await pusherServer.trigger("kanban-channel", "update-event", {
+        message: "refresh",
+        taskId,
+        action: "task_client_updated",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (pusherError) {
+      console.error("❌ Error al enviar evento de Pusher:", pusherError);
+    }
+
+    return { success: true, data: updatedTask };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al actualizar cliente",
+    };
+  }
+}
+
+/**
+ * Actualiza las notas de una tarea (usando el campo Shoot.notes relacionado)
+ * Como ContentTask no tiene campo notes directo, crearemos un campo notes en el frontend
+ * y lo guardaremos en el campo postCopy si está vacío, o crearemos un Shoot asociado
+ */
+export async function updateTaskNotes(
+  taskId: string,
+  notes: string
+): Promise<ApiResponse<void>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    // Por ahora, las notas las añadiremos al campo postCopy si este está vacío
+    // O las concatenaremos al final
+    const task = await db.contentTask.findUnique({
+      where: { id: taskId },
+      select: { postCopy: true },
+    });
+
+    if (!task) {
+      return { success: false, error: "Tarea no encontrada" };
+    }
+
+    const updatedPostCopy = task.postCopy 
+      ? `${task.postCopy}\n\n--- NOTAS ---\n${notes}`
+      : `--- NOTAS ---\n${notes}`;
+
+    await db.contentTask.update({
+      where: { id: taskId },
+      data: { postCopy: updatedPostCopy },
+    });
+
+    revalidatePath("/content");
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al actualizar notas",
+    };
+  }
+}

@@ -632,5 +632,140 @@ body[data-scroll-locked] {
   margin-top: 3px !important;
 }
 
+/* ====== iOS 26 LIQUID GLASS EFFECT ====== */
 
+/* Animaciones suaves para context menu */
+@keyframes liquid-slide-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
 
+@keyframes glass-shimmer {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Efecto líquido en hover para items de menú */
+@layer components {
+  .liquid-glass-item {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .liquid-glass-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.02) 50%,
+      rgba(255, 255, 255, 0.08) 100%
+    );
+    background-size: 200% 200%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  
+  .liquid-glass-item:hover::before {
+    opacity: 1;
+    animation: glass-shimmer 2s ease infinite;
+  }
+
+  /* Efecto de refracción en los bordes */
+  .glass-refraction {
+    position: relative;
+  }
+  
+  .glass-refraction::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.25),
+      rgba(255, 255, 255, 0.05),
+      rgba(255, 255, 255, 0.15)
+    );
+    -webkit-mask: 
+      linear-gradient(#fff 0 0) content-box, 
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Efecto de profundidad con capas */
+  .glass-depth {
+    box-shadow:
+      /* Capa exterior: brillo sutil */
+      0 0 0 1px rgba(255, 255, 255, 0.1),
+      /* Sombra principal */
+      0 8px 32px rgba(0, 0, 0, 0.12),
+      /* Sombra de profundidad */
+      0 2px 12px rgba(0, 0, 0, 0.08),
+      /* Reflexión interna superior */
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      /* Sombra interna inferior */
+      inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  .dark .glass-depth {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      0 2px 12px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Utilidades para efectos liquid glass */
+@layer utilities {
+  .backdrop-liquid {
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+  }
+
+  .backdrop-liquid-strong {
+    backdrop-filter: blur(48px) saturate(200%) brightness(105%);
+    -webkit-backdrop-filter: blur(48px) saturate(200%) brightness(105%);
+  }
+
+  /* Transiciones suaves estilo iOS */
+  .transition-ios {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-ios-slow {
+    transition: all 0.35s cubic-bezier(0.32, 0, 0.24, 1);
+  }
+
+  /* Efecto de presionar (iOS-like) */
+  .active-scale:active {
+    transform: scale(0.96);
+    transition: transform 0.1s cubic-bezier(0.4, 0, 0.6, 1);
+  }
+
+  /* Context menu hover con color de cliente */
+  .context-menu-item-hover:hover:not([data-disabled]) {
+    background-color: color-mix(in srgb, var(--client-color) 15%, transparent) !important;
+  }
+
+  .dark .context-menu-item-hover:hover:not([data-disabled]) {
+    background-color: color-mix(in srgb, var(--client-color) 20%, transparent) !important;
+  }
+}

@@ -4,10 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, Mic, FileText } from "lucide-react";
+import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, Mic, FileText, Moon, Sun } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getBrandSettings } from "@/actions/admin-actions";
+import { updateUserSettings } from "@/actions/user.actions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -132,6 +133,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
     logoDark: string | null;
   } | null>(null); // Inicializar siempre como null para evitar mismatch SSR
   const [mounted, setMounted] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
     // Inicializar con menús expandidos si alguna de sus rutas está activa
     const contentFactoryPaths = ["/content/dashboard", "/content", "/content/shoots"];
@@ -209,6 +211,48 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
       isMounted = false;
     };
   }, []);
+
+  // Sincronizar estado de dark mode
+  useEffect(() => {
+    // Leer el estado actual del DOM
+    const htmlElement = document.documentElement;
+    setIsDarkMode(htmlElement.classList.contains("dark"));
+
+    // Observar cambios en la clase dark
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(htmlElement.classList.contains("dark"));
+    });
+
+    observer.observe(htmlElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const toggleTheme = async () => {
+    const newDarkMode = !isDarkMode;
+    
+    // Actualizar inmediatamente en el DOM para feedback instantáneo
+    const htmlElement = document.documentElement;
+    if (newDarkMode) {
+      htmlElement.classList.add("dark");
+      localStorage.setItem('theme', 'dark');
+    } else {
+      htmlElement.classList.remove("dark");
+      localStorage.setItem('theme', 'light');
+    }
+    
+    setIsDarkMode(newDarkMode);
+    
+    // Guardar en la base de datos
+    try {
+      await updateUserSettings({ darkMode: newDarkMode });
+    } catch (error) {
+      console.error("Error al actualizar tema:", error);
+    }
+  };
 
   const toggleExpanded = (itemKey: string) => {
     setExpandedItems((prev) =>
@@ -325,8 +369,19 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
               </span>
             </div>
 
-            {/* Notificaciones */}
-            <div className="flex-shrink-0 hidden md:block">
+            {/* Notificaciones y Theme Toggle */}
+            <div className="flex items-center gap-1 flex-shrink-0 hidden md:flex">
+              <button
+                onClick={toggleTheme}
+                className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
+                title={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+              >
+                {isDarkMode ? (
+                  <Sun className="h-4 w-4 text-yellow-500" />
+                ) : (
+                  <Moon className="h-4 w-4 text-slate-700" />
+                )}
+              </button>
               <NotificationBell side="right" align="start" />
             </div>
           </div>
