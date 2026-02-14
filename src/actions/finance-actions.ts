@@ -526,6 +526,7 @@ export async function getReceivables(): Promise<
     pendingTransactions: Array<{
       id: string;
       clientName: string;
+      clientLogo?: string | null;
       description: string;
       amount: number;
       date: Date;

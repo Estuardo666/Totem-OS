@@ -58,8 +58,8 @@ const ContextMenuSubContent = React.forwardRef<
         "border-white/40 dark:border-white/10",
         "shadow-[0_8px_30px_rgb(0,0,0,0.12),0_0_1px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.4),inset_0_-1px_0_rgba(0,0,0,0.1)]",
         "dark:shadow-[0_8px_30px_rgb(0,0,0,0.4),0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.3)]",
-        "data-[state=open]:animate-[scaleIn_300ms_cubic-bezier(0.32,0.72,0,1)]",
-        "data-[state=closed]:animate-[scaleOut_200ms_cubic-bezier(0.32,0.72,0,1)]",
+        "data-[state=open]:animate-scaleIn",
+        "data-[state=closed]:animate-scaleOut",
         className
       )}
       {...props}
@@ -86,8 +86,8 @@ const ContextMenuContent = React.forwardRef<
         // Before pseudo for extra glass effect
         "before:absolute before:inset-0 before:rounded-xl before:bg-gradient-to-b before:from-white/10 before:to-transparent before:pointer-events-none",
         "dark:before:from-white/3",
-        "data-[state=open]:animate-[scaleIn_300ms_cubic-bezier(0.32,0.72,0,1)]",
-        "data-[state=closed]:animate-[scaleOut_200ms_cubic-bezier(0.32,0.72,0,1)]",
+        "data-[state=open]:animate-scaleIn",
+        "data-[state=closed]:animate-scaleOut data-[state=closed]:pointer-events-none data-[state=closed]:opacity-0",
         className
       )}
       {...props}

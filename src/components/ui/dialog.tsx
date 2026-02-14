@@ -22,8 +22,8 @@ const DialogOverlay = React.forwardRef<
     ref={ref}
     className={cn(
       "fixed inset-0 z-50 bg-black/40 backdrop-blur-md",
-      "data-[state=open]:animate-[overlayShow_500ms_cubic-bezier(0.32,0.72,0,1)]",
-      "data-[state=closed]:animate-[overlayHide_400ms_cubic-bezier(0.32,0.72,0,1)]",
+      "data-[state=open]:animate-overlayShow",
+      "data-[state=closed]:animate-overlayHide data-[state=closed]:pointer-events-none",
       className
     )}
     {...props}
@@ -56,8 +56,8 @@ const DialogContent = React.forwardRef<
         }}
         className={cn(
           "relative z-50 grid w-full max-w-lg gap-4 border border-black/5 dark:border-white/10 bg-white dark:bg-background/5 dark:backdrop-blur-xl rounded-[2.5rem] shadow-2xl max-h-[85vh] overflow-hidden p-6 flex flex-col min-h-0",
-          "data-[state=open]:animate-[dialogShow_500ms_cubic-bezier(0.32,0.72,0,1)]",
-          "data-[state=closed]:animate-[dialogHide_400ms_cubic-bezier(0.32,0.72,0,1)]",
+          "data-[state=open]:animate-dialogShow",
+          "data-[state=closed]:animate-dialogHide data-[state=closed]:pointer-events-none data-[state=closed]:opacity-0",
           className
         )}
         {...props}

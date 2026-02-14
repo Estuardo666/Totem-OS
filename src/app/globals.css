@@ -155,6 +155,71 @@
   }
 }
 
+/* ====== EXPLICIT ANIMATION CLASSES ====== */
+/* Necesarias para que data-[state=closed] funcione correctamente */
+
+@layer components {
+  /* Overlay animations */
+  .animate-overlayShow {
+    animation: overlayShow 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+  
+  .animate-overlayHide {
+    animation: overlayHide 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+
+  /* Dialog animations */
+  .animate-dialogShow {
+    animation: dialogShow 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+  
+  .animate-dialogHide {
+    animation: dialogHide 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+
+  /* Sheet animations */
+  .animate-slideInFromRight {
+    animation: slideInFromRight 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+  
+  .animate-slideOutToRight {
+    animation: slideOutToRight 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+
+  .animate-slideInFromLeft {
+    animation: slideInFromLeft 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+  
+  .animate-slideOutToLeft {
+    animation: slideOutToLeft 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+
+  .animate-slideInFromTop {
+    animation: slideInFromTop 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+  
+  .animate-slideOutToTop {
+    animation: slideOutToTop 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+
+  .animate-slideInFromBottom {
+    animation: slideInFromBottom 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+  
+  .animate-slideOutToBottom {
+    animation: slideOutToBottom 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+
+  /* Scale animations */
+  .animate-scaleIn {
+    animation: scaleIn 300ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+  
+  .animate-scaleOut {
+    animation: scaleOut 200ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+}
+
 /* ====== SCROLL LOCK FIX ====== */
 /* Previene el layout shift cuando se abren modales/dialogs/sheets/dropdowns */
 

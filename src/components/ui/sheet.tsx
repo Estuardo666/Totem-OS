@@ -23,8 +23,8 @@ const SheetOverlay = React.forwardRef<
     ref={ref}
     className={cn(
       "fixed inset-0 z-50 backdrop-blur-[10px]",
-      "data-[state=open]:animate-[overlayShow_500ms_cubic-bezier(0.32,0.72,0,1)]",
-      "data-[state=closed]:animate-[overlayHide_400ms_cubic-bezier(0.32,0.72,0,1)]",
+      "data-[state=open]:animate-overlayShow",
+      "data-[state=closed]:animate-overlayHide data-[state=closed]:pointer-events-none",
       className
     )}
     style={{
@@ -41,10 +41,10 @@ const sheetVariants = cva(
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b data-[state=open]:animate-[slideInFromTop_500ms_cubic-bezier(0.32,0.72,0,1)] data-[state=closed]:animate-[slideOutToTop_400ms_cubic-bezier(0.32,0.72,0,1)]",
-        bottom: "inset-x-0 bottom-0 border-t data-[state=open]:animate-[slideInFromBottom_500ms_cubic-bezier(0.32,0.72,0,1)] data-[state=closed]:animate-[slideOutToBottom_400ms_cubic-bezier(0.32,0.72,0,1)]",
-        left: "inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm data-[state=open]:animate-[slideInFromLeft_500ms_cubic-bezier(0.32,0.72,0,1)] data-[state=closed]:animate-[slideOutToLeft_400ms_cubic-bezier(0.32,0.72,0,1)]",
-        right: "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm data-[state=open]:animate-[slideInFromRight_500ms_cubic-bezier(0.32,0.72,0,1)] data-[state=closed]:animate-[slideOutToRight_400ms_cubic-bezier(0.32,0.72,0,1)]",
+        top: "inset-x-0 top-0 border-b data-[state=open]:animate-slideInFromTop data-[state=closed]:animate-slideOutToTop data-[state=closed]:pointer-events-none",
+        bottom: "inset-x-0 bottom-0 border-t data-[state=open]:animate-slideInFromBottom data-[state=closed]:animate-slideOutToBottom data-[state=closed]:pointer-events-none",
+        left: "inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm data-[state=open]:animate-slideInFromLeft data-[state=closed]:animate-slideOutToLeft data-[state=closed]:pointer-events-none",
+        right: "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm data-[state=open]:animate-slideInFromRight data-[state=closed]:animate-slideOutToRight data-[state=closed]:pointer-events-none",
       },
     },
     defaultVariants: {

@@ -48,8 +48,8 @@ const DropdownMenuSubContent = React.forwardRef<
     ref={ref}
     className={cn(
       "z-50 min-w-[8rem] overflow-hidden rounded-[1.25rem] border bg-popover p-1 text-popover-foreground shadow-lg",
-      "data-[state=open]:animate-[scaleIn_300ms_cubic-bezier(0.32,0.72,0,1)]",
-      "data-[state=closed]:animate-[scaleOut_200ms_cubic-bezier(0.32,0.72,0,1)]",
+      "data-[state=open]:animate-scaleIn",
+      "data-[state=closed]:animate-scaleOut data-[state=closed]:pointer-events-none data-[state=closed]:opacity-0",
       className
     )}
     {...props}
@@ -68,8 +68,8 @@ const DropdownMenuContent = React.forwardRef<
       sideOffset={sideOffset}
       className={cn(
         "z-50 min-w-[8rem] overflow-hidden rounded-[1.25rem] border bg-popover p-1 text-popover-foreground shadow-md",
-        "data-[state=open]:animate-[scaleIn_300ms_cubic-bezier(0.32,0.72,0,1)]",
-        "data-[state=closed]:animate-[scaleOut_200ms_cubic-bezier(0.32,0.72,0,1)]",
+        "data-[state=open]:animate-scaleIn",
+        "data-[state=closed]:animate-scaleOut data-[state=closed]:pointer-events-none data-[state=closed]:opacity-0",
         className
     )}
       {...props}

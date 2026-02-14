@@ -273,6 +273,7 @@ export async function getReceivablesFromDb(
     pendingTransactions: Array<{
       id: string;
       clientName?: string;
+      clientLogo?: string | null;
       description: string;
       amount: number;
       date: Date;
@@ -381,10 +382,11 @@ export async function getReceivablesFromDb(
       .map(cb => ({
         id: `recurring-${cb.client.id}`,
         clientName: cb.client.name || "Cliente sin nombre",
+        clientLogo: cb.client.logo || undefined,
         description: cb.totalPaid > 0 
           ? `Saldo pendiente - ${cb.client.name || "Cliente"} (Pagó $${cb.totalPaid.toFixed(2)})`
           : `Tarifa mensual - ${cb.client.name || "Cliente"}`,
-        amount: cb.remaining, // Mostrar saldo restante, no el monto total
+        amount: cb.remaining,
         date: cb.paymentDayThisMonth,
         daysOverdue: cb.daysDiff,
         status: "PENDING" as const,
@@ -405,6 +407,7 @@ export async function getReceivablesFromDb(
         return {
           id: inv.id,
           clientName: inv.client?.name || "Cliente sin nombre",
+          clientLogo: inv.client?.logo || undefined,
           description: `Factura - ${inv.client?.name || "Cliente"}`,
           amount: inv.amount,
           date: invoiceDate,
@@ -428,6 +431,7 @@ export async function getReceivablesFromDb(
         return {
           id: t.id,
           clientName: t.relatedClient?.name || "Sin cliente asignado",
+          clientLogo: t.relatedClient?.logo || undefined,
           description: t.description || "Transacción",
           amount: t.amount,
           date: transactionDate,

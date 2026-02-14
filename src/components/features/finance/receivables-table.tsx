@@ -26,6 +26,7 @@ interface ReceivablesTableProps {
   transactions: Array<{
     id: string;
     clientName?: string;
+    clientLogo?: string | null;
     description: string;
     amount: number;
     date: Date;
@@ -159,7 +160,7 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={(transaction as any).clientLogo || undefined} alt={transaction.clientName || "Cliente"} />
+                      <AvatarImage src={transaction.clientLogo || undefined} alt={transaction.clientName || "Cliente"} />
                       <AvatarFallback className="text-xs">
                         {(() => {
                           const initials = (transaction.clientName || "")
