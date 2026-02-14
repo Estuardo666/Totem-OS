@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   format,
   startOfMonth,
@@ -93,6 +93,32 @@ export function ShootsCalendar({
 }: ShootsCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarViewType>("month");
+  const contentRef = useRef<HTMLDivElement>(null);
+  const scrollPositions = useRef<Record<string, number>>({ month: 0, week: 0, day: 0, agenda: 0 });
+
+  // Save scroll position when changing views
+  useEffect(() => {
+    const saveScrollPosition = () => {
+      if (contentRef.current) {
+        scrollPositions.current[view] = contentRef.current.scrollTop;
+      }
+    };
+
+    saveScrollPosition();
+
+    return () => {
+      saveScrollPosition();
+    };
+  }, [view]);
+
+  // Restore scroll position when view changes
+  useEffect(() => {
+    setTimeout(() => {
+      if (contentRef.current) {
+        contentRef.current.scrollTop = scrollPositions.current[view] || 0;
+      }
+    }, 0);
+  }, [view]);
 
   // Navigation handlers
   const goToToday = () => setCurrentDate(new Date());
@@ -160,15 +186,26 @@ export function ShootsCalendar({
 
   return (
     <Card className="overflow-hidden">
-      <CardContent className="p-0">
+      <CardContent ref={contentRef} className="p-0 flex flex-col overflow-y-auto max-h-[calc(100vh-200px)]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-background">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between p-3 md:p-4 border-b bg-background gap-3 md:gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1 md:gap-2 flex-wrap">
+            {view === "day" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setView("month")}
+                className="mr-1 md:mr-2"
+              >
+                <ChevronLeft className="mr-1 md:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Atrás</span>
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
               onClick={goToToday}
-              className="rounded-full px-4"
+              className="rounded-full px-3 md:px-4 text-xs md:text-sm"
             >
               Hoy
             </Button>
@@ -190,7 +227,7 @@ export function ShootsCalendar({
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <h2 className="text-lg font-semibold ml-2 capitalize">
+            <h2 className="text-sm md:text-lg font-semibold ml-1 md:ml-2 capitalize line-clamp-2 md:line-clamp-none">
               {getTitle()}
             </h2>
           </div>
@@ -198,7 +235,7 @@ export function ShootsCalendar({
           {/* View Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="rounded-full px-4">
+              <Button variant="outline" size="sm" className="rounded-full px-3 md:px-4 text-xs md:text-sm">
                 {VIEW_LABELS[view]} ▾
               </Button>
             </DropdownMenuTrigger>
@@ -219,42 +256,48 @@ export function ShootsCalendar({
           </DropdownMenu>
         </div>
 
-        {/* Calendar Views */}
-        {view === "month" && (
-          <MonthView
-            currentDate={currentDate}
-            shootings={shootings}
-            onShootingClick={onShootingClick}
-            onDayClick={onCreateClick}
-            onEditShooting={onEditShooting}
-            onDuplicateShooting={onDuplicateShooting}
-            onQuickStatusChange={onQuickStatusChange}
-            onDeleteShooting={onDeleteShooting}
-          />
-        )}
-        {view === "week" && (
-          <WeekView
-            currentDate={currentDate}
-            shootings={shootings}
-            onShootingClick={onShootingClick}
-            onCellClick={onCreateClick}
-          />
-        )}
-        {view === "day" && (
-          <DayView
-            currentDate={currentDate}
-            shootings={shootings}
-            onShootingClick={onShootingClick}
-            onCellClick={onCreateClick}
-          />
-        )}
-        {view === "agenda" && (
-          <AgendaView
-            currentDate={currentDate}
-            shootings={shootings}
-            onShootingClick={onShootingClick}
-          />
-        )}
+        {/* Calendar Views with fade transition */}
+        <div className="transition-opacity duration-500 ease-in-out">
+          {view === "month" && (
+            <MonthView
+              currentDate={currentDate}
+              shootings={shootings}
+              onShootingClick={onShootingClick}
+              onDayClick={onCreateClick}
+              onDaySelection={(date) => {
+                setCurrentDate(date);
+                setView("day");
+              }}
+              onEditShooting={onEditShooting}
+              onDuplicateShooting={onDuplicateShooting}
+              onQuickStatusChange={onQuickStatusChange}
+              onDeleteShooting={onDeleteShooting}
+            />
+          )}
+          {view === "week" && (
+            <WeekView
+              currentDate={currentDate}
+              shootings={shootings}
+              onShootingClick={onShootingClick}
+              onCellClick={onCreateClick}
+            />
+          )}
+          {view === "day" && (
+            <DayView
+              currentDate={currentDate}
+              shootings={shootings}
+              onShootingClick={onShootingClick}
+              onCellClick={onCreateClick}
+            />
+          )}
+          {view === "agenda" && (
+            <AgendaView
+              currentDate={currentDate}
+              shootings={shootings}
+              onShootingClick={onShootingClick}
+            />
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -266,6 +309,7 @@ interface MonthViewProps {
   shootings: ShootWithRelations[];
   onShootingClick: (shooting: ShootWithRelations) => void;
   onDayClick: (date: Date) => void;
+  onDaySelection?: (date: Date) => void;
   onEditShooting?: (shooting: ShootWithRelations) => void;
   onDuplicateShooting?: (shooting: ShootWithRelations, newDate?: Date) => void;
   onQuickStatusChange?: (shooting: ShootWithRelations, status: "SCHEDULED" | "COMPLETED" | "CANCELED") => void;
@@ -277,6 +321,7 @@ function MonthView({
   shootings,
   onShootingClick,
   onDayClick,
+  onDaySelection,
   onEditShooting,
   onDuplicateShooting,
   onQuickStatusChange,
@@ -299,9 +344,15 @@ function MonthView({
   const handleDayClick = (day: Date, e: React.MouseEvent) => {
     // Only trigger if clicking on empty space, not on a shooting
     if ((e.target as HTMLElement).closest(".shooting-item")) return;
-    // Set default time to 9:00 AM
-    const dateWithTime = setMinutes(setHours(day, 9), 0);
-    onDayClick(dateWithTime);
+    
+    // If day selection callback is provided, use it (for switching to day view)
+    if (onDaySelection) {
+      onDaySelection(day);
+    } else {
+      // Fallback to creating new shooting with default time
+      const dateWithTime = setMinutes(setHours(day, 9), 0);
+      onDayClick(dateWithTime);
+    }
   };
 
   const toggleExpandDay = (day: Date) => {
@@ -594,8 +645,8 @@ function WeekView({
               key={hour}
               className="h-12 relative border-b"
             >
-              <span className={`absolute -top-2 right-2 text-xs transition-colors ${
-                hoveredCell?.hour === hour ? "text-primary font-medium" : "text-muted-foreground"
+              <span className={`absolute -top-2 right-2 text-xs font-bold transition-colors ${
+                hoveredCell?.hour === hour ? "text-primary" : "text-foreground dark:text-white"
               }`}>
                 {hour.toString().padStart(2, "0")}:00
               </span>
@@ -722,8 +773,8 @@ function DayView({
               key={hour}
               className="h-12 relative border-b"
             >
-              <span className={`absolute -top-2 right-2 text-xs transition-colors ${
-                hoveredHour === hour ? "text-primary font-medium" : "text-muted-foreground"
+              <span className={`absolute -top-2 right-2 text-xs font-bold transition-colors ${
+                hoveredHour === hour ? "text-primary" : "text-foreground dark:text-white"
               }`}>
                 {hour.toString().padStart(2, "0")}:00
               </span>
@@ -756,20 +807,21 @@ function DayView({
                   e.stopPropagation();
                   onShootingClick(shooting);
                 }}
-                className="absolute left-1 right-1 bg-primary text-primary-foreground rounded px-2 py-1 text-sm cursor-pointer hover:opacity-80 overflow-hidden"
+                className="absolute left-1 right-1 bg-primary text-primary-foreground rounded px-2 py-1 text-sm cursor-pointer hover:opacity-80 overflow-y-auto"
                 style={{
                   top: `${style.top}px`,
                   height: `${style.height}px`,
                 }}
               >
-                <div className="font-medium">{shooting.title}</div>
-                <div className="text-xs opacity-80 flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {format(new Date(shooting.startTime), "HH:mm")} -{" "}
-                  {format(new Date(shooting.endTime), "HH:mm")}
+                <div className="font-bold">{shooting.title}</div>
+                <div className="text-xs opacity-90 flex items-center gap-1">
+                  <Clock className="h-3 w-3 flex-shrink-0" />
+                  <span className="font-semibold">{format(new Date(shooting.startTime), "HH:mm")}</span>
+                  {" "}
+                  <span>{format(new Date(shooting.endTime), "HH:mm")}</span>
                 </div>
                 {shooting.address && (
-                  <div className="text-xs opacity-80 flex items-center gap-1 truncate">
+                  <div className="text-xs opacity-90 flex items-center gap-1 truncate">
                     <MapPin className="h-3 w-3 flex-shrink-0" />
                     {shooting.address}
                   </div>
