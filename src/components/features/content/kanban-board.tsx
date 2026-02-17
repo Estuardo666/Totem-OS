@@ -40,6 +40,8 @@ const KANBAN_COLUMNS: {
   { status: "PUBLISHED", label: "Publicado" },
 ];
 
+type ColumnNodeMap = Partial<Record<ContentTaskStatus, HTMLDivElement | null>>;
+
 export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompactView = false, clientId }: KanbanBoardProps) {
   const { toast } = useToast();
   const [tasks, setTasks] = useState<ContentTaskWithClient[]>(initialTasks);
@@ -49,12 +51,36 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollFrame = useRef<number | null>(null);
   const lastPointer = useRef<{ x: number; y: number } | null>(null);
+  const columnNodesRef = useRef<ColumnNodeMap>({});
   const [isDragging, setIsDragging] = useState(false);
   const [hoverColumn, setHoverColumn] = useState<ContentTaskStatus | null>(null);
+  const [sharedColumnHeightPx, setSharedColumnHeightPx] = useState<number>(0);
 
   useEffect(() => {
     setTasks(initialTasks);
   }, [initialTasks]);
+
+  useEffect(() => {
+    const measureColumns = () => {
+      let maxHeight = 0;
+
+      KANBAN_COLUMNS.forEach((column) => {
+        const node = columnNodesRef.current[column.status];
+        const nextHeight = node?.getBoundingClientRect().height ?? 0;
+        if (nextHeight > maxHeight) maxHeight = nextHeight;
+      });
+
+      setSharedColumnHeightPx(maxHeight > 0 ? Math.ceil(maxHeight) : 0);
+    };
+
+    const rafId = window.requestAnimationFrame(measureColumns);
+    window.addEventListener("resize", measureColumns);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", measureColumns);
+    };
+  }, [tasks, isCompactView, isMounted]);
 
   // useOptimistic para actualizaciones instantáneas
   const [optimisticTasks, setOptimisticTasks] = useOptimistic(
@@ -133,16 +159,9 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
         const expanded = {
           left: rect.left - 24,
           right: rect.right + 24,
-          top: rect.top,
-          bottom: rect.bottom,
         };
 
-        if (
-          e.clientX >= expanded.left &&
-          e.clientX <= expanded.right &&
-          e.clientY >= expanded.top &&
-          e.clientY <= expanded.bottom
-        ) {
+        if (e.clientX >= expanded.left && e.clientX <= expanded.right) {
           const colId = column.getAttribute("data-column-id") as ContentTaskStatus | null;
           if (colId) setHoverColumn(colId);
           return;
@@ -538,11 +557,12 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     if (!destination && lastPointer.current) {
       const container = scrollRef.current;
       if (container) {
-        const { x, y } = lastPointer.current;
+        const { x } = lastPointer.current;
         const columns = container.querySelectorAll("[data-column-id]");
         for (const column of columns) {
           const rect = column.getBoundingClientRect();
-          if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          if (x >= rect.left && x <= rect.right) {
+
             const colId = column.getAttribute("data-column-id") as ContentTaskStatus | null;
             if (colId) {
               destination = {
@@ -644,7 +664,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     return (
       <div className="w-full h-full overflow-visible">
         {/* Mobile: scroll horizontal | Desktop: grid con columnas fijas */}
-        <div className="flex md:grid md:grid-cols-6 md:gap-4 w-full h-full items-start overflow-x-auto md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0">
+        <div className="flex md:grid md:grid-cols-6 md:gap-4 w-full h-full items-stretch overflow-x-auto md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0">
           {KANBAN_COLUMNS.map((column) => {
             const columnTasks = tasksByStatus[column.status] || [];
 
@@ -733,7 +753,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
         {/* Mobile: scroll horizontal 98vw | Desktop: grid con columnas fijas */}
         <div
           ref={scrollRef}
-          className="flex md:grid md:grid-cols-6 md:gap-4 w-[98vw] md:w-full h-full items-start overflow-x-auto overflow-y-visible md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
+          className="flex md:grid md:grid-cols-6 md:gap-4 w-[98vw] md:w-full h-full items-stretch overflow-x-auto overflow-y-visible md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
         >
           {KANBAN_COLUMNS.map((column) => {
             const columnTasks = tasksByStatus[column.status] || [];
@@ -744,6 +764,10 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
                 status={column.status}
                 label={column.label}
                 tasks={columnTasks}
+                sharedHeightPx={sharedColumnHeightPx}
+                columnRef={(node) => {
+                  columnNodesRef.current[column.status] = node;
+                }}
                 onCardClick={(task) => {
                   setSelectedTask(task);
                   setIsSheetOpen(true);

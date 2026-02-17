@@ -12,15 +12,19 @@ interface KanbanColumnProps {
   status: ContentTaskStatus;
   label: string;
   tasks: ContentTaskWithClient[];
+
   onCardClick: (task: ContentTaskWithClient) => void;
   optimisticPublish: (taskId: string) => Promise<void>;
   onPromoteTask?: (taskId: string) => Promise<void>;
   onOptimisticStatusChange?: (taskId: string, newStatus: ContentTaskStatus) => Promise<void>;
   isCompactView?: boolean;
   clients?: Array<{ id: string; name: string; logo?: string | null }>;
+  sharedHeightPx?: number;
+  columnRef?: (node: HTMLDivElement | null) => void;
 }
 
-export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPublish, onPromoteTask, onOptimisticStatusChange, isCompactView = false, clients = [] }: KanbanColumnProps) {
+export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPublish, onPromoteTask, onOptimisticStatusChange, isCompactView = false, clients = [], sharedHeightPx, columnRef }: KanbanColumnProps) {
+
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Gatillar transición cuando isCompactView cambia
@@ -31,11 +35,15 @@ export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPubl
   }, [isCompactView]);
   return (
     <div
+      ref={columnRef}
       data-column-id={status}
       className="flex flex-col min-w-[35vw] max-w-[35vw] sm:min-w-[350px] sm:max-w-none md:min-w-0 md:w-full md:flex-1 snap-center flex-shrink-0 ml-0 mr-[5px] md:mr-0 px-0 md:px-0 h-full"
     >
       {/* Column Container con fondo y borde - Padding reducido en desktop */}
-      <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-800/70 rounded-xl border border-slate-200 dark:border-slate-600 overflow-visible md:overflow-hidden">
+      <div
+        className="flex flex-col h-full bg-slate-100 dark:bg-slate-800/70 rounded-xl border border-slate-200 dark:border-slate-600 overflow-visible md:overflow-hidden"
+        style={{ minHeight: sharedHeightPx ? `${sharedHeightPx}px` : undefined }}
+      >
         {/* Header Sticky - Texto más compacto en desktop */}
         <div className="sticky top-0 z-30 w-full bg-white dark:bg-slate-900 py-2 px-2 md:py-2 md:px-2 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between rounded-t-xl">
           <h3 className="font-semibold text-xs md:text-sm truncate">
@@ -53,7 +61,7 @@ export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPubl
               ref={provided.innerRef}
               {...provided.droppableProps}
               data-droppable-id={status}
-              className={`flex-1 overflow-visible md:overflow-y-auto pr-1 scrollbar-hide transition-colors ${ 
+              className={`flex-1 min-h-[58vh] md:min-h-0 overflow-visible md:overflow-y-auto pr-1 scrollbar-hide transition-colors ${ 
                 snapshot.isDraggingOver
                   ? "bg-primary/5 border-2 border-dashed border-primary rounded-md"
                   : ""
