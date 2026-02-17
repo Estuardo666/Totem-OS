@@ -3,6 +3,13 @@ import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "@/components/ui/toaster";
+import { ComponentProps } from "react";
+
+// Wrapper to filter out unknown DOM attributes like swipeDirection
+function ToasterComponent(props: ComponentProps<typeof Toaster>) {
+  const { swipeDirection, ...domProps } = props as any;
+  return <Toaster {...domProps} />;
+}
 import { NextAuthSessionProvider } from "@/components/providers/session-provider";
 import UploadThingProviderWrapper from "@/components/providers/uploadthing-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -155,7 +162,7 @@ export default async function RootLayout({
             </OneSignalProvider>
           </RemoteLogoutProvider>
         </NextAuthSessionProvider>
-        <Toaster />
+        <ToasterComponent />
         <SpeedInsights />
       </body>
     </html>
