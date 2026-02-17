@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { format } from "date-fns";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -201,13 +200,12 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
 
   return (
     <div className="space-y-3">
-      {/* Botón Nuevo Rodaje */}
-      <div className="flex justify-end -mt-2">
-        <Button onClick={handleNewShooting} className="w-full md:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Rodaje
-        </Button>
-      </div>
+      {/* Hidden button trigger for header */}
+      <button
+        id="shoots-new-button"
+        className="hidden"
+        onClick={handleNewShooting}
+      />
 
       {/* Filtros */}
       <div className="flex flex-col md:flex-row gap-4">

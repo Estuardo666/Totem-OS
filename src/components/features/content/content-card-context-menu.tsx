@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -78,6 +78,9 @@ export function ContentCardContextMenu({
 }: ContentCardContextMenuProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const [isMobile, setIsMobile] = useState(false);
+  const lastTapRef = useRef(0);
+  const allowNextContextMenuRef = useRef(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showNotesDialog, setShowNotesDialog] = useState(false);
@@ -85,6 +88,48 @@ export function ContentCardContextMenu({
   const [notes, setNotes] = useState("");
   const [selectedClientId, setSelectedClientId] = useState(task.clientId);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const apply = () => setIsMobile(mediaQuery.matches);
+    apply();
+    mediaQuery.addEventListener("change", apply);
+    return () => mediaQuery.removeEventListener("change", apply);
+  }, []);
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isMobile) return;
+
+    const now = Date.now();
+    const isDoubleTap = now - lastTapRef.current < 300;
+    lastTapRef.current = now;
+
+    if (isDoubleTap) {
+      e.preventDefault();
+      e.stopPropagation();
+      allowNextContextMenuRef.current = true;
+      const touch = e.changedTouches[0];
+      e.currentTarget.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: touch?.clientX ?? 0,
+          clientY: touch?.clientY ?? 0,
+        })
+      );
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isMobile) return;
+    if (allowNextContextMenuRef.current) {
+      allowNextContextMenuRef.current = false;
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   const handleDuplicate = async () => {
     // Mostrar feedback inmediato
@@ -312,7 +357,9 @@ export function ContentCardContextMenu({
     <>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          {children}
+          <div onTouchEnd={handleTouchEnd} onContextMenu={handleContextMenu}>
+            {children}
+          </div>
         </ContextMenuTrigger>
 
         <ContextMenuContent 

@@ -62,7 +62,7 @@ export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPubl
               {/* Contenedor de tarjetas con transición suave */}
               <div 
                 key={`tasks-${status}-${isCompactView}`}
-                className={`flex flex-col gap-3 p-3 w-full overflow-visible tasks-content-transition ${
+                className={`flex flex-col gap-3 p-3 pb-32 md:pb-3 w-full overflow-visible tasks-content-transition ${
                   isTransitioning ? "opacity-0" : "opacity-100"
                 }`}
               >

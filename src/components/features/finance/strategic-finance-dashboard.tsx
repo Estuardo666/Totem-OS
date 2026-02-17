@@ -3,8 +3,6 @@
 import { useMemo, useState, useTransition, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import {
-  Calendar,
-  Download,
   Filter,
   LineChart,
   PieChart,
@@ -27,7 +25,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
 import { SimpleAIInsights } from "@/components/features/finance/ai-insights-simple";
 import { cn } from "@/lib/utils";
-import { PageHeader } from "@/components/shared";
 
 interface StrategicFinanceDashboardProps {
   stats: FinancialStats;
@@ -142,41 +139,6 @@ function TrafficIndicator({ label, status }: { label: string; status: "good" | "
 }
 
 export function StrategicFinanceDashboard({ stats, profitability, clientPlans, userRole }: StrategicFinanceDashboardProps) {
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
-  const [timeAgo, setTimeAgo] = useState<string>("ahora");
-
-  // Función para calcular el tiempo transcurrido
-  const getTimeAgo = (date: Date): string => {
-    const now = new Date();
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
-    if (seconds < 60) return "ahora";
-    if (seconds < 3600) return `hace ${Math.floor(seconds / 60)}m`;
-    if (seconds < 86400) return `hace ${Math.floor(seconds / 3600)}h`;
-    return `hace ${Math.floor(seconds / 86400)}d`;
-  };
-
-  // Actualizar el tiempo cada minuto
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeAgo(getTimeAgo(lastUpdate));
-    }, 60000); // Actualizar cada minuto
-
-    return () => clearInterval(interval);
-  }, [lastUpdate]);
-
-  // Actualizar tiempo cuando cambian los datos
-  useEffect(() => {
-    setLastUpdate(new Date());
-    setTimeAgo("ahora");
-    
-    // Actualizar el tiempo después de 1 minuto
-    const timer = setTimeout(() => {
-      setTimeAgo(getTimeAgo(new Date()));
-    }, 60000);
-
-    return () => clearTimeout(timer);
-  }, [stats, profitability, clientPlans]);
   const [period, setPeriod] = useState("current_month");
   const [client, setClient] = useState("all");
   const [service, setService] = useState("all");
@@ -453,55 +415,9 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
     return base;
   }, [profitability?.profitMargin, stats, userRole]);
 
-  const handleExportReport = () => {
-    // Create CSV content for export
-    const csvContent = [
-      ['Cliente', 'Tarifa Mensual', 'Reels', 'Rodajes', 'Estado'],
-      ...selectedPlans.map(plan => [
-        plan.name,
-        plan.monthlyRate.toString(),
-        plan.monthlyReels.toString(),
-        plan.monthlyShoots.toString(),
-        plan.status
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    // Create blob and download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `finance_report_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Dashboard Estratégico Financiero"
-        description={
-          "Panorama 360° de ingresos, costos, rentabilidad y riesgos. Diseñado para decisiones rápidas con foco en previsión y eficiencia."
-        }
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-emerald-200 text-emerald-700">
-              Tiempo real
-            </Badge>
-            <Button variant="outline" className="gap-2">
-              <Calendar className="h-4 w-4" />
-              Actualizado {timeAgo}
-            </Button>
-            <Button className="gap-2" onClick={handleExportReport}>
-              <Download className="h-4 w-4" />
-              Exportar reporte
-            </Button>
-          </div>
-        }
-      />
-
       <div className="flex flex-wrap items-center gap-2">
         {userRole === "ADMIN" && (
           <Button variant="outline" asChild>

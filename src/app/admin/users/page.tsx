@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Users, Layers, Plus, RefreshCw } from "lucide-react";
 import { SyncButton } from "@/components/features/admin/users/sync-button";
 import { FixRolesButton } from "@/components/features/admin/users/fix-roles-button";
-import { PageHeader } from "@/components/shared";
 
 export default async function AdminUsersPage() {
   const session = await auth();
@@ -29,31 +28,61 @@ export default async function AdminUsersPage() {
 
   if (!usersResult.success) {
     return (
-      <div className="container mx-auto py-3">
-        <PageHeader
-          title="Gestión de Usuarios"
-          description="Administra usuarios y especialidades del sistema"
-        />
-        <Card>
-          <CardContent className="py-12">
-            <p className="text-destructive text-center">{usersResult.error}</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-muted/30">
+        <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50">
+          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-xl font-bold text-foreground dark:text-white line-clamp-1">
+                  Gestión de Usuarios
+                </h1>
+                <p className="text-xs text-muted-foreground line-clamp-1">
+                  Administra usuarios y especialidades del sistema
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 pt-6 pb-6">
+          <Card>
+            <CardContent className="py-12">
+              <p className="text-destructive text-center">{usersResult.error}</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
   if (!specialtiesResult.success) {
     return (
-      <div className="container mx-auto py-3">
-        <PageHeader
-          title="Gestión de Usuarios"
-          description="Administra usuarios y especialidades del sistema"
-        />
-        <Card>
-          <CardContent className="py-12">
-            <p className="text-destructive text-center">{specialtiesResult.error}</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-muted/30">
+        <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50">
+          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-xl font-bold text-foreground dark:text-white line-clamp-1">
+                  Gestión de Usuarios
+                </h1>
+                <p className="text-xs text-muted-foreground line-clamp-1">
+                  Administra usuarios y especialidades del sistema
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 pt-6 pb-6">
+          <Card>
+            <CardContent className="py-12">
+              <p className="text-destructive text-center">{specialtiesResult.error}</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -62,11 +91,26 @@ export default async function AdminUsersPage() {
   const specialties = specialtiesResult.data;
 
   return (
-    <div className="container mx-auto py-3 px-2 md:px-3">
-      <PageHeader
-        title="Gestión de Usuarios"
-        description="Administra usuarios y especialidades del sistema"
-      />
+    <div className="min-h-screen bg-muted/30">
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0">
+              <Users className="h-5 w-5 text-white" />
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="text-xl font-bold text-foreground dark:text-white line-clamp-1">
+                Gestión de Usuarios
+              </h1>
+              <p className="text-xs text-muted-foreground line-clamp-1">
+                Administra usuarios y especialidades del sistema
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 pt-6 pb-6">
 
       <Tabs defaultValue="usuarios" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 max-w-xl">
@@ -125,6 +169,7 @@ export default async function AdminUsersPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

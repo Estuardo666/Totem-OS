@@ -9,6 +9,7 @@ import { z } from "zod";
 import { createClientSchema } from "@/schemas/client";
 import { createClient } from "@/actions/client-actions";
 import { useToast } from "@/components/ui/use-toast";
+import { useRedirectOnAuthError } from "@/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

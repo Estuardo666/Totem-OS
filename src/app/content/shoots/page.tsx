@@ -1,10 +1,8 @@
-import { Video } from "lucide-react";
 import { auth } from "@/auth";
 import { getClients } from "@/actions/client-actions";
 import { getShootings } from "@/actions/shooting-actions";
-import { ShootsView } from "@/components/features/shoots/shoots-view";
+import { ShootsClient } from "@/components/features/shoots/shoots-client";
 import { Card, CardContent } from "@/components/ui/card";
-import { PageHeader } from "@/components/shared";
 
 export default async function ShootsPage() {
   const session = await auth();
@@ -30,15 +28,6 @@ export default async function ShootsPage() {
   const clients = clientsResult.success ? clientsResult.data ?? [] : [];
   const shootings = shootingsResult.success ? shootingsResult.data ?? [] : [];
 
-  return (
-    <div className="container mx-auto p-3">
-      <PageHeader
-        title="Plan de Rodaje"
-        description="Gestiona y visualiza todos los rodajes programados"
-      />
-
-      <ShootsView shootings={shootings} clients={clients} />
-    </div>
-  );
+  return <ShootsClient shootings={shootings} clients={clients} />;
 }
 

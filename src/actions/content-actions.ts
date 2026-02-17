@@ -1166,6 +1166,7 @@ export async function quickPublishTask(taskId: string): Promise<ApiResponse<Cont
 export async function deleteTask(id: string): Promise<ApiResponse<void>> {
   try {
     // Validar autenticación y permisos
+    const { auth } = await import("@/auth");
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autenticado" };
@@ -1491,6 +1492,7 @@ export async function bulkUpdateTasks(
 ): Promise<ApiResponse<{ updated: ContentTask[]; errors: string[] }>> {
   try {
     // 1. Validar autenticación
+    const { auth } = await import("@/auth");
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autenticado" };
@@ -1625,6 +1627,7 @@ export async function bulkUpdateTasks(
  */
 export async function duplicateTask(id: string): Promise<ApiResponse<ContentTask>> {
   try {
+    const { auth } = await import("@/auth");
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autenticado" };
@@ -1690,6 +1693,7 @@ export async function updateTaskClient(
   clientId: string
 ): Promise<ApiResponse<ContentTask>> {
   try {
+    const { auth } = await import("@/auth");
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autenticado" };
@@ -1733,6 +1737,7 @@ export async function updateTaskNotes(
   notes: string
 ): Promise<ApiResponse<void>> {
   try {
+    const { auth } = await import("@/auth");
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autenticado" };

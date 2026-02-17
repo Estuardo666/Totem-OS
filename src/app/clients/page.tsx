@@ -57,10 +57,10 @@ export default async function ClientsPage() {
               </div>
             </div>
             {isAdmin && (
-              <Button asChild className="rounded-lg shadow-sm">
+              <Button asChild className="rounded-full shadow-sm h-10 px-5" size="sm">
                 <Link href="/clients/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nuevo Cliente
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span>Nuevo Cliente</span>
                 </Link>
               </Button>
             )}
