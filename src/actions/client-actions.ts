@@ -3,7 +3,13 @@
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { createClientSchema, createCredentialSchema, updateClientSchema } from "@/schemas/client";
+import {
+  createClientSchema,
+  createCredentialSchema,
+  credentialGroupSchema,
+  deleteCredentialGroupSchema,
+  updateClientSchema,
+} from "@/schemas/client";
 import type { ApiResponse } from "@/types";
 import type { Client, Credential, ContentTask, BrandAsset, TaskMetrics } from "@prisma/client";
 
@@ -877,6 +883,129 @@ export async function deleteCredential(
       success: false,
       error:
         error instanceof Error ? error.message : "Error al eliminar credencial",
+    };
+  }
+}
+
+/**
+ * Server Action para crear o actualizar un grupo visual de credenciales
+ */
+export async function saveCredentialGroup(
+  input: unknown
+): Promise<ApiResponse<Credential[]>> {
+  try {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    const validatedData = credentialGroupSchema.parse(input);
+    const normalizedUrl = validatedData.url ?? null;
+
+    const existingCredentials = validatedData.existingCredentials.length
+      ? await db.credential.findMany({
+          where: {
+            id: {
+              in: validatedData.existingCredentials.map((credential) => credential.id),
+            },
+            clientId: validatedData.clientId,
+          },
+          orderBy: { createdAt: "asc" },
+        })
+      : [];
+
+    const existingMap = new Map(
+      existingCredentials.map((credential) => [credential.service, credential])
+    );
+    const selectedServices = new Set(validatedData.services);
+
+    const credentialsToDelete = existingCredentials.filter(
+      (credential) => !selectedServices.has(credential.service as (typeof validatedData.services)[number])
+    );
+
+    if (credentialsToDelete.length > 0) {
+      await db.credential.deleteMany({
+        where: {
+          id: {
+            in: credentialsToDelete.map((credential) => credential.id),
+          },
+        },
+      });
+    }
+
+    const savedCredentials = await Promise.all(
+      validatedData.services.map(async (service) => {
+        const existingCredential = existingMap.get(service);
+
+        if (existingCredential) {
+          return db.credential.update({
+            where: { id: existingCredential.id },
+            data: {
+              service,
+              username: validatedData.username,
+              password: validatedData.password,
+              url: normalizedUrl,
+            },
+          });
+        }
+
+        return db.credential.create({
+          data: {
+            service,
+            username: validatedData.username,
+            password: validatedData.password,
+            url: normalizedUrl,
+            clientId: validatedData.clientId,
+          },
+        });
+      })
+    );
+
+    revalidatePath(`/clients/${validatedData.clientId}`);
+
+    return { success: true, data: savedCredentials };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Error al guardar credenciales",
+    };
+  }
+}
+
+/**
+ * Server Action para eliminar un grupo visual de credenciales
+ */
+export async function deleteCredentialGroup(
+  input: unknown
+): Promise<ApiResponse<void>> {
+  try {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    const validatedData = deleteCredentialGroupSchema.parse(input);
+
+    await db.credential.deleteMany({
+      where: {
+        id: {
+          in: validatedData.credentialIds,
+        },
+        clientId: validatedData.clientId,
+      },
+    });
+
+    revalidatePath(`/clients/${validatedData.clientId}`);
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Error al eliminar grupo de credenciales",
     };
   }
 }

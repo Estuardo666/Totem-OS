@@ -1,20 +1,33 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
   ContextMenuShortcut,
 } from "@/components/ui/context-menu";
+import {
+  Pencil,
+  Copy,
+  ArrowRight,
+  Users,
+  StickyNote,
+  Trash2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import {
+  duplicateTask,
   updateTaskStatus,
   deleteTask,
+  updateTaskClient,
 } from "@/actions/content-actions";
 import type { ContentTaskStatus } from "@/types";
 import {
@@ -27,6 +40,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ContentCardContextMenuProps {
   children: React.ReactNode;
@@ -36,71 +60,64 @@ interface ContentCardContextMenuProps {
   onOptimisticStatusChange?: (taskId: string, newStatus: ContentTaskStatus) => Promise<void>;
 }
 
-const STATUS_OPTIONS: Array<{ value: ContentTaskStatus; label: string }> = [
-  { value: "IDEA", label: "Guión" },
-  { value: "RECORDED", label: "Grabado" },
-  { value: "EDITING", label: "Editando" },
-  { value: "REVIEW_CLIENT", label: "Revisión Cliente" },
-  { value: "CLIENT_APPROVED", label: "Aprobado por Cliente" },
-  { value: "PUBLISHED", label: "Publicado" },
+const STATUS_OPTIONS: Array<{ value: ContentTaskStatus; label: string; emoji: string }> = [
+  { value: "IDEA", label: "Guión", emoji: "💡" },
+  { value: "RECORDED", label: "Grabado", emoji: "🎬" },
+  { value: "EDITING", label: "Editando", emoji: "✂️" },
+  { value: "REVIEW_CLIENT", label: "Revisión Cliente", emoji: "👀" },
+  { value: "CLIENT_APPROVED", label: "Aprobado por Cliente", emoji: "✅" },
+  { value: "PUBLISHED", label: "Publicado", emoji: "🚀" },
 ];
 
 export function ContentCardContextMenu({
   children,
   task,
+  clients = [],
   onEdit,
   onOptimisticStatusChange,
 }: ContentCardContextMenuProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [isMobile, setIsMobile] = useState(false);
-  const allowNextContextMenuRef = useRef(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isMoveExpanded, setIsMoveExpanded] = useState(false);
+  const [showNotesDialog, setShowNotesDialog] = useState(false);
+  const [showClientDialog, setShowClientDialog] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState(task.clientId);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mediaQuery = window.matchMedia("(max-width: 767px)");
-    const apply = () => setIsMobile(mediaQuery.matches);
-    apply();
-    mediaQuery.addEventListener("change", apply);
-    return () => mediaQuery.removeEventListener("change", apply);
-  }, []);
-
-  const openContextMenu = (target: HTMLDivElement, clientX: number, clientY: number) => {
-    allowNextContextMenuRef.current = true;
-    target.dispatchEvent(
-      new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX,
-        clientY,
-      })
-    );
-  };
-
-  const handleMobileClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isMobile) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clientX = e.clientX > 0 ? e.clientX : rect.left + rect.width / 2;
-    const clientY = e.clientY > 0 ? e.clientY : rect.top + rect.height / 2;
-
-    openContextMenu(e.currentTarget, clientX, clientY);
-  };
-
-  const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isMobile) return;
-    if (allowNextContextMenuRef.current) {
-      allowNextContextMenuRef.current = false;
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDuplicate = async () => {
+    // Mostrar feedback inmediato
+    toast({
+      title: "Duplicando...",
+      description: "Se está creando la copia",
+    });
+    
+    // Refrescar inmediatamente para preparar la UI
+    router.refresh();
+    
+    // Ejecutar la acción en segundo plano
+    duplicateTask(task.id).then((result) => {
+      if (result.success) {
+        toast({
+          title: "Éxito",
+          description: "Contenido duplicado exitosamente",
+        });
+        router.refresh();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error || "Error al duplicar",
+        });
+      }
+    }).catch(() => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al duplicar el contenido",
+      });
+    });
   };
 
   const handleMove = (newStatus: ContentTaskStatus) => {
@@ -190,21 +207,116 @@ export function ContentCardContextMenu({
     });
   };
 
+  const handleClientChange = () => {
+    if (selectedClientId === task.clientId) {
+      setShowClientDialog(false);
+      return;
+    }
+
+    setIsProcessing(true);
+    setShowClientDialog(false);
+    
+    // Feedback instantáneo
+    toast({
+      title: "Actualizando...",
+      description: "Se está cambiando el cliente",
+    });
+    
+    // Refrescar inmediatamente
+    router.refresh();
+    
+    // Ejecutar en segundo plano
+    updateTaskClient(task.id, selectedClientId).then((result) => {
+      if (result.success) {
+        toast({
+          title: "Éxito",
+          description: "Cliente actualizado",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error || "Error al actualizar cliente",
+        });
+        router.refresh();
+      }
+    }).catch(() => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al actualizar cliente",
+      });
+      router.refresh();
+    }).finally(() => {
+      setIsProcessing(false);
+    });
+  };
+
+  const handleAddNotes = () => {
+    setNotes(task.postCopy?.includes("--- NOTAS ---") 
+      ? task.postCopy.split("--- NOTAS ---")[1]?.trim() || ""
+      : ""
+    );
+    setShowNotesDialog(true);
+  };
+
+  const handleSaveNotes = () => {
+    setIsProcessing(true);
+    setShowNotesDialog(false);
+    
+    // Feedback instantáneo
+    toast({
+      title: "Guardando...",
+      description: "Se están guardando las notas",
+    });
+    
+    // Refrescar inmediatamente
+    router.refresh();
+    
+    // Preparar datos
+    const currentCopy = task.postCopy?.split("--- NOTAS ---")[0]?.trim() || "";
+    const newPostCopy = notes 
+      ? `${currentCopy}\n\n--- NOTAS ---\n${notes}`.trim()
+      : currentCopy;
+    
+    // Ejecutar en segundo plano
+    import("@/actions/content-actions").then(({ updateTask }) => {
+      return updateTask(task.id, { postCopy: newPostCopy });
+    }).then((result) => {
+      if (result.success) {
+        toast({
+          title: "Éxito",
+          description: "Notas guardadas",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error || "Error al guardar notas",
+        });
+        router.refresh();
+      }
+    }).catch(() => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al guardar notas",
+      });
+      router.refresh();
+    }).finally(() => {
+      setIsProcessing(false);
+    });
+  };
+
   return (
     <>
-      <ContextMenu
-        onOpenChange={(open) => {
-          if (!open) setIsMoveExpanded(false);
-        }}
-      >
+      <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div onClickCapture={handleMobileClickCapture} onContextMenu={handleContextMenu}>
-            {children}
-          </div>
+          {children}
         </ContextMenuTrigger>
 
         <ContextMenuContent 
-          className="w-40 text-[15px]"
+          className="w-56"
           style={
             {
               "--client-color": task.client?.color || "#3b82f6",
@@ -212,51 +324,61 @@ export function ContentCardContextMenu({
           }
         >
           {/* Editar */}
-          <ContextMenuItem onClick={onEdit} className="text-[15px]">
+          <ContextMenuItem onClick={onEdit}>
+            <Pencil className="mr-2 h-3.5 w-3.5" />
             Editar
             <ContextMenuShortcut>E</ContextMenuShortcut>
           </ContextMenuItem>
 
-          {/* Mover a... (acordeón dentro del mismo menú) */}
-          <ContextMenuItem
-            className="text-[15px]"
-            onSelect={(event) => {
-              event.preventDefault();
-              setIsMoveExpanded((prev) => !prev);
-            }}
-          >
-            <span>Mover a...</span>
-            <span
-              className={`ml-auto text-[11px] opacity-70 transition-transform duration-200 ${
-                isMoveExpanded ? "rotate-180" : ""
-              }`}
-            >
-              ▼
-            </span>
+          {/* Duplicar */}
+          <ContextMenuItem onClick={handleDuplicate}>
+            <Copy className="mr-2 h-3.5 w-3.5" />
+            Duplicar
+            <ContextMenuShortcut>⌘D</ContextMenuShortcut>
           </ContextMenuItem>
 
-          <div
-            className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-              isMoveExpanded ? "max-h-80 opacity-100" : "max-h-0 opacity-0 pointer-events-none"
-            }`}
-          >
-            <div className="mt-0.5 px-1 pb-1">
+          {/* Mover a... */}
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <ArrowRight className="mr-2 h-3.5 w-3.5" />
+              Mover a...
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent
+              style={
+                {
+                  "--client-color": task.client?.color || "#3b82f6",
+                } as React.CSSProperties
+              }
+            >
               {STATUS_OPTIONS.map((status) => (
                 <ContextMenuItem
                   key={status.value}
-                  inset
-                  onSelect={() => {
-                    setIsMoveExpanded(false);
-                    handleMove(status.value);
-                  }}
+                  onClick={() => handleMove(status.value)}
                   disabled={status.value === task.status}
-                  className={status.value === task.status ? "text-[15px] opacity-50" : "text-[15px]"}
+                  className={status.value === task.status ? "opacity-50" : ""}
                 >
-                  <span className="truncate">{status.label}</span>
+                  <span className="mr-1.5 text-sm">{status.emoji}</span>
+                  {status.label}
                 </ContextMenuItem>
               ))}
-            </div>
-          </div>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+
+          <ContextMenuSeparator />
+
+          {/* Asignar Cliente */}
+          {clients.length > 0 && (
+            <ContextMenuItem onClick={() => setShowClientDialog(true)}>
+              <Users className="mr-2 h-3.5 w-3.5" />
+              Asignar Cliente
+            </ContextMenuItem>
+          )}
+
+          {/* Añadir Notas */}
+          <ContextMenuItem onClick={handleAddNotes}>
+            <StickyNote className="mr-2 h-3.5 w-3.5" />
+            Añadir Notas
+          </ContextMenuItem>
 
           <ContextMenuSeparator />
 
@@ -264,8 +386,8 @@ export function ContentCardContextMenu({
           <ContextMenuItem
             onClick={() => setShowDeleteDialog(true)}
             variant="destructive"
-            className="text-[15px]"
           >
+            <Trash2 className="mr-2 h-3.5 w-3.5" />
             Eliminar
             <ContextMenuShortcut>⌫</ContextMenuShortcut>
           </ContextMenuItem>
@@ -294,6 +416,78 @@ export function ContentCardContextMenu({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Notes Dialog */}
+      <Dialog open={showNotesDialog} onOpenChange={setShowNotesDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Notas para {task.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notas</Label>
+              <Textarea
+                id="notes"
+                placeholder="Escribe tus notas aquí..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={6}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowNotesDialog(false)}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveNotes} disabled={isProcessing}>
+              {isProcessing ? "Guardando..." : "Guardar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Client Assignment Dialog */}
+      <Dialog open={showClientDialog} onOpenChange={setShowClientDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Asignar Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="client">Cliente</Label>
+              <Select
+                value={selectedClientId}
+                onValueChange={setSelectedClientId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowClientDialog(false)}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleClientChange} disabled={isProcessing}>
+              {isProcessing ? "Guardando..." : "Guardar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

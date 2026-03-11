@@ -1,5 +1,17 @@
 import { z } from "zod";
 
+export const credentialServices = [
+  "Facebook",
+  "Instagram",
+  "TikTok",
+  "Gmail",
+  "Hotmail",
+  "Web",
+  "Otros",
+] as const;
+
+export const credentialServiceSchema = z.enum(credentialServices);
+
 export const brandKitSchema = z.object({
   colors: z.array(z.string()),
   fonts: z.array(z.string()),
@@ -73,7 +85,7 @@ export const updateClientSchema = clientSchema.partial();
 // Schema para Credenciales (Bóveda)
 export const credentialSchema = z.object({
   id: z.string().cuid().optional(),
-  service: z.string().min(1, "El servicio es requerido"),
+  service: credentialServiceSchema,
   username: z.string().min(1, "El usuario es requerido"),
   password: z.string().min(1, "La contraseña es requerida"),
   url: z
@@ -86,6 +98,28 @@ export const credentialSchema = z.object({
 export const createCredentialSchema = credentialSchema.omit({ id: true });
 export const updateCredentialSchema = credentialSchema.partial();
 
+export const credentialGroupReferenceSchema = z.object({
+  id: z.string().cuid(),
+  service: credentialServiceSchema,
+});
+
+export const credentialGroupSchema = z.object({
+  services: z.array(credentialServiceSchema).min(1, "Selecciona al menos un servicio"),
+  username: z.string().min(1, "El usuario es requerido"),
+  password: z.string().min(1, "La contraseña es requerida"),
+  url: z
+    .union([z.string().url("Debe ser una URL válida"), z.literal("")])
+    .optional()
+    .transform((val) => (val === "" ? undefined : val)),
+  clientId: z.string().cuid(),
+  existingCredentials: z.array(credentialGroupReferenceSchema).default([]),
+});
+
+export const deleteCredentialGroupSchema = z.object({
+  clientId: z.string().cuid(),
+  credentialIds: z.array(z.string().cuid()).min(1, "No hay credenciales para eliminar"),
+});
+
 export type Client = z.infer<typeof clientSchema>;
 export type CreateClientInput = z.infer<typeof createClientSchema>;
 export type UpdateClientInput = z.infer<typeof updateClientSchema>;
@@ -94,4 +128,6 @@ export type PlanConfig = z.infer<typeof planConfigSchema>;
 export type BrandDNA = z.infer<typeof brandDNASchema>;
 export type Credential = z.infer<typeof credentialSchema>;
 export type CreateCredentialInput = z.infer<typeof createCredentialSchema>;
+export type CredentialService = z.infer<typeof credentialServiceSchema>;
+export type CredentialGroupInput = z.infer<typeof credentialGroupSchema>;
 

@@ -1,46 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Copy, Eye, EyeOff, Loader2, Plus, Trash2, ExternalLink } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { Credential } from "@prisma/client";
-import { createCredentialSchema, type CreateCredentialInput } from "@/schemas/client";
-import { addCredential, deleteCredential } from "@/actions/client-actions";
+import { deleteCredentialGroup, saveCredentialGroup } from "@/actions/client-actions";
 import { useRedirectOnAuthError } from "@/hooks/use-redirect-on-auth-error";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import { VaultGroupCard } from "./vault-group-card";
+import { VaultGroupForm } from "./vault-group-form";
+import type { VaultCredentialGroup, VaultGroupFormValues } from "./vault-types";
+import { groupVaultCredentials } from "./vault-utils";
 
 interface VaultListProps {
   credentials: Credential[];
@@ -51,34 +23,33 @@ export function VaultList({ credentials, clientId }: VaultListProps) {
   const router = useRouter();
   const { toast } = useToast();
   const handleAuthError = useRedirectOnAuthError();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [revealedPasswords, setRevealedPasswords] = useState<Set<string>>(new Set());
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
 
-  const form = useForm<CreateCredentialInput>({
-    resolver: zodResolver(createCredentialSchema),
-    defaultValues: {
-      service: "",
-      username: "",
-      password: "",
-      url: "",
-      clientId,
-    },
-  });
+  const groupedCredentials = useMemo(
+    () => groupVaultCredentials(credentials, clientId),
+    [clientId, credentials]
+  );
 
-  const onSubmit = async (data: CreateCredentialInput) => {
+  const handleSaveGroup = async (values: VaultGroupFormValues, groupId?: string) => {
     setIsSubmitting(true);
+    if (groupId) {
+      setActiveGroupId(groupId);
+    }
 
     try {
-      const result = await addCredential(data);
+      const result = await saveCredentialGroup(values);
 
       if (result.success) {
         toast({
-          title: "Credencial agregada",
-          description: "La credencial ha sido guardada exitosamente.",
+          title: groupId ? "Credenciales actualizadas" : "Credenciales agregadas",
+          description: groupId
+            ? "El grupo de credenciales ha sido actualizado exitosamente."
+            : "Las credenciales han sido guardadas exitosamente.",
         });
-        form.reset();
-        setIsDialogOpen(false);
+        setIsCreateOpen(false);
         router.refresh();
       } else {
         if (handleAuthError(result)) {
@@ -92,14 +63,14 @@ export function VaultList({ credentials, clientId }: VaultListProps) {
 
         toast({
           variant: "destructive",
-          title: "Error al agregar credencial",
+          title: groupId ? "Error al actualizar credenciales" : "Error al agregar credenciales",
           description: result.error || "Ocurrió un error inesperado",
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error al agregar credencial",
+        title: groupId ? "Error al actualizar credenciales" : "Error al agregar credenciales",
         description:
           error instanceof Error
             ? error.message
@@ -107,6 +78,7 @@ export function VaultList({ credentials, clientId }: VaultListProps) {
       });
     } finally {
       setIsSubmitting(false);
+      setActiveGroupId(null);
     }
   };
 
@@ -126,168 +98,62 @@ export function VaultList({ credentials, clientId }: VaultListProps) {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteGroup = async (group: VaultCredentialGroup) => {
+    setDeletingGroupId(group.id);
     try {
-      const result = await deleteCredential(id);
+      const result = await deleteCredentialGroup({
+        clientId,
+        credentialIds: group.credentials.map((credential) => credential.id),
+      });
 
       if (result.success) {
         toast({
-          title: "Credencial eliminada",
-          description: "La credencial ha sido eliminada exitosamente.",
+          title: "Grupo eliminado",
+          description: "Las credenciales del grupo han sido eliminadas exitosamente.",
         });
         router.refresh();
       } else {
         toast({
           variant: "destructive",
-          title: "Error al eliminar credencial",
+          title: "Error al eliminar grupo",
           description: result.error || "Ocurrió un error inesperado",
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error al eliminar credencial",
+        title: "Error al eliminar grupo",
         description:
           error instanceof Error
             ? error.message
             : "Ocurrió un error inesperado",
       });
+    } finally {
+      setDeletingGroupId(null);
     }
   };
 
-  const togglePasswordVisibility = (id: string) => {
-    setRevealedPasswords((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 className="text-xl font-semibold">Bóveda de Credenciales</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Agregar Credencial
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Agregar Nueva Credencial</DialogTitle>
-              <DialogDescription>
-                Guarda las credenciales de acceso del cliente de forma segura.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="service"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Servicio</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Ej: Instagram, Web, Email"
-                          {...field}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Usuario</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Nombre de usuario o email"
-                          {...field}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contraseña</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Contraseña"
-                          {...field}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>URL (Opcional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="url"
-                          placeholder="https://ejemplo.com"
-                          {...field}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                    disabled={isSubmitting}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Guardando...
-                      </>
-                    ) : (
-                      "Guardar"
-                    )}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => setIsCreateOpen((prev) => !prev)}>
+          <Plus className="h-4 w-4" />
+          {isCreateOpen ? "Cerrar formulario" : "Agregar Credenciales"}
+        </Button>
       </div>
 
-      {credentials.length === 0 ? (
+      {isCreateOpen ? (
+        <VaultGroupForm
+          clientId={clientId}
+          isSubmitting={isSubmitting && activeGroupId === null}
+          submitLabel="Guardar credenciales"
+          onCancel={() => setIsCreateOpen(false)}
+          onSubmit={(values) => handleSaveGroup(values)}
+        />
+      ) : null}
+
+      {groupedCredentials.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <p className="text-muted-foreground text-center text-lg">
@@ -299,118 +165,20 @@ export function VaultList({ credentials, clientId }: VaultListProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {credentials.map((credential) => {
-            const isPasswordRevealed = revealedPasswords.has(credential.id);
-
-            return (
-              <Card key={credential.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg">{credential.service}</CardTitle>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>¿Eliminar credencial?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta acción no se puede deshacer. Se eliminará
-                            permanentemente la credencial de {credential.service}.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(credential.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Eliminar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Usuario:
-                      </span>
-                      <span className="flex-1 truncate text-sm">
-                        {credential.username}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleCopy(credential.username, "Usuario")}
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Contraseña:
-                      </span>
-                      <Input
-                        type={isPasswordRevealed ? "text" : "password"}
-                        value={credential.password}
-                        readOnly
-                        className="flex-1 text-sm"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => togglePasswordVisibility(credential.id)}
-                      >
-                        {isPasswordRevealed ? (
-                          <EyeOff className="h-3.5 w-3.5" />
-                        ) : (
-                          <Eye className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleCopy(credential.password, "Contraseña")}
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-
-                    {credential.url && (
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={credential.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-sm text-primary hover:underline"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          Abrir URL
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          {groupedCredentials.map((group) => (
+            <VaultGroupCard
+              key={group.id}
+              group={group}
+              isSaving={isSubmitting && activeGroupId === group.id}
+              isDeleting={deletingGroupId === group.id}
+              onCopy={handleCopy}
+              onSave={(values) => handleSaveGroup(values, group.id)}
+              onDelete={handleDeleteGroup}
+            />
+          ))}
         </div>
       )}
     </div>
   );
 }
-
