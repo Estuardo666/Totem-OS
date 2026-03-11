@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { pusherServer } from "@/lib/pusher";
 import { createContentTaskSchema, updateContentTaskSchema, updateTaskMetricsSchema, dynamicTaskMetricsSchema, batchCreateContentTasksSchema } from "@/schemas/content";
