@@ -32,6 +32,8 @@ interface ContentFiltersProps {
   defaultView?: "my-tasks" | "all";
 }
 
+const currentMonthKey = format(new Date(), "yyyy-MM");
+
 export function ContentFilters({
   tasks,
   clients,
@@ -51,7 +53,7 @@ export function ContentFilters({
     defaultView || (userRole === "EDITOR" || userRole === "VIEWER" ? "my-tasks" : "all")
   );
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
-  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [clientSearch, setClientSearch] = useState("");
@@ -66,6 +68,7 @@ export function ContentFilters({
   // Obtener meses únicos de las tareas
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
+    months.add(currentMonthKey);
     tasks.forEach((task) => {
       if (task.dueDate) {
         const date = new Date(task.dueDate);

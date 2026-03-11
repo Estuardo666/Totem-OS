@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { pusherServer } from "@/lib/pusher";
 import { createContentTaskSchema, updateContentTaskSchema, updateTaskMetricsSchema, dynamicTaskMetricsSchema, batchCreateContentTasksSchema } from "@/schemas/content";
 import type { ApiResponse } from "@/types";
-import type { ContentTask, Client, TaskMetrics } from "@prisma/client";
+import type { ContentTask, Prisma, TaskMetrics } from "@prisma/client";
 import { sendNotification } from "./notification-actions";
 
 /**
@@ -70,21 +70,44 @@ async function triggerDashboardUpdate(userIds: string[]): Promise<void> {
 }
 
 // Tipo para ContentTask con relación de cliente incluida
-export type ContentTaskWithClient = ContentTask & {
-  client: Client & {
-    brandAssets: Array<{
-      id: string;
-      name: string;
-      url: string;
-      fileType: string;
-    }>;
+export type ContentTaskWithClient = Prisma.ContentTaskGetPayload<{
+  include: {
+    client: {
+      select: {
+        id: true;
+        name: true;
+        logo: true;
+        color: true;
+        status: true;
+        editorId: true;
+        communityId: true;
+        brandDNA: true;
+        brandAssets: {
+          select: {
+            id: true;
+            name: true;
+            url: true;
+            fileType: true;
+          };
+        };
+      };
+    };
+    assignedEditor: {
+      select: {
+        id: true;
+        name: true;
+        image: true;
+      };
+    };
+    assignedCommunity: {
+      select: {
+        id: true;
+        name: true;
+        image: true;
+      };
+    };
   };
-  assignedEditor: {
-    id: string;
-    name: string;
-    image: string | null;
-  } | null;
-};
+}>;
 
 async function persistTask(validatedData: ReturnType<typeof createContentTaskSchema.parse>) {
   const client = await db.client.findUnique({
@@ -385,6 +408,13 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
           },
         },
         assignedEditor: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+        assignedCommunity: {
           select: {
             id: true,
             name: true,

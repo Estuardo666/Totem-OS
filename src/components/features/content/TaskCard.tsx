@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, startTransition } from "react";
 import { format, isToday } from "date-fns";
-import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2, ChevronRight } from "lucide-react";
+import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2 } from "lucide-react";
 import {
   Draggable,
   DraggableProvided,
@@ -63,70 +62,22 @@ interface TaskCardProps {
   clients?: Array<{ id: string; name: string; logo?: string | null }>;
 }
 
-export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromoteTask, onOptimisticStatusChange, isCompactView = false, clients = [] }: TaskCardProps) {
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [isPromoting, setIsPromoting] = useState(false);
-  const [shouldRender, setShouldRender] = useState(true);
-
-  // LÓGICA DE PUBLICACIÓN (handleQuickPublish)
-  const handleQuickPublish = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    // Prevenir múltiples clics
-    if (isPublishing) return;
-
-    // Establecer estado local a true
-    setIsPublishing(true);
-
-    try {
-      // Esperar exactamente 500ms para completar la transición CSS visualmente
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Envolver la server action dentro de startTransition (React 19)
-      await new Promise<void>((resolve, reject) => {
-        startTransition(async () => {
-          try {
-            await optimisticPublish(task.id);
-            resolve();
-          } catch (error) {
-            reject(error);
-          }
-        });
-      });
-
-      // ÉXITO: Desmontar el componente limpiamente
-      setShouldRender(false);
-
-    } catch (error) {
-      // FALLO: Revertir estado
-      console.error("Error en handleQuickPublish:", error);
-      setIsPublishing(false);
-    }
-  };
-
-  // LÓGICA DE PROMOVER TAREA (handlePromote)
-  const handlePromote = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    if (isPromoting || !onPromoteTask) return;
-    setIsPromoting(true);
-
-    try {
-      await onPromoteTask(task.id);
-    } catch (error) {
-      console.error("Error en handlePromote:", error);
-    } finally {
-      setIsPromoting(false);
-    }
-  };
-
-  // Si debe desaparecer, no renderizar nada
-  if (!shouldRender) {
-    return null;
-  }
+export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, isCompactView = false, clients = [] }: TaskCardProps) {
+  const isPublishing = false;
 
   // Para TODAS las tareas: Envolver en Draggable
   const isDragDisabled = isPublishing;
+  const showOnlyCommunityAvatar = task.status === "IDEA" || task.status === "RECORDED";
+  const shouldShowAssignedAvatars = task.status !== "PUBLISHED" && (
+    showOnlyCommunityAvatar
+      ? Boolean(task.assignedCommunity)
+      : Boolean(task.assignedEditor || task.assignedCommunity)
+  );
+
+  // Si debe desaparecer, no renderizar nada
+  if (isPublishing) {
+    return null;
+  }
 
   return (
     <Draggable draggableId={task.id} index={index} isDragDisabled={isDragDisabled}>
@@ -196,15 +147,24 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
                   onCardClick(task);
                 }}
               >
-              {/* Foto del Editor Asignado */}
-              {task.assignedEditor && task.status !== "PUBLISHED" && (
-                <div className="absolute top-2 right-2 z-20">
-                  <Avatar className="h-6 w-6" title={task.assignedEditor.name}>
-                    <AvatarImage src={task.assignedEditor.image || undefined} alt={task.assignedEditor.name} />
-                    <AvatarFallback className="text-[10px] font-semibold">
-                      {getUserInitials(task.assignedEditor.name)}
-                    </AvatarFallback>
-                  </Avatar>
+              {shouldShowAssignedAvatars && (
+                <div className="absolute top-2 right-2 z-20 flex flex-col items-center gap-1">
+                  {!showOnlyCommunityAvatar && task.assignedEditor && (
+                    <Avatar className="h-5 w-5" title={`Editor: ${task.assignedEditor.name}`}>
+                      <AvatarImage src={task.assignedEditor.image || undefined} alt={task.assignedEditor.name} />
+                      <AvatarFallback className="text-[9px] font-semibold">
+                        {getUserInitials(task.assignedEditor.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  {task.assignedCommunity && (
+                    <Avatar className="h-5 w-5" title={`Community: ${task.assignedCommunity.name}`}>
+                      <AvatarImage src={task.assignedCommunity.image || undefined} alt={task.assignedCommunity.name} />
+                      <AvatarFallback className="text-[9px] font-semibold">
+                        {getUserInitials(task.assignedCommunity.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
                 </div>
               )}
 
@@ -226,7 +186,7 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
                   // Para tareas NO publicadas: Vista completa
                   <>
                     {/* Título con padding para evitar superposición con checkbox */}
-                    <h4 className="font-semibold text-xs md:text-xs leading-tight line-clamp-2 pr-6">
+                    <h4 className="font-semibold text-xs md:text-xs leading-tight line-clamp-2 pr-7">
                       {task.title}
                     </h4>
 
