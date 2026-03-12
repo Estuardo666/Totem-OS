@@ -51,25 +51,25 @@ export default async function ContentPage({
     <div className="min-h-screen bg-muted/30">
       {/* Header iOS-style con sticky */}
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
-                <Layout className="h-5 w-5 text-white" />
+        <div className="w-full px-0">
+          <div className="flex items-center justify-between py-2 sm:py-4 px-4 sm:px-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
+                <Layout className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold">Content Factory</h1>
-                <p className="text-xs text-muted-foreground">
+                <h1 className="text-lg sm:text-xl font-bold">Content Factory</h1>
+                <p className="text-xs text-muted-foreground hidden sm:block">
                   Visualiza y gestiona todas tus tareas de contenido
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 items-center">
-              <Button asChild variant="outline" size="sm" className="rounded-full">
+            <div className="flex gap-1 sm:gap-2 items-center">
+              <Button asChild variant="outline" size="sm" className="rounded-full px-2 sm:px-4">
                 <Link href="/content/shoots">
-                  <Video className="mr-1.5 h-3.5 w-3.5" />
+                  <Video className="h-3.5 w-3.5 sm:mr-1.5" />
                   <span className="hidden sm:inline">Plan de Rodaje</span>
-                  <span className="sm:hidden">Rodajes</span>
+                  <span className="sm:hidden text-xs">Rodajes</span>
                 </Link>
               </Button>
               <BulkTaskDialog
@@ -78,13 +78,13 @@ export default async function ContentPage({
                 label="Crear en lote"
                 buttonVariant="outline"
                 buttonSize="sm"
-                className="rounded-full border-primary text-primary"
+                className="rounded-full border-primary text-primary px-2 sm:px-4"
               />
-              <Button asChild size="sm" className="rounded-full">
+              <Button asChild size="sm" className="rounded-full px-2 sm:px-4">
                 <Link href="/content/new">
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  <Plus className="h-3.5 w-3.5 sm:mr-1.5" />
                   <span className="hidden sm:inline">Nueva Tarea</span>
-                  <span className="sm:hidden">Nueva</span>
+                  <span className="sm:hidden text-xs">Nueva</span>
                 </Link>
               </Button>
             </div>

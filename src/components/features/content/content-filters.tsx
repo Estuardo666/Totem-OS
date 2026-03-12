@@ -333,57 +333,54 @@ export function ContentFilters({
   );
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
+    <div className="rounded-xl border-0 bg-transparent p-0 shadow-none space-y-3 sm:space-y-4">
       {/* Filtro rápido: Mis Tareas / Todo el Equipo (solo visible para ADMIN) */}
       {userRole === "ADMIN" && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center justify-between w-full px-4 sm:px-6">
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === "my-tasks" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("my-tasks")}
+              disabled={!userId}
+              className="gap-2 rounded-full px-2 sm:px-3"
+            >
+              <Avatar className="h-4 w-4 sm:h-5 sm:w-5">
+                <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || "Usuario"} />
+                <AvatarFallback className="text-xs">
+                  {session?.user?.name?.charAt(0)?.toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <span className="inline">Mis Tareas</span>
+            </Button>
+            <Button
+              variant={viewMode === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("all")}
+              className="rounded-full px-2 sm:px-3"
+            >
+              <span className="hidden sm:inline">Ver todo el equipo</span>
+              <span className="sm:hidden text-xs">Equipo</span>
+            </Button>
+          </div>
           <Button
-            variant={viewMode === "my-tasks" ? "default" : "outline"}
+            variant="outline"
             size="sm"
-            onClick={() => setViewMode("my-tasks")}
-            disabled={!userId}
-            className="gap-2 rounded-full"
+            className="justify-between rounded-full px-3 py-2"
+            onClick={() => setMobileFiltersOpen((prev) => !prev)}
           >
-            <Avatar className="h-5 w-5">
-              <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || "Usuario"} />
-              <AvatarFallback className="text-xs">
-                {session?.user?.name?.charAt(0)?.toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
-            Mis Tareas
-          </Button>
-          <Button
-            variant={viewMode === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("all")}
-            className="rounded-full"
-          >
-            Ver todo el equipo
+            <span className="text-sm">Filtros</span>
+            <span className="text-xs text-muted-foreground">{mobileFiltersOpen ? "Ocultar" : "Mostrar"}</span>
           </Button>
         </div>
       )}
 
-      <div className="md:hidden space-y-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full justify-between rounded-full"
-          onClick={() => setMobileFiltersOpen((prev) => !prev)}
-        >
-          <span>Filtros</span>
-          <span className="text-xs text-muted-foreground">{mobileFiltersOpen ? "Ocultar" : "Mostrar"}</span>
-        </Button>
-        <div
-          className={`overflow-hidden transition-all duration-200 ease-out ${
-            mobileFiltersOpen ? "max-h-[1200px] opacity-100" : "max-h-0 opacity-0 pointer-events-none"
-          }`}
-        >
-          <div className="grid grid-cols-1 gap-2 pt-2">{FiltersGrid}</div>
-        </div>
-      </div>
-
-      <div className="hidden md:block">
-        <div className="grid grid-cols-4 md:grid-cols-4 gap-3">{FiltersGrid}</div>
+      <div
+        className={`overflow-hidden transition-all duration-200 ease-out ${
+          mobileFiltersOpen ? "max-h-[1200px] opacity-100" : "max-h-0 opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="grid grid-cols-1 gap-2 pt-2 md:grid-cols-4">{FiltersGrid}</div>
       </div>
     </div>
   );
