@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import {
-  ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
@@ -40,6 +40,7 @@ interface ContentCardContextMenuProps {
   clients?: Array<{ id: string; name: string; logo?: string | null }>;
   onEdit: () => void;
   onOptimisticStatusChange?: (taskId: string, newStatus: ContentTaskStatus) => Promise<void>;
+  mobileOpenSignal?: number;
 }
 
 const STATUS_OPTIONS: Array<{ value: ContentTaskStatus; label: string; emoji: string }> = [
@@ -57,12 +58,21 @@ export function ContentCardContextMenu({
   clients: _clients = [],
   onEdit,
   onOptimisticStatusChange,
+  mobileOpenSignal = 0,
 }: ContentCardContextMenuProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showMoveAccordion, setShowMoveAccordion] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  // Abrir en mobile cuando se recibe la señal desde el touch
+  useEffect(() => {
+    if (mobileOpenSignal > 0) {
+      setOpen(true);
+    }
+  }, [mobileOpenSignal]);
 
   const handleMove = (newStatus: ContentTaskStatus) => {
     if (newStatus === task.status) return;
@@ -153,7 +163,7 @@ export function ContentCardContextMenu({
 
   return (
     <>
-      <ContextMenu>
+      <ContextMenuPrimitive.Root open={open} onOpenChange={setOpen}>
         <ContextMenuTrigger asChild>
           {children}
         </ContextMenuTrigger>
@@ -223,7 +233,7 @@ export function ContentCardContextMenu({
             <ContextMenuShortcut>⌫</ContextMenuShortcut>
           </ContextMenuItem>
         </ContextMenuContent>
-      </ContextMenu>
+      </ContextMenuPrimitive.Root>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

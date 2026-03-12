@@ -68,6 +68,7 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
   const isEditorStage = ["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"].includes(task.status);
   const hasMissingScheduleWarning = isEditorStage && !task.scheduledAt && !task.dueDate;
   const [isMobile, setIsMobile] = useState(false);
+  const [mobileOpenSignal, setMobileOpenSignal] = useState(0);
 
   // Detectar dispositivo móvil
   useEffect(() => {
@@ -126,6 +127,7 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
               clients={clients}
               onEdit={() => onCardClick(task)}
               onOptimisticStatusChange={onOptimisticStatusChange}
+              mobileOpenSignal={mobileOpenSignal}
             >
               <Card
                 className={`relative max-w-full overflow-hidden border transition-all duration-200 ${
@@ -187,17 +189,34 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
                   const x = touch.clientX || rect.left + rect.width / 2;
                   const y = touch.clientY || rect.top + rect.height / 2;
 
-                  // Simular right-click en la posición del toque
-                  const mouseEvent = new MouseEvent("contextmenu", {
+                  // Simular interacción secundaria para Radix ContextMenu
+                  const pointerDown = new PointerEvent("pointerdown", {
+                    bubbles: true,
+                    cancelable: true,
+                    pointerType: "touch",
+                    button: 2,
+                    buttons: 2,
+                    clientX: x,
+                    clientY: y,
+                  });
+
+                  const contextEvent = new MouseEvent("contextmenu", {
                     bubbles: true,
                     cancelable: true,
                     clientX: x,
                     clientY: y,
                     button: 2,
+                    buttons: 2,
                   });
 
                   e.preventDefault();
-                  e.currentTarget.dispatchEvent(mouseEvent);
+                  e.stopPropagation();
+                  setMobileOpenSignal((v) => v + 1);
+                  e.currentTarget.dispatchEvent(pointerDown);
+                  // pequeño timeout para asegurar procesamiento secuencial
+                  setTimeout(() => {
+                    e.currentTarget.dispatchEvent(contextEvent);
+                  }, 0);
                 }}
                 onContextMenu={(e) => {
                   // Prevenir menú contextual por defecto en mobile para evitar doble menú
