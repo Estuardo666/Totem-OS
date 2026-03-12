@@ -1,8 +1,42 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { sendNotification } from "@/actions/notification-actions";
+
+type MonthlyBillingExceptionRow = {
+  clientId: string;
+  type: string;
+  overrideAmount: number | null;
+};
+
+function getMonthStart(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+async function getCurrentMonthBillingExceptions(clientIds: string[], year: number, month: number): Promise<MonthlyBillingExceptionRow[]> {
+  if (clientIds.length === 0) {
+    return [];
+  }
+
+  try {
+    const rows = await db.$queryRaw<Array<MonthlyBillingExceptionRow>>`
+      SELECT
+        "clientId",
+        "type",
+        "overrideAmount"
+      FROM "ClientBillingException"
+      WHERE "clientId" IN (${Prisma.join(clientIds)})
+        AND "year" = ${year}
+        AND "month" = ${month}
+    `;
+
+    return rows;
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Cuenta las tareas completadas (PUBLISHED) de un tipo específico para un cliente en el mes actual
@@ -35,6 +69,34 @@ export async function countPublishedTasksByType(
   return count;
 }
 
+async function hasPlanCompletionNotificationInMonth(input: {
+  userId: string;
+  clientName: string;
+  type: string;
+  monthStart: Date;
+  monthEndWithTime: Date;
+}): Promise<boolean> {
+  const notification = await db.notification.findFirst({
+    where: {
+      userId: input.userId,
+      type: input.type,
+      clientName: input.clientName,
+      message: {
+        contains: "completó su plan mensual",
+      },
+      createdAt: {
+        gte: input.monthStart,
+        lte: input.monthEndWithTime,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  return Boolean(notification);
+}
+
 export async function createMonthlyPaymentTransactions(): Promise<{
   created: number;
   skipped: number;
@@ -57,8 +119,21 @@ export async function createMonthlyPaymentTransactions(): Promise<{
       status: true,
       monthlyRate: true,
       paymentDay: true,
+      billingStartDate: true,
+      createdAt: true,
     },
   });
+
+  const clientIds = clients.map((client) => client.id);
+  const billingExceptions = await getCurrentMonthBillingExceptions(
+    clientIds,
+    now.getFullYear(),
+    now.getMonth() + 1
+  );
+
+  const exceptionByClient = new Map(
+    billingExceptions.map((exception: MonthlyBillingExceptionRow) => [exception.clientId, exception])
+  );
 
   let created = 0;
   let skipped = 0;
@@ -72,7 +147,31 @@ export async function createMonthlyPaymentTransactions(): Promise<{
         continue;
       }
 
+      const billingException = exceptionByClient.get(client.id);
+
+      if (billingException?.type === "SKIP" || billingException?.type === "MARK_AS_PAID") {
+        skipped++;
+        continue;
+      }
+
+      const billingReferenceDate = new Date(client.billingStartDate ?? client.createdAt);
+      const billingStartMonth = getMonthStart(billingReferenceDate);
+
+      if (billingStartMonth.getTime() > monthStart.getTime()) {
+        skipped++;
+        continue;
+      }
+
       if (client.status === "PAUSED") {
+        skipped++;
+        continue;
+      }
+
+      const amountToCharge = billingException?.type === "OVERRIDE_AMOUNT"
+        ? billingException.overrideAmount ?? client.monthlyRate
+        : client.monthlyRate;
+
+      if (amountToCharge <= 0) {
         skipped++;
         continue;
       }
@@ -105,7 +204,7 @@ export async function createMonthlyPaymentTransactions(): Promise<{
 
       await db.transaction.create({
         data: {
-          amount: client.monthlyRate,
+          amount: amountToCharge,
           type: "INCOME",
           status: "PENDING",
           description: `Cobro mensual programado - ${client.name} (día ${scheduledDay})`,
@@ -135,7 +234,6 @@ export async function checkAndCreateAutomaticTransaction(
   clientId: string
 ): Promise<{ created: boolean; transactionId?: string; error?: string }> {
   try {
-    // Obtener el cliente con sus datos de contrato
     const client = await db.client.findUnique({
       where: { id: clientId },
       select: {
@@ -144,6 +242,8 @@ export async function checkAndCreateAutomaticTransaction(
         monthlyReels: true,
         monthlyFlyers: true,
         monthlyRate: true,
+        editorId: true,
+        logo: true,
       },
     });
 
@@ -151,68 +251,30 @@ export async function checkAndCreateAutomaticTransaction(
       return { created: false, error: "Cliente no encontrado" };
     }
 
-    // Si no hay plan contratado, no crear transacción
     if (client.monthlyReels === 0 && client.monthlyFlyers === 0) {
       return { created: false };
     }
 
-    // Si no hay tarifa mensual definida, no crear transacción
     if (client.monthlyRate === 0) {
       return { created: false };
     }
 
-    // Contar tareas completadas en el mes actual
     const publishedReels = await countPublishedTasksByType(clientId, "REEL");
     const publishedFlyers = await countPublishedTasksByType(clientId, "FLYER");
-
-    // Verificar si ya existe una transacción automática para este mes y año
-    // Seguridad anti-duplicados: verifica por clientId, tipo INCOME y mes/año actual
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
     const monthEndWithTime = new Date(monthEnd);
     monthEndWithTime.setHours(23, 59, 59, 999);
-
-    // Verificación anti-duplicados: buscar transacciones automáticas del mes actual
-    // Busca por: clientId, tipo INCOME, descripción que contenga el texto clave, y mes/año actual
-    const existingTransaction = await db.transaction.findFirst({
-      where: {
-        relatedClientId: clientId,
-        type: "INCOME",
-        description: {
-          contains: "Cobro automático - Cumplimiento de plan mensual",
-        },
-        createdAt: {
-          gte: monthStart,
-          lte: monthEndWithTime,
-        },
-      },
-    });
-
-    // Si ya existe una transacción para este mes, no crear otra
-    if (existingTransaction) {
-      console.log(
-        `⚠️ Ya existe una transacción automática para ${client.name} en el mes actual`
-      );
-      return { created: false };
-    }
-
-    // Verificar cumplimiento del plan
     const reelsFulfilled = client.monthlyReels > 0 && publishedReels >= client.monthlyReels;
     const flyersFulfilled = client.monthlyFlyers > 0 && publishedFlyers >= client.monthlyFlyers;
-
-    // Si ambos tipos están contratados, ambos deben cumplirse
-    // Si solo uno está contratado, solo ese debe cumplirse
     let shouldCreateTransaction = false;
 
     if (client.monthlyReels > 0 && client.monthlyFlyers > 0) {
-      // Plan completo: ambos deben cumplirse
       shouldCreateTransaction = reelsFulfilled && flyersFulfilled;
     } else if (client.monthlyReels > 0) {
-      // Solo Reels contratados
       shouldCreateTransaction = reelsFulfilled;
     } else if (client.monthlyFlyers > 0) {
-      // Solo Flyers contratados
       shouldCreateTransaction = flyersFulfilled;
     }
 
@@ -220,62 +282,64 @@ export async function checkAndCreateAutomaticTransaction(
       return { created: false };
     }
 
-    // Crear la transacción automática
-    const transaction = await db.transaction.create({
-      data: {
-        amount: client.monthlyRate,
-        type: "INCOME",
-        status: "PENDING",
-        description: `Cobro automático - Cumplimiento de plan mensual (${publishedReels}/${client.monthlyReels} Reels, ${publishedFlyers}/${client.monthlyFlyers} Flyers)`,
-        relatedClientId: clientId,
-      },
-    });
-
-    console.log(
-      `✅ Transacción automática creada para cliente ${client.name}: $${client.monthlyRate}`
-    );
-
-    // Notificar a los admins sobre el cobro automático
     try {
       const admins = await db.user.findMany({
-        where: { role: "ADMIN" },
+        where: { roleLegacy: "ADMIN" },
         select: { id: true },
       });
 
       for (const admin of admins) {
+        const alreadyNotified = await hasPlanCompletionNotificationInMonth({
+          userId: admin.id,
+          clientName: client.name,
+          type: "ADMIN_ALERT",
+          monthStart,
+          monthEndWithTime,
+        });
+
+        if (alreadyNotified) {
+          continue;
+        }
+
         await sendNotification({
           userId: admin.id,
-          message: `Se generó el cobro automático para ${client.name} por $${client.monthlyRate} (Meta cumplida: ${publishedReels}/${client.monthlyReels} Reels, ${publishedFlyers}/${client.monthlyFlyers} Flyers)`,
+          message: `El cliente ${client.name} completó su plan mensual (${publishedReels}/${client.monthlyReels} Reels, ${publishedFlyers}/${client.monthlyFlyers} Flyers). Revisa la cobranza manual del fee por $${client.monthlyRate}.`,
           type: "ADMIN_ALERT",
-          createdBy: undefined, // Sistema
+          createdBy: undefined,
+          clientLogo: client.logo ?? undefined,
+          clientName: client.name,
         });
       }
     } catch (error) {
       console.error("❌ Error al enviar notificaciones de cobro automático:", error);
-      // No fallar la operación si las notificaciones fallan
     }
 
-    // Notificar al Account Manager (editorId) si existe
     try {
-      const clientWithEditor = await db.client.findUnique({
-        where: { id: clientId },
-        select: { editorId: true },
-      });
-
-      if (clientWithEditor?.editorId) {
-        await sendNotification({
-          userId: clientWithEditor.editorId,
-          message: `¡Meta cumplida! El cliente ${client.name} completó su plan mensual (${publishedReels}/${client.monthlyReels} Reels, ${publishedFlyers}/${client.monthlyFlyers} Flyers). Se generó el cobro automático.`,
+      if (client.editorId) {
+        const alreadyNotified = await hasPlanCompletionNotificationInMonth({
+          userId: client.editorId,
+          clientName: client.name,
           type: "INFO",
-          createdBy: undefined, // Sistema
+          monthStart,
+          monthEndWithTime,
         });
+
+        if (!alreadyNotified) {
+          await sendNotification({
+            userId: client.editorId,
+            message: `¡Meta cumplida! El cliente ${client.name} completó su plan mensual (${publishedReels}/${client.monthlyReels} Reels, ${publishedFlyers}/${client.monthlyFlyers} Flyers). Se enviará solo un aviso para revisión de cobranza manual.`,
+            type: "INFO",
+            createdBy: undefined,
+            clientLogo: client.logo ?? undefined,
+            clientName: client.name,
+          });
+        }
       }
     } catch (error) {
       console.error("❌ Error al enviar notificación al Account Manager:", error);
-      // No fallar la operación si la notificación falla
     }
 
-    return { created: true, transactionId: transaction.id };
+    return { created: false };
   } catch (error) {
     console.error("❌ Error al verificar cumplimiento de contrato:", error);
     return {

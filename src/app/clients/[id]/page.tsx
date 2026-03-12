@@ -10,6 +10,7 @@ import { VaultList } from "@/components/features/clients/vault-list";
 import { BrandKit } from "@/components/features/clients/brand-kit";
 import { ContractFulfillment } from "@/components/features/clients/contract-fulfillment";
 import { AccountStatus } from "@/components/features/clients/account-status";
+import { MonthlyBillingExceptionCard } from "@/components/features/clients/monthly-billing-exception-card";
 import { ClientProfitability } from "@/components/features/clients/client-profitability";
 import { MetaPanel } from "@/components/features/clients/meta-panel";
 import { TikTokPanel } from "@/components/features/clients/tiktok-panel";
@@ -126,7 +127,7 @@ export default async function ClientDetailPage({
   const monthlyEfficiency = calculateMonthlyEfficiency(monthlyEngagement, client.monthlyRate);
 
   // Convertir las tareas del cliente al formato esperado por KanbanBoard
-  const tasksForKanban = client.tasks.map((task) => ({
+  const tasksForKanbanSource = client.tasks.map((task) => ({
     ...task,
     client: {
       id: client.id,
@@ -148,7 +149,8 @@ export default async function ClientDetailPage({
         fileType: asset.fileType,
       })),
     },
-  })) as (ContentTaskWithClient & { metrics: TaskMetrics | null })[];
+  }));
+  const tasksForKanban = tasksForKanbanSource as unknown as (ContentTaskWithClient & { metrics: TaskMetrics | null })[];
 
   const users = usersResult.success ? usersResult.data ?? [] : [];
 
@@ -441,7 +443,14 @@ export default async function ClientDetailPage({
 
           {isAdmin && (
             <TabsContent value="account" className="mt-6">
-              <AccountStatus clientId={client.id} />
+              <div className="space-y-6">
+                <MonthlyBillingExceptionCard
+                  clientId={client.id}
+                  monthlyRate={client.monthlyRate}
+                  exceptions={client.billingExceptions}
+                />
+                <AccountStatus clientId={client.id} />
+              </div>
             </TabsContent>
           )}
         </Tabs>

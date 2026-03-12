@@ -196,7 +196,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
     resolver: zodResolver(isNewTask ? createContentTaskSchema : updateContentTaskSchema),
     defaultValues: buildTaskFormValues(task, initialScheduledAt, initialDefaults),
   });
-
+  const currentTaskStatus = form.watch("status") ?? task?.status;
+  const isScriptStage = currentTaskStatus === "IDEA";
   const selectedClientId = form.watch("clientId");
   const coverImageUrl = form.watch("coverImageUrl");
   const scriptUrl = form.watch("scriptUrl");
@@ -277,11 +278,13 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
         // Calcular automáticamente la fecha de entrega: 24 horas antes de la fecha programada
         let calculatedDueDate: Date | undefined = undefined;
-        if (parsedData.scheduledAt) {
+        if (parsedData.scheduledAt && parsedData.status !== "IDEA") {
           const scheduledDate = parsedData.scheduledAt instanceof Date
             ? parsedData.scheduledAt
             : new Date(parsedData.scheduledAt);
           calculatedDueDate = subHours(scheduledDate, 24);
+        } else if (parsedData.status === "IDEA") {
+          calculatedDueDate = undefined;
         } else if (task?.scheduledAt && !parsedData.scheduledAt) {
           // Si se elimina la fecha programada, mantener la fecha de entrega actual o eliminarla
           calculatedDueDate = task.dueDate ? new Date(task.dueDate) : undefined;
@@ -831,34 +834,39 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     name="scheduledAt"
                     render={({ field }) => (
                       <FormItem className="space-y-2">
-                        <FormLabel className={task?.status === "CLIENT_APPROVED" ? "text-orange-600 font-semibold text-xs uppercase tracking-wider" : "text-xs font-semibold uppercase tracking-wider text-muted-foreground"}>
-                          Fecha de Entrega Interna
-                          {task?.status === "CLIENT_APPROVED" && (
+                        <FormLabel className={currentTaskStatus === "CLIENT_APPROVED" ? "text-orange-600 font-semibold text-xs uppercase tracking-wider" : "text-xs font-semibold uppercase tracking-wider text-muted-foreground"}>
+                          {isScriptStage ? "Fecha de Entrega de Guión" : "Fecha de Entrega Interna"}
+                          {currentTaskStatus === "CLIENT_APPROVED" && (
                             <span className="ml-2 text-xs text-orange-600 font-normal">⚠️ No olvides programarla</span>
                           )}
                         </FormLabel>
                         <FormControl>
                           <Input
                             type="datetime-local"
-                            value={field.value || ""}
+                            value={formatDateTimeForInput(field.value) || ""}
                             onChange={(e) => {
                               field.onChange(e.target.value || undefined);
-                              // Calcular automáticamente la fecha de entrega cuando cambia la fecha programada
                               if (e.target.value) {
-                                const scheduledDate = new Date(e.target.value);
-                                const calculatedDueDate = subHours(scheduledDate, 24);
-                                form.setValue("dueDate", calculatedDueDate.toISOString().split("T")[0]);
+                                if (isScriptStage) {
+                                  form.setValue("dueDate", undefined);
+                                } else {
+                                  const scheduledDate = new Date(e.target.value);
+                                  const calculatedDueDate = subHours(scheduledDate, 24);
+                                  form.setValue("dueDate", calculatedDueDate.toISOString().split("T")[0]);
+                                }
                               } else {
                                 form.setValue("dueDate", undefined);
                               }
                             }}
                             disabled={isPending}
-                            className={`rounded-lg ${task?.status === "CLIENT_APPROVED" ? "border-orange-300 focus:border-orange-500 focus:ring-orange-500" : "border-input"}`}
+                            className={`rounded-lg ${currentTaskStatus === "CLIENT_APPROVED" ? "border-orange-300 focus:border-orange-500 focus:ring-orange-500" : "border-input"}`}
                           />
                         </FormControl>
                         <FormMessage />
                         <p className="text-xs text-muted-foreground">
-                          Fecha cuando debe estar lista la tarea para publicar
+                          {isScriptStage
+                            ? "Fecha en la que community debe entregar el guión"
+                            : "Fecha cuando debe estar lista la tarea para publicar"}
                         </p>
                       </FormItem>
                     )}

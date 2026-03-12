@@ -22,6 +22,34 @@ const normalizeText = (text: string) =>
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
 
+const editorOwnedStatuses = new Set(["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"]);
+
+const isTaskOwnedByUser = ({
+  task,
+  userId,
+  role,
+  specialty,
+}: {
+  task: ContentTaskWithClient;
+  userId: string;
+  role?: string | null;
+  specialty?: string | null;
+}) => {
+  if (task.status === "IDEA") {
+    return task.assignedCommunityId === userId;
+  }
+
+  if (editorOwnedStatuses.has(task.status)) {
+    return task.assignedEditorId === userId;
+  }
+
+  if (task.status === "CLIENT_APPROVED") {
+    return role === "ADMIN" && specialty === "COMMUNITY" && task.assignedCommunityId === userId;
+  }
+
+  return false;
+};
+
 interface ContentFiltersProps {
   tasks: ContentTaskWithClient[];
   clients: Client[];
@@ -46,6 +74,7 @@ export function ContentFilters({
   const { data: session } = useSession();
   const userId = currentUserId || session?.user?.id;
   const userRole = session?.user?.role;
+  const userSpecialty = session?.user?.specialty;
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   
   // Por defecto, si es EDITOR o VIEWER, mostrar solo sus tareas
@@ -86,7 +115,13 @@ export function ContentFilters({
     // Filtro principal: "Mis Tareas" vs "Todo el Equipo"
     if (viewMode === "my-tasks" && userId) {
       filtered = filtered.filter(
-        (task) => task.assignedEditorId === userId || task.assignedCommunityId === userId
+        (task) =>
+          isTaskOwnedByUser({
+            task,
+            userId,
+            role: userRole,
+            specialty: userSpecialty,
+          })
       );
     }
 
@@ -120,8 +155,15 @@ export function ContentFilters({
           (task) => task.assignedEditorId === null && task.assignedCommunityId === null
         );
       } else {
+        const selectedUser = users.find((user) => user.id === selectedUserId);
         filtered = filtered.filter(
-          (task) => task.assignedEditorId === selectedUserId || task.assignedCommunityId === selectedUserId
+          (task) =>
+            isTaskOwnedByUser({
+              task,
+              userId: selectedUserId,
+              role: selectedUser?.roleLegacy,
+              specialty: selectedUser?.specialty,
+            })
         );
       }
     }
@@ -132,7 +174,7 @@ export function ContentFilters({
     }
 
     return filtered;
-  }, [tasks, viewMode, userId, selectedClientId, selectedMonth, selectedUserId, selectedType]);
+  }, [tasks, viewMode, userId, userRole, userSpecialty, users, selectedClientId, selectedMonth, selectedUserId, selectedType]);
 
   // Actualizar el estado del padre cuando cambien las tareas filtradas
   useEffect(() => {

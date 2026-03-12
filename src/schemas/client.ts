@@ -52,6 +52,25 @@ const contactEmailsSchema = z.preprocess(
   z.array(z.string().email("Email inválido")).optional()
 );
 
+const optionalDateSchema = z.preprocess(
+  (value) => {
+    if (value === "" || value === undefined || value === null) {
+      return null;
+    }
+
+    if (value instanceof Date) {
+      return value;
+    }
+
+    if (typeof value === "string") {
+      return new Date(`${value}T00:00:00`);
+    }
+
+    return value;
+  },
+  z.date().nullable().optional()
+);
+
 export const clientSchema = z.object({
   id: z.string().cuid().optional(),
   name: z.string().min(1, "El nombre del cliente es requerido"),
@@ -72,6 +91,7 @@ export const clientSchema = z.object({
     .max(31, "El día de pago debe ser entre 1 y 31")
     .optional()
     .nullable(),
+  billingStartDate: optionalDateSchema,
   logo: z.string().url("Debe ser una URL válida").optional().nullable(),
   lastPostDate: z.date().optional(),
   editorId: z.string().cuid().optional().nullable(),
@@ -81,6 +101,49 @@ export const clientSchema = z.object({
 
 export const createClientSchema = clientSchema.omit({ id: true });
 export const updateClientSchema = clientSchema.partial();
+
+export const clientBillingExceptionTypeSchema = z.enum([
+  "SKIP",
+  "OVERRIDE_AMOUNT",
+  "MARK_AS_PAID",
+]);
+
+export const clientBillingExceptionSchema = z
+  .object({
+    clientId: z.string().cuid(),
+    period: z.string().regex(/^\d{4}-\d{2}$/, "Selecciona un período válido"),
+    type: clientBillingExceptionTypeSchema,
+    overrideAmount: z.preprocess(
+      (value) => {
+        if (value === "" || value === undefined || value === null) {
+          return null;
+        }
+
+        if (typeof value === "number") {
+          return value;
+        }
+
+        if (typeof value === "string") {
+          const parsed = Number(value);
+          return Number.isNaN(parsed) ? value : parsed;
+        }
+
+        return value;
+      },
+      z.number().min(0, "El monto debe ser mayor o igual a 0").nullable().optional()
+    ),
+    reason: z.string().min(3, "El motivo es requerido"),
+    notes: z.string().max(500, "Máximo 500 caracteres").optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type === "OVERRIDE_AMOUNT" && data.overrideAmount === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["overrideAmount"],
+        message: "Debes indicar el monto a cobrar en este mes",
+      });
+    }
+  });
 
 // Schema para Credenciales (Bóveda)
 export const credentialSchema = z.object({
@@ -123,6 +186,8 @@ export const deleteCredentialGroupSchema = z.object({
 export type Client = z.infer<typeof clientSchema>;
 export type CreateClientInput = z.infer<typeof createClientSchema>;
 export type UpdateClientInput = z.infer<typeof updateClientSchema>;
+export type ClientBillingExceptionInput = z.infer<typeof clientBillingExceptionSchema>;
+export type ClientBillingExceptionType = z.infer<typeof clientBillingExceptionTypeSchema>;
 export type BrandKit = z.infer<typeof brandKitSchema>;
 export type PlanConfig = z.infer<typeof planConfigSchema>;
 export type BrandDNA = z.infer<typeof brandDNASchema>;

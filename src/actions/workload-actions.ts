@@ -46,47 +46,41 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
     // Obtener conteo de tareas pendientes por usuario
     const workloads: UserWorkload[] = await Promise.all(
       users.map(async (user) => {
-        let pendingTasksCount = 0;
-
-        // LÓGICA PARA EDITORES (role: EDITOR o ADMIN)
-        // Solo cuentan tareas en estados: IDEA, RECORDED, EDITING, REVIEW_CLIENT
-        // NO cuentan: CLIENT_APPROVED, APPROVED, PUBLISHED
-        const editorStatuses = ["IDEA", "RECORDED", "EDITING", "REVIEW_CLIENT"];
-        
-        const editorCount = await db.contentTask.count({
+        const pendingTasksCount = await db.contentTask.count({
           where: {
-            assignedEditorId: user.id,
-            status: {
-              in: editorStatuses,
+            client: {
+              status: { not: "INACTIVE" },
             },
+            OR: [
+              {
+                status: "IDEA",
+                assignedCommunityId: user.id,
+              },
+              {
+                status: {
+                  in: ["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"],
+                },
+                assignedEditorId: user.id,
+              },
+              ...(user.roleLegacy === "ADMIN" && user.specialty === "COMMUNITY"
+                ? [
+                    {
+                      status: "CLIENT_APPROVED",
+                      assignedCommunityId: user.id,
+                    },
+                  ]
+                : []),
+            ],
           },
         });
-
-        // LÓGICA PARA COMMUNITY (specialty: COMMUNITY)
-        // Solo cuentan tareas en estado: CLIENT_APPROVED
-        // NO cuentan estados previos ni PUBLICADO
-        let communityCount = 0;
-        if (user.specialty === "COMMUNITY") {
-          communityCount = await db.contentTask.count({
-            where: {
-              assignedCommunityId: user.id,
-              status: "CLIENT_APPROVED",
-            },
-          });
-        }
-
-        // Sumar ambos contadores (un usuario puede tener ambos roles)
-        pendingTasksCount = editorCount + communityCount;
 
         // Capacidad semanal estimada según el rol
         // ADMIN: 15, EDITOR: 10, VIEWER: 5
         let weeklyCapacity = 10; // Default
-        if (user.role === "ADMIN") {
+        if (user.roleLegacy === "ADMIN") {
           weeklyCapacity = 15;
-        } else if (user.role === "EDITOR") {
+        } else if (user.roleLegacy === "EDITOR") {
           weeklyCapacity = 10;
-        } else if (user.role === "VIEWER") {
-          weeklyCapacity = 5;
         }
 
         return {

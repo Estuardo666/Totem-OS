@@ -15,19 +15,31 @@ import { sendNotification } from "./notification-actions";
  */
 async function getCommunityManagerId(clientId: string): Promise<string | null> {
   try {
-    // 1. Buscar el communityId del cliente
     const client = await db.client.findUnique({
       where: { id: clientId },
-      select: { communityId: true },
+      select: {
+        community: {
+          select: {
+            id: true,
+            roleLegacy: true,
+            specialty: true,
+          },
+        },
+      },
     });
 
-    if (client?.communityId) {
-      return client.communityId;
+    if (
+      client?.community?.roleLegacy === "ADMIN" &&
+      client.community.specialty === "COMMUNITY"
+    ) {
+      return client.community.id;
     }
 
-    // 2. Si no hay communityId, buscar el primer ADMIN como fallback
     const adminUser = await db.user.findFirst({
-      where: { roleLegacy: "ADMIN" },
+      where: {
+        roleLegacy: "ADMIN",
+        specialty: "COMMUNITY",
+      },
       select: { id: true },
     });
 
@@ -35,7 +47,6 @@ async function getCommunityManagerId(clientId: string): Promise<string | null> {
       return adminUser.id;
     }
 
-    // 3. Si no hay ADMIN, retornar null
     return null;
   } catch (error) {
     console.error("❌ Error al obtener Community Manager:", error);
@@ -67,6 +78,81 @@ async function triggerDashboardUpdate(userIds: string[]): Promise<void> {
     console.error("❌ Error al disparar eventos de actualización del dashboard:", error);
     // No fallar la operación si Pusher falla
   }
+}
+
+ const editorOwnedStatuses = ["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"] as const;
+
+ function buildOwnedTasksWhereClause({
+   userId,
+   role,
+   specialty,
+ }: {
+   userId: string;
+   role?: string | null;
+   specialty?: string | null;
+ }): Prisma.ContentTaskWhereInput {
+   const ownershipClauses: Prisma.ContentTaskWhereInput[] = [
+     {
+       status: "IDEA",
+       assignedCommunityId: userId,
+     },
+     {
+       status: {
+         in: [...editorOwnedStatuses],
+       },
+       assignedEditorId: userId,
+     },
+   ];
+
+   if (role === "ADMIN" && specialty === "COMMUNITY") {
+     ownershipClauses.push({
+       status: "CLIENT_APPROVED",
+       assignedCommunityId: userId,
+     });
+   }
+
+   return {
+     client: {
+       status: { not: "INACTIVE" },
+     },
+     OR: ownershipClauses,
+   };
+ }
+
+ function shouldResetTaskDatesOnStatusChange(currentStatus: string, newStatus: string): boolean {
+   return currentStatus === "IDEA" && newStatus === "RECORDED";
+ }
+
+async function getSingleEditorId(): Promise<string | null> {
+  const editors = await db.user.findMany({
+    where: {
+      specialty: "EDITOR",
+    },
+    select: {
+      id: true,
+    },
+    take: 2,
+  });
+
+  return editors.length === 1 ? editors[0].id : null;
+}
+
+async function resolveAssignedEditorId({
+  assignedEditorId,
+  clientEditorId,
+}: {
+  assignedEditorId?: string | null;
+  clientEditorId?: string | null;
+}): Promise<string | null> {
+  if (assignedEditorId) {
+    return assignedEditorId;
+  }
+
+  if (clientEditorId) {
+    return clientEditorId;
+  }
+
+  return getSingleEditorId();
 }
 
 // Tipo para ContentTask con relación de cliente incluida
@@ -115,7 +201,10 @@ async function persistTask(validatedData: ReturnType<typeof createContentTaskSch
     select: { editorId: true, communityId: true, name: true, logo: true },
   });
 
-  const assignedEditorId = validatedData.assignedEditorId ?? client?.editorId ?? null;
+  const assignedEditorId = await resolveAssignedEditorId({
+    assignedEditorId: validatedData.assignedEditorId,
+    clientEditorId: client?.editorId,
+  });
   const assignedCommunityId = validatedData.assignedCommunityId ?? client?.communityId ?? null;
 
   const task = await db.contentTask.create({
@@ -362,22 +451,16 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
     const session = await auth();
     const sessionUserId = session?.user?.id;
     const userRole = session?.user?.role;
+    const userSpecialty = session?.user?.specialty;
 
-    // Si es EDITOR, siempre filtrar solo sus tareas asignadas como editor
-    // Si es ADMIN y showOnlyMine es true, filtrar solo sus tareas
-    // Si es ADMIN y showOnlyMine es false o undefined, mostrar todas
     const whereClause = 
       (userRole === "EDITOR" && sessionUserId) || 
       (userRole === "ADMIN" && showOnlyMine && sessionUserId)
-        ? { 
-            client: {
-              status: { not: "INACTIVE" },
-            },
-            OR: [
-              { assignedEditorId: sessionUserId },
-              { assignedCommunityId: sessionUserId }
-            ]
-          }
+        ? buildOwnedTasksWhereClause({
+            userId: sessionUserId,
+            role: userRole,
+            specialty: userSpecialty,
+          })
         : {
             client: {
               status: { not: "INACTIVE" },
@@ -464,6 +547,7 @@ export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
     const { auth } = await import("@/auth");
     const session = await auth();
     const sessionUserId = session?.user?.id;
+    const sessionUserRole = session?.user?.role;
 
     // Si no hay userId en la sesión, retornar 0
     if (!sessionUserId) {
@@ -477,36 +561,13 @@ export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
     });
 
     const userSpecialty = user?.specialty;
-
-    // Si es COMMUNITY, solo contar tareas con estado CLIENT_APPROVED
-    if (userSpecialty === "COMMUNITY") {
-      const count = await db.contentTask.count({
-        where: {
-          assignedCommunityId: sessionUserId,
-          status: "CLIENT_APPROVED",
-          client: {
-            status: { not: "INACTIVE" },
-          },
-        },
-      });
-      return { success: true, data: count };
-    }
-
-    // Para EDITOR o cualquier otro usuario, contar tareas asignadas como editor
-    // Estados válidos: IDEA, RECORDED, EDITING, REVIEW_CLIENT
-    // NO incluir: CLIENT_APPROVED, APPROVED, PUBLISHED
-    const validStatuses = ["IDEA", "RECORDED", "EDITING", "REVIEW_CLIENT"];
     
     const count = await db.contentTask.count({
-      where: {
-        assignedEditorId: sessionUserId,
-        status: {
-          in: validStatuses,
-        },
-        client: {
-          status: { not: "INACTIVE" },
-        },
-      },
+      where: buildOwnedTasksWhereClause({
+        userId: sessionUserId,
+        role: sessionUserRole,
+        specialty: userSpecialty,
+      }),
     });
 
     return { success: true, data: count };
@@ -580,12 +641,13 @@ export async function updateTaskStatus(
     const isChangingToPublished = newStatus === "PUBLISHED" && currentTask.status !== "PUBLISHED";
     const isChangingToClientApproved = newStatus === "CLIENT_APPROVED" && currentTask.status !== "CLIENT_APPROVED";
     const isChangingToEditing = newStatus === "EDITING" && currentTask.status !== "EDITING";
+    const shouldResetDates = shouldResetTaskDatesOnStatusChange(currentTask.status, newStatus);
 
     // Guardar IDs previos antes de reasignar (para notificaciones)
     const previousEditorId = currentTask.assignedEditorId;
     const previousCommunityId = currentTask.assignedCommunityId;
 
-    // Obtener el cliente para verificar editorId y communityId
+    // AUTOMATIZACIÓN: Si cambia a CLIENT_APPROVED, asignar automáticamente al CM
     let newAssignedCommunityId: string | null | undefined = undefined;
     let newAssignedEditorId: string | null | undefined = undefined;
     let shouldUpdateAssignedAt = false;
@@ -627,6 +689,10 @@ export async function updateTaskStatus(
           assignedEditorId: newAssignedEditorId,
         }),
         ...(shouldUpdateAssignedAt && { assignedAt: new Date() }),
+        ...(shouldResetDates && {
+          scheduledAt: null,
+          dueDate: null,
+        }),
         // Log de auditoría: agregar comentario automático si cambió a CLIENT_APPROVED
         ...(isChangingToClientApproved && newAssignedCommunityId && {
           clientFeedback: currentTask.clientFeedback 
@@ -748,9 +814,9 @@ export async function updateTaskStatus(
     if (isChangingToPublished && currentTask?.clientId) {
       const { checkAndCreateAutomaticTransaction } = await import("@/lib/finance-logic");
       const result = await checkAndCreateAutomaticTransaction(currentTask.clientId);
-      
-      if (result.created) {
-        console.log(`✅ Cobro automático creado para cliente ${currentTask.clientId}`);
+
+      if (result.error) {
+        console.error(`❌ Error al verificar cumplimiento del contrato para cliente ${currentTask.clientId}:`, result.error);
       }
     }
 
@@ -820,6 +886,9 @@ export async function updateTask(
     const isChangingToClientApproved = 
       validatedData.status === "CLIENT_APPROVED" && 
       taskBefore.status !== "CLIENT_APPROVED";
+    const shouldResetDates = validatedData.status
+      ? shouldResetTaskDatesOnStatusChange(taskBefore.status, validatedData.status)
+      : false;
 
     // Guardar los IDs previos antes de reasignar (para notificaciones)
     const previousEditorId = taskBefore.assignedEditorId;
@@ -842,8 +911,10 @@ export async function updateTask(
     } else {
       // Detectar si cambió el responsable manualmente
       newAssignedEditorId = validatedData.assignedEditorId !== undefined 
-        ? validatedData.assignedEditorId || null 
-        : taskBefore.assignedEditorId;
+        ? await resolveAssignedEditorId({
+            assignedEditorId: validatedData.assignedEditorId || null,
+          })
+        : taskBefore.assignedEditorId ?? (await getSingleEditorId());
       newAssignedCommunityId = validatedData.assignedCommunityId !== undefined 
         ? validatedData.assignedCommunityId || null 
         : taskBefore.assignedCommunityId;
@@ -873,15 +944,15 @@ export async function updateTask(
               assignedCommunityId: newAssignedCommunityId,
             }
           : {}),
-        ...(validatedData.assignedEditorId !== undefined && {
-          assignedEditorId: validatedData.assignedEditorId || null,
+        ...((validatedData.assignedEditorId !== undefined || (!taskBefore.assignedEditorId && newAssignedEditorId)) && {
+          assignedEditorId: newAssignedEditorId,
         }),
         ...(validatedData.assignedCommunityId !== undefined && {
           assignedCommunityId: validatedData.assignedCommunityId || null,
         }),
         // Actualizar assignedAt si se asignó algún usuario (nuevo o cambio)
         ...((shouldUpdateAssignedAt || 
-             (validatedData.assignedEditorId !== undefined && validatedData.assignedEditorId && (!taskBefore.assignedEditorId || taskBefore.assignedEditorId !== validatedData.assignedEditorId)) ||
+             (newAssignedEditorId && (!taskBefore.assignedEditorId || taskBefore.assignedEditorId !== newAssignedEditorId)) ||
              (validatedData.assignedCommunityId !== undefined && validatedData.assignedCommunityId && (!taskBefore.assignedCommunityId || taskBefore.assignedCommunityId !== validatedData.assignedCommunityId)))
           ? { assignedAt: new Date() }
           : {}),
@@ -909,6 +980,10 @@ export async function updateTask(
         }),
         // Si cambia a PUBLISHED, actualizar publishedAt
         ...(isChangingToPublished && { publishedAt: new Date() }),
+        ...(shouldResetDates && {
+          scheduledAt: null,
+          dueDate: null,
+        }),
       },
     });
 
@@ -1002,9 +1077,9 @@ export async function updateTask(
     if (isChangingToPublished && taskBefore.clientId) {
       const { checkAndCreateAutomaticTransaction } = await import("@/lib/finance-logic");
       const result = await checkAndCreateAutomaticTransaction(taskBefore.clientId);
-      
-      if (result.created) {
-        console.log(`✅ Cobro automático creado para cliente ${taskBefore.clientId}`);
+
+      if (result.error) {
+        console.error(`❌ Error al verificar cumplimiento del contrato para cliente ${taskBefore.clientId}:`, result.error);
       }
     }
 
@@ -1153,9 +1228,9 @@ export async function quickPublishTask(taskId: string): Promise<ApiResponse<Cont
     try {
       const { checkAndCreateAutomaticTransaction } = await import("@/lib/finance-logic");
       const result = await checkAndCreateAutomaticTransaction(task.clientId);
-      
-      if (result.created) {
-        console.log(`✅ Cobro automático creado para cliente ${task.clientId}`);
+
+      if (result.error) {
+        console.error(`❌ Error al verificar cumplimiento del contrato para cliente ${task.clientId}:`, result.error);
       }
     } catch (financeError) {
       console.error("❌ Error en lógica financiera:", financeError);
@@ -1576,15 +1651,33 @@ export async function bulkUpdateTasks(
     for (const task of tasks) {
       try {
         const updateData: Record<string, unknown> = {};
+        const isChangingToClientApproved = status === "CLIENT_APPROVED" && task.status !== "CLIENT_APPROVED";
+        const shouldResetDates = status ? shouldResetTaskDatesOnStatusChange(task.status, status) : false;
 
         if (status) updateData.status = status;
         if (assignedEditorId !== undefined) updateData.assignedEditorId = assignedEditorId;
         if (assignedCommunityId !== undefined) updateData.assignedCommunityId = assignedCommunityId;
         if (priority) updateData.priority = priority;
+        if (shouldResetDates) {
+          updateData.scheduledAt = null;
+          updateData.dueDate = null;
+        }
+
+        if (isChangingToClientApproved) {
+          updateData.assignedCommunityId = await getCommunityManagerId(task.clientId);
+          updateData.assignedAt = new Date();
+        }
 
         const updatedTask = await db.contentTask.update({
           where: { id: task.id },
           data: updateData,
+          include: {
+            client: {
+              select: {
+                name: true,
+              },
+            },
+          },
         });
 
         updated.push(updatedTask);
@@ -1618,7 +1711,7 @@ export async function bulkUpdateTasks(
 
           // Notificar a admins sobre bulk update
           const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
-          const clientNames = [...new Set(updated.map((t) => t.client?.name))].filter(Boolean);
+          const clientNames = [...new Set(tasks.map((task) => task.client.name))];
           const clientSummary = clientNames.length <= 2 
             ? clientNames.join(", ") 
             : `${clientNames[0]} y ${clientNames.length - 1} más`;
