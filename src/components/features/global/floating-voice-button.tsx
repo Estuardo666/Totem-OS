@@ -101,10 +101,11 @@ export function FloatingVoiceButton() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Ocultar en Finanzas y /admin/voice-control
+  // Ocultar en Finanzas, /admin/voice-control y /content
   const isHidden =
     pathname?.startsWith("/finanzas") ||
-    pathname?.startsWith("/admin/voice-control");
+    pathname?.startsWith("/admin/voice-control") ||
+    pathname?.startsWith("/content");
 
   const [open, setOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -297,14 +298,6 @@ export function FloatingVoiceButton() {
     stopListening();
   };
 
-  const handleToggleListening = () => {
-    if (isListening) {
-      stopListening();
-      void handleAutoInterpretAndCreate();
-    } else {
-      startListening();
-    }
-  };
 
   const handleFloatingButtonClick = () => {
     if (open) {
@@ -341,7 +334,7 @@ export function FloatingVoiceButton() {
             priority: "MEDIUM",
             postCopy: response.data.details,
             scheduledAt: (response.data as VoiceResponse).suggestedDate
-              ? formatDateTimeForInput(parseDDMMYYYY((response.data as VoiceResponse).suggestedDate))
+              ? formatDateTimeForInput(parseDDMMYYYY((response.data as VoiceResponse).suggestedDate || ""))
               : undefined,
             clientId: clientId || "",
           });
@@ -351,7 +344,7 @@ export function FloatingVoiceButton() {
             title: response.data.title,
             notes: response.data.details,
             scheduledAt: (response.data as VoiceResponse).suggestedDate
-              ? parseDDMMYYYY((response.data as VoiceResponse).suggestedDate)
+              ? parseDDMMYYYY((response.data as VoiceResponse).suggestedDate || "")
               : undefined,
             clientId: clientId || "",
             startTime: parseTimeToHHMM((response.data as VoiceResponse).suggestedStartTime || "") || "",

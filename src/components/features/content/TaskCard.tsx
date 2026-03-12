@@ -93,6 +93,7 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
           className={`${snapshot.isDragging ? "z-50" : ""}`}
           style={{
             ...provided.draggableProps.style,
+            touchAction: snapshot.isDragging ? "none" : "manipulation",
           }}
         >
           {/* Contenedor hijo con animación de desaparición fantasma + fade al cambiar vista */}
@@ -133,6 +134,9 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
                 }`}
                 style={{
                   borderColor: `${task.client.color || "#000000"}80`,
+                  userSelect: snapshot.isDragging ? "none" : "auto",
+                  WebkitUserSelect: snapshot.isDragging ? "none" : "auto",
+                  touchAction: snapshot.isDragging ? "none" : "manipulation",
                 }}
                 onClick={(e) => {
                   // Si estamos publicando o arrastrando, no hacer nada
