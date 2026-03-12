@@ -5,9 +5,44 @@ import { auth } from "@/auth";
 import { format, isToday, isYesterday, differenceInHours, startOfDay, endOfDay, addDays } from "date-fns";
 import Link from "next/link";
 
+const EDITOR_RESPONSIBLE_STATUSES = ["RECORDED", "EDITING", "REVIEW_CLIENT"] as const;
+const COMMUNITY_RESPONSIBLE_STATUSES = ["IDEA", "CLIENT_APPROVED"] as const;
+
+function isTaskRelevantForUser(input: {
+  userId?: string;
+  userRole?: string | null;
+  specialty?: string | null;
+  task: {
+    status: string;
+    assignedEditorId: string | null;
+    assignedCommunityId: string | null;
+  };
+}): boolean {
+  const { userId, userRole, specialty, task } = input;
+
+  if (!userId) {
+    return true;
+  }
+
+  const normalizedSpecialty = specialty?.toUpperCase() ?? null;
+  const actsAsCommunity = normalizedSpecialty === "COMMUNITY";
+  const actsAsEditor = normalizedSpecialty === "EDITOR" || (!normalizedSpecialty && userRole === "EDITOR");
+
+  if (actsAsCommunity) {
+    return task.assignedCommunityId === userId && COMMUNITY_RESPONSIBLE_STATUSES.includes(task.status as (typeof COMMUNITY_RESPONSIBLE_STATUSES)[number]);
+  }
+
+  if (actsAsEditor) {
+    return task.assignedEditorId === userId && EDITOR_RESPONSIBLE_STATUSES.includes(task.status as (typeof EDITOR_RESPONSIBLE_STATUSES)[number]);
+  }
+
+  return task.assignedEditorId === userId || task.assignedCommunityId === userId;
+}
+
 // Función para obtener el color de la fecha según urgencia
 function getDateColor(date: Date | null): string {
   if (!date) return "text-muted-foreground";
+  if (date < startOfDay(new Date())) return "text-orange-600 font-semibold";
   if (isToday(date)) return "text-red-600 font-semibold";
   if (isYesterday(date)) return "text-orange-600 font-semibold";
   const daysDiff = differenceInHours(date, new Date()) / 24;
@@ -16,39 +51,50 @@ function getDateColor(date: Date | null): string {
 }
 
 export async function PriorityTasks() {
-  // Obtener sesión del usuario
   const session = await auth();
   const userId = session?.user?.id;
+  const userRole = session?.user?.roleLegacy ?? session?.user?.role ?? null;
+  const specialty = session?.user?.specialty ?? null;
 
-  // Obtener tareas
   const tasksResult = await getTasks();
   const allTasks = tasksResult.success ? tasksResult.data ?? [] : [];
 
-  // Tareas prioritarias: no publicadas, con dueDate en los próximos 3 días
-  // Incluye tareas asignadas al usuario Y tareas sin asignar (assignedToId === null)
   const startOfToday = startOfDay(new Date());
-  const endOfTomorrow = endOfDay(addDays(startOfToday, 1)); // Incluir mañana
   const endOfNextThreeDays = endOfDay(addDays(startOfToday, 3));
   
   const urgentTasks = allTasks
     .filter((task) => {
-      // Filtrar por usuario asignado como editor O community O sin asignar
-      if (userId && task.assignedEditorId !== userId && task.assignedCommunityId !== userId) {
+      if (!isTaskRelevantForUser({
+        userId,
+        userRole,
+        specialty,
+        task,
+      })) {
         return false;
       }
-      // Filtrar por estado (no publicado)
+
       if (task.status === "PUBLISHED") return false;
-      // Filtrar por fecha (dentro de los próximos 3 días)
+
       if (!task.dueDate) return false;
+
       const taskDueDate = new Date(task.dueDate);
       const taskDueDateStart = startOfDay(taskDueDate);
-      return taskDueDateStart >= startOfToday && taskDueDateStart <= endOfNextThreeDays;
+      return taskDueDateStart <= endOfNextThreeDays;
     })
     .sort((a, b) => {
       if (!a.dueDate && !b.dueDate) return 0;
       if (!a.dueDate) return 1;
       if (!b.dueDate) return -1;
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+
+      const aDate = new Date(a.dueDate);
+      const bDate = new Date(b.dueDate);
+      const aIsOverdue = startOfDay(aDate) < startOfToday;
+      const bIsOverdue = startOfDay(bDate) < startOfToday;
+
+      if (aIsOverdue && !bIsOverdue) return -1;
+      if (!aIsOverdue && bIsOverdue) return 1;
+
+      return aDate.getTime() - bDate.getTime();
     })
     .slice(0, 5);
 
@@ -79,10 +125,11 @@ export async function PriorityTasks() {
             // Calcular si la tarea vence en menos de 24 horas
             const now = new Date();
             const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+            const isOverdue = dueDate ? startOfDay(dueDate) < startOfToday : false;
             const hoursUntilDue = dueDate
               ? differenceInHours(dueDate, now)
               : Infinity;
-            const isUrgent = hoursUntilDue < 24 && hoursUntilDue >= 0;
+            const isUrgent = isOverdue || (hoursUntilDue < 24 && hoursUntilDue >= 0);
             
             return (
               <div
@@ -120,7 +167,9 @@ export async function PriorityTasks() {
                             : getDateColor(new Date(task.dueDate))
                         }`}
                       >
-                        {isToday(new Date(task.dueDate))
+                        {isOverdue
+                          ? "Atrasada"
+                          : isToday(new Date(task.dueDate))
                           ? "Hoy"
                           : isYesterday(new Date(task.dueDate))
                             ? "Ayer"

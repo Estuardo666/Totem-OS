@@ -7,9 +7,46 @@ export interface UserWorkload {
   userId: string;
   userName: string;
   userRole: string;
+  specialty: string | null;
   userImage: string | null;
   pendingTasksCount: number;
-  weeklyCapacity: number; // Capacidad semanal estimada (ej: 10 tareas)
+  allocatedMinutes: number;
+  weeklyCapacityMinutes: number;
+  saturationThresholdMinutes: number;
+}
+
+function getWeeklyCapacityMinutes(input: {
+  role: string;
+  specialty: string | null;
+}): number {
+  if (input.role === "ADMIN") {
+    return 4 * 6 * 60;
+  }
+
+  if (input.specialty === "COMMUNITY") {
+    return 2 * 5 * 60;
+  }
+
+  if (input.role === "EDITOR") {
+    return 10 * 90;
+  }
+
+  return 5 * 60;
+}
+
+function getEstimatedTaskMinutes(input: {
+  status: string;
+  type: string;
+}): number {
+  if (input.status === "IDEA" || input.status === "CLIENT_APPROVED") {
+    return 50;
+  }
+
+  if (["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"].includes(input.status)) {
+    return input.type === "REEL" ? 90 : 50;
+  }
+
+  return 0;
 }
 
 /**
@@ -25,14 +62,12 @@ export interface UserWorkload {
  */
 export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
   try {
-    // 0. Verificar autenticación
     const { auth } = await import("@/auth");
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autenticado" };
     }
 
-    // Obtener todos los usuarios con su specialty
     const users = await db.user.findMany({
       select: {
         id: true,
@@ -43,10 +78,9 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
       },
     });
 
-    // Obtener conteo de tareas pendientes por usuario
     const workloads: UserWorkload[] = await Promise.all(
       users.map(async (user) => {
-        const pendingTasksCount = await db.contentTask.count({
+        const assignedTasks = await db.contentTask.findMany({
           where: {
             client: {
               status: { not: "INACTIVE" },
@@ -72,24 +106,36 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
                 : []),
             ],
           },
+          select: {
+            id: true,
+            status: true,
+            type: true,
+          },
         });
 
-        // Capacidad semanal estimada según el rol
-        // ADMIN: 15, EDITOR: 10, VIEWER: 5
-        let weeklyCapacity = 10; // Default
-        if (user.roleLegacy === "ADMIN") {
-          weeklyCapacity = 15;
-        } else if (user.roleLegacy === "EDITOR") {
-          weeklyCapacity = 10;
-        }
+        const pendingTasksCount = assignedTasks.length;
+        const allocatedMinutes = assignedTasks.reduce((sum, task) => {
+          return sum + getEstimatedTaskMinutes({
+            status: task.status,
+            type: task.type,
+          });
+        }, 0);
+        const weeklyCapacityMinutes = getWeeklyCapacityMinutes({
+          role: user.roleLegacy,
+          specialty: user.specialty,
+        });
+        const saturationThresholdMinutes = Math.round(weeklyCapacityMinutes * 0.8);
 
         return {
           userId: user.id,
           userName: user.name,
           userRole: user.roleLegacy,
+          specialty: user.specialty,
           userImage: user.image,
           pendingTasksCount,
-          weeklyCapacity,
+          allocatedMinutes,
+          weeklyCapacityMinutes,
+          saturationThresholdMinutes,
         };
       })
     );

@@ -10,12 +10,19 @@ interface WorkloadPanelProps {
 }
 
 export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
-  // Calcular porcentaje de carga
-  const getWorkloadPercentage = (count: number, capacity: number): number => {
-    return Math.min((count / capacity) * 100, 100);
+  const formatHours = (minutes: number): string => {
+    const hours = minutes / 60;
+    return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
   };
 
-  // Obtener color según la carga
+  const getWorkloadPercentage = (allocatedMinutes: number, capacityMinutes: number): number => {
+    if (capacityMinutes <= 0) {
+      return 0;
+    }
+
+    return Math.min((allocatedMinutes / capacityMinutes) * 100, 100);
+  };
+
   const getWorkloadColor = (percentage: number): string => {
     if (percentage >= 100) return "bg-red-500";
     if (percentage >= 80) return "bg-orange-500";
@@ -23,7 +30,6 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
     return "bg-green-500";
   };
 
-  // Obtener color del texto según la carga
   const getWorkloadTextColor = (percentage: number): string => {
     if (percentage >= 100) return "text-red-600";
     if (percentage >= 80) return "text-orange-600";
@@ -31,7 +37,6 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
     return "text-green-600";
   };
 
-  // Obtener badge de rol
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "ADMIN":
@@ -68,10 +73,11 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
         ) : (
           workloads.map((workload) => {
             const percentage = getWorkloadPercentage(
-              workload.pendingTasksCount,
-              workload.weeklyCapacity
+              workload.allocatedMinutes,
+              workload.weeklyCapacityMinutes
             );
-            const isOverCapacity = workload.pendingTasksCount >= workload.weeklyCapacity;
+            const isOverCapacity = workload.allocatedMinutes > workload.weeklyCapacityMinutes;
+            const isSaturated = !isOverCapacity && workload.allocatedMinutes >= workload.saturationThresholdMinutes;
 
             return (
               <div key={workload.userId} className="p-4 hover:bg-muted/50 transition-colors">
@@ -87,16 +93,22 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
                       <span className="font-medium text-sm truncate">{workload.userName}</span>
                       {getRoleBadge(workload.userRole)}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {isOverCapacity && (
                         <AlertCircle className="h-3 w-3 text-red-500" />
+                      )}
+                      {isSaturated && (
+                        <AlertCircle className="h-3 w-3 text-orange-500" />
                       )}
                       <span
                         className={`text-xs font-semibold ${getWorkloadTextColor(
                           percentage
                         )}`}
                       >
-                        {workload.pendingTasksCount} / {workload.weeklyCapacity}
+                        {formatHours(workload.allocatedMinutes)} / {formatHours(workload.weeklyCapacityMinutes)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {workload.pendingTasksCount} tareas
                       </span>
                     </div>
                   </div>
@@ -110,7 +122,13 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
                 {isOverCapacity && (
                   <p className="text-xs text-red-600 flex items-center gap-1 mt-2">
                     <AlertCircle className="h-3 w-3" />
-                    Capacidad semanal excedida
+                    Capacidad excedida: superó el 100% del tiempo disponible
+                  </p>
+                )}
+                {isSaturated && (
+                  <p className="text-xs text-orange-600 flex items-center gap-1 mt-2">
+                    <AlertCircle className="h-3 w-3" />
+                    Saturado: ya ocupó el 80% de su tiempo disponible
                   </p>
                 )}
               </div>

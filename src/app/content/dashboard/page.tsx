@@ -9,10 +9,14 @@ import { WarRoom } from "@/components/features/content/WarRoom";
 import { HybridCalendar } from "@/components/features/content/HybridCalendar";
 import { QuickActions } from "@/components/features/content/QuickActions";
 import { DashboardRefresh } from "@/components/features/content/dashboard-refresh";
+import { CurrentMonthTaskSummary } from "@/components/features/dashboard/current-month-task-summary";
+import { CardSkeleton } from "@/components/ui/skeletons-composite";
 import { Video } from "lucide-react";
+import { Suspense } from "react";
 
 export default async function ContentDashboardPage() {
   const session = await auth();
+  const isAdmin = session?.user?.role === "ADMIN";
 
   if (!session?.user?.id) {
     redirect("/sign-in");
@@ -67,6 +71,12 @@ export default async function ContentDashboardPage() {
 
       {/* Contenido principal */}
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        {isAdmin && (
+          <Suspense fallback={<CardSkeleton />}>
+            <CurrentMonthTaskSummary />
+          </Suspense>
+        )}
+
         {/* Radar de Producción */}
         <ProductionRadar radar={radar} />
 

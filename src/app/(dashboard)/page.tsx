@@ -6,6 +6,7 @@ import { WorkloadPanel } from "@/components/features/content/workload-panel";
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
 import { DashboardRefresh } from "@/components/features/content/dashboard-refresh";
 import { KPICards } from "@/components/features/dashboard/kpi-cards";
+import { CurrentMonthTaskSummary } from "@/components/features/dashboard/current-month-task-summary";
 import { PriorityTasks } from "@/components/features/dashboard/priority-tasks";
 import { RecentTransactions } from "@/components/features/dashboard/recent-transactions";
 import { PendingFeedbacks } from "@/components/features/dashboard/pending-feedbacks";
@@ -111,6 +112,12 @@ export default async function Home() {
           </Suspense>
         </div>
 
+        {isAdmin && (
+          <Suspense fallback={<CardSkeleton />}>
+            <CurrentMonthTaskSummary />
+          </Suspense>
+        )}
+
         {/* Grid de dos columnas: Tareas Prioritarias y Transacciones */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Suspense fallback={<CardSkeleton />}>
@@ -126,7 +133,7 @@ export default async function Home() {
           <Suspense fallback={<CardSkeleton />}>
             <TodayScheduledTasksWrapper />
           </Suspense>
-          {filteredWorkloads.length > 0 && <WorkloadPanel workloads={filteredWorkloads} />}
+          {isAdmin && filteredWorkloads.length > 0 && <WorkloadPanel workloads={filteredWorkloads} />}
         </div>
         
         {/* Mi Billetera (Solo para ADMIN) */}
