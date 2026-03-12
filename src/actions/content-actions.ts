@@ -119,8 +119,8 @@ async function triggerDashboardUpdate(userIds: string[]): Promise<void> {
    };
  }
 
- function shouldResetTaskDatesOnStatusChange(currentStatus: string, newStatus: string): boolean {
-   return currentStatus === "IDEA" && newStatus === "RECORDED";
+ function shouldResetTaskDatesOnStatusChange(_currentStatus: string, _newStatus: string): boolean {
+   return _currentStatus === "IDEA" && _newStatus === "RECORDED";
  }
 
 async function getSingleEditorId(): Promise<string | null> {
@@ -641,7 +641,7 @@ export async function updateTaskStatus(
     const isChangingToPublished = newStatus === "PUBLISHED" && currentTask.status !== "PUBLISHED";
     const isChangingToClientApproved = newStatus === "CLIENT_APPROVED" && currentTask.status !== "CLIENT_APPROVED";
     const isChangingToEditing = newStatus === "EDITING" && currentTask.status !== "EDITING";
-    const shouldResetDates = shouldResetTaskDatesOnStatusChange(currentTask.status, newStatus);
+    const isChangingFromIdeaToRecorded = currentTask.status === "IDEA" && newStatus === "RECORDED";
 
     // Guardar IDs previos antes de reasignar (para notificaciones)
     const previousEditorId = currentTask.assignedEditorId;
@@ -672,6 +672,13 @@ export async function updateTaskStatus(
         newAssignedEditorId = client.editorId;
         shouldUpdateAssignedAt = true;
       }
+    } else if (isChangingFromIdeaToRecorded && !currentTask.assignedEditorId) {
+      const editorId = await getSingleEditorId();
+      if (editorId) {
+        newAssignedEditorId = editorId;
+        shouldUpdateAssignedAt = true;
+        console.log(`✅ [AUTOMATIZACIÓN] Tarea "${currentTask.title}" asignada automáticamente al único editor disponible (${editorId})`);
+      }
     }
 
     // Actualizar la tarea
@@ -689,7 +696,7 @@ export async function updateTaskStatus(
           assignedEditorId: newAssignedEditorId,
         }),
         ...(shouldUpdateAssignedAt && { assignedAt: new Date() }),
-        ...(shouldResetDates && {
+        ...(isChangingFromIdeaToRecorded && {
           scheduledAt: null,
           dueDate: null,
         }),
@@ -922,6 +929,20 @@ export async function updateTask(
 
     const assignedEditorIdChanged = taskBefore.assignedEditorId !== newAssignedEditorId;
     const assignedCommunityIdChanged = taskBefore.assignedCommunityId !== newAssignedCommunityId;
+    const normalizedDueDate = shouldResetDates
+      ? null
+      : validatedData.dueDate === undefined
+        ? undefined
+        : validatedData.dueDate
+          ? new Date(validatedData.dueDate)
+          : null;
+    const normalizedScheduledAt = shouldResetDates
+      ? null
+      : validatedData.scheduledAt === undefined
+        ? undefined
+        : validatedData.scheduledAt
+          ? new Date(validatedData.scheduledAt)
+          : null;
 
     // Actualizar la tarea
     const task = await db.contentTask.update({
@@ -930,11 +951,11 @@ export async function updateTask(
         ...(validatedData.title && { title: validatedData.title }),
         ...(validatedData.type && { type: validatedData.type }),
         ...(validatedData.priority && { priority: validatedData.priority }),
-        ...(validatedData.dueDate !== undefined && {
-          dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
+        ...(normalizedDueDate !== undefined && {
+          dueDate: normalizedDueDate,
         }),
-        ...(validatedData.scheduledAt !== undefined && {
-          scheduledAt: validatedData.scheduledAt ? new Date(validatedData.scheduledAt) : null,
+        ...(normalizedScheduledAt !== undefined && {
+          scheduledAt: normalizedScheduledAt,
         }),
         ...(validatedData.status && { status: validatedData.status }),
         // AUTOMATIZACIÓN: Si cambió a CLIENT_APPROVED, usar el CM asignado automáticamente
@@ -980,10 +1001,6 @@ export async function updateTask(
         }),
         // Si cambia a PUBLISHED, actualizar publishedAt
         ...(isChangingToPublished && { publishedAt: new Date() }),
-        ...(shouldResetDates && {
-          scheduledAt: null,
-          dueDate: null,
-        }),
       },
     });
 

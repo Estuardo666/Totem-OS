@@ -24,6 +24,15 @@ const normalizeText = (text: string) =>
 
 const editorOwnedStatuses = new Set(["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"]);
 
+const getTaskMonthReferenceDate = (task: ContentTaskWithClient): Date | null => {
+  const referenceDate =
+    task.status === "PUBLISHED"
+      ? task.publishedAt
+      : task.dueDate ?? task.scheduledAt ?? task.createdAt;
+
+  return referenceDate ? new Date(referenceDate) : null;
+};
+
 const isTaskOwnedByUser = ({
   task,
   userId,
@@ -99,8 +108,8 @@ export function ContentFilters({
     const months = new Set<string>();
     months.add(currentMonthKey);
     tasks.forEach((task) => {
-      if (task.dueDate) {
-        const date = new Date(task.dueDate);
+      const date = getTaskMonthReferenceDate(task);
+      if (date) {
         const monthKey = format(date, "yyyy-MM");
         months.add(monthKey);
       }
@@ -137,13 +146,8 @@ export function ContentFilters({
       const endDate = endOfMonth(new Date(year, month - 1));
 
       filtered = filtered.filter((task) => {
-        const referenceDate =
-          task.status === "PUBLISHED"
-            ? task.publishedAt
-            : task.dueDate ?? task.scheduledAt;
-
-        if (!referenceDate) return false;
-        const taskDate = new Date(referenceDate);
+        const taskDate = getTaskMonthReferenceDate(task);
+        if (!taskDate) return false;
         return taskDate >= startDate && taskDate <= endDate;
       });
     }

@@ -15,6 +15,12 @@ export interface UserWorkload {
   saturationThresholdMinutes: number;
 }
 
+const EDITOR_WORKLOAD_STATUSES = ["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"] as const;
+
+function getBaseTaskMinutes(type: string): number {
+  return type === "REEL" ? 90 : 50;
+}
+
 function getWeeklyCapacityMinutes(input: {
   role: string;
   specialty: string | null;
@@ -38,12 +44,16 @@ function getEstimatedTaskMinutes(input: {
   status: string;
   type: string;
 }): number {
-  if (input.status === "IDEA" || input.status === "CLIENT_APPROVED") {
+  if (input.status === "IDEA") {
     return 50;
   }
 
-  if (["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"].includes(input.status)) {
-    return input.type === "REEL" ? 90 : 50;
+  if (input.status === "CLIENT_APPROVED") {
+    return Math.round(getBaseTaskMinutes(input.type) * 0.3);
+  }
+
+  if (EDITOR_WORKLOAD_STATUSES.includes(input.status as (typeof EDITOR_WORKLOAD_STATUSES)[number])) {
+    return getBaseTaskMinutes(input.type);
   }
 
   return 0;
@@ -80,6 +90,9 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
 
     const workloads: UserWorkload[] = await Promise.all(
       users.map(async (user) => {
+        const normalizedSpecialty = user.specialty?.toUpperCase() ?? null;
+        const handlesCommunityStage = normalizedSpecialty === "COMMUNITY";
+
         const assignedTasks = await db.contentTask.findMany({
           where: {
             client: {
@@ -92,11 +105,11 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
               },
               {
                 status: {
-                  in: ["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"],
+                  in: [...EDITOR_WORKLOAD_STATUSES],
                 },
                 assignedEditorId: user.id,
               },
-              ...(user.roleLegacy === "ADMIN" && user.specialty === "COMMUNITY"
+              ...(handlesCommunityStage
                 ? [
                     {
                       status: "CLIENT_APPROVED",

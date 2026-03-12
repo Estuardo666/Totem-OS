@@ -15,11 +15,13 @@ export const contentTaskSchema = z.object({
     "PUBLISHED",
   ]),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
-  dueDate: z.union([z.date(), z.string()]).optional().transform((val) => {
+  dueDate: z.union([z.date(), z.string(), z.null()]).optional().transform((val) => {
+    if (val === null) return null;
     if (!val) return undefined;
     return typeof val === "string" ? new Date(val) : val;
   }),
-  scheduledAt: z.union([z.date(), z.string()]).optional().transform((val) => {
+  scheduledAt: z.union([z.date(), z.string(), z.null()]).optional().transform((val) => {
+    if (val === null) return null;
     if (!val) return undefined;
     return typeof val === "string" ? new Date(val) : val;
   }),

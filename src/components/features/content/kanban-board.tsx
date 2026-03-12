@@ -56,6 +56,65 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     setTasks(initialTasks);
   }, [initialTasks]);
 
+  useEffect(() => {
+    const handleTaskUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        taskId: string;
+        status?: ContentTaskStatus;
+        scheduledAt?: Date | string | null;
+        dueDate?: Date | string | null;
+      }>;
+
+      const detail = customEvent.detail;
+      if (!detail?.taskId) {
+        return;
+      }
+
+      const normalizedScheduledAt = detail.scheduledAt === undefined
+        ? undefined
+        : detail.scheduledAt === null
+          ? null
+          : new Date(detail.scheduledAt);
+      const normalizedDueDate = detail.dueDate === undefined
+        ? undefined
+        : detail.dueDate === null
+          ? null
+          : new Date(detail.dueDate);
+
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === detail.taskId
+            ? {
+                ...task,
+                ...(detail.status ? { status: detail.status } : {}),
+                ...(normalizedScheduledAt !== undefined ? { scheduledAt: normalizedScheduledAt } : {}),
+                ...(normalizedDueDate !== undefined ? { dueDate: normalizedDueDate } : {}),
+              }
+            : task
+        )
+      );
+
+      setSelectedTask((prev) => {
+        if (!prev || prev.id !== detail.taskId) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          ...(detail.status ? { status: detail.status } : {}),
+          ...(normalizedScheduledAt !== undefined ? { scheduledAt: normalizedScheduledAt } : {}),
+          ...(normalizedDueDate !== undefined ? { dueDate: normalizedDueDate } : {}),
+        };
+      });
+    };
+
+    window.addEventListener("taskUpdated", handleTaskUpdated as EventListener);
+
+    return () => {
+      window.removeEventListener("taskUpdated", handleTaskUpdated as EventListener);
+    };
+  }, []);
+
   // useOptimistic para actualizaciones instantáneas
   const [optimisticTasks, setOptimisticTasks] = useOptimistic(
     tasks,

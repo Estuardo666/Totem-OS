@@ -275,10 +275,13 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
       try {
         const schema = isNewTask ? createContentTaskSchema : updateContentTaskSchema;
         const parsedData = schema.parse(data);
+        const shouldResetDatesOnStageChange = !isNewTask && task?.status === "IDEA" && parsedData.status === "RECORDED";
 
         // Calcular automáticamente la fecha de entrega: 24 horas antes de la fecha programada
         let calculatedDueDate: Date | undefined = undefined;
-        if (parsedData.scheduledAt && parsedData.status !== "IDEA") {
+        if (shouldResetDatesOnStageChange) {
+          calculatedDueDate = undefined;
+        } else if (parsedData.scheduledAt && parsedData.status !== "IDEA") {
           const scheduledDate = parsedData.scheduledAt instanceof Date
             ? parsedData.scheduledAt
             : new Date(parsedData.scheduledAt);
@@ -293,7 +296,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
         // Preparar los datos con la fecha de entrega calculada
         const taskData = {
           ...parsedData,
-          dueDate: calculatedDueDate ?? parsedData.dueDate,
+          scheduledAt: shouldResetDatesOnStageChange ? null : parsedData.scheduledAt,
+          dueDate: shouldResetDatesOnStageChange ? null : calculatedDueDate ?? parsedData.dueDate,
         };
 
         let result;
@@ -329,6 +333,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
               detail: {
                 taskId: task.id,
                 status: parsedData.status,
+                scheduledAt: taskData.scheduledAt ?? null,
+                dueDate: taskData.dueDate ?? null,
               },
             }));
             // La UI se actualizará automáticamente gracias a revalidatePath
