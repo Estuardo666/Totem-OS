@@ -1,17 +1,11 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { Receipt } from "lucide-react";
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
 
 export function FloatingExpenseButton() {
-  const pathname = usePathname();
-  
-  // Ocultar en páginas donde no tiene sentido mostrar el botón
-  const isHidden =
-    pathname?.startsWith("/sign-in") ||
-    pathname?.startsWith("/sign-up") ||
-    pathname?.startsWith("/admin/voice-control");
+  // Mostrar en todo el sitio
+  const isHidden = false;
 
   if (isHidden) {
     return null;

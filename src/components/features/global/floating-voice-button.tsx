@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Waves, StopCircle, X } from "lucide-react";
 import { interpretVoiceCommandAction } from "@/actions/voice-actions";
 import { voiceCommandResponseSchema } from "@/schemas/voice";
@@ -98,14 +98,10 @@ export function FloatingVoiceButton() {
     // For now, render the component and handle hiding client-side
   }
 
-  const pathname = usePathname();
   const router = useRouter();
 
-  // Ocultar en Finanzas, /admin/voice-control y /content
-  const isHidden =
-    pathname?.startsWith("/finanzas") ||
-    pathname?.startsWith("/admin/voice-control") ||
-    pathname?.startsWith("/content");
+  // Ocultar en todo el sitio
+  const isHidden = true;
 
   const [open, setOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
