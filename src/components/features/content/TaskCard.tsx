@@ -163,16 +163,21 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    // Pequeño delay para asegurar que el menú contextual se muestre correctamente
-                    setTimeout(() => {
-                      const contextEvent = new MouseEvent('contextmenu', {
-                        bubbles: true,
-                        cancelable: true,
-                        clientX: e.clientX || 0,
-                        clientY: e.clientY || 0,
-                      });
-                      e.currentTarget.dispatchEvent(contextEvent);
-                    }, 0);
+                    // Forzar el menú contextual directamente
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX || (rect.left + rect.width / 2);
+                    const y = e.clientY || (rect.top + rect.height / 2);
+                    
+                    // Simular el right-click para el ContextMenu de shadcn
+                    const mouseEvent = new MouseEvent('contextmenu', {
+                      bubbles: true,
+                      cancelable: true,
+                      clientX: x,
+                      clientY: y,
+                      button: 2
+                    });
+                    
+                    e.currentTarget.dispatchEvent(mouseEvent);
                     return;
                   }
 
@@ -185,23 +190,6 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
 
                   e.stopPropagation();
                   onCardClick(task);
-                }}
-                onTouchEnd={(e) => {
-                  // Detección adicional para touch en mobile
-                  if (isMobile && !isPublishing && !snapshot.isDragging) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    // Disparar menú contextual en touch end para mejor respuesta
-                    const touch = e.changedTouches[0];
-                    const contextEvent = new MouseEvent('contextmenu', {
-                      bubbles: true,
-                      cancelable: true,
-                      clientX: touch.clientX,
-                      clientY: touch.clientY,
-                    });
-                    e.currentTarget.dispatchEvent(contextEvent);
-                  }
                 }}
                 onContextMenu={(e) => {
                   // Prevenir menú contextual por defecto en mobile para evitar doble menú
