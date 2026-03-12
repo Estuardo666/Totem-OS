@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/context-menu";
 import {
   Pencil,
-  Copy,
   ArrowRight,
   ChevronDown,
   Trash2,
@@ -20,7 +19,6 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import {
-  duplicateTask,
   updateTaskStatus,
   deleteTask,
 } from "@/actions/content-actions";
@@ -65,40 +63,6 @@ export function ContentCardContextMenu({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showMoveAccordion, setShowMoveAccordion] = useState(false);
-
-  const handleDuplicate = async () => {
-    // Mostrar feedback inmediato
-    toast({
-      title: "Duplicando...",
-      description: "Se está creando la copia",
-    });
-    
-    // Refrescar inmediatamente para preparar la UI
-    router.refresh();
-    
-    // Ejecutar la acción en segundo plano
-    duplicateTask(task.id).then((result) => {
-      if (result.success) {
-        toast({
-          title: "Éxito",
-          description: "Contenido duplicado exitosamente",
-        });
-        router.refresh();
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: result.error || "Error al duplicar",
-        });
-      }
-    }).catch(() => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Error al duplicar el contenido",
-      });
-    });
-  };
 
   const handleMove = (newStatus: ContentTaskStatus) => {
     if (newStatus === task.status) return;
@@ -207,13 +171,6 @@ export function ContentCardContextMenu({
             <Pencil className="mr-2 h-3.5 w-3.5" />
             Editar
             <ContextMenuShortcut>E</ContextMenuShortcut>
-          </ContextMenuItem>
-
-          {/* Duplicar */}
-          <ContextMenuItem onClick={handleDuplicate}>
-            <Copy className="mr-2 h-3.5 w-3.5" />
-            Duplicar
-            <ContextMenuShortcut>⌘D</ContextMenuShortcut>
           </ContextMenuItem>
 
           {/* Mover a... */}

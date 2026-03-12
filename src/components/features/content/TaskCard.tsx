@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ContentCardContextMenu } from "./content-card-context-menu";
+import { useEffect, useState } from "react";
 
 function getUserInitials(name: string | null | undefined) {
   if (!name) return "?";
@@ -66,6 +67,18 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
   const isPublishing = false;
   const isEditorStage = ["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"].includes(task.status);
   const hasMissingScheduleWarning = isEditorStage && !task.scheduledAt && !task.dueDate;
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detectar dispositivo móvil
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Para TODAS las tareas: Envolver en Draggable
   const isDragDisabled = isPublishing;
@@ -145,16 +158,56 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
                     return;
                   }
 
-                  // Si es tarea publicada, abrir el sheet
+                  // En mobile, abrir menú contextual con toque normal
+                  if (isMobile) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Pequeño delay para asegurar que el menú contextual se muestre correctamente
+                    setTimeout(() => {
+                      const contextEvent = new MouseEvent('contextmenu', {
+                        bubbles: true,
+                        cancelable: true,
+                        clientX: e.clientX || 0,
+                        clientY: e.clientY || 0,
+                      });
+                      e.currentTarget.dispatchEvent(contextEvent);
+                    }, 0);
+                    return;
+                  }
+
+                  // En desktop, comportamiento normal
                   if (task.status === "PUBLISHED") {
                     e.stopPropagation();
                     onCardClick(task);
                     return;
                   }
 
-                  // Para tareas no publicadas, abrir sheet normalmente
                   e.stopPropagation();
                   onCardClick(task);
+                }}
+                onTouchEnd={(e) => {
+                  // Detección adicional para touch en mobile
+                  if (isMobile && !isPublishing && !snapshot.isDragging) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Disparar menú contextual en touch end para mejor respuesta
+                    const touch = e.changedTouches[0];
+                    const contextEvent = new MouseEvent('contextmenu', {
+                      bubbles: true,
+                      cancelable: true,
+                      clientX: touch.clientX,
+                      clientY: touch.clientY,
+                    });
+                    e.currentTarget.dispatchEvent(contextEvent);
+                  }
+                }}
+                onContextMenu={(e) => {
+                  // Prevenir menú contextual por defecto en mobile para evitar doble menú
+                  if (isMobile) {
+                    e.preventDefault();
+                  }
                 }}
               >
                 {shouldShowAssignedAvatars && (
