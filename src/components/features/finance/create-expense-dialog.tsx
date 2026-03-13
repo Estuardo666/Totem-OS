@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import { z } from "zod";
 import type { User, Client } from "@prisma/client";
 import { createExpense } from "@/actions/finance-actions";
 import { getUsers } from "@/actions/user.actions";
@@ -35,31 +35,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  createExpenseSchema,
+  type CreateExpenseInput,
+} from "@/schemas/finance";
 import { OptimizedAvatar } from "@/components/ui/optimized-avatar";
 import { UserList } from "./user-list-row";
-// Mapeo de palabras clave a categorías
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  COMIDA: ["almuerzo", "cena", "desayuno", "comida", "meal", "restaurant", "comedor", "pizza", "hamburguesa", "sushi", "café", "coffee", "lunch", "dinner", "breakfast", "food", "restaurante"],
-  TRANSPORTE: ["taxi", "uber", "bus", "colectivo", "gasolina", "combustible", "parking", "estacionamiento", "viaje", "transporte", "flight", "vuelo", "aeropuerto", "aereo", "tren", "train"],
-  INVITACIONES: ["invitación", "evento", "fiesta", "boda", "cumpleaños", "regalo", "gift", "invitación", "entrada", "ticket", "show", "concierto", "teatro"],
-  SOFTWARE: ["software", "license", "licencia", "suscripción", "subscription", "adobe", "microsoft", "google", "app", "aplicación", "plugin", "extension", "saas", "cloud", "api"],
-  OFICINA: ["oficina", "office", "supplies", "papelería", "tinta", "printer", "impresora", "escritorio", "desk", "silla", "chair", "estantería", "mueble"],
-  EQUIPOS: ["equipo", "equipment", "cámara", "camera", "micrófono", "mic", "monitor", "pantalla", "computadora", "laptop", "teclado", "keyboard", "mouse", "disco", "drone", "luz", "light"],
-};
-
-const detectCategory = (description: string): string => {
-  const lowerDescription = description.toLowerCase().trim();
-  
-  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    for (const keyword of keywords) {
-      if (lowerDescription.includes(keyword)) {
-        return category;
-      }
-    }
-  }
-  
-  return "OTROS";
-};
+import {
+  buildDefaultAllocationValues,
+  buildEqualAmountAllocationValues,
+  calculateExpenseAllocations,
+  detectCategory,
+  detectClientByDescription,
+  EXPENSE_SPLIT_OPTIONS,
+  getAllocationDisplayValue,
+} from "./expense-form-utils";
 // Función helper para obtener la fecha actual en zona horaria de Ecuador (America/Guayaquil)
 const getCurrentDateInEcuador = (): Date => {
   const now = new Date();
@@ -79,26 +69,6 @@ const formatDateValue = (value?: Date | string) => {
   return `${year}-${month}-${day}`;
 };
 
-// Schema para crear gasto
-const createExpenseSchema = z.object({
-  description: z.string().min(1, "La descripción es obligatoria"),
-  amount: z.number().positive("El monto debe ser mayor que 0"),
-  category: z.enum([
-    "COMIDA",
-    "TRANSPORTE",
-    "INVITACIONES",
-    "SOFTWARE",
-    "OFICINA",
-    "EQUIPOS",
-    "OTROS",
-  ]),
-  date: z.date(),
-  paidByUserIds: z.array(z.string()).optional(),
-  clientId: z.string().optional(),
-});
-
-type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
-
 interface CreateExpenseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -109,12 +79,17 @@ function CreateExpenseDialogComponent({
   onOpenChange,
 }: CreateExpenseDialogProps) {
   const router = useRouter();
+  const { data: session } = useSession();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
+  const [expenseAllocationValues, setExpenseAllocationValues] = useState<Record<string, string>>({});
+  const [clientQuery, setClientQuery] = useState("");
+  const [categoryManuallySelected, setCategoryManuallySelected] = useState(false);
+  const [clientManuallySelected, setClientManuallySelected] = useState(false);
 
   const form = useForm<CreateExpenseInput>({
     resolver: zodResolver(createExpenseSchema),
@@ -123,8 +98,11 @@ function CreateExpenseDialogComponent({
       amount: 0,
       category: "OTROS",
       date: getCurrentDateInEcuador(),
+      paidByUserId: undefined,
       paidByUserIds: [],
       clientId: undefined,
+      splitMode: "EQUALLY",
+      allocations: [],
     },
   });
 
@@ -137,6 +115,22 @@ function CreateExpenseDialogComponent({
       .then(([usersResult, clientsResult]) => {
         if (usersResult.success && usersResult.data) {
           setUsers(usersResult.data);
+          const sessionUser = usersResult.data.find((user) => user.id === session?.user?.id);
+          const defaultExpenseUsers = usersResult.data.filter((user) => {
+            const normalizedEmail = user.email?.trim().toLowerCase() ?? "";
+            return normalizedEmail === "totemcisnemedia@gmail.com"
+              || normalizedEmail === "estuarlito@gmail.com";
+          });
+          const defaultExpenseUserIds = defaultExpenseUsers.length > 0
+            ? defaultExpenseUsers.map((user) => user.id)
+            : sessionUser
+              ? [sessionUser.id]
+              : [];
+
+          if (sessionUser) {
+            form.setValue("paidByUserId", sessionUser.id);
+          }
+          form.setValue("paidByUserIds", defaultExpenseUserIds);
         }
         if (clientsResult.success && clientsResult.data) {
           setClients(clientsResult.data);
@@ -146,14 +140,21 @@ function CreateExpenseDialogComponent({
         setLoadingUsers(false);
         setLoadingClients(false);
       });
-  }, []); // Solo se ejecuta al montar el componente
+  }, [form, session?.user?.id]); // Solo se ejecuta al montar el componente
 
   // Handler para auto-detectar categoría cuando se sale del campo de descripción
   const handleDescriptionBlur = (descriptionValue: string) => {
     if (descriptionValue && descriptionValue.trim()) {
-      const detectedCategory = detectCategory(descriptionValue);
-      console.log("Detected category:", detectedCategory, "from description:", descriptionValue);
-      form.setValue("category", detectedCategory as any);
+      if (!categoryManuallySelected) {
+        const detectedCategory = detectCategory(descriptionValue) as CreateExpenseInput["category"];
+        form.setValue("category", detectedCategory);
+      }
+
+      if (!clientManuallySelected) {
+        const detectedClient = detectClientByDescription(descriptionValue, clients);
+        form.setValue("clientId", detectedClient?.id);
+        setClientQuery(detectedClient?.name ?? "");
+      }
     }
   };
 
@@ -165,40 +166,107 @@ function CreateExpenseDialogComponent({
         amount: 0,
         category: "OTROS",
         date: new Date(),
-        paidByUserIds: [],
+        paidByUserId: session?.user?.id,
+        paidByUserIds: session?.user?.id ? [session.user.id] : [],
         clientId: undefined,
+        splitMode: "EQUALLY",
+        allocations: [],
       });
+      setExpenseAllocationValues({});
+      setClientQuery("");
+      setCategoryManuallySelected(false);
+      setClientManuallySelected(false);
     }
-  }, [open, form]);
+  }, [form, open, session?.user?.id]);
+
+  const selectedUserIds = form.watch("paidByUserIds") ?? [];
+  const splitMode = form.watch("splitMode") ?? "EQUALLY";
+  const amountValue = form.watch("amount") ?? 0;
+  const allocationPreview = useMemo(
+    () =>
+      calculateExpenseAllocations({
+        splitMode,
+        totalAmount: amountValue,
+        selectedUserIds,
+        allocationValues: expenseAllocationValues,
+      }),
+    [amountValue, expenseAllocationValues, selectedUserIds, splitMode]
+  );
+
+  useEffect(() => {
+    setExpenseAllocationValues((currentValues) => {
+      const nextValues = buildDefaultAllocationValues(selectedUserIds);
+
+      selectedUserIds.forEach((userId) => {
+        if (currentValues[userId] !== undefined) {
+          nextValues[userId] = currentValues[userId];
+        }
+      });
+
+      return nextValues;
+    });
+
+    if (selectedUserIds.length <= 1 && splitMode !== "EQUALLY") {
+      form.setValue("splitMode", "EQUALLY");
+    }
+  }, [form, selectedUserIds, splitMode]);
+
+  useEffect(() => {
+    if (splitMode !== "AS_AMOUNTS") {
+      return;
+    }
+
+    setExpenseAllocationValues((currentValues) => {
+      const equalValues = buildEqualAmountAllocationValues({
+        totalAmount: amountValue,
+        selectedUserIds,
+      });
+
+      const hasAnyCustomValue = selectedUserIds.some((userId) => {
+        const currentValue = currentValues[userId];
+        return currentValue !== undefined && currentValue !== "";
+      });
+
+      if (!hasAnyCustomValue) {
+        return equalValues;
+      }
+
+      const nextValues = { ...currentValues };
+
+      selectedUserIds.forEach((userId) => {
+        if (nextValues[userId] === undefined || nextValues[userId] === "") {
+          nextValues[userId] = equalValues[userId] ?? "";
+        }
+      });
+
+      return nextValues;
+    });
+  }, [amountValue, selectedUserIds, splitMode]);
 
   const onSubmit = async (data: CreateExpenseInput) => {
     setIsSubmitting(true);
 
     try {
-      // Procesar datos antes de enviar
-      const processedData: any = {
-        description: data.description,
-        amount: data.amount,
-        category: data.category,
-        date: data.date,
-      };
+      const allocationsResult = calculateExpenseAllocations({
+        splitMode: data.splitMode ?? "EQUALLY",
+        totalAmount: data.amount,
+        selectedUserIds: data.paidByUserIds ?? [],
+        allocationValues: expenseAllocationValues,
+      });
 
-      // Agregar clientId solo si no es undefined
-      if (data.clientId && data.clientId !== "none") {
-        processedData.clientId = data.clientId;
+      if (allocationsResult.error) {
+        toast({
+          variant: "destructive",
+          title: "Split inválido",
+          description: allocationsResult.error,
+        });
+        return;
       }
 
-      // Si hay usuarios seleccionados, dividir el gasto entre ellos
-      if (data.paidByUserIds && data.paidByUserIds.length > 0) {
-        processedData.paidByUserIds = data.paidByUserIds;
-        
-        // Si hay más de un usuario, agregar indicador de gasto compartido
-        if (data.paidByUserIds.length > 1) {
-          processedData.description = `${data.description} (Compartido - ${data.paidByUserIds.length} personas)`;
-        }
-      }
-
-      const result = await createExpense(processedData);
+      const result = await createExpense({
+        ...data,
+        allocations: allocationsResult.allocations,
+      });
 
       if (result.success) {
         toast({
@@ -285,15 +353,14 @@ function CreateExpenseDialogComponent({
                           value={field.value === 0 ? "" : field.value ?? ""}
                           onChange={(e) => {
                             if (e.target.value === "") {
-                              field.onChange(undefined);
+                              field.onChange(0);
                             } else {
                               field.onChange(parseFloat(e.target.value) || 0);
                             }
                           }}
-                          onFocus={(e) => {
+                          onFocus={() => {
                             if (field.value === 0) {
-                              field.onChange(undefined);
-                              e.currentTarget.value = "";
+                              field.onChange(0);
                             }
                           }}
                           disabled={isSubmitting}
@@ -313,17 +380,24 @@ function CreateExpenseDialogComponent({
                     <FormLabel>Fecha</FormLabel>
                     <FormControl>
                       <Input
-                        type="date"
-                        className="text-2xl font-bold"
-                        value={
-                          field.value
-                            ? formatDateValue(field.value)
-                            : formatDateValue(getCurrentDateInEcuador())
-                        }
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="YYYY-MM-DD"
+                        className="text-base"
+                        value={field.value ? formatDateValue(field.value) : formatDateValue(getCurrentDateInEcuador())}
                         onChange={(e) => {
-                          field.onChange(
-                            e.target.value ? new Date(e.target.value) : getCurrentDateInEcuador()
-                          );
+                          const nextValue = e.target.value;
+
+                          if (!nextValue) {
+                            field.onChange(getCurrentDateInEcuador());
+                            return;
+                          }
+
+                          const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(nextValue)
+                            ? new Date(`${nextValue}T00:00:00`)
+                            : field.value;
+
+                          field.onChange(parsedDate);
                         }}
                         disabled={isSubmitting}
                       />
@@ -334,75 +408,144 @@ function CreateExpenseDialogComponent({
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Categoría</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={isSubmitting}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona la categoría" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="COMIDA">Comida</SelectItem>
-                      <SelectItem value="TRANSPORTE">Transporte</SelectItem>
-                      <SelectItem value="INVITACIONES">Invitaciones</SelectItem>
-                      <SelectItem value="SOFTWARE">Software</SelectItem>
-                      <SelectItem value="OFICINA">Oficina</SelectItem>
-                      <SelectItem value="EQUIPOS">Equipos</SelectItem>
-                      <SelectItem value="OTROS">Otros</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoría</FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        setCategoryManuallySelected(true);
+                        field.onChange(value as CreateExpenseInput["category"]);
+                      }}
+                      value={field.value}
+                      disabled={isSubmitting}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona la categoría" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="COMIDA">Comida</SelectItem>
+                        <SelectItem value="TRANSPORTE">Transporte</SelectItem>
+                        <SelectItem value="INVITACIONES">Invitaciones</SelectItem>
+                        <SelectItem value="SOFTWARE">Software</SelectItem>
+                        <SelectItem value="OFICINA">Oficina</SelectItem>
+                        <SelectItem value="EQUIPOS">Equipos</SelectItem>
+                        <SelectItem value="OTROS">Otros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="clientId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cliente (Opcional)</FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        setClientManuallySelected(true);
+                        field.onChange(value === "none" ? undefined : value);
+                        const selectedClient = clients.find((client) => client.id === value);
+                        setClientQuery(selectedClient?.name ?? "");
+                      }}
+                      value={field.value || "none"}
+                      disabled={isSubmitting || loadingClients}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona un cliente (opcional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <div className="p-2">
+                          <Input
+                            placeholder="Buscar cliente..."
+                            value={clientQuery}
+                            onChange={(event) => setClientQuery(event.target.value)}
+                            onKeyDown={(event) => event.stopPropagation()}
+                            disabled={loadingClients}
+                          />
+                        </div>
+                        <SelectItem value="none">Sin cliente</SelectItem>
+                        {clients
+                          .filter((client) =>
+                            client.name
+                              ?.toLowerCase()
+                              .includes(clientQuery.trim().toLowerCase())
+                          )
+                          .map((client) => {
+                            const initials = client.name
+                              ?.split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase()
+                              .slice(0, 2) || "??";
+
+                            return (
+                              <SelectItem key={client.id} value={client.id}>
+                                <div className="flex items-center gap-2">
+                                  <OptimizedAvatar
+                                    src={client.logo}
+                                    alt={client.name}
+                                    fallback={initials}
+                                    size="sm"
+                                  />
+                                  <span>{client.name}</span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
-              name="clientId"
+              name="paidByUserId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Cliente (Opcional)</FormLabel>
+                  <FormLabel>Pagado por</FormLabel>
                   <Select
-                    onValueChange={(value) =>
-                      field.onChange(value === "none" ? undefined : value)
-                    }
-                    value={field.value || "none"}
-                    disabled={isSubmitting || loadingClients}
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isSubmitting || loadingUsers}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un cliente (opcional)" />
+                        <SelectValue placeholder="Selecciona quién pagó" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">Sin cliente</SelectItem>
-                      {clients.map((client) => {
-                        const initials = client.name
-                          ?.split(' ')
-                          .map(n => n[0])
-                          .join('')
+                      {users.map((user) => {
+                        const initials = user.name
+                          ?.split(" ")
+                          .map((n) => n[0])
+                          .join("")
                           .toUpperCase()
-                          .slice(0, 2) || '??';
-                        
+                          .slice(0, 2) || "??";
+
                         return (
-                          <SelectItem key={client.id} value={client.id}>
+                          <SelectItem key={`create-expense-paid-by-${user.id}`} value={user.id}>
                             <div className="flex items-center gap-2">
                               <OptimizedAvatar
-                                src={client.logo}
-                                alt={client.name}
+                                src={user.image}
+                                alt={user.name ?? "Usuario"}
                                 fallback={initials}
                                 size="sm"
                               />
-                              <span>{client.name}</span>
+                              <span>{user.name}</span>
                             </div>
                           </SelectItem>
                         );
@@ -420,10 +563,40 @@ function CreateExpenseDialogComponent({
               render={({ field }) => (
                 <FormItem>
                   <div className="space-y-3">
-                    <FormLabel>Asignar a Usuarios (Para Reembolso)</FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      Selecciona uno o más usuarios. Si seleccionas múltiples, el monto se dividirá equitativamente.
-                    </p>
+                    <FormLabel>Dividido entre</FormLabel>
+                    <div className="space-y-2">
+                        <FormLabel>Modo de división</FormLabel>
+                        <div className="max-w-xs">
+                        <Select
+                          onValueChange={(value) => {
+                            const nextSplitMode = value as CreateExpenseInput["splitMode"];
+                            form.setValue("splitMode", nextSplitMode);
+
+                            if (nextSplitMode === "AS_AMOUNTS") {
+                              setExpenseAllocationValues(
+                                buildEqualAmountAllocationValues({
+                                  totalAmount: amountValue,
+                                  selectedUserIds,
+                                })
+                              );
+                            }
+                          }}
+                          value={splitMode}
+                          disabled={isSubmitting || selectedUserIds.length <= 1}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona el split" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {EXPENSE_SPLIT_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                     <UserList
                       users={users}
                       selectedIds={field.value || []}
@@ -436,7 +609,29 @@ function CreateExpenseDialogComponent({
                           field.onChange([...currentValue, userId]);
                         }
                       }}
+                      splitMode={splitMode}
+                      allocationValues={expenseAllocationValues}
+                      allocationLabels={Object.fromEntries(
+                        selectedUserIds.map((userId) => [
+                          userId,
+                          getAllocationDisplayValue({
+                            splitMode,
+                            userId,
+                            allocations: allocationPreview.allocations,
+                            fallbackAmount: amountValue,
+                          }),
+                        ])
+                      )}
+                      onAllocationChange={(userId, value) => {
+                        setExpenseAllocationValues((currentValues) => ({
+                          ...currentValues,
+                          [userId]: value,
+                        }));
+                      }}
                     />
+                    {allocationPreview.error ? (
+                      <p className="text-sm text-destructive">{allocationPreview.error}</p>
+                    ) : null}
                   </div>
                   <FormMessage />
                 </FormItem>

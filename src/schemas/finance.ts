@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+ const expenseSplitModeSchema = z.enum(["EQUALLY", "AS_PARTS", "AS_AMOUNTS"]);
+
+ const expenseAllocationSchema = z.object({
+   userId: z.string().cuid(),
+   amount: z.number().min(0),
+   parts: z.number().min(0).optional(),
+ });
+
 export const expenseSchema = z.object({
   id: z.string().cuid().optional(),
   description: z.string().min(1, "La descripción es requerida"),
@@ -19,6 +27,8 @@ export const expenseSchema = z.object({
     .transform((val) => (val === "none" || val === "" || !val ? undefined : val)),
   paidByUserId: z.string().cuid().optional(),
   paidByUserIds: z.array(z.string().cuid()).optional(), // Para gastos compartidos
+  splitMode: expenseSplitModeSchema.optional(),
+  allocations: z.array(expenseAllocationSchema).optional(),
   reimbursed: z.boolean().default(false),
   payrollId: z.string().cuid().optional(),
 });
@@ -67,6 +77,8 @@ export const updateInvoiceSchema = invoiceSchema.partial();
 export type Expense = z.infer<typeof expenseSchema>;
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>;
+ export type ExpenseSplitMode = z.infer<typeof expenseSplitModeSchema>;
+ export type ExpenseAllocationInput = z.infer<typeof expenseAllocationSchema>;
 export type Payroll = z.infer<typeof payrollSchema>;
 export type CreatePayrollInput = z.infer<typeof createPayrollSchema>;
 export type UpdatePayrollInput = z.infer<typeof updatePayrollSchema>;

@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { endOfMonth, startOfMonth } from "date-fns";
 import { db } from "@/lib/db";
 import {
   createInvoiceSchema,
@@ -15,6 +16,7 @@ import {
 } from "@/schemas/finance";
 import type { ApiResponse } from "@/types";
 import type { User, Transaction } from "@prisma/client";
+import type { ExpensesStatsData } from "@/lib/finance-reporting-service";
 
 // Import services
 import {
@@ -83,12 +85,15 @@ export interface UserSettlementReport {
  * Solo retorna clientes asociados al usuario (si es EDITOR)
  */
 export async function getStrategicClientPlans():
-  Promise<ApiResponse<Array<{ id: string; name: string; status: string }>>> {
+  Promise<ApiResponse<Array<{ id: string; name: string; status: string; logo: string | null; paymentDay: number | null; billingStartDate: Date | null; monthlyRate: number | null; monthlyReels: number | null; monthlyShoots: number | null; invoices: Array<{ amount: number; status: string; dueDate: Date | null; generatedAt: Date }>; tasks: Array<{ id: string; type: string; status: string; dueDate: Date | null; publishedAt: Date | null }>; shootings: Array<{ id: string; status: string; startTime: Date }> }>>> {
   try {
     const session = await auth();
     const userId = session?.user?.id;
     const userRole = session?.user?.role;
     const isEditor = userRole === "EDITOR";
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
 
     const clients = await db.client.findMany({
       where: {
@@ -98,9 +103,61 @@ export async function getStrategicClientPlans():
         id: true,
         name: true,
         status: true,
+        logo: true,
+        paymentDay: true,
+        billingStartDate: true,
         monthlyRate: true,
         monthlyReels: true,
         monthlyShoots: true,
+        invoices: {
+          select: {
+            amount: true,
+            status: true,
+            dueDate: true,
+            generatedAt: true,
+          },
+          orderBy: {
+            generatedAt: "desc",
+          },
+        },
+        tasks: {
+          where: {
+            OR: [
+              {
+                dueDate: {
+                  gte: monthStart,
+                  lte: monthEnd,
+                },
+              },
+              {
+                publishedAt: {
+                  gte: monthStart,
+                  lte: monthEnd,
+                },
+              },
+            ],
+          },
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            dueDate: true,
+            publishedAt: true,
+          },
+        },
+        shootings: {
+          where: {
+            startTime: {
+              gte: monthStart,
+              lte: monthEnd,
+            },
+          },
+          select: {
+            id: true,
+            status: true,
+            startTime: true,
+          },
+        },
       },
       orderBy: { name: "asc" },
     });
@@ -525,7 +582,7 @@ export async function getReceivables(): Promise<
     monthProjection: number;
     pendingTransactions: Array<{
       id: string;
-      clientName: string;
+      clientName?: string;
       clientLogo?: string | null;
       description: string;
       amount: number;
@@ -662,7 +719,7 @@ export async function getExpensesStats(filters?: {
   userId?: string;
   clientId?: string;
   category?: string;
-}): Promise<ApiResponse<any>> {
+}): Promise<ApiResponse<ExpensesStatsData>> {
   return getExpensesStatsFromDb(filters);
 }
 

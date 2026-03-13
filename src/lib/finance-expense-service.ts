@@ -5,6 +5,7 @@
 
 import { db } from "@/lib/db";
 import type { Expense } from "@prisma/client";
+import type { ExpenseAllocationInput, ExpenseSplitMode } from "@/schemas/finance";
 
 export interface CreateExpenseInput {
   description: string;
@@ -15,6 +16,8 @@ export interface CreateExpenseInput {
   clientId?: string;
   paidByUserId?: string;
   paidByUserIds?: string[];
+  splitMode?: ExpenseSplitMode;
+  allocations?: ExpenseAllocationInput[];
   reimbursed?: boolean;
   payrollId?: string;
 }
@@ -37,34 +40,38 @@ export async function createExpenseInDb(
 ): Promise<Expense> {
   const { createdByUserId, isEditor, ...input } = data;
 
-  // Si es EDITOR, forzar paidByUserId a su userId
   let paidByUserIds = input.paidByUserIds || [];
   if (isEditor) {
     paidByUserIds = [createdByUserId];
-  } else if (input.paidByUserId) {
+  } else if (paidByUserIds.length === 0 && input.paidByUserId) {
     paidByUserIds = [input.paidByUserId];
   }
 
-  const isSharedExpense = paidByUserIds.length > 1;
-  const amountPerUser = isSharedExpense
-    ? Math.round((input.amount / paidByUserIds.length) * 100) / 100
-    : input.amount;
-
-  // Si hay usuarios, crear gastos para cada uno
   let expenses: Expense[] = [];
-  
-  for (const userId of paidByUserIds) {
+
+  const allocations =
+    paidByUserIds.length > 0
+      ? resolveExpenseAllocations({
+          allocations: input.allocations,
+          paidByUserIds,
+          totalAmount: input.amount,
+        })
+      : [];
+
+  const isSharedExpense = allocations.length > 1;
+
+  for (const allocation of allocations) {
     const expense = await db.expense.create({
       data: {
         description: isSharedExpense
-          ? `${input.description} (Compartido - ${paidByUserIds.length} personas)`
+          ? `${input.description} (Compartido - ${allocations.length} personas)`
           : input.description,
-        amount: amountPerUser,
+        amount: allocation.amount,
         category: input.category,
         date: input.date ?? new Date(),
         receiptUrl: input.receiptUrl ?? null,
         clientId: input.clientId ?? null,
-        paidByUserId: userId,
+        paidByUserId: allocation.userId,
         reimbursed: input.reimbursed ?? false,
         payrollId: input.payrollId ?? null,
       },
@@ -72,7 +79,6 @@ export async function createExpenseInDb(
     expenses.push(expense);
   }
 
-  // Si no hay usuarios asignados, crear un solo gasto sin asignar
   if (paidByUserIds.length === 0) {
     const expense = await db.expense.create({
       data: {
@@ -107,6 +113,65 @@ export async function createExpenseInDb(
   }
 
   return expenses[0];
+}
+
+function resolveExpenseAllocations({
+  allocations,
+  paidByUserIds,
+  totalAmount,
+}: {
+  allocations?: ExpenseAllocationInput[];
+  paidByUserIds: string[];
+  totalAmount: number;
+}): ExpenseAllocationInput[] {
+  if (allocations && allocations.length > 0) {
+    const filteredAllocations = allocations.filter((allocation) =>
+      paidByUserIds.includes(allocation.userId)
+    );
+
+    if (filteredAllocations.length > 0) {
+      return normalizeAllocationsTotal(filteredAllocations, totalAmount);
+    }
+  }
+
+  const equalAmount = roundCurrency(totalAmount / paidByUserIds.length);
+
+  return paidByUserIds.map((userId, index) => ({
+    userId,
+    amount:
+      index === paidByUserIds.length - 1
+        ? roundCurrency(totalAmount - equalAmount * (paidByUserIds.length - 1))
+        : equalAmount,
+  }));
+}
+
+function normalizeAllocationsTotal(
+  allocations: ExpenseAllocationInput[],
+  totalAmount: number
+): ExpenseAllocationInput[] {
+  const normalizedAllocations = allocations.map((allocation) => ({
+    ...allocation,
+    amount: roundCurrency(allocation.amount),
+  }));
+  const currentTotal = normalizedAllocations.reduce(
+    (sum, allocation) => sum + allocation.amount,
+    0
+  );
+  const diff = roundCurrency(totalAmount - currentTotal);
+
+  if (Math.abs(diff) <= 0.01 && normalizedAllocations.length > 0) {
+    const lastAllocation = normalizedAllocations[normalizedAllocations.length - 1];
+    normalizedAllocations[normalizedAllocations.length - 1] = {
+      ...lastAllocation,
+      amount: roundCurrency(lastAllocation.amount + diff),
+    };
+  }
+
+  return normalizedAllocations;
+}
+
+function roundCurrency(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 /**

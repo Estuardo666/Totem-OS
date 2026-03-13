@@ -10,6 +10,9 @@ export type CurrentMonthTaskSummary = {
   publishedTasks: number;
   reelsCount: number;
   flyerCount: number;
+  publishedReelsCount: number;
+  publishedFlyerCount: number;
+  publishedStoryCount: number;
 };
 
 const currentMonthTaskWhere = (currentMonthStart: Date, currentMonthEnd: Date) => ({
@@ -38,6 +41,14 @@ const currentMonthTaskWhere = (currentMonthStart: Date, currentMonthEnd: Date) =
   ],
 });
 
+const publishedThisMonthWhere = (currentMonthStart: Date, currentMonthEnd: Date) => ({
+  status: "PUBLISHED" as const,
+  publishedAt: {
+    gte: currentMonthStart,
+    lte: currentMonthEnd,
+  },
+});
+
 export async function getCurrentMonthTaskSummary(): Promise<ApiResponse<CurrentMonthTaskSummary>> {
   const session = await auth();
 
@@ -54,18 +65,12 @@ export async function getCurrentMonthTaskSummary(): Promise<ApiResponse<CurrentM
     const currentMonthStart = startOfMonth(now);
     const currentMonthEnd = endOfMonth(now);
 
-    const [totalTasks, publishedTasks, reelsCount, flyerCount] = await Promise.all([
+    const [totalTasks, publishedTasks, reelsCount, flyerCount, publishedReelsCount, publishedFlyerCount, publishedStoryCount] = await Promise.all([
       db.contentTask.count({
         where: currentMonthTaskWhere(currentMonthStart, currentMonthEnd),
       }),
       db.contentTask.count({
-        where: {
-          status: "PUBLISHED",
-          publishedAt: {
-            gte: currentMonthStart,
-            lte: currentMonthEnd,
-          },
-        },
+        where: publishedThisMonthWhere(currentMonthStart, currentMonthEnd),
       }),
       db.contentTask.count({
         where: {
@@ -79,6 +84,24 @@ export async function getCurrentMonthTaskSummary(): Promise<ApiResponse<CurrentM
           type: "FLYER",
         },
       }),
+      db.contentTask.count({
+        where: {
+          ...publishedThisMonthWhere(currentMonthStart, currentMonthEnd),
+          type: "REEL",
+        },
+      }),
+      db.contentTask.count({
+        where: {
+          ...publishedThisMonthWhere(currentMonthStart, currentMonthEnd),
+          type: "FLYER",
+        },
+      }),
+      db.contentTask.count({
+        where: {
+          ...publishedThisMonthWhere(currentMonthStart, currentMonthEnd),
+          type: "STORY",
+        },
+      }),
     ]);
 
     return {
@@ -88,6 +111,9 @@ export async function getCurrentMonthTaskSummary(): Promise<ApiResponse<CurrentM
         publishedTasks,
         reelsCount,
         flyerCount,
+        publishedReelsCount,
+        publishedFlyerCount,
+        publishedStoryCount,
       },
     };
   } catch (error) {

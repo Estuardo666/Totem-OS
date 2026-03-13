@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, Mic, FileText, Moon, Sun } from "lucide-react";
+import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, Mic, FileText, Moon, Sun, Brain } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getBrandSettings } from "@/actions/admin-actions";
@@ -89,9 +89,19 @@ const navItems: (NavItem | NavItemWithChildren)[] = [
         icon: Wallet,
       },
       {
+        href: "/finance/ai-analytics",
+        label: "Analíticas IA",
+        icon: Brain,
+      },
+      {
         href: "/finance/settlement",
         label: "Liquidación Interna",
         icon: Wallet,
+      },
+      {
+        href: "/finance/settings",
+        label: "Configuración",
+        icon: Settings,
       },
     ],
   },
@@ -143,10 +153,12 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
     
     const financePaths = [
       "/finance",
+      "/finance/ai-analytics",
       "/finance/personal",
       "/finance/transactions",
       "/finance/alerts",
       "/finance/settlement",
+      "/finance/settings",
     ];
     const isFinanceActive = financePaths.some(
       (path) => pathname === path || pathname?.startsWith(`${path}/`)

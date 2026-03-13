@@ -5,6 +5,7 @@ export * from "./user";
 export * from "./client";
 export * from "./content";
 export * from "./finance";
+export * from "./finance-settings";
 export * from "./voice";
 
 

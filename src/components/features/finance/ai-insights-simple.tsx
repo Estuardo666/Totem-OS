@@ -14,14 +14,23 @@ import {
   Users, 
   Zap,
   RefreshCw,
-  ChevronUp,
-  ChevronDown,
-  Minus,
-  Info,
   HelpCircle
 } from "lucide-react";
-import type { FinancialStats, GlobalProfitabilityStats, StrategicClientPlan } from "@/actions/finance-actions";
+import type { FinancialStats } from "@/lib/finance-reporting-service";
 import { generateFinancialPredictionsAction } from "@/actions";
+
+type GlobalProfitabilityStats = {
+  profitMargin?: number | null;
+};
+
+type StrategicClientPlan = {
+  id: string;
+  name: string;
+  status: string;
+  monthlyRate: number;
+  monthlyReels: number;
+  monthlyShoots: number;
+};
 
 interface SimpleAIInsightsProps {
   stats: FinancialStats;
@@ -44,6 +53,7 @@ export function SimpleAIInsights({ stats, profitability, clientPlans }: SimpleAI
   const [insights, setInsights] = useState<any>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
+  void profitability;
 
   // Solo se ejecuta 1 vez al montar el componente
   useEffect(() => {
@@ -108,7 +118,7 @@ export function SimpleAIInsights({ stats, profitability, clientPlans }: SimpleAI
     const mockInsights = {
       ai_predictions: generatePredictions(stats),
       benchmarks: generateBenchmarks(stats),
-      recommendations: generateRecommendations(stats, clientPlans),
+      recommendations: generateRecommendations(stats),
       sentiment: generateSentiment(clientPlans)
     };
     setInsights(mockInsights);
@@ -161,7 +171,7 @@ export function SimpleAIInsights({ stats, profitability, clientPlans }: SimpleAI
     };
   };
 
-  const generateRecommendations = (currentStats: FinancialStats, plans: StrategicClientPlan[]) => {
+  const generateRecommendations = (currentStats: FinancialStats) => {
     const recommendations = [];
     
     // Recomendación de costos
@@ -196,14 +206,6 @@ export function SimpleAIInsights({ stats, profitability, clientPlans }: SimpleAI
       sentiment_label: 'positive',
       risk_level: 'low'
     }));
-  };
-
-  const getTrendIcon = (trend: 'increasing' | 'decreasing' | 'stable') => {
-    switch (trend) {
-      case 'increasing': return <ChevronUp className="h-4 w-4 text-green-600" />;
-      case 'decreasing': return <ChevronDown className="h-4 w-4 text-red-600" />;
-      case 'stable': return <Minus className="h-4 w-4 text-gray-600" />;
-    }
   };
 
   const getPriorityColor = (priority: 'high' | 'medium' | 'low') => {

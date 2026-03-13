@@ -4,11 +4,14 @@ import { useState, useEffect } from "react";
 import { getExpensesStats } from "@/actions/finance-actions";
 import { getUsers } from "@/actions/user.actions";
 import { getClients } from "@/actions/client-actions";
+import type { ExpensesStatsData } from "@/lib/finance-reporting-service";
 import { ExpensesSummary } from "@/components/features/finance/expenses-summary";
 import { ExpensesTable } from "@/components/features/finance/expenses-table";
 import { ExpensesPieChart } from "@/components/features/finance/expenses-pie-chart";
 import { ExpensesBarChart } from "@/components/features/finance/expenses-bar-chart";
 import { ExpensesFilters } from "@/components/features/finance/expenses-filters";
+import { ExpensesBusinessPanel } from "@/components/features/finance/expenses-business-panel";
+import { ExpensesPersonalAnalyticsPanel } from "@/components/features/finance/expenses-personal-analytics-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { PageHeader } from "@/components/shared";
@@ -21,7 +24,7 @@ export function ExpensesWrapper() {
     clientId: "all",
     category: "all",
   });
-  const [expensesData, setExpensesData] = useState<any>(null);
+  const [expensesData, setExpensesData] = useState<ExpensesStatsData | null>(null);
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([]);
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -101,10 +104,9 @@ export function ExpensesWrapper() {
     <div className="container mx-auto p-3">
       <PageHeader
         title="Gastos y Egresos"
-        description="Gestiona los gastos de la agencia y reembolsos pendientes"
+        description="Controla la capa empresarial oficial y, en paralelo, revisa la analítica personal interna del equipo"
       />
 
-      {/* Filtros */}
       <div className="mb-6">
         <ExpensesFilters
           users={users}
@@ -115,7 +117,6 @@ export function ExpensesWrapper() {
         />
       </div>
 
-      {/* Resumen de métricas */}
       <div className="mb-8">
         <ExpensesSummary
           totalExpensesThisMonth={expensesData.totalExpensesThisMonth}
@@ -123,31 +124,43 @@ export function ExpensesWrapper() {
         />
       </div>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribución por Categoría</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ExpensesPieChart data={expensesData.categoryDistribution} />
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+        <div className="space-y-6">
+          <ExpensesBusinessPanel financeSettingsMetrics={expensesData.financeSettingsMetrics} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Gastos por Cliente</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ExpensesBarChart data={expensesData.clientDistribution} />
-          </CardContent>
-        </Card>
-      </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Distribución por categoría</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ExpensesPieChart data={expensesData.categoryDistribution} />
+              </CardContent>
+            </Card>
 
-      {/* Tabla de gastos */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Gastos</h2>
-        <ExpensesTable expenses={expensesData.expenses} onUpdate={reloadData} />
+            <Card>
+              <CardHeader>
+                <CardTitle>Gastos por cliente</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ExpensesBarChart data={expensesData.clientDistribution} />
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Registro operativo de gastos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ExpensesTable expenses={expensesData.expenses} onUpdate={reloadData} />
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <ExpensesPersonalAnalyticsPanel financeSettingsMetrics={expensesData.financeSettingsMetrics} />
+        </div>
       </div>
     </div>
   );

@@ -4,8 +4,8 @@ import { getCurrentMonthTaskSummary } from "@/actions/dashboard-task-actions";
 export async function CurrentMonthTaskSummary() {
   const summaryResult = await getCurrentMonthTaskSummary();
   const summary = summaryResult.success
-    ? summaryResult.data ?? { totalTasks: 0, publishedTasks: 0, reelsCount: 0, flyerCount: 0 }
-    : { totalTasks: 0, publishedTasks: 0, reelsCount: 0, flyerCount: 0 };
+    ? summaryResult.data ?? { totalTasks: 0, publishedTasks: 0, reelsCount: 0, flyerCount: 0, publishedReelsCount: 0, publishedFlyerCount: 0, publishedStoryCount: 0 }
+    : { totalTasks: 0, publishedTasks: 0, reelsCount: 0, flyerCount: 0, publishedReelsCount: 0, publishedFlyerCount: 0, publishedStoryCount: 0 };
 
   return (
     <div className="rounded-2xl border bg-card p-5 shadow-sm">
@@ -45,6 +45,17 @@ export async function CurrentMonthTaskSummary() {
             </div>
           </div>
           <div className="text-4xl font-bold text-emerald-600">{summary.publishedTasks}</div>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700 border border-emerald-100">
+              REELS: {summary.publishedReelsCount}
+            </span>
+            <span className="rounded-full bg-lime-50 px-2.5 py-1 text-lime-700 border border-lime-100">
+              FLYERS: {summary.publishedFlyerCount}
+            </span>
+            <span className="rounded-full bg-teal-50 px-2.5 py-1 text-teal-700 border border-teal-100">
+              STORIES: {summary.publishedStoryCount}
+            </span>
+          </div>
           <p className="mt-2 text-xs text-muted-foreground">Total de tareas completadas y publicadas durante el mes actual</p>
         </div>
       </div>
