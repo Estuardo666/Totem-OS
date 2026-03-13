@@ -154,7 +154,7 @@ export function ShootingForm({
       getTasks().then((result) => {
         if (result.success && result.data) {
           // Filtrar tareas activas del cliente seleccionado
-          const activeStatuses = ["IDEA", "RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT", "CLIENT_APPROVED", "APPROVED"];
+          const activeStatuses = ["IDEA", "SCRIPT", "RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT", "CLIENT_APPROVED", "APPROVED"];
           const clientTasks = result.data.filter(
             (task) => task.clientId === clientId && activeStatuses.includes(task.status)
           );

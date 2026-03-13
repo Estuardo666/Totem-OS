@@ -9,6 +9,7 @@ export type ContentTaskType = "REEL" | "FLYER" | "STORY";
 
 export type ContentTaskStatus =
   | "IDEA"
+  | "SCRIPT"
   | "RECORDED"
   | "EDITING"
   | "REVIEW_INTERNAL"

@@ -32,7 +32,8 @@ const KANBAN_COLUMNS: {
   status: ContentTaskStatus;
   label: string;
 }[] = [
-  { status: "IDEA", label: "Guión" },
+  { status: "IDEA", label: "Idea" },
+  { status: "SCRIPT", label: "Guión" },
   { status: "RECORDED", label: "Grabado" },
   { status: "EDITING", label: "Editando" },
   { status: "REVIEW_CLIENT", label: "Revisión Cliente" },
@@ -703,7 +704,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     return (
       <div className="w-full h-full overflow-visible">
         {/* Mobile: scroll horizontal | Desktop: grid con columnas fijas */}
-        <div className="flex md:grid md:grid-cols-6 md:gap-4 w-full h-full items-start overflow-x-auto md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0">
+        <div className="flex md:grid md:grid-cols-7 md:gap-4 w-full h-full items-start overflow-x-auto md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0">
           {KANBAN_COLUMNS.map((column) => {
             const columnTasks = tasksByStatus[column.status] || [];
 
@@ -792,7 +793,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
         {/* Mobile: scroll horizontal 98vw | Desktop: grid con columnas fijas */}
         <div
           ref={scrollRef}
-          className="flex md:grid md:grid-cols-6 md:gap-4 w-[98vw] md:w-full h-full items-start overflow-x-auto overflow-y-visible md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
+          className="flex md:grid md:grid-cols-7 md:gap-4 w-[98vw] md:w-full h-full items-start overflow-x-auto overflow-y-visible md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
         >
           {KANBAN_COLUMNS.map((column) => {
             const columnTasks = tasksByStatus[column.status] || [];

@@ -6,19 +6,14 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { subHours } from "date-fns";
-import { Loader2, Trash2, Copy, Check, X, Download, Sparkles, Share2, FileText } from "lucide-react";
-import { updateContentTaskSchema, createContentTaskSchema, type UpdateContentTaskInput, type CreateContentTaskInput, updateTaskMetricsSchema, type UpdateTaskMetricsInput } from "@/schemas/content";
+import { Loader2, Trash2, Copy, Check, X, Download, Sparkles, FileText } from "lucide-react";
+import { updateContentTaskSchema, createContentTaskSchema, type UpdateContentTaskInput, type CreateContentTaskInput, updateTaskMetricsSchema } from "@/schemas/content";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import { updateTask, deleteTask, createTask, getTaskMetrics, updateTaskMetrics, getEnabledMetricsForClient } from "@/actions/content-actions";
 import type { TaskMetrics, User } from "@prisma/client";
-import type { UserWithTaskCount } from "@/actions/user.actions";
 import type { ContentTaskStatus, ContentTaskType } from "@/types";
-import { useToast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UploadButton } from "@uploadthing/react";
+import type { UserWithTaskCount } from "@/actions/user.actions";
+import { UploadButton } from "@/utils/uploadthing";
 import NextImage from "next/image";
 import Link from "next/link";
 import {
@@ -51,9 +46,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { calculateBrandLoyalty, calculateInvestmentEfficiency, formatCurrency } from "@/lib/metrics-calculations";
-import { cn } from "@/lib/utils";
 import { AiContentAssistant } from "@/components/features/ai/ai-content-assistant";
 import {
   Tooltip,
@@ -61,10 +53,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const CONTENT_TASK_TYPES: readonly ContentTaskType[] = ["REEL", "FLYER", "STORY"];
 const CONTENT_TASK_STATUSES: readonly ContentTaskStatus[] = [
   "IDEA",
+  "SCRIPT",
   "RECORDED",
   "EDITING",
   "REVIEW_INTERNAL",
@@ -116,7 +114,7 @@ const formatDateTimeForInput = (value?: Date | string | null) => {
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date?.getTime())) return undefined;
   
-  // ✨ Usar getters locales (no UTC) para que el input datetime-local muestre correctamente
+  // Usar getters locales (no UTC) para que el input datetime-local muestre correctamente
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -173,12 +171,10 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
   const [isPending, startTransition] = useTransition();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<TaskMetrics | null>(null);
   const [enabledMetrics, setEnabledMetrics] = useState<string[]>([]);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
   const [isSavingMetrics, setIsSavingMetrics] = useState(false);
-  const [copiedSummary, setCopiedSummary] = useState(false);
   const [copiedPostCopy, setCopiedPostCopy] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -197,7 +193,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
     defaultValues: buildTaskFormValues(task, initialScheduledAt, initialDefaults),
   });
   const currentTaskStatus = form.watch("status") ?? task?.status;
-  const isScriptStage = currentTaskStatus === "IDEA";
+  const isSharedDeadlineStage = currentTaskStatus === "IDEA" || currentTaskStatus === "SCRIPT";
   const selectedClientId = form.watch("clientId");
   const coverImageUrl = form.watch("coverImageUrl");
   const scriptUrl = form.watch("scriptUrl");
@@ -275,18 +271,22 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
       try {
         const schema = isNewTask ? createContentTaskSchema : updateContentTaskSchema;
         const parsedData = schema.parse(data);
-        const shouldResetDatesOnStageChange = !isNewTask && task?.status === "IDEA" && parsedData.status === "RECORDED";
+        const shouldResetDatesOnStageChange = !isNewTask && task?.status === "SCRIPT" && parsedData.status === "RECORDED";
 
         // Calcular automáticamente la fecha de entrega: 24 horas antes de la fecha programada
         let calculatedDueDate: Date | undefined = undefined;
         if (shouldResetDatesOnStageChange) {
           calculatedDueDate = undefined;
-        } else if (parsedData.scheduledAt && parsedData.status !== "IDEA") {
+        } else if (parsedData.scheduledAt && parsedData.status !== "IDEA" && parsedData.status !== "SCRIPT") {
           const scheduledDate = parsedData.scheduledAt instanceof Date
             ? parsedData.scheduledAt
             : new Date(parsedData.scheduledAt);
           calculatedDueDate = subHours(scheduledDate, 24);
-        } else if (parsedData.status === "IDEA") {
+        } else if ((parsedData.status === "IDEA" || parsedData.status === "SCRIPT") && parsedData.scheduledAt) {
+          calculatedDueDate = parsedData.scheduledAt instanceof Date
+            ? parsedData.scheduledAt
+            : new Date(parsedData.scheduledAt);
+        } else if (parsedData.status === "IDEA" || parsedData.status === "SCRIPT") {
           calculatedDueDate = undefined;
         } else if (task?.scheduledAt && !parsedData.scheduledAt) {
           // Si se elimina la fecha programada, mantener la fecha de entrega actual o eliminarla
@@ -443,93 +443,11 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
     }
   };
 
-  const handleCopySummary = async () => {
-    if (!task || !metrics) return;
-
-    const isReelOrStory = task.type === "REEL" || task.type === "STORY";
-    
-    // Construir resumen con las métricas disponibles
-    let summary = `*Resultados de ${task.title}:*\n\n`;
-    
-    // Métricas Meta (si existen)
-    if ((metrics.metaReach > 0 || metrics.metaViews > 0) && enabledMetrics.includes("metaViews")) {
-      summary += `*Meta (IG/FB):* 🚀 ${metrics.metaViews || 0} vistas, ❤️ ${metrics.metaLikes || 0} likes, 💬 ${metrics.metaComments || 0} comentarios, ✈️ ${metrics.metaShares || 0} compartidos${isReelOrStory && enabledMetrics.includes("metaSaves") ? `, 💾 ${metrics.metaSaves || 0} guardados` : ""}${enabledMetrics.includes("metaReach") ? `, 👁️ ${metrics.metaReach || 0} alcance` : ""}\n`;
-    }
-    
-    // Métricas TikTok (si existen)
-    if (metrics.ttViews > 0 && enabledMetrics.includes("ttViews")) {
-      summary += `*TikTok:* 🚀 ${metrics.ttViews || 0} vistas, ❤️ ${metrics.ttLikes || 0} likes, 💬 ${metrics.ttComments || 0} comentarios, ✈️ ${metrics.ttShares || 0} compartidos${isReelOrStory && enabledMetrics.includes("ttSaves") ? `, 💾 ${metrics.ttSaves || 0} guardados` : ""}\n`;
-    }
-
-    // Métricas de business impact (si existen)
-    if (enabledMetrics.includes("conversions") && metrics.conversions > 0) {
-      summary += `\n*Impacto de Negocio:*\n`;
-      summary += `🔄 Conversiones: ${metrics.conversions}\n`;
-      if (enabledMetrics.includes("salesCount") && metrics.salesCount > 0) {
-        summary += `💰 Ventas: ${metrics.salesCount}\n`;
-      }
-      if (enabledMetrics.includes("revenue") && metrics.revenue > 0) {
-        summary += `💵 Ingresos: $${metrics.revenue.toFixed(2)}\n`;
-      }
-      if (enabledMetrics.includes("conversionSource") && metrics.conversionSource) {
-        summary += `📍 Fuente: ${metrics.conversionSource}\n`;
-      }
-    }
-
-    try {
-      await navigator.clipboard.writeText(summary);
-      setCopiedSummary(true);
-      toast({
-        title: "Resumen copiado",
-        description: "El resumen ha sido copiado al portapapeles.",
-      });
-      setTimeout(() => setCopiedSummary(false), 2000);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al copiar",
-        description: "No se pudo copiar el resumen al portapapeles.",
-      });
-    }
-  };
-
   // Usar métricas guardadas (el cálculo se hace en el backend)
   const displayMetrics = metrics;
 
   // Si es una nueva tarea y no hay initialScheduledAt, no mostrar el sheet
   if (!task && !initialScheduledAt && !open) return null;
-
-  // Función helper para obtener el color del círculo de prioridad
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "LOW":
-        return "bg-white border border-gray-300";
-      case "MEDIUM":
-        return "bg-green-500";
-      case "HIGH":
-        return "bg-orange-500";
-      case "URGENT":
-        return "bg-red-500";
-      default:
-        return "bg-gray-300";
-    }
-  };
-
-  // Función helper para obtener el texto de prioridad
-  const getPriorityLabel = (priority: string) => {
-    switch (priority) {
-      case "LOW":
-        return "Baja";
-      case "MEDIUM":
-        return "Media";
-      case "HIGH":
-        return "Alta";
-      case "URGENT":
-        return "Urgente";
-      default:
-        return priority;
-    }
-  };
 
   // Función helper para obtener las iniciales de un usuario
   const getUserInitials = (name: string) => {
@@ -841,7 +759,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     render={({ field }) => (
                       <FormItem className="space-y-2">
                         <FormLabel className={currentTaskStatus === "CLIENT_APPROVED" ? "text-orange-600 font-semibold text-xs uppercase tracking-wider" : "text-xs font-semibold uppercase tracking-wider text-muted-foreground"}>
-                          {isScriptStage ? "Fecha de Entrega de Guión" : "Fecha de Entrega Interna"}
+                          {isSharedDeadlineStage ? "Fecha Compartida Idea/Guión" : "Fecha de Entrega Interna"}
                           {currentTaskStatus === "CLIENT_APPROVED" && (
                             <span className="ml-2 text-xs text-orange-600 font-normal">⚠️ No olvides programarla</span>
                           )}
@@ -853,8 +771,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                             onChange={(e) => {
                               field.onChange(e.target.value || undefined);
                               if (e.target.value) {
-                                if (isScriptStage) {
-                                  form.setValue("dueDate", undefined);
+                                if (isSharedDeadlineStage) {
+                                  form.setValue("dueDate", e.target.value);
                                 } else {
                                   const scheduledDate = new Date(e.target.value);
                                   const calculatedDueDate = subHours(scheduledDate, 24);
@@ -870,8 +788,8 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                         </FormControl>
                         <FormMessage />
                         <p className="text-xs text-muted-foreground">
-                          {isScriptStage
-                            ? "Fecha en la que community debe entregar el guión"
+                          {isSharedDeadlineStage
+                            ? "Fecha compartida para las etapas de idea y guión"
                             : "Fecha cuando debe estar lista la tarea para publicar"}
                         </p>
                       </FormItem>
@@ -933,6 +851,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                         </FormControl>
                         <SelectContent className="rounded-xl">
                           <SelectItem value="IDEA" className="rounded-lg">💡 Idea</SelectItem>
+                          <SelectItem value="SCRIPT" className="rounded-lg">📝 Guión</SelectItem>
                           <SelectItem value="RECORDED" className="rounded-lg">🎥 Grabado</SelectItem>
                           <SelectItem value="EDITING" className="rounded-lg">✏️ Editando</SelectItem>
                           <SelectItem value="REVIEW_INTERNAL" className="rounded-lg">👀 Revisión Interna</SelectItem>
@@ -1007,6 +926,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                             <Textarea
                               placeholder="Escribe el texto del post aquí..."
                               {...field}
+                              value={field.value ?? ""}
                               disabled={isPending}
                               className="min-h-[140px] resize-y rounded-lg border-input"
                             />
@@ -1020,7 +940,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                           {task ? (
                             <AiContentAssistant
                               taskId={task.id}
-                              currentCopy={field.value}
+                              currentCopy={field.value ?? undefined}
                               onInsertCopy={(content) => {
                                 form.setValue("postCopy", content, {
                                   shouldDirty: true,
@@ -1136,7 +1056,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                                     onUploadBegin={() => {
                                       setIsUploadingImage(true);
                                     }}
-                                    onClientUploadComplete={(res) => {
+                                    onClientUploadComplete={(res: Array<{ ufsUrl?: string; url?: string }>) => {
                                       setIsUploadingImage(false);
                                       console.log("✅ Archivos: ", res);
                                       if (res && res[0]) {
@@ -1276,10 +1196,10 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                                       allowedContent: "hidden"
                                     }}
                                     content={{ button: "Subir Guión" }}
-                                    onClientUploadComplete={(res) => {
+                                    onClientUploadComplete={(res: Array<{ ufsUrl?: string; url?: string }>) => {
                                       console.log("✅ Guión subido: ", res);
                                       if (res && res[0]) {
-                                        const newUrl = res[0].url;
+                                        const newUrl = res[0].ufsUrl || res[0].url;
                                         form.setValue("scriptUrl", newUrl, {
                                           shouldDirty: true,
                                           shouldTouch: true,

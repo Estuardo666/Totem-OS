@@ -44,7 +44,7 @@ const isTaskOwnedByUser = ({
   role?: string | null;
   specialty?: string | null;
 }) => {
-  if (task.status === "IDEA") {
+  if (task.status === "IDEA" || task.status === "SCRIPT") {
     return task.assignedCommunityId === userId;
   }
 

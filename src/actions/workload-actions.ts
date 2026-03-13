@@ -44,7 +44,7 @@ function getEstimatedTaskMinutes(input: {
   status: string;
   type: string;
 }): number {
-  if (input.status === "IDEA") {
+  if (input.status === "IDEA" || input.status === "SCRIPT") {
     return 50;
   }
 
@@ -100,7 +100,9 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
             },
             OR: [
               {
-                status: "IDEA",
+                status: {
+                  in: ["IDEA", "SCRIPT"],
+                },
                 assignedCommunityId: user.id,
               },
               {

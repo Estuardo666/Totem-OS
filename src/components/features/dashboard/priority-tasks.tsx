@@ -6,7 +6,7 @@ import { format, isToday, isYesterday, differenceInHours, startOfDay, endOfDay, 
 import Link from "next/link";
 
 const EDITOR_RESPONSIBLE_STATUSES = ["RECORDED", "EDITING", "REVIEW_CLIENT"] as const;
-const COMMUNITY_RESPONSIBLE_STATUSES = ["IDEA", "CLIENT_APPROVED"] as const;
+const COMMUNITY_RESPONSIBLE_STATUSES = ["IDEA", "SCRIPT", "CLIENT_APPROVED"] as const;
 
 function isTaskRelevantForUser(input: {
   userId?: string;

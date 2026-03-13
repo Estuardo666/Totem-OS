@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ContentCardContextMenu } from "./content-card-context-menu";
-import { useEffect, useState } from "react";
 
 function getUserInitials(name: string | null | undefined) {
   if (!name) return "?";
@@ -67,23 +66,10 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
   const isPublishing = false;
   const isEditorStage = ["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"].includes(task.status);
   const hasMissingScheduleWarning = isEditorStage && !task.scheduledAt && !task.dueDate;
-  const [isMobile, setIsMobile] = useState(false);
-  const [mobileOpenSignal, setMobileOpenSignal] = useState(0);
-
-  // Detectar dispositivo móvil
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Para TODAS las tareas: Envolver en Draggable
   const isDragDisabled = isPublishing;
-  const showOnlyCommunityAvatar = task.status === "IDEA" || task.status === "RECORDED";
+  const showOnlyCommunityAvatar = task.status === "IDEA" || task.status === "SCRIPT";
   const shouldShowAssignedAvatars = task.status !== "PUBLISHED" && (
     showOnlyCommunityAvatar
       ? Boolean(task.assignedCommunity)
@@ -127,7 +113,6 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
               clients={clients}
               onEdit={() => onCardClick(task)}
               onOptimisticStatusChange={onOptimisticStatusChange}
-              mobileOpenSignal={mobileOpenSignal}
             >
               <Card
                 className={`relative max-w-full overflow-hidden border transition-all duration-200 ${
@@ -160,69 +145,16 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
                     return;
                   }
 
-                  // En mobile, ya manejamos en onTouchStart
-                  if (isMobile) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return;
-                  }
-
-                  // En desktop, comportamiento normal
+                  // Si es tarea publicada, abrir el sheet
                   if (task.status === "PUBLISHED") {
                     e.stopPropagation();
                     onCardClick(task);
                     return;
                   }
 
+                  // Para tareas no publicadas, abrir sheet normalmente
                   e.stopPropagation();
                   onCardClick(task);
-                }}
-                onTouchStart={(e) => {
-                  if (isPublishing || snapshot.isDragging) {
-                    return;
-                  }
-
-                  const touch = e.touches[0];
-                  if (!touch) return;
-
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = touch.clientX || rect.left + rect.width / 2;
-                  const y = touch.clientY || rect.top + rect.height / 2;
-
-                  // Simular interacción secundaria para Radix ContextMenu
-                  const pointerDown = new PointerEvent("pointerdown", {
-                    bubbles: true,
-                    cancelable: true,
-                    pointerType: "touch",
-                    button: 2,
-                    buttons: 2,
-                    clientX: x,
-                    clientY: y,
-                  });
-
-                  const contextEvent = new MouseEvent("contextmenu", {
-                    bubbles: true,
-                    cancelable: true,
-                    clientX: x,
-                    clientY: y,
-                    button: 2,
-                    buttons: 2,
-                  });
-
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setMobileOpenSignal((v) => v + 1);
-                  e.currentTarget.dispatchEvent(pointerDown);
-                  // pequeño timeout para asegurar procesamiento secuencial
-                  setTimeout(() => {
-                    e.currentTarget.dispatchEvent(contextEvent);
-                  }, 0);
-                }}
-                onContextMenu={(e) => {
-                  // Prevenir menú contextual por defecto en mobile para evitar doble menú
-                  if (isMobile) {
-                    e.preventDefault();
-                  }
                 }}
               >
                 {shouldShowAssignedAvatars && (
@@ -314,7 +246,7 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
                       )}
 
                       {/* Fecha de entrega interna - Oculta en vista compacta y en IDEA/Guión */}
-                      {!isCompactView && task.scheduledAt && task.status !== "IDEA" && (
+                      {!isCompactView && task.scheduledAt && task.status !== "IDEA" && task.status !== "SCRIPT" && (
                         <div className={`text-[9px] md:text-[10px] flex items-center gap-1 mt-1 ${
                           isToday(new Date(task.scheduledAt))
                             ? "text-orange-600 font-semibold"

@@ -6,6 +6,7 @@ export const contentTaskSchema = z.object({
   type: z.enum(["REEL", "FLYER", "STORY"]),
   status: z.enum([
     "IDEA",
+    "SCRIPT",
     "RECORDED",
     "EDITING",
     "REVIEW_INTERNAL",
@@ -44,6 +45,7 @@ export const createContentTaskSchema = contentTaskSchema
     status: z
       .enum([
         "IDEA",
+        "SCRIPT",
         "RECORDED",
         "EDITING",
         "REVIEW_INTERNAL",
@@ -55,6 +57,7 @@ export const createContentTaskSchema = contentTaskSchema
       .default("IDEA"),
     priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
   });
+
 export const updateContentTaskSchema = contentTaskSchema.partial();
 
 const batchTaskItemSchema = createContentTaskSchema.pick({
@@ -84,6 +87,7 @@ export const bulkUpdateTasksSchema = z.object({
     .min(1, "Debes seleccionar al menos una tarea"),
   status: z.enum([
     "IDEA",
+    "SCRIPT",
     "RECORDED",
     "EDITING",
     "REVIEW_INTERNAL",

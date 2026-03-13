@@ -3,6 +3,7 @@
 interface ProductionRadarProps {
   radar: {
     IDEA: number;
+    SCRIPT: number;
     RECORDED: number;
     EDITING: number;
     REVIEW_CLIENT: number;
@@ -13,7 +14,8 @@ interface ProductionRadarProps {
 }
 
 const statusLabels: Record<keyof Omit<ProductionRadarProps["radar"], "shootsThisMonth">, string> = {
-  IDEA: "Guión",
+  IDEA: "Idea",
+  SCRIPT: "Guión",
   RECORDED: "Grabado",
   EDITING: "Editando",
   REVIEW_CLIENT: "Revisión Cliente",
@@ -23,6 +25,7 @@ const statusLabels: Record<keyof Omit<ProductionRadarProps["radar"], "shootsThis
 
 const statusColors: Record<keyof Omit<ProductionRadarProps["radar"], "shootsThisMonth">, { bg: string; dot: string }> = {
   IDEA: { bg: "bg-blue-50 dark:bg-blue-950/30", dot: "bg-blue-500" },
+  SCRIPT: { bg: "bg-sky-50 dark:bg-sky-950/30", dot: "bg-sky-500" },
   RECORDED: { bg: "bg-purple-50 dark:bg-purple-950/30", dot: "bg-purple-500" },
   EDITING: { bg: "bg-yellow-50 dark:bg-yellow-950/30", dot: "bg-yellow-500" },
   REVIEW_CLIENT: { bg: "bg-pink-50 dark:bg-pink-950/30", dot: "bg-pink-500" },
@@ -33,6 +36,7 @@ const statusColors: Record<keyof Omit<ProductionRadarProps["radar"], "shootsThis
 export function ProductionRadar({ radar }: ProductionRadarProps) {
   const statuses: Array<keyof Omit<ProductionRadarProps["radar"], "shootsThisMonth">> = [
     "IDEA",
+    "SCRIPT",
     "RECORDED",
     "EDITING",
     "REVIEW_CLIENT",
@@ -46,7 +50,7 @@ export function ProductionRadar({ radar }: ProductionRadarProps) {
         <h2 className="text-xl font-bold">Radar de Producción</h2>
         <p className="text-sm text-muted-foreground">Estado de tus proyectos en producción</p>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
         {statuses.map((status) => (
           <div
             key={status}

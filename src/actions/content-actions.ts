@@ -1,5 +1,6 @@
 "use server";
 
+import { subHours } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -81,7 +82,7 @@ async function triggerDashboardUpdate(userIds: string[]): Promise<void> {
 }
 
  const editorOwnedStatuses = ["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"] as const;
-
+  
  function buildOwnedTasksWhereClause({
    userId,
    role,
@@ -93,7 +94,9 @@ async function triggerDashboardUpdate(userIds: string[]): Promise<void> {
  }): Prisma.ContentTaskWhereInput {
    const ownershipClauses: Prisma.ContentTaskWhereInput[] = [
      {
-       status: "IDEA",
+       status: {
+         in: ["IDEA", "SCRIPT"],
+       },
        assignedCommunityId: userId,
      },
      {
@@ -120,7 +123,7 @@ async function triggerDashboardUpdate(userIds: string[]): Promise<void> {
  }
 
  function shouldResetTaskDatesOnStatusChange(_currentStatus: string, _newStatus: string): boolean {
-   return _currentStatus === "IDEA" && _newStatus === "RECORDED";
+   return _currentStatus === "SCRIPT" && _newStatus === "RECORDED";
  }
 
 async function getSingleEditorId(): Promise<string | null> {
@@ -201,6 +204,17 @@ async function persistTask(validatedData: ReturnType<typeof createContentTaskSch
     select: { editorId: true, communityId: true, name: true, logo: true },
   });
 
+  const normalizedScheduledAt = validatedData.scheduledAt
+    ? new Date(validatedData.scheduledAt)
+    : null;
+  const normalizedDueDate = validatedData.dueDate
+    ? new Date(validatedData.dueDate)
+    : normalizedScheduledAt
+      ? ["IDEA", "SCRIPT"].includes(validatedData.status ?? "IDEA")
+        ? new Date(normalizedScheduledAt)
+        : subHours(normalizedScheduledAt, 24)
+      : null;
+
   const assignedEditorId = await resolveAssignedEditorId({
     assignedEditorId: validatedData.assignedEditorId,
     clientEditorId: client?.editorId,
@@ -212,8 +226,8 @@ async function persistTask(validatedData: ReturnType<typeof createContentTaskSch
       title: validatedData.title,
       type: validatedData.type,
       status: validatedData.status ?? "IDEA",
-      dueDate: validatedData.dueDate ?? null,
-      scheduledAt: validatedData.scheduledAt ?? null,
+      dueDate: normalizedDueDate,
+      scheduledAt: normalizedScheduledAt,
       clientId: validatedData.clientId,
       assignedEditorId,
       assignedCommunityId,
@@ -594,6 +608,7 @@ export async function updateTaskStatus(
     // Validar que el status sea válido
     const validStatuses = [
       "IDEA",
+      "SCRIPT",
       "RECORDED",
       "EDITING",
       "REVIEW_INTERNAL",
@@ -641,7 +656,7 @@ export async function updateTaskStatus(
     const isChangingToPublished = newStatus === "PUBLISHED" && currentTask.status !== "PUBLISHED";
     const isChangingToClientApproved = newStatus === "CLIENT_APPROVED" && currentTask.status !== "CLIENT_APPROVED";
     const isChangingToEditing = newStatus === "EDITING" && currentTask.status !== "EDITING";
-    const isChangingFromIdeaToRecorded = currentTask.status === "IDEA" && newStatus === "RECORDED";
+    const isChangingFromScriptToRecorded = currentTask.status === "SCRIPT" && newStatus === "RECORDED";
 
     // Guardar IDs previos antes de reasignar (para notificaciones)
     const previousEditorId = currentTask.assignedEditorId;
@@ -672,7 +687,7 @@ export async function updateTaskStatus(
         newAssignedEditorId = client.editorId;
         shouldUpdateAssignedAt = true;
       }
-    } else if (isChangingFromIdeaToRecorded && !currentTask.assignedEditorId) {
+    } else if (isChangingFromScriptToRecorded && !currentTask.assignedEditorId) {
       const editorId = await getSingleEditorId();
       if (editorId) {
         newAssignedEditorId = editorId;
@@ -696,7 +711,7 @@ export async function updateTaskStatus(
           assignedEditorId: newAssignedEditorId,
         }),
         ...(shouldUpdateAssignedAt && { assignedAt: new Date() }),
-        ...(isChangingFromIdeaToRecorded && {
+        ...(isChangingFromScriptToRecorded && {
           scheduledAt: null,
           dueDate: null,
         }),
@@ -713,6 +728,7 @@ export async function updateTaskStatus(
     try {
       const statusLabels: Record<string, string> = {
         IDEA: "Idea",
+        SCRIPT: "Guión",
         RECORDED: "Grabado",
         EDITING: "Editando",
         REVIEW_INTERNAL: "Revisión Interna",
@@ -1781,12 +1797,11 @@ export async function duplicateTask(id: string): Promise<ApiResponse<ContentTask
       return { success: false, error: "Tarea no encontrada" };
     }
 
-    // Crear la tarea duplicada con estado IDEA
     const duplicatedTask = await db.contentTask.create({
       data: {
         title: `${originalTask.title} (Copia)`,
         type: originalTask.type,
-        status: "IDEA", // Siempre empezar en IDEA
+        status: "IDEA",
         priority: originalTask.priority,
         postCopy: originalTask.postCopy,
         scriptUrl: originalTask.scriptUrl,

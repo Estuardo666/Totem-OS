@@ -6,13 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { subHours } from "date-fns";
 import { Loader2, X, Download, Copy, Check } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { generateTaskOptionsAction, refineTaskContentAction } from "@/actions/ai-actions";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AiContentAssistant } from "@/components/features/ai/ai-content-assistant";
 import { createContentTaskSchema, type CreateContentTaskInput } from "@/schemas/content";
 import type { Client } from "@prisma/client";
@@ -22,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { UserWithTaskCount } from "@/actions/user.actions";
-import { UploadButton } from "@uploadthing/react";
+import { UploadButton } from "@/utils/uploadthing";
 import Image from "next/image";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
@@ -42,7 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 
 interface TaskFormProps {
   clients: Client[];
@@ -86,17 +79,14 @@ export function TaskForm({ clients, users }: TaskFormProps) {
       assignedCommunityId: undefined,
       dueDate: undefined,
       scheduledAt: undefined,
-      postCopy: undefined,
+      postCopy: "",
       coverImageUrl: undefined,
       audioBriefUrl: undefined,
     },
   });
 
   const [copied, setCopied] = useState(false);
-  const [isGenerating, startGenerating] = useTransition();
-  const [isRefining, startRefining] = useTransition();
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const coverImageUrl = form.watch("coverImageUrl");
   const selectedClientId = form.watch("clientId");
   const postCopy = form.watch("postCopy");
 
@@ -133,7 +123,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
       await navigator.clipboard.writeText(copyText);
       setCopied(true);
       toast({
-        title: "Copiado 📋",
+        title: "Copiado ",
         description: "El texto se ha copiado al portapapeles",
         duration: 2000,
       });
@@ -156,7 +146,9 @@ export function TaskForm({ clients, users }: TaskFormProps) {
           const scheduledDate = typeof data.scheduledAt === "string" 
             ? new Date(data.scheduledAt) 
             : data.scheduledAt;
-          calculatedDueDate = subHours(scheduledDate, 24);
+          calculatedDueDate = data.status === "IDEA" || data.status === "SCRIPT"
+            ? scheduledDate
+            : subHours(scheduledDate, 24);
         }
 
         // Preparar los datos con la fecha de entrega calculada
@@ -194,38 +186,6 @@ export function TaskForm({ clients, users }: TaskFormProps) {
         });
       }
     });
-  };
-
-  // Función helper para obtener el color del círculo de prioridad
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "LOW":
-        return "bg-white border border-gray-300";
-      case "MEDIUM":
-        return "bg-green-500";
-      case "HIGH":
-        return "bg-orange-500";
-      case "URGENT":
-        return "bg-red-500";
-      default:
-        return "bg-gray-300";
-    }
-  };
-
-  // Función helper para obtener el texto de prioridad
-  const getPriorityLabel = (priority: string) => {
-    switch (priority) {
-      case "LOW":
-        return "Baja";
-      case "MEDIUM":
-        return "Media";
-      case "HIGH":
-        return "Alta";
-      case "URGENT":
-        return "Urgente";
-      default:
-        return priority;
-    }
   };
 
   const getUserInitials = (name: string) =>
@@ -446,7 +406,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
           name="scheduledAt"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Fecha de Entrega Interna</FormLabel>
+              <FormLabel>Fecha Compartida Idea/Guión</FormLabel>
               <FormControl>
                 <Input
                   type="datetime-local"
@@ -459,7 +419,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
               </FormControl>
               <FormMessage />
               <p className="text-xs text-muted-foreground">
-                Fecha cuando debe estar lista la tarea para publicar
+                Fecha compartida para las etapas de idea y guión
               </p>
             </FormItem>
           )}
@@ -516,7 +476,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                 {selectedClientId ? (
                   <AiContentAssistant
                     taskId="" // No hay taskId en creación, pero el componente maneja este caso
-                    currentCopy={postCopy}
+                    currentCopy={postCopy ?? undefined}
                     onInsertCopy={(content) => {
                       form.setValue("postCopy", content, {
                         shouldDirty: true,
@@ -604,7 +564,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                         onUploadBegin={() => {
                           setIsUploadingImage(true);
                         }}
-                        onClientUploadComplete={(res) => {
+                        onClientUploadComplete={(res: Array<{ ufsUrl?: string; url?: string }>) => {
                           setIsUploadingImage(false);
                           if (res && res[0]) {
                             const newUrl = res[0].ufsUrl || res[0].url; // Usa ufsUrl, con fallback a url

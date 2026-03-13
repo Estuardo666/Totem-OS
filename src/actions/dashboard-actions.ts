@@ -8,6 +8,7 @@ import type { ContentTask, Shoot, Client } from "@prisma/client";
 export interface DashboardData {
   radar: {
     IDEA: number;
+    SCRIPT: number;
     RECORDED: number;
     EDITING: number;
     REVIEW_CLIENT: number;
@@ -237,6 +238,7 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
     // Procesar Radar - Mapear estados según requerimientos
     const radar = {
       IDEA: 0,
+      SCRIPT: 0,
       RECORDED: 0,
       EDITING: 0,
       REVIEW_CLIENT: 0,
@@ -250,6 +252,8 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
       // Mapear estados: IDEA, RECORDED, EDITING, REVIEW_CLIENT, CLIENT_APPROVED, PUBLISHED
       if (status === "IDEA") {
         radar.IDEA = item._count.id;
+      } else if (status === "SCRIPT") {
+        radar.SCRIPT = item._count.id;
       } else if (status === "RECORDED") {
         radar.RECORDED = item._count.id;
       } else if (status === "EDITING") {
