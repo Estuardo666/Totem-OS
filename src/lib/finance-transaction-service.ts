@@ -368,6 +368,7 @@ function buildRecurringPeriods(input: {
     type: string;
     overrideAmount: number | null;
   }>;
+  paidAmountsByPeriod: Map<string, number>;
 }): Array<{
   id: string;
   clientName: string;
@@ -415,9 +416,12 @@ function buildRecurringPeriods(input: {
       return [];
     }
 
+    const paidPeriodAmount = input.paidAmountsByPeriod.get(
+      getPeriodKey(period.monthStart.getFullYear(), period.monthStart.getMonth() + 1)
+    ) ?? 0;
     const periodAmount = exception?.type === "OVERRIDE_AMOUNT"
       ? exception.overrideAmount ?? input.monthlyRate
-      : input.monthlyRate;
+      : Math.max(input.monthlyRate, paidPeriodAmount);
 
     if (periodAmount <= 0) {
       return [];
@@ -589,6 +593,27 @@ export async function getReceivablesFromDb(
         return [];
       }
 
+      const paidAmountsByPeriod = new Map<string, number>();
+
+      allInvoices
+        .filter((invoice) => invoice.clientId === client.id && invoice.status === "PAID")
+        .forEach((invoice) => {
+          const d = new Date(invoice.generatedAt);
+          const key = getPeriodKey(d.getFullYear(), d.getMonth() + 1);
+          paidAmountsByPeriod.set(key, (paidAmountsByPeriod.get(key) ?? 0) + invoice.amount);
+        });
+
+      allTransactions
+        .filter((transaction) => {
+          const relatedClientId = transaction.relatedClientId ?? transaction.clientId ?? null;
+          return relatedClientId === client.id && transaction.status === "PAID";
+        })
+        .forEach((transaction) => {
+          const d = new Date(transaction.createdAt);
+          const key = getPeriodKey(d.getFullYear(), d.getMonth() + 1);
+          paidAmountsByPeriod.set(key, (paidAmountsByPeriod.get(key) ?? 0) + transaction.amount);
+        });
+
       return buildRecurringPeriods({
         startMonth,
         endMonth: monthStart,
@@ -600,6 +625,7 @@ export async function getReceivablesFromDb(
         clientLogo: client.logo ?? undefined,
         totalPaid,
         exceptions: clientExceptions,
+        paidAmountsByPeriod,
       });
     });
 
