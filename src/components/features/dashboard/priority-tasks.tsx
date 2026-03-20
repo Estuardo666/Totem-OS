@@ -25,7 +25,7 @@ function isTaskRelevantForUser(input: {
   }
 
   const normalizedSpecialty = specialty?.toUpperCase() ?? null;
-  const actsAsCommunity = normalizedSpecialty === "COMMUNITY";
+  const actsAsCommunity = normalizedSpecialty?.includes("COMMUNITY") ?? false;
   const actsAsEditor = normalizedSpecialty === "EDITOR" || (!normalizedSpecialty && userRole === "EDITOR");
 
   if (actsAsCommunity) {

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { TaskReviewMediaRecorder } from "@/components/features/content/task-review-media-recorder";
-import type { TaskReviewAttachment } from "@/lib/content-review";
+import { normalizeReviewAttachmentUrl, type TaskReviewAttachment } from "@/lib/content-review";
 
 interface TaskReviewComposerProps {
   disabled?: boolean;
@@ -20,6 +20,9 @@ interface TaskReviewComposerProps {
 type UploadedFileInfo = {
   url?: string;
   ufsUrl?: string;
+  appUrl?: string;
+  key?: string;
+  fileKey?: string;
   name?: string;
 };
 
@@ -27,8 +30,26 @@ const isImageFile = (file: File) => file.type.startsWith("image/");
 const isAudioFile = (file: File) => file.type.startsWith("audio/");
 const isVideoFile = (file: File) => file.type.startsWith("video/");
 
+const resolveUploadedFileUrl = (file: UploadedFileInfo): string | null => {
+  const candidates = [
+    file.ufsUrl,
+    file.url,
+    file.appUrl,
+    file.key ? `https://utfs.io/f/${file.key}` : undefined,
+    file.fileKey ? `https://utfs.io/f/${file.fileKey}` : undefined,
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const normalized = normalizeReviewAttachmentUrl(candidate);
+    if (normalized) return normalized;
+  }
+
+  return null;
+};
+
 const mapAttachment = (file: UploadedFileInfo, sourceFile?: File): TaskReviewAttachment | null => {
-  const url = file.ufsUrl || file.url;
+  const url = resolveUploadedFileUrl(file);
   if (!url) return null;
 
   const type = sourceFile && isImageFile(sourceFile)
@@ -158,15 +179,19 @@ export function TaskReviewComposer({
           event.target.value = "";
         }}
       />
-      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+      <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap sm:gap-2">
         <Button type="button" variant="outline" size="sm" className="h-8 rounded-full px-3 text-xs" onClick={() => fileInputRef.current?.click()} disabled={disabled}>
           <Paperclip className="mr-1.5 h-3.5 w-3.5" />Adjuntar
         </Button>
-        <TaskReviewMediaRecorder mode="video" compact={compact} disabled={disabled} onFileReady={async (file) => uploadFiles([file])} />
-        <TaskReviewMediaRecorder mode="audio" compact={compact} disabled={disabled} onFileReady={async (file) => uploadFiles([file])} />
+        <TaskReviewMediaRecorder mode="video" compact disabled={disabled} onFileReady={async (file) => uploadFiles([file])} />
+        <TaskReviewMediaRecorder mode="audio" compact disabled={disabled} onFileReady={async (file) => uploadFiles([file])} />
         <div className="rounded-full border border-dashed border-border/60 px-2.5 py-1.5 text-[11px] text-muted-foreground">
           Pegar imagen o archivo
         </div>
+        <Button type="button" size="sm" className="ml-auto h-8 shrink-0 rounded-full px-4 text-xs" onClick={handleSubmit} disabled={isBusy}>
+          {isBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
+          {submitLabel}
+        </Button>
       </div>
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
@@ -183,14 +208,6 @@ export function TaskReviewComposer({
           ))}
         </div>
       )}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-[11px] text-muted-foreground sm:text-xs">
-          {isBusy ? <span className="inline-flex items-center gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" />Subiendo adjuntos...</span> : "Texto, imagen, video, documento o voz en un mismo comentario."}
-        </div>
-        <Button type="button" size="sm" className="h-8 rounded-full px-4 self-end text-xs sm:self-auto" onClick={handleSubmit} disabled={isBusy}>
-          <Send className="mr-1.5 h-3.5 w-3.5" />{submitLabel}
-        </Button>
-      </div>
     </div>
   );
 }

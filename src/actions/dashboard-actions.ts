@@ -44,7 +44,11 @@ export interface DashboardData {
   }>;
   calendar: {
     shoots: Array<Shoot & { client: Client }>;
-    tasks: Array<ContentTask & { client: Client }>;
+    tasks: Array<ContentTask & { 
+      client: Client;
+      assignedEditor: { id: string; name: string; image: string | null } | null;
+      assignedCommunity: { id: string; name: string; image: string | null } | null;
+    }>;
   };
 }
 
@@ -228,6 +232,20 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
         },
         include: {
           client: true,
+          assignedEditor: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+          assignedCommunity: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
         },
         orderBy: {
           scheduledAt: "asc",

@@ -7,64 +7,24 @@ export interface UserWorkload {
   userId: string;
   userName: string;
   userRole: string;
-  specialty: string | null;
   userImage: string | null;
   pendingTasksCount: number;
+  weeklyCapacity: number; // Capacidad semanal estimada (ej: 10 tareas)
   allocatedMinutes: number;
   weeklyCapacityMinutes: number;
   saturationThresholdMinutes: number;
 }
 
-const EDITOR_WORKLOAD_STATUSES = ["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"] as const;
-
-function getBaseTaskMinutes(type: string): number {
-  return type === "REEL" ? 90 : 50;
-}
-
-function getWeeklyCapacityMinutes(input: {
-  role: string;
-  specialty: string | null;
-}): number {
-  if (input.role === "ADMIN") {
-    return 4 * 6 * 60;
-  }
-
-  if (input.specialty === "COMMUNITY") {
-    return 2 * 5 * 60;
-  }
-
-  if (input.role === "EDITOR") {
-    return 10 * 90;
-  }
-
-  return 5 * 60;
-}
-
-function getEstimatedTaskMinutes(input: {
-  status: string;
-  type: string;
-}): number {
-  if (input.status === "IDEA" || input.status === "SCRIPT") {
-    return 50;
-  }
-
-  if (input.status === "CLIENT_APPROVED") {
-    return Math.round(getBaseTaskMinutes(input.type) * 0.3);
-  }
-
-  if (EDITOR_WORKLOAD_STATUSES.includes(input.status as (typeof EDITOR_WORKLOAD_STATUSES)[number])) {
-    return getBaseTaskMinutes(input.type);
-  }
-
-  return 0;
-}
+const ESTIMATED_MINUTES_PER_TASK = 60;
+const EDITOR_RESPONSIBLE_STATUSES = ["RECORDED", "EDITING", "REVIEW_CLIENT"] as const;
+const COMMUNITY_RESPONSIBLE_STATUSES = ["IDEA", "SCRIPT", "CLIENT_APPROVED"] as const;
 
 /**
  * Server Action para obtener la carga de trabajo por usuario
  * Retorna el conteo de tareas pendientes para cada usuario del equipo
  * 
  * REGLAS DE NEGOCIO CRÍTICAS:
- * - EDITOR: Es responsable SOLO si el estado es IDEA, RECORDED, EDITING, REVISION_CLIENTE
+ * - EDITOR: Es responsable SOLO si el estado es RECORDED, EDITING, REVISION_CLIENTE
  *   Si pasa a CLIENT_APPROVED o PUBLISHED, se RESTA de su carga (count = 0)
  * - COMMUNITY: Es responsable SOLO si el estado es CLIENT_APPROVED
  *   Si está en estados previos, NO es su responsabilidad
@@ -72,12 +32,14 @@ function getEstimatedTaskMinutes(input: {
  */
 export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
   try {
+    // 0. Verificar autenticación
     const { auth } = await import("@/auth");
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autenticado" };
     }
 
+    // Obtener todos los usuarios con su specialty
     const users = await db.user.findMany({
       select: {
         id: true,
@@ -88,66 +50,65 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
       },
     });
 
+    // Obtener conteo de tareas pendientes por usuario
     const workloads: UserWorkload[] = await Promise.all(
       users.map(async (user) => {
+        let pendingTasksCount = 0;
+        const userRole = user.roleLegacy;
         const normalizedSpecialty = user.specialty?.toUpperCase() ?? null;
-        const handlesCommunityStage = normalizedSpecialty === "COMMUNITY";
+        const actsAsCommunity = normalizedSpecialty?.includes("COMMUNITY") ?? false;
 
-        const assignedTasks = await db.contentTask.findMany({
+        // LÓGICA PARA EDITORES (role: EDITOR o ADMIN)
+        // Solo cuentan tareas en estados: RECORDED, EDITING, REVIEW_CLIENT
+        // NO cuentan: CLIENT_APPROVED, APPROVED, PUBLISHED
+        const editorCount = await db.contentTask.count({
           where: {
-            client: {
-              status: { not: "INACTIVE" },
+            assignedEditorId: user.id,
+            status: {
+              in: [...EDITOR_RESPONSIBLE_STATUSES],
             },
-            OR: [
-              {
-                status: {
-                  in: ["IDEA", "SCRIPT"],
-                },
-                assignedCommunityId: user.id,
-              },
-              {
-                status: {
-                  in: [...EDITOR_WORKLOAD_STATUSES],
-                },
-                assignedEditorId: user.id,
-              },
-              ...(handlesCommunityStage
-                ? [
-                    {
-                      status: "CLIENT_APPROVED",
-                      assignedCommunityId: user.id,
-                    },
-                  ]
-                : []),
-            ],
-          },
-          select: {
-            id: true,
-            status: true,
-            type: true,
           },
         });
 
-        const pendingTasksCount = assignedTasks.length;
-        const allocatedMinutes = assignedTasks.reduce((sum, task) => {
-          return sum + getEstimatedTaskMinutes({
-            status: task.status,
-            type: task.type,
+        // LÓGICA PARA COMMUNITY
+        // Cuentan tareas en estados: IDEA, SCRIPT, CLIENT_APPROVED
+        let communityCount = 0;
+        if (actsAsCommunity) {
+          communityCount = await db.contentTask.count({
+            where: {
+              assignedCommunityId: user.id,
+              status: {
+                in: [...COMMUNITY_RESPONSIBLE_STATUSES],
+              },
+            },
           });
-        }, 0);
-        const weeklyCapacityMinutes = getWeeklyCapacityMinutes({
-          role: user.roleLegacy,
-          specialty: user.specialty,
-        });
+        }
+
+        // Sumar ambos contadores (un usuario puede tener ambos roles)
+        pendingTasksCount = editorCount + communityCount;
+
+        // Capacidad semanal estimada según el rol
+        // ADMIN: 15, EDITOR: 10, VIEWER: 5
+        let weeklyCapacity = 10; // Default
+        if (userRole === "ADMIN") {
+          weeklyCapacity = 15;
+        } else if (userRole === "EDITOR") {
+          weeklyCapacity = 10;
+        } else if (userRole === "VIEWER") {
+          weeklyCapacity = 5;
+        }
+
+        const allocatedMinutes = pendingTasksCount * ESTIMATED_MINUTES_PER_TASK;
+        const weeklyCapacityMinutes = weeklyCapacity * ESTIMATED_MINUTES_PER_TASK;
         const saturationThresholdMinutes = Math.round(weeklyCapacityMinutes * 0.8);
 
         return {
           userId: user.id,
           userName: user.name,
-          userRole: user.roleLegacy,
-          specialty: user.specialty,
+          userRole,
           userImage: user.image,
           pendingTasksCount,
+          weeklyCapacity,
           allocatedMinutes,
           weeklyCapacityMinutes,
           saturationThresholdMinutes,

@@ -11,6 +11,7 @@ export interface TaskReviewReply {
   id: string;
   authorName: string;
   authorRole: string;
+  authorColor?: string;
   createdAt: string;
   resolved: boolean;
   message: string;
@@ -25,6 +26,51 @@ export interface TaskReviewData {
   version: 2;
   comments: TaskReviewComment[];
 }
+
+const UPLOADTHING_FILE_KEY_REGEX = /\/f\/([^/?#]+)/i;
+
+const extractUploadthingKey = (value: string): string | null => {
+  const match = value.match(UPLOADTHING_FILE_KEY_REGEX);
+  if (match?.[1]) {
+    return match[1];
+  }
+
+  if (/^[a-zA-Z0-9_-]{12,}$/.test(value)) {
+    return value;
+  }
+
+  return null;
+};
+
+export const normalizeReviewAttachmentUrl = (rawUrl: string): string => {
+  const value = rawUrl.trim();
+  if (!value) return value;
+
+  if (value.startsWith("blob:") || value.startsWith("data:")) {
+    return value;
+  }
+
+  if (value.startsWith("/f/")) {
+    const key = extractUploadthingKey(value);
+    return key ? `https://utfs.io/f/${key}` : value;
+  }
+
+  if (value.startsWith("f/")) {
+    const key = value.split(/[?#]/)[0].replace(/^f\//, "");
+    return key ? `https://utfs.io/f/${key}` : value;
+  }
+
+  const key = extractUploadthingKey(value);
+  if (key) {
+    return `https://utfs.io/f/${key}`;
+  }
+
+  if (value.startsWith("//")) {
+    return `https:${value}`;
+  }
+
+  return value;
+};
 
 type LegacyTaskReviewEntry = {
   id?: string;
@@ -57,7 +103,7 @@ const sanitizeAttachment = (attachment: unknown): TaskReviewAttachment | null =>
   return {
     id: candidate.id,
     type: candidate.type,
-    url: candidate.url,
+    url: normalizeReviewAttachmentUrl(candidate.url),
     label: candidate.label,
   };
 };
@@ -85,6 +131,7 @@ const sanitizeReply = (entry: unknown): TaskReviewReply | null => {
     id: candidate.id,
     authorName: candidate.authorName,
     authorRole: candidate.authorRole,
+    authorColor: typeof candidate.authorColor === "string" ? candidate.authorColor : undefined,
     createdAt: candidate.createdAt,
     resolved: candidate.resolved,
     message: candidate.message,
@@ -116,6 +163,7 @@ const createLegacyComment = (raw: string): TaskReviewComment => ({
   id: "legacy-review-comment",
   authorName: "Historial previo",
   authorRole: "Migrado",
+  authorColor: undefined,
   createdAt: new Date(0).toISOString(),
   resolved: false,
   message: raw,
@@ -131,6 +179,7 @@ const convertLegacyEntries = (entries: LegacyTaskReviewEntry[]): TaskReviewComme
       id: entry.id,
       authorName: entry.authorName,
       authorRole: entry.authorRole,
+      authorColor: undefined,
       createdAt: entry.createdAt,
       resolved: entry.status === "resolved",
       message: entry.message,
@@ -192,6 +241,7 @@ export const appendSystemReviewNote = (raw: string | null | undefined, message: 
     id: `system-${Date.now()}`,
     authorName: "Sistema",
     authorRole: "Automático",
+    authorColor: undefined,
     createdAt: new Date().toISOString(),
     resolved: true,
     message,
@@ -217,6 +267,7 @@ export const getLatestReviewEntry = (raw?: string | null): TaskReviewReply | nul
       id: comment.id,
       authorName: comment.authorName,
       authorRole: comment.authorRole,
+      authorColor: comment.authorColor,
       createdAt: comment.createdAt,
       resolved: comment.resolved,
       message: comment.message,

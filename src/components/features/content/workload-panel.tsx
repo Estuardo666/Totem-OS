@@ -10,17 +10,16 @@ interface WorkloadPanelProps {
 }
 
 export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
-  const formatHours = (minutes: number): string => {
-    const hours = minutes / 60;
-    return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
+  const getSaturationThreshold = (weeklyCapacity: number): number => {
+    return Math.round(weeklyCapacity * 0.8);
   };
 
-  const getWorkloadPercentage = (allocatedMinutes: number, capacityMinutes: number): number => {
-    if (capacityMinutes <= 0) {
+  const getWorkloadPercentage = (pendingTasksCount: number, weeklyCapacity: number): number => {
+    if (weeklyCapacity <= 0) {
       return 0;
     }
 
-    return Math.min((allocatedMinutes / capacityMinutes) * 100, 100);
+    return Math.min((pendingTasksCount / weeklyCapacity) * 100, 100);
   };
 
   const getWorkloadColor = (percentage: number): string => {
@@ -72,12 +71,13 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
           </div>
         ) : (
           workloads.map((workload) => {
+            const saturationThreshold = getSaturationThreshold(workload.weeklyCapacity);
             const percentage = getWorkloadPercentage(
-              workload.allocatedMinutes,
-              workload.weeklyCapacityMinutes
+              workload.pendingTasksCount,
+              workload.weeklyCapacity
             );
-            const isOverCapacity = workload.allocatedMinutes > workload.weeklyCapacityMinutes;
-            const isSaturated = !isOverCapacity && workload.allocatedMinutes >= workload.saturationThresholdMinutes;
+            const isOverCapacity = workload.pendingTasksCount > workload.weeklyCapacity;
+            const isSaturated = !isOverCapacity && workload.pendingTasksCount >= saturationThreshold;
 
             return (
               <div key={workload.userId} className="p-4 hover:bg-muted/50 transition-colors">
@@ -105,30 +105,38 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
                           percentage
                         )}`}
                       >
-                        {formatHours(workload.allocatedMinutes)} / {formatHours(workload.weeklyCapacityMinutes)}
+                        {workload.pendingTasksCount} / {workload.weeklyCapacity} tareas
                       </span>
-                      <span className="text-xs text-muted-foreground">
-                        {workload.pendingTasksCount} tareas
-                      </span>
+                      {workload.pendingTasksCount === 0 ? (
+                        <span className="text-xs text-muted-foreground">
+                          Sin carga asignada
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Capacidad semanal: {workload.weeklyCapacity} tareas
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full transition-all ${getWorkloadColor(percentage)}`}
-                    style={{ width: `${percentage}%` }}
-                  />
+                  {percentage > 0 && (
+                    <div
+                      className={`h-full transition-all ${getWorkloadColor(percentage)}`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  )}
                 </div>
                 {isOverCapacity && (
                   <p className="text-xs text-red-600 flex items-center gap-1 mt-2">
                     <AlertCircle className="h-3 w-3" />
-                    Capacidad excedida: superó el 100% del tiempo disponible
+                    Capacidad excedida: superó el 100% de su capacidad semanal
                   </p>
                 )}
                 {isSaturated && (
                   <p className="text-xs text-orange-600 flex items-center gap-1 mt-2">
                     <AlertCircle className="h-3 w-3" />
-                    Saturado: ya ocupó el 80% de su tiempo disponible
+                    Saturado: ya ocupó el 80% de su capacidad semanal
                   </p>
                 )}
               </div>

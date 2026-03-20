@@ -6,7 +6,7 @@ import { pusherServer } from "@/lib/pusher";
 import { appendSystemReviewNote } from "@/lib/content-review";
 import { createContentTaskSchema, updateContentTaskSchema, updateTaskMetricsSchema, dynamicTaskMetricsSchema, batchCreateContentTasksSchema } from "@/schemas/content";
 import type { ApiResponse } from "@/types";
-import type { ContentTask, Client, TaskMetrics } from "@prisma/client";
+import type { ContentTask, Prisma, TaskMetrics } from "@prisma/client";
 import { sendNotification } from "./notification-actions";
 
 /**
@@ -70,21 +70,44 @@ async function triggerDashboardUpdate(userIds: string[]): Promise<void> {
 }
 
 // Tipo para ContentTask con relación de cliente incluida
-export type ContentTaskWithClient = ContentTask & {
-  client: Client & {
-    brandAssets: Array<{
-      id: string;
-      name: string;
-      url: string;
-      fileType: string;
-    }>;
+export type ContentTaskWithClient = Prisma.ContentTaskGetPayload<{
+  include: {
+    client: {
+      select: {
+        id: true;
+        name: true;
+        logo: true;
+        color: true;
+        status: true;
+        editorId: true;
+        communityId: true;
+        brandDNA: true;
+        brandAssets: {
+          select: {
+            id: true;
+            name: true;
+            url: true;
+            fileType: true;
+          };
+        };
+      };
+    };
+    assignedEditor: {
+      select: {
+        id: true;
+        name: true;
+        image: true;
+      };
+    };
+    assignedCommunity: {
+      select: {
+        id: true;
+        name: true;
+        image: true;
+      };
+    };
   };
-  assignedEditor: {
-    id: string;
-    name: string;
-    image: string | null;
-  } | null;
-};
+}>;
 
 async function persistTask(validatedData: ReturnType<typeof createContentTaskSchema.parse>) {
   const client = await db.client.findUnique({
@@ -391,11 +414,18 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
             image: true,
           },
         },
+        assignedCommunity: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
       },
       orderBy: {
         dueDate: "asc", // Ordena por fecha ascendente (nulls al final por defecto)
       },
-    });
+    }) as ContentTaskWithClient[];
 
     // Debug: Verificar que brandDNA esté presente en las tareas
     if (tasks.length > 0) {
@@ -423,7 +453,7 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
  * Retorna el conteo de tareas asignadas al usuario
  * 
  * REGLAS DE NEGOCIO CRÍTICAS:
- * - EDITOR: Solo cuenta tareas en estados IDEA, RECORDED, EDITING, REVIEW_CLIENT
+ * - EDITOR: Solo cuenta tareas en estados RECORDED, EDITING, REVIEW_CLIENT
  *   NO cuenta CLIENT_APPROVED, APPROVED, PUBLISHED
  * - COMMUNITY (specialty): Solo cuenta tareas en estado CLIENT_APPROVED
  *   NO cuenta estados previos ni PUBLICADO
@@ -446,14 +476,16 @@ export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
       select: { specialty: true },
     });
 
-    const userSpecialty = user?.specialty;
+    const normalizedSpecialty = user?.specialty?.toUpperCase() ?? null;
 
-    // Si es COMMUNITY, solo contar tareas con estado CLIENT_APPROVED
-    if (userSpecialty === "COMMUNITY") {
+    // Si es COMMUNITY, contar tareas con estados donde es responsable
+    if (normalizedSpecialty?.includes("COMMUNITY")) {
       const count = await db.contentTask.count({
         where: {
           assignedCommunityId: sessionUserId,
-          status: "CLIENT_APPROVED",
+          status: {
+            in: ["IDEA", "SCRIPT", "CLIENT_APPROVED"],
+          },
           client: {
             status: { not: "INACTIVE" },
           },
@@ -463,9 +495,9 @@ export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
     }
 
     // Para EDITOR o cualquier otro usuario, contar tareas asignadas como editor
-    // Estados válidos: IDEA, RECORDED, EDITING, REVIEW_CLIENT
+    // Estados válidos: RECORDED, EDITING, REVIEW_CLIENT
     // NO incluir: CLIENT_APPROVED, APPROVED, PUBLISHED
-    const validStatuses = ["IDEA", "RECORDED", "EDITING", "REVIEW_CLIENT"];
+    const validStatuses = ["RECORDED", "EDITING", "REVIEW_CLIENT"];
     
     const count = await db.contentTask.count({
       where: {
