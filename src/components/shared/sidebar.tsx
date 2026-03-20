@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, Mic, FileText, Moon, Sun, Brain } from "lucide-react";
+import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, Mic, FileText, Moon, Sun } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getBrandSettings } from "@/actions/admin-actions";
@@ -74,6 +74,11 @@ const navItems: (NavItem | NavItemWithChildren)[] = [
         icon: Wallet,
       },
       {
+        href: "/finance/monthly-summary",
+        label: "Resumen del Mes",
+        icon: Wallet,
+      },
+      {
         href: "/finance/personal",
         label: "Dashboard personal",
         icon: Wallet,
@@ -89,19 +94,9 @@ const navItems: (NavItem | NavItemWithChildren)[] = [
         icon: Wallet,
       },
       {
-        href: "/finance/ai-analytics",
-        label: "Analíticas IA",
-        icon: Brain,
-      },
-      {
         href: "/finance/settlement",
         label: "Liquidación Interna",
         icon: Wallet,
-      },
-      {
-        href: "/finance/settings",
-        label: "Configuración",
-        icon: Settings,
       },
     ],
   },
@@ -153,12 +148,11 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
     
     const financePaths = [
       "/finance",
-      "/finance/ai-analytics",
+      "/finance/monthly-summary",
       "/finance/personal",
       "/finance/transactions",
       "/finance/alerts",
       "/finance/settlement",
-      "/finance/settings",
     ];
     const isFinanceActive = financePaths.some(
       (path) => pathname === path || pathname?.startsWith(`${path}/`)
@@ -461,6 +455,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                     {(item.href === "/finance"
                       ? item.children.filter((child) =>
                           child.href === "/finance" ? isAdmin :
+                          child.href === "/finance/monthly-summary" ? isAdmin :
                           child.href === "/finance/alerts" ? isAdmin :
                           child.href === "/finance/settlement" ? isAdmin :
                           true

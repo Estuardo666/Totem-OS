@@ -1,13 +1,12 @@
 "use server";
 
-import { subHours } from "date-fns";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { pusherServer } from "@/lib/pusher";
+import { appendSystemReviewNote } from "@/lib/content-review";
 import { createContentTaskSchema, updateContentTaskSchema, updateTaskMetricsSchema, dynamicTaskMetricsSchema, batchCreateContentTasksSchema } from "@/schemas/content";
 import type { ApiResponse } from "@/types";
-import type { ContentTask, Prisma, TaskMetrics } from "@prisma/client";
+import type { ContentTask, Client, TaskMetrics } from "@prisma/client";
 import { sendNotification } from "./notification-actions";
 
 /**
@@ -16,31 +15,19 @@ import { sendNotification } from "./notification-actions";
  */
 async function getCommunityManagerId(clientId: string): Promise<string | null> {
   try {
+    // 1. Buscar el communityId del cliente
     const client = await db.client.findUnique({
       where: { id: clientId },
-      select: {
-        community: {
-          select: {
-            id: true,
-            roleLegacy: true,
-            specialty: true,
-          },
-        },
-      },
+      select: { communityId: true },
     });
 
-    if (
-      client?.community?.roleLegacy === "ADMIN" &&
-      client.community.specialty === "COMMUNITY"
-    ) {
-      return client.community.id;
+    if (client?.communityId) {
+      return client.communityId;
     }
 
+    // 2. Si no hay communityId, buscar el primer ADMIN como fallback
     const adminUser = await db.user.findFirst({
-      where: {
-        roleLegacy: "ADMIN",
-        specialty: "COMMUNITY",
-      },
+      where: { roleLegacy: "ADMIN" },
       select: { id: true },
     });
 
@@ -48,6 +35,7 @@ async function getCommunityManagerId(clientId: string): Promise<string | null> {
       return adminUser.id;
     }
 
+    // 3. Si no hay ADMIN, retornar null
     return null;
   } catch (error) {
     console.error("❌ Error al obtener Community Manager:", error);
@@ -81,122 +69,22 @@ async function triggerDashboardUpdate(userIds: string[]): Promise<void> {
   }
 }
 
- const editorOwnedStatuses = ["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"] as const;
-  
- function buildOwnedTasksWhereClause({
-   userId,
-   role,
-   specialty,
- }: {
-   userId: string;
-   role?: string | null;
-   specialty?: string | null;
- }): Prisma.ContentTaskWhereInput {
-   const ownershipClauses: Prisma.ContentTaskWhereInput[] = [
-     {
-       status: {
-         in: ["IDEA", "SCRIPT"],
-       },
-       assignedCommunityId: userId,
-     },
-     {
-       status: {
-         in: [...editorOwnedStatuses],
-       },
-       assignedEditorId: userId,
-     },
-   ];
-
-   if (role === "ADMIN" && specialty === "COMMUNITY") {
-     ownershipClauses.push({
-       status: "CLIENT_APPROVED",
-       assignedCommunityId: userId,
-     });
-   }
-
-   return {
-     client: {
-       status: { not: "INACTIVE" },
-     },
-     OR: ownershipClauses,
-   };
- }
-
- function shouldResetTaskDatesOnStatusChange(_currentStatus: string, _newStatus: string): boolean {
-   return _currentStatus === "SCRIPT" && _newStatus === "RECORDED";
- }
-
-async function getSingleEditorId(): Promise<string | null> {
-  const editors = await db.user.findMany({
-    where: {
-      specialty: "EDITOR",
-    },
-    select: {
-      id: true,
-    },
-    take: 2,
-  });
-
-  return editors.length === 1 ? editors[0].id : null;
-}
-
-async function resolveAssignedEditorId({
-  assignedEditorId,
-  clientEditorId,
-}: {
-  assignedEditorId?: string | null;
-  clientEditorId?: string | null;
-}): Promise<string | null> {
-  if (assignedEditorId) {
-    return assignedEditorId;
-  }
-
-  if (clientEditorId) {
-    return clientEditorId;
-  }
-
-  return getSingleEditorId();
-}
-
 // Tipo para ContentTask con relación de cliente incluida
-export type ContentTaskWithClient = Prisma.ContentTaskGetPayload<{
-  include: {
-    client: {
-      select: {
-        id: true;
-        name: true;
-        logo: true;
-        color: true;
-        status: true;
-        editorId: true;
-        communityId: true;
-        brandDNA: true;
-        brandAssets: {
-          select: {
-            id: true;
-            name: true;
-            url: true;
-            fileType: true;
-          };
-        };
-      };
-    };
-    assignedEditor: {
-      select: {
-        id: true;
-        name: true;
-        image: true;
-      };
-    };
-    assignedCommunity: {
-      select: {
-        id: true;
-        name: true;
-        image: true;
-      };
-    };
+export type ContentTaskWithClient = ContentTask & {
+  client: Client & {
+    brandAssets: Array<{
+      id: string;
+      name: string;
+      url: string;
+      fileType: string;
+    }>;
   };
-}>;
+  assignedEditor: {
+    id: string;
+    name: string;
+    image: string | null;
+  } | null;
+};
 
 async function persistTask(validatedData: ReturnType<typeof createContentTaskSchema.parse>) {
   const client = await db.client.findUnique({
@@ -204,21 +92,7 @@ async function persistTask(validatedData: ReturnType<typeof createContentTaskSch
     select: { editorId: true, communityId: true, name: true, logo: true },
   });
 
-  const normalizedScheduledAt = validatedData.scheduledAt
-    ? new Date(validatedData.scheduledAt)
-    : null;
-  const normalizedDueDate = validatedData.dueDate
-    ? new Date(validatedData.dueDate)
-    : normalizedScheduledAt
-      ? ["IDEA", "SCRIPT"].includes(validatedData.status ?? "IDEA")
-        ? new Date(normalizedScheduledAt)
-        : subHours(normalizedScheduledAt, 24)
-      : null;
-
-  const assignedEditorId = await resolveAssignedEditorId({
-    assignedEditorId: validatedData.assignedEditorId,
-    clientEditorId: client?.editorId,
-  });
+  const assignedEditorId = validatedData.assignedEditorId ?? client?.editorId ?? null;
   const assignedCommunityId = validatedData.assignedCommunityId ?? client?.communityId ?? null;
 
   const task = await db.contentTask.create({
@@ -226,8 +100,8 @@ async function persistTask(validatedData: ReturnType<typeof createContentTaskSch
       title: validatedData.title,
       type: validatedData.type,
       status: validatedData.status ?? "IDEA",
-      dueDate: normalizedDueDate,
-      scheduledAt: normalizedScheduledAt,
+      dueDate: validatedData.dueDate ?? null,
+      scheduledAt: validatedData.scheduledAt ?? null,
       clientId: validatedData.clientId,
       assignedEditorId,
       assignedCommunityId,
@@ -465,16 +339,22 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
     const session = await auth();
     const sessionUserId = session?.user?.id;
     const userRole = session?.user?.role;
-    const userSpecialty = session?.user?.specialty;
 
+    // Si es EDITOR, siempre filtrar solo sus tareas asignadas como editor
+    // Si es ADMIN y showOnlyMine es true, filtrar solo sus tareas
+    // Si es ADMIN y showOnlyMine es false o undefined, mostrar todas
     const whereClause = 
       (userRole === "EDITOR" && sessionUserId) || 
       (userRole === "ADMIN" && showOnlyMine && sessionUserId)
-        ? buildOwnedTasksWhereClause({
-            userId: sessionUserId,
-            role: userRole,
-            specialty: userSpecialty,
-          })
+        ? { 
+            client: {
+              status: { not: "INACTIVE" },
+            },
+            OR: [
+              { assignedEditorId: sessionUserId },
+              { assignedCommunityId: sessionUserId }
+            ]
+          }
         : {
             client: {
               status: { not: "INACTIVE" },
@@ -505,13 +385,6 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
           },
         },
         assignedEditor: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
-        assignedCommunity: {
           select: {
             id: true,
             name: true,
@@ -561,7 +434,6 @@ export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
     const { auth } = await import("@/auth");
     const session = await auth();
     const sessionUserId = session?.user?.id;
-    const sessionUserRole = session?.user?.role;
 
     // Si no hay userId en la sesión, retornar 0
     if (!sessionUserId) {
@@ -575,13 +447,36 @@ export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
     });
 
     const userSpecialty = user?.specialty;
+
+    // Si es COMMUNITY, solo contar tareas con estado CLIENT_APPROVED
+    if (userSpecialty === "COMMUNITY") {
+      const count = await db.contentTask.count({
+        where: {
+          assignedCommunityId: sessionUserId,
+          status: "CLIENT_APPROVED",
+          client: {
+            status: { not: "INACTIVE" },
+          },
+        },
+      });
+      return { success: true, data: count };
+    }
+
+    // Para EDITOR o cualquier otro usuario, contar tareas asignadas como editor
+    // Estados válidos: IDEA, RECORDED, EDITING, REVIEW_CLIENT
+    // NO incluir: CLIENT_APPROVED, APPROVED, PUBLISHED
+    const validStatuses = ["IDEA", "RECORDED", "EDITING", "REVIEW_CLIENT"];
     
     const count = await db.contentTask.count({
-      where: buildOwnedTasksWhereClause({
-        userId: sessionUserId,
-        role: sessionUserRole,
-        specialty: userSpecialty,
-      }),
+      where: {
+        assignedEditorId: sessionUserId,
+        status: {
+          in: validStatuses,
+        },
+        client: {
+          status: { not: "INACTIVE" },
+        },
+      },
     });
 
     return { success: true, data: count };
@@ -608,7 +503,6 @@ export async function updateTaskStatus(
     // Validar que el status sea válido
     const validStatuses = [
       "IDEA",
-      "SCRIPT",
       "RECORDED",
       "EDITING",
       "REVIEW_INTERNAL",
@@ -656,13 +550,12 @@ export async function updateTaskStatus(
     const isChangingToPublished = newStatus === "PUBLISHED" && currentTask.status !== "PUBLISHED";
     const isChangingToClientApproved = newStatus === "CLIENT_APPROVED" && currentTask.status !== "CLIENT_APPROVED";
     const isChangingToEditing = newStatus === "EDITING" && currentTask.status !== "EDITING";
-    const isChangingFromScriptToRecorded = currentTask.status === "SCRIPT" && newStatus === "RECORDED";
 
     // Guardar IDs previos antes de reasignar (para notificaciones)
     const previousEditorId = currentTask.assignedEditorId;
     const previousCommunityId = currentTask.assignedCommunityId;
 
-    // AUTOMATIZACIÓN: Si cambia a CLIENT_APPROVED, asignar automáticamente al CM
+    // Obtener el cliente para verificar editorId y communityId
     let newAssignedCommunityId: string | null | undefined = undefined;
     let newAssignedEditorId: string | null | undefined = undefined;
     let shouldUpdateAssignedAt = false;
@@ -687,13 +580,6 @@ export async function updateTaskStatus(
         newAssignedEditorId = client.editorId;
         shouldUpdateAssignedAt = true;
       }
-    } else if (isChangingFromScriptToRecorded && !currentTask.assignedEditorId) {
-      const editorId = await getSingleEditorId();
-      if (editorId) {
-        newAssignedEditorId = editorId;
-        shouldUpdateAssignedAt = true;
-        console.log(`✅ [AUTOMATIZACIÓN] Tarea "${currentTask.title}" asignada automáticamente al único editor disponible (${editorId})`);
-      }
     }
 
     // Actualizar la tarea
@@ -711,15 +597,12 @@ export async function updateTaskStatus(
           assignedEditorId: newAssignedEditorId,
         }),
         ...(shouldUpdateAssignedAt && { assignedAt: new Date() }),
-        ...(isChangingFromScriptToRecorded && {
-          scheduledAt: null,
-          dueDate: null,
-        }),
         // Log de auditoría: agregar comentario automático si cambió a CLIENT_APPROVED
         ...(isChangingToClientApproved && newAssignedCommunityId && {
-          clientFeedback: currentTask.clientFeedback 
-            ? `${currentTask.clientFeedback}\n\n[Automático] Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM.`
-            : "[Automático] Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM.",
+          clientFeedback: appendSystemReviewNote(
+            currentTask.clientFeedback,
+            "Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM."
+          ),
         }),
       },
     });
@@ -728,7 +611,6 @@ export async function updateTaskStatus(
     try {
       const statusLabels: Record<string, string> = {
         IDEA: "Idea",
-        SCRIPT: "Guión",
         RECORDED: "Grabado",
         EDITING: "Editando",
         REVIEW_INTERNAL: "Revisión Interna",
@@ -837,9 +719,9 @@ export async function updateTaskStatus(
     if (isChangingToPublished && currentTask?.clientId) {
       const { checkAndCreateAutomaticTransaction } = await import("@/lib/finance-logic");
       const result = await checkAndCreateAutomaticTransaction(currentTask.clientId);
-
-      if (result.error) {
-        console.error(`❌ Error al verificar cumplimiento del contrato para cliente ${currentTask.clientId}:`, result.error);
+      
+      if (result.created) {
+        console.log(`✅ Cobro automático creado para cliente ${currentTask.clientId}`);
       }
     }
 
@@ -909,9 +791,6 @@ export async function updateTask(
     const isChangingToClientApproved = 
       validatedData.status === "CLIENT_APPROVED" && 
       taskBefore.status !== "CLIENT_APPROVED";
-    const shouldResetDates = validatedData.status
-      ? shouldResetTaskDatesOnStatusChange(taskBefore.status, validatedData.status)
-      : false;
 
     // Guardar los IDs previos antes de reasignar (para notificaciones)
     const previousEditorId = taskBefore.assignedEditorId;
@@ -934,10 +813,8 @@ export async function updateTask(
     } else {
       // Detectar si cambió el responsable manualmente
       newAssignedEditorId = validatedData.assignedEditorId !== undefined 
-        ? await resolveAssignedEditorId({
-            assignedEditorId: validatedData.assignedEditorId || null,
-          })
-        : taskBefore.assignedEditorId ?? (await getSingleEditorId());
+        ? validatedData.assignedEditorId || null 
+        : taskBefore.assignedEditorId;
       newAssignedCommunityId = validatedData.assignedCommunityId !== undefined 
         ? validatedData.assignedCommunityId || null 
         : taskBefore.assignedCommunityId;
@@ -945,20 +822,6 @@ export async function updateTask(
 
     const assignedEditorIdChanged = taskBefore.assignedEditorId !== newAssignedEditorId;
     const assignedCommunityIdChanged = taskBefore.assignedCommunityId !== newAssignedCommunityId;
-    const normalizedDueDate = shouldResetDates
-      ? null
-      : validatedData.dueDate === undefined
-        ? undefined
-        : validatedData.dueDate
-          ? new Date(validatedData.dueDate)
-          : null;
-    const normalizedScheduledAt = shouldResetDates
-      ? null
-      : validatedData.scheduledAt === undefined
-        ? undefined
-        : validatedData.scheduledAt
-          ? new Date(validatedData.scheduledAt)
-          : null;
 
     // Actualizar la tarea
     const task = await db.contentTask.update({
@@ -967,11 +830,11 @@ export async function updateTask(
         ...(validatedData.title && { title: validatedData.title }),
         ...(validatedData.type && { type: validatedData.type }),
         ...(validatedData.priority && { priority: validatedData.priority }),
-        ...(normalizedDueDate !== undefined && {
-          dueDate: normalizedDueDate,
+        ...(validatedData.dueDate !== undefined && {
+          dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
         }),
-        ...(normalizedScheduledAt !== undefined && {
-          scheduledAt: normalizedScheduledAt,
+        ...(validatedData.scheduledAt !== undefined && {
+          scheduledAt: validatedData.scheduledAt ? new Date(validatedData.scheduledAt) : null,
         }),
         ...(validatedData.status && { status: validatedData.status }),
         // AUTOMATIZACIÓN: Si cambió a CLIENT_APPROVED, usar el CM asignado automáticamente
@@ -981,15 +844,15 @@ export async function updateTask(
               assignedCommunityId: newAssignedCommunityId,
             }
           : {}),
-        ...((validatedData.assignedEditorId !== undefined || (!taskBefore.assignedEditorId && newAssignedEditorId)) && {
-          assignedEditorId: newAssignedEditorId,
+        ...(validatedData.assignedEditorId !== undefined && {
+          assignedEditorId: validatedData.assignedEditorId || null,
         }),
         ...(validatedData.assignedCommunityId !== undefined && {
           assignedCommunityId: validatedData.assignedCommunityId || null,
         }),
         // Actualizar assignedAt si se asignó algún usuario (nuevo o cambio)
         ...((shouldUpdateAssignedAt || 
-             (newAssignedEditorId && (!taskBefore.assignedEditorId || taskBefore.assignedEditorId !== newAssignedEditorId)) ||
+             (validatedData.assignedEditorId !== undefined && validatedData.assignedEditorId && (!taskBefore.assignedEditorId || taskBefore.assignedEditorId !== validatedData.assignedEditorId)) ||
              (validatedData.assignedCommunityId !== undefined && validatedData.assignedCommunityId && (!taskBefore.assignedCommunityId || taskBefore.assignedCommunityId !== validatedData.assignedCommunityId)))
           ? { assignedAt: new Date() }
           : {}),
@@ -998,10 +861,8 @@ export async function updateTask(
           ? {
               // Si cambió a CLIENT_APPROVED, agregar log de auditoría
               clientFeedback: validatedData.clientFeedback !== undefined
-                ? `${validatedData.clientFeedback}\n\n[Automático] Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM.`
-                : taskBefore.clientFeedback
-                ? `${taskBefore.clientFeedback}\n\n[Automático] Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM.`
-                : "[Automático] Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM.",
+                ? appendSystemReviewNote(validatedData.clientFeedback, "Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM.")
+                : appendSystemReviewNote(taskBefore.clientFeedback, "Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM."),
             }
           : validatedData.clientFeedback !== undefined
           ? { clientFeedback: validatedData.clientFeedback }
@@ -1110,9 +971,9 @@ export async function updateTask(
     if (isChangingToPublished && taskBefore.clientId) {
       const { checkAndCreateAutomaticTransaction } = await import("@/lib/finance-logic");
       const result = await checkAndCreateAutomaticTransaction(taskBefore.clientId);
-
-      if (result.error) {
-        console.error(`❌ Error al verificar cumplimiento del contrato para cliente ${taskBefore.clientId}:`, result.error);
+      
+      if (result.created) {
+        console.log(`✅ Cobro automático creado para cliente ${taskBefore.clientId}`);
       }
     }
 
@@ -1261,9 +1122,9 @@ export async function quickPublishTask(taskId: string): Promise<ApiResponse<Cont
     try {
       const { checkAndCreateAutomaticTransaction } = await import("@/lib/finance-logic");
       const result = await checkAndCreateAutomaticTransaction(task.clientId);
-
-      if (result.error) {
-        console.error(`❌ Error al verificar cumplimiento del contrato para cliente ${task.clientId}:`, result.error);
+      
+      if (result.created) {
+        console.log(`✅ Cobro automático creado para cliente ${task.clientId}`);
       }
     } catch (financeError) {
       console.error("❌ Error en lógica financiera:", financeError);
@@ -1684,33 +1545,15 @@ export async function bulkUpdateTasks(
     for (const task of tasks) {
       try {
         const updateData: Record<string, unknown> = {};
-        const isChangingToClientApproved = status === "CLIENT_APPROVED" && task.status !== "CLIENT_APPROVED";
-        const shouldResetDates = status ? shouldResetTaskDatesOnStatusChange(task.status, status) : false;
 
         if (status) updateData.status = status;
         if (assignedEditorId !== undefined) updateData.assignedEditorId = assignedEditorId;
         if (assignedCommunityId !== undefined) updateData.assignedCommunityId = assignedCommunityId;
         if (priority) updateData.priority = priority;
-        if (shouldResetDates) {
-          updateData.scheduledAt = null;
-          updateData.dueDate = null;
-        }
-
-        if (isChangingToClientApproved) {
-          updateData.assignedCommunityId = await getCommunityManagerId(task.clientId);
-          updateData.assignedAt = new Date();
-        }
 
         const updatedTask = await db.contentTask.update({
           where: { id: task.id },
           data: updateData,
-          include: {
-            client: {
-              select: {
-                name: true,
-              },
-            },
-          },
         });
 
         updated.push(updatedTask);
@@ -1744,7 +1587,7 @@ export async function bulkUpdateTasks(
 
           // Notificar a admins sobre bulk update
           const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
-          const clientNames = [...new Set(tasks.map((task) => task.client.name))];
+          const clientNames = [...new Set(updated.map((t) => t.client?.name))].filter(Boolean);
           const clientSummary = clientNames.length <= 2 
             ? clientNames.join(", ") 
             : `${clientNames[0]} y ${clientNames.length - 1} más`;
@@ -1797,11 +1640,12 @@ export async function duplicateTask(id: string): Promise<ApiResponse<ContentTask
       return { success: false, error: "Tarea no encontrada" };
     }
 
+    // Crear la tarea duplicada con estado IDEA
     const duplicatedTask = await db.contentTask.create({
       data: {
         title: `${originalTask.title} (Copia)`,
         type: originalTask.type,
-        status: "IDEA",
+        status: "IDEA", // Siempre empezar en IDEA
         priority: originalTask.priority,
         postCopy: originalTask.postCopy,
         scriptUrl: originalTask.scriptUrl,

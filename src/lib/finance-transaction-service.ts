@@ -462,7 +462,8 @@ function buildRecurringPeriods(input: {
  * Incluye facturas pendientes, transacciones INCOME y tarifas mensuales recurrentes
  */
 export async function getReceivablesFromDb(
-  userId: string
+  userId: string,
+  referenceDate: Date = new Date()
 ): Promise<
   ApiResponse<{
     totalReceivable: number;
@@ -483,9 +484,13 @@ export async function getReceivablesFromDb(
 > {
   try {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const monthStart = getMonthStart(now);
-    const monthEnd = getMonthEnd(now);
+    const referenceMonth = getMonthStart(referenceDate);
+    const currentMonth = getMonthStart(now);
+    const today = referenceMonth.getTime() === currentMonth.getTime()
+      ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      : new Date(referenceMonth.getFullYear(), referenceMonth.getMonth() + 1, 0);
+    const monthStart = getMonthStart(referenceMonth);
+    const monthEnd = getMonthEnd(referenceMonth);
 
     const allInvoices = await db.invoice.findMany({
       where: {

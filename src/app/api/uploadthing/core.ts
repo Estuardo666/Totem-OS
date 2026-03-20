@@ -54,6 +54,20 @@ export const ourFileRouter = {
       console.log("Archivo:", file.url);
       return { uploadedBy: metadata.userId };
     }),
+  reviewMedia: f({
+    image: { maxFileSize: "16MB", maxFileCount: 10 },
+    video: { maxFileSize: "64MB", maxFileCount: 4 },
+    pdf: { maxFileSize: "16MB", maxFileCount: 10 },
+    "text/plain": { maxFileSize: "16MB", maxFileCount: 10 },
+    "application/msword": { maxFileSize: "16MB", maxFileCount: 10 },
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { maxFileSize: "16MB", maxFileCount: 10 },
+  })
+    .middleware(authMiddleware)
+    .onUploadComplete(({ metadata, file }) => {
+      console.log("Review media upload complete para usuario:", metadata.userId);
+      console.log("Archivo:", file.url);
+      return { uploadedBy: metadata.userId };
+    }),
   brandAsset: f({ 
     image: { maxFileSize: "16MB", maxFileCount: 10 },
     pdf: { maxFileSize: "16MB", maxFileCount: 10 },

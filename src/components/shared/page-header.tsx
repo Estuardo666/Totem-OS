@@ -119,6 +119,7 @@ function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
     shoots: "Rodajes",
     generator: "Generador IA",
     transactions: "Transacciones",
+    "monthly-summary": "Resumen del Mes",
     receivables: "Por Cobrar",
     settlement: "Liquidaciones",
     personal: "Personal",
