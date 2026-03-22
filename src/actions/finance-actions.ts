@@ -81,6 +81,11 @@ export interface UserSettlementReport {
   remaining: number;
 }
 
+function revalidateFinanceViews() {
+  revalidatePath("/finance");
+  revalidatePath("/finance/transactions");
+}
+
 /**
  * Server Action wrapper para obtener planes estratégicos de clientes
  * Solo retorna clientes asociados al usuario (si es EDITOR)
@@ -130,7 +135,7 @@ export async function createInvoice(input: unknown): Promise<ApiResponse<any>> {
       dueDate: validatedData.dueDate,
       generatedAt: validatedData.generatedAt,
     });
-    revalidatePath("/finance");
+    revalidateFinanceViews();
     return { success: true, data: invoice };
   } catch (error) {
     return {
@@ -151,7 +156,7 @@ export async function registerPayment(
       return { success: false, error: "Factura no encontrada" };
     }
     await registerPaymentInDb({ amount, clientId: invoice.clientId });
-    revalidatePath("/finance");
+    revalidateFinanceViews();
     return { success: true, data: invoice };
   } catch (error) {
     return {
@@ -164,7 +169,7 @@ export async function registerPayment(
 export async function markInvoiceAsPaid(invoiceId: string): Promise<ApiResponse<any>> {
   try {
     const invoice = await markInvoiceAsPaidInDb(invoiceId);
-    revalidatePath("/finance");
+    revalidateFinanceViews();
     return { success: true, data: invoice };
   } catch (error) {
     return {
@@ -181,7 +186,7 @@ export async function updateInvoice(
   try {
     const validatedData = updateInvoiceSchema.parse(input);
     const invoice = await updateInvoiceInDb(id, validatedData as any)
-    revalidatePath("/finance");
+    revalidateFinanceViews();
     return { success: true, data: invoice };
   } catch (error) {
     return {
@@ -221,7 +226,7 @@ export async function createExpense(input: unknown): Promise<ApiResponse<any>> {
       createdByUserId: session.user.id,
       isEditor: session.user.role === "EDITOR",
     });
-    revalidatePath("/finance");
+    revalidateFinanceViews();
     return { success: true, data: expense };
   } catch (error) {
     return {
@@ -239,7 +244,7 @@ export async function updateExpense(
   try {
     const validatedData = updateExpenseSchema.parse(input);
     const expense = await updateExpenseInDb(id, validatedData as any);
-    revalidatePath("/finance");
+    revalidateFinanceViews();
     return { success: true, data: expense };
   } catch (error) {
     return {
@@ -255,7 +260,7 @@ export async function markExpenseAsReimbursed(
 ): Promise<ApiResponse<any>> {
   try {
     const expense = await markExpenseAsReimbursedInDb(expenseId);
-    revalidatePath("/finance");
+    revalidateFinanceViews();
     return { success: true, data: expense };
   } catch (error) {
     return {
@@ -270,7 +275,7 @@ export async function liquidateReimbursements(
 ): Promise<ApiResponse<any>> {
   try {
     const result = await liquidateExpenseReimbursements(userIds);
-    revalidatePath("/finance");
+    revalidateFinanceViews();
     return { success: true, data: result };
   } catch (error) {
     return {
@@ -307,7 +312,7 @@ export async function createTransaction(input: unknown): Promise<ApiResponse<any
 
     const validatedData = createTransactionSchema.parse(input);
     const transaction = await createTransactionInDb(validatedData, session.user.id, session.user.role);
-    revalidatePath("/finance");
+    revalidateFinanceViews();
     return { success: true, data: transaction };
   } catch (error) {
     return {
@@ -325,7 +330,7 @@ export async function updateTransaction(
   try {
     const validatedData = updateTransactionSchema.parse(input);
     const transaction = await updateTransactionInDb(id, validatedData);
-    revalidatePath("/finance");
+    revalidateFinanceViews();
     return { success: true, data: transaction };
   } catch (error) {
     return {
@@ -341,7 +346,7 @@ export async function markTransactionAsPaid(
 ): Promise<ApiResponse<any>> {
   try {
     const transaction = await markTransactionAsPaidInDb(transactionId);
-    revalidatePath("/finance");
+    revalidateFinanceViews();
     return { success: true, data: transaction };
   } catch (error) {
     return {
@@ -356,7 +361,7 @@ export async function cancelTransaction(
 ): Promise<ApiResponse<any>> {
   try {
     const transaction = await cancelTransactionInDb(transactionId);
-    revalidatePath("/finance");
+    revalidateFinanceViews();
     return { success: true, data: transaction };
   } catch (error) {
     return {

@@ -1110,16 +1110,28 @@ export function TransactionList({ transactions }: TransactionListProps) {
                             );
                           }
 
-                          // Mostrar solo badge para facturas pagadas (no se pueden editar/cancelar)
-                          if (isInvoice && isPaid) {
+                          // Las facturas deben poder corregirse aunque ya esten enviadas o pagadas.
+                          if (isInvoice && !isPending) {
                             return (
-                              <Badge
-                                variant="default"
-                                className="bg-green-500 hover:bg-green-600 text-white"
-                              >
-                                <Check className="h-3 w-3 mr-1" />
-                                Pagada
-                              </Badge>
+                              <>
+                                <Badge
+                                  variant={getStatusBadgeVariant(transaction.status)}
+                                  className={getStatusBadgeClasses(transaction.status)}
+                                >
+                                  {isPaid ? <Check className="h-3 w-3 mr-1" /> : null}
+                                  {getStatusLabel(transaction.status)}
+                                </Badge>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isProcessing}
+                                  className="h-8"
+                                  onClick={() => handleEdit(transaction.id, sourceType)}
+                                >
+                                  <Edit className="h-3 w-3 mr-1" />
+                                  Editar
+                                </Button>
+                              </>
                             );
                           }
 
