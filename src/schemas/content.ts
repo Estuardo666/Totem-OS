@@ -6,7 +6,6 @@ export const contentTaskSchema = z.object({
   type: z.enum(["REEL", "FLYER", "STORY"]),
   status: z.enum([
     "IDEA",
-    "SCRIPT",
     "RECORDED",
     "EDITING",
     "REVIEW_INTERNAL",
@@ -16,13 +15,11 @@ export const contentTaskSchema = z.object({
     "PUBLISHED",
   ]),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
-  dueDate: z.union([z.date(), z.string(), z.null()]).optional().transform((val) => {
-    if (val === null) return null;
+  dueDate: z.union([z.date(), z.string()]).optional().transform((val) => {
     if (!val) return undefined;
     return typeof val === "string" ? new Date(val) : val;
   }),
-  scheduledAt: z.union([z.date(), z.string(), z.null()]).optional().transform((val) => {
-    if (val === null) return null;
+  scheduledAt: z.union([z.date(), z.string()]).optional().transform((val) => {
     if (!val) return undefined;
     return typeof val === "string" ? new Date(val) : val;
   }),
@@ -45,7 +42,6 @@ export const createContentTaskSchema = contentTaskSchema
     status: z
       .enum([
         "IDEA",
-        "SCRIPT",
         "RECORDED",
         "EDITING",
         "REVIEW_INTERNAL",
@@ -57,7 +53,6 @@ export const createContentTaskSchema = contentTaskSchema
       .default("IDEA"),
     priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
   });
-
 export const updateContentTaskSchema = contentTaskSchema.partial();
 
 const batchTaskItemSchema = createContentTaskSchema.pick({
@@ -87,7 +82,6 @@ export const bulkUpdateTasksSchema = z.object({
     .min(1, "Debes seleccionar al menos una tarea"),
   status: z.enum([
     "IDEA",
-    "SCRIPT",
     "RECORDED",
     "EDITING",
     "REVIEW_INTERNAL",

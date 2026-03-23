@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,15 +54,30 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  buildDefaultAllocationValues,
-  buildEqualAmountAllocationValues,
-  calculateExpenseAllocations,
-  detectCategory,
-  detectClientByDescription,
-  EXPENSE_SPLIT_OPTIONS,
-  getAllocationDisplayValue,
-} from "./expense-form-utils";
+
+// Mapeo de palabras clave a categorías
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  COMIDA: ["almuerzo", "cena", "desayuno", "comida", "meal", "restaurant", "comedor", "pizza", "hamburguesa", "sushi", "café", "coffee", "lunch", "dinner", "breakfast", "food", "restaurante"],
+  TRANSPORTE: ["taxi", "uber", "bus", "colectivo", "gasolina", "combustible", "parking", "estacionamiento", "viaje", "transporte", "flight", "vuelo", "aeropuerto", "aereo", "tren", "train"],
+  INVITACIONES: ["invitación", "evento", "fiesta", "boda", "cumpleaños", "regalo", "gift", "invitación", "entrada", "ticket", "show", "concierto", "teatro"],
+  SOFTWARE: ["software", "license", "licencia", "suscripción", "subscription", "adobe", "microsoft", "google", "app", "aplicación", "plugin", "extension", "saas", "cloud", "api"],
+  OFICINA: ["oficina", "office", "supplies", "papelería", "tinta", "printer", "impresora", "escritorio", "desk", "silla", "chair", "estantería", "mueble"],
+  EQUIPOS: ["equipo", "equipment", "cámara", "camera", "micrófono", "mic", "monitor", "pantalla", "computadora", "laptop", "teclado", "keyboard", "mouse", "disco", "drone", "luz", "light"],
+};
+
+const detectCategory = (description: string): string => {
+  const lowerDescription = description.toLowerCase().trim();
+  
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    for (const keyword of keywords) {
+      if (lowerDescription.includes(keyword)) {
+        return category;
+      }
+    }
+  }
+  
+  return "OTROS";
+};
 
 interface TransactionDialogProps {
   children?: React.ReactNode;
@@ -104,12 +119,6 @@ const formatDateNatural = (value?: Date | string) => {
   }
 };
 
-const incomeAmountModeOptions = [
-  { key: "100", label: "100%" },
-  { key: "50", label: "50%" },
-  { key: "other", label: "Otro" },
-] as const;
-
 // Parse a date-only input (YYYY-MM-DD) into a local Date at midnight
 const parseDateFromInput = (value?: string) => {
   if (!value) return undefined;
@@ -125,7 +134,6 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
   const { toast } = useToast();
   const { data: session } = useSession();
   const userRole = session?.user?.role;
-  const currentUserId = session?.user?.id;
   const isAdmin = userRole === "ADMIN";
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -143,9 +151,6 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
   const [honorariosAmountInput, setHonorariosAmountInput] = useState<string>("");
   const [incomeAmountMode, setIncomeAmountMode] = useState<"100" | "50" | "other">("other");
   const [honorariosUserIds, setHonorariosUserIds] = useState<string[]>([]);
-  const [expenseAllocationValues, setExpenseAllocationValues] = useState<Record<string, string>>({});
-  const [expenseCategoryManuallySelected, setExpenseCategoryManuallySelected] = useState(false);
-  const [expenseClientManuallySelected, setExpenseClientManuallySelected] = useState(false);
 
   // Formulario de Ingreso
   const incomeForm = useForm<CreateInvoiceInput>({
@@ -170,8 +175,6 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
       paidByUserId: undefined,
       paidByUserIds: [],
       clientId: undefined,
-      splitMode: "EQUALLY",
-      allocations: [],
     },
   });
 
@@ -200,29 +203,17 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
           }
           if (usersResult.success && usersResult.data) {
             setUsers(usersResult.data);
-            const sessionUser = usersResult.data.find((user) => user.id === currentUserId);
-            const defaultExpenseUsers = usersResult.data.filter((user) => {
-              const normalizedName = user.name?.trim().toLowerCase() ?? "";
-              const normalizedEmail = user.email?.trim().toLowerCase() ?? "";
-              return normalizedEmail === "totemcisnemedia@gmail.com"
-                || normalizedEmail === "estuarlito@gmail.com"
-                || normalizedName.includes("paty")
-                || normalizedName.includes("stuart");
-            });
-            const defaultExpenseUserIds = defaultExpenseUsers.length > 0
-              ? defaultExpenseUsers.map((user) => user.id)
-              : sessionUser
-                ? [sessionUser.id]
-                : [];
-
-            if (sessionUser) {
-              expenseForm.setValue("paidByUserId", sessionUser.id);
+            // Pre-seleccionar a Paty y Stuart en el formulario de gastos
+            const patyAndStuart = usersResult.data
+              .filter((user) => 
+                user.name?.toLowerCase().includes("paty") || 
+                user.name?.toLowerCase().includes("stuart")
+              )
+              .map((user) => user.id);
+            
+            if (patyAndStuart.length > 0) {
+              expenseForm.setValue("paidByUserIds", patyAndStuart);
             }
-
-            expenseForm.setValue("paidByUserIds", defaultExpenseUserIds, {
-              shouldDirty: false,
-              shouldTouch: false,
-            });
           }
         })
         .finally(() => {
@@ -238,7 +229,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
       setExpenseAmountInput(expenseAmt && expenseAmt !== 0 ? String(expenseAmt) : "");
       setHonorariosAmountInput(honorAmt && honorAmt !== 0 ? String(honorAmt) : "");
     }
-  }, [currentUserId, open, expenseForm]);
+  }, [open, expenseForm]);
 
   // Resetear formularios cuando se cierra el dialog
   useEffect(() => {
@@ -252,8 +243,6 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
       setExpenseAmountInput("");
       setHonorariosAmountInput("");
       setHonorariosUserIds([]);
-      setExpenseCategoryManuallySelected(false);
-      setExpenseClientManuallySelected(false);
     }
   }, [open, incomeForm, expenseForm, honorariosForm]);
 
@@ -268,19 +257,6 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
       ?.toLowerCase()
       .includes(debouncedExpenseClientQuery.trim().toLowerCase())
   );
-  const expenseSelectedUserIds = expenseForm.watch("paidByUserIds") ?? [];
-  const expenseSplitMode = expenseForm.watch("splitMode") ?? "EQUALLY";
-  const expenseAmountValue = expenseForm.watch("amount") ?? 0;
-  const expenseAllocationsPreview = useMemo(
-    () =>
-      calculateExpenseAllocations({
-        splitMode: expenseSplitMode,
-        totalAmount: expenseAmountValue,
-        selectedUserIds: expenseSelectedUserIds,
-        allocationValues: expenseAllocationValues,
-      }),
-    [expenseAllocationValues, expenseAmountValue, expenseSelectedUserIds, expenseSplitMode]
-  );
 
   // Watch selected client for income form to populate percentage-based amount
   const incomeSelectedClientId = incomeForm.watch("clientId");
@@ -289,52 +265,30 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
 
   useEffect(() => {
     if (!incomeSelectedClientId) return;
-    const monthly = incomeSelectedClient?.monthlyRate ?? 0;
+    const client = clients.find((c) => c.id === incomeSelectedClientId);
+    const monthly = client?.monthlyRate ?? 0;
 
     if (incomeAmountMode === "100") {
       const val = monthly;
       setIncomeAmountInput(val ? String(val) : "");
-      incomeForm.setValue("amount", val);
+      incomeForm.setValue("amount", val || undefined);
     } else if (incomeAmountMode === "50") {
       const val = monthly ? monthly / 2 : 0;
       setIncomeAmountInput(val ? String(val) : "");
-      incomeForm.setValue("amount", val);
+      incomeForm.setValue("amount", val || undefined);
     } else if (incomeAmountMode === "other") {
-      if (!incomeAmountInput) incomeForm.setValue("amount", 0);
+      // leave input as-is but if it's empty, clear form amount
+      if (!incomeAmountInput) incomeForm.setValue("amount", undefined);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incomeSelectedClientId, incomeAmountMode, clients]);
 
-  useEffect(() => {
-    setExpenseAllocationValues((currentValues) => {
-      const nextValues = buildDefaultAllocationValues(expenseSelectedUserIds);
-
-      expenseSelectedUserIds.forEach((userId) => {
-        if (currentValues[userId] !== undefined) {
-          nextValues[userId] = currentValues[userId];
-        }
-      });
-
-      return nextValues;
-    });
-
-    if (expenseSelectedUserIds.length <= 1 && expenseSplitMode !== "EQUALLY") {
-      expenseForm.setValue("splitMode", "EQUALLY");
-    }
-  }, [expenseForm, expenseSelectedUserIds, expenseSplitMode]);
-
+  // Handler para auto-detectar categoría cuando se sale del campo de descripción
   const handleExpenseDescriptionBlur = (descriptionValue: string) => {
     if (descriptionValue && descriptionValue.trim()) {
-      if (!expenseCategoryManuallySelected) {
-        const detectedCategory = detectCategory(descriptionValue) as CreateExpenseInput["category"];
-        expenseForm.setValue("category", detectedCategory);
-      }
-
-      if (!expenseClientManuallySelected) {
-        const detectedClient = detectClientByDescription(descriptionValue, clients);
-        expenseForm.setValue("clientId", detectedClient?.id);
-        setExpenseClientQuery(detectedClient?.name ?? "");
-      }
+      const detectedCategory = detectCategory(descriptionValue);
+      console.log("Detected category:", detectedCategory, "from description:", descriptionValue);
+      expenseForm.setValue("category", detectedCategory);
     }
   };
 
@@ -376,26 +330,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
     setIsSubmitting(true);
 
     try {
-      const allocationsResult = calculateExpenseAllocations({
-        splitMode: data.splitMode ?? "EQUALLY",
-        totalAmount: data.amount,
-        selectedUserIds: data.paidByUserIds ?? [],
-        allocationValues: expenseAllocationValues,
-      });
-
-      if (allocationsResult.error) {
-        toast({
-          variant: "destructive",
-          title: "Split inválido",
-          description: allocationsResult.error,
-        });
-        return;
-      }
-
-      const result = await createExpense({
-        ...data,
-        allocations: allocationsResult.allocations,
-      });
+      const result = await createExpense(data);
 
       if (result.success) {
         toast({
@@ -581,7 +516,11 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
 
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium">Monto pagado:</span>
-                  {incomeAmountModeOptions.map((opt) => {
+                  {[
+                    { key: "100", label: "100%" },
+                    { key: "50", label: "50%" },
+                    { key: "other", label: "Otro" },
+                  ].map((opt) => {
                     const isPct = opt.key === "100" || opt.key === "50";
                     const disabledPct = isPct && (!incomeSelectedClient || (incomeSelectedMonthly ?? 0) <= 0);
                     const title = disabledPct
@@ -598,10 +537,10 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                         title={title}
                         onClick={() => {
                           if (disabledPct) return;
-                          setIncomeAmountMode(opt.key);
+                          setIncomeAmountMode(opt.key as any);
                           if (opt.key === "other") {
                             setIncomeAmountInput("");
-                            incomeForm.setValue("amount", 0);
+                            incomeForm.setValue("amount", undefined);
                           }
                         }}
                         className={`rounded-full px-3 py-1 text-sm border transition ${
@@ -636,12 +575,13 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                             onBlur={(e) => {
                               field.onBlur();
                               if (e.target.value === "") {
-                                field.onChange(0);
+                                field.onChange(undefined);
                               } else {
                                 field.onChange(parseFloat(e.target.value) || 0);
                               }
                             }}
-                            onFocus={() => {
+                            onFocus={(e) => {
+                              // allow clearing the 0 on focus
                               if (field.value === 0) {
                                 setIncomeAmountInput("");
                               }
@@ -809,6 +749,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                   )}
                 />
 
+                {/* Monto y Fecha - Grid 50/50 */}
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={expenseForm.control}
@@ -831,7 +772,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                               onBlur={(e) => {
                                 field.onBlur();
                                 if (e.target.value === "") {
-                                  field.onChange(0);
+                                  field.onChange(undefined);
                                 } else {
                                   field.onChange(parseFloat(e.target.value) || 0);
                                 }
@@ -870,106 +811,9 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                           />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <FormField
-                    control={expenseForm.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Categoría</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            setExpenseCategoryManuallySelected(true);
-                            field.onChange(value as CreateExpenseInput["category"]);
-                          }}
-                          value={field.value}
-                          disabled={isSubmitting}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona la categoría" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="COMIDA">Comida</SelectItem>
-                            <SelectItem value="TRANSPORTE">Transporte</SelectItem>
-                            <SelectItem value="INVITACIONES">Invitaciones</SelectItem>
-                            <SelectItem value="SOFTWARE">Software</SelectItem>
-                            <SelectItem value="OFICINA">Oficina</SelectItem>
-                            <SelectItem value="EQUIPOS">Equipos</SelectItem>
-                            <SelectItem value="OTROS">Otros</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={expenseForm.control}
-                    name="clientId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cliente (Opcional)</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            setExpenseClientManuallySelected(true);
-                            field.onChange(value === "none" ? undefined : value);
-                            const selectedClient = clients.find((client) => client.id === value);
-                            setExpenseClientQuery(selectedClient?.name ?? "");
-                          }}
-                          value={field.value || "none"}
-                          disabled={isSubmitting || loadingClients}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona un cliente (opcional)" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <div className="p-2">
-                              <Input
-                                placeholder="Buscar cliente..."
-                                value={expenseClientQuery}
-                                onChange={(event) => setExpenseClientQuery(event.target.value)}
-                                onKeyDown={(event) => event.stopPropagation()}
-                                disabled={loadingClients}
-                              />
-                            </div>
-                            <SelectItem value="none">Sin cliente</SelectItem>
-                            {filteredExpenseClients.length === 0 ? (
-                              <div className="px-2 pb-2 text-sm text-muted-foreground">
-                                Sin resultados
-                              </div>
-                            ) : (
-                              filteredExpenseClients.map((client) => (
-                                <SelectItem key={client.id} value={client.id}>
-                                  <div className="flex items-center gap-2">
-                                    <Avatar className="h-6 w-6">
-                                      <AvatarImage src={client.logo || undefined} alt={client.name} />
-                                      <AvatarFallback className="text-xs">
-                                        {client.name
-                                          ?.split(" ")
-                                          .map((n) => n[0])
-                                          .join("")
-                                          .toUpperCase()
-                                          .slice(0, 2) || "??"}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <span>{client.name}</span>
-                                  </div>
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {formatDateNatural(field.value as Date | string | undefined) || formatDateNatural(getCurrentDateInEcuador())}
+                        </div>
                       </FormItem>
                     )}
                   />
@@ -977,42 +821,94 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
 
                 <FormField
                   control={expenseForm.control}
-                  name="paidByUserId"
+                  name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Pagado por</FormLabel>
+                      <FormLabel>Categoría</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
-                        disabled={isSubmitting || loadingUsers}
+                        disabled={isSubmitting}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecciona quién pagó" />
+                            <SelectValue placeholder="Selecciona la categoría" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {users.map((user) => (
-                            <SelectItem key={`expense-paid-by-${user.id}`} value={user.id}>
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-6 w-6">
-                                  <AvatarImage src={user.image || undefined} alt={user.name ?? "Usuario"} />
-                                  <AvatarFallback className="text-xs">
-                                    {user.name
-                                      ?.split(" ")
-                                      .map((namePart) => namePart[0])
-                                      .join("")
-                                      .toUpperCase()
-                                      .slice(0, 2) || "??"}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span>{user.name}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="COMIDA">Comida</SelectItem>
+                          <SelectItem value="TRANSPORTE">Transporte</SelectItem>
+                          <SelectItem value="INVITACIONES">Invitaciones</SelectItem>
+                          <SelectItem value="SOFTWARE">Software</SelectItem>
+                          <SelectItem value="OFICINA">Oficina</SelectItem>
+                          <SelectItem value="EQUIPOS">Equipos</SelectItem>
+                          <SelectItem value="OTROS">Otros</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={expenseForm.control}
+                  name="clientId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cliente (Opcional)</FormLabel>
+                      <Select
+                        onValueChange={(value) =>
+                          field.onChange(value === "none" ? undefined : value)
+                        }
+                        value={field.value || "none"}
+                        disabled={isSubmitting || loadingClients}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona un cliente (opcional)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <div className="p-2">
+                            <Input
+                              placeholder="Buscar cliente..."
+                              value={expenseClientQuery}
+                              onChange={(event) => setExpenseClientQuery(event.target.value)}
+                              onKeyDown={(event) => event.stopPropagation()}
+                              disabled={loadingClients}
+                            />
+                          </div>
+                          <SelectItem value="none">Sin cliente</SelectItem>
+                          {filteredExpenseClients.length === 0 ? (
+                            <div className="px-2 pb-2 text-sm text-muted-foreground">
+                              Sin resultados
+                            </div>
+                          ) : (
+                            filteredExpenseClients.map((client) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6">
+                                    <AvatarImage src={client.logo || undefined} alt={client.name} />
+                                    <AvatarFallback className="text-xs">
+                                      {client.name
+                                        ?.split(" ")
+                                        .map((n) => n[0])
+                                        .join("")
+                                        .toUpperCase()
+                                        .slice(0, 2) || "??"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span>{client.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                      <p className="text-sm text-muted-foreground">
+                        Vincula este gasto a un proyecto específico para análisis de rentabilidad
+                      </p>
                     </FormItem>
                   )}
                 />
@@ -1023,40 +919,10 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                   render={({ field }) => (
                     <FormItem>
                       <div className="space-y-3">
-                        <FormLabel>Dividido entre</FormLabel>
-                        <div className="space-y-2">
-                          <Label>Modo de división</Label>
-                          <div className="max-w-xs">
-                            <Select
-                              onValueChange={(value) => {
-                                const nextSplitMode = value as CreateExpenseInput["splitMode"];
-                                expenseForm.setValue("splitMode", nextSplitMode);
-
-                                if (nextSplitMode === "AS_AMOUNTS") {
-                                  setExpenseAllocationValues(
-                                    buildEqualAmountAllocationValues({
-                                      totalAmount: expenseAmountValue,
-                                      selectedUserIds: expenseSelectedUserIds,
-                                    })
-                                  );
-                                }
-                              }}
-                              value={expenseSplitMode}
-                              disabled={isSubmitting || expenseSelectedUserIds.length <= 1}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona el split" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {EXPENSE_SPLIT_OPTIONS.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
+                        <FormLabel>Asignar a Usuarios (Para Reembolso)</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Selecciona uno o más usuarios. Si seleccionas múltiples, el monto se dividirá equitativamente.
+                        </p>
                         <div className="grid grid-cols-2 gap-3">
                           {users.map((user) => {
                             const firstName = user.name?.split(' ')[0] || user.name;
@@ -1066,76 +932,36 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                               .join('')
                               .toUpperCase()
                               .slice(0, 2) || '??';
-                            const isSelected = field.value?.includes(user.id) || false;
-                            const allocationLabel = getAllocationDisplayValue({
-                              splitMode: expenseSplitMode,
-                              userId: user.id,
-                              allocations: expenseAllocationsPreview.allocations,
-                              fallbackAmount: expenseAmountValue,
-                            });
                             
                             return (
-                              <div key={user.id} className="rounded-md border p-2.5">
-                                <div className="flex items-center gap-2">
-                                  <Checkbox
-                                    id={`user-${user.id}`}
-                                    checked={isSelected}
-                                    onCheckedChange={(checked) => {
-                                      const currentValue = field.value || [];
-                                      if (checked) {
-                                        field.onChange([...currentValue, user.id]);
-                                      } else {
-                                        field.onChange(currentValue.filter((id) => id !== user.id));
-                                      }
-                                    }}
-                                    disabled={isSubmitting || loadingUsers}
-                                  />
-                                  <Label
-                                    htmlFor={`user-${user.id}`}
-                                    className="flex min-w-0 items-center gap-2 cursor-pointer flex-1"
-                                  >
-                                    <Avatar className="h-6 w-6">
-                                      <AvatarImage src={user.image || undefined} alt={firstName} />
-                                      <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="truncate text-sm font-normal">{firstName}</span>
-                                  </Label>
-                                  {isSelected ? (
-                                    expenseSplitMode === "EQUALLY" ? (
-                                      <div className="text-right text-xs text-muted-foreground">{allocationLabel}</div>
-                                    ) : (
-                                      <div className="flex items-center gap-2">
-                                        <Input
-                                          type="number"
-                                          step="0.01"
-                                          min="0"
-                                          inputMode="decimal"
-                                          placeholder={expenseSplitMode === "AS_PARTS" ? "0" : "0.00"}
-                                          className="h-8 w-20 text-right"
-                                          value={expenseAllocationValues[user.id] ?? ""}
-                                          onChange={(event) => {
-                                            const nextValue = event.target.value;
-                                            setExpenseAllocationValues((currentValues) => ({
-                                              ...currentValues,
-                                              [user.id]: nextValue,
-                                            }));
-                                          }}
-                                          disabled={isSubmitting}
-                                        />
-                                        <div className="w-14 text-right text-[11px] text-muted-foreground">
-                                          {allocationLabel}
-                                        </div>
-                                      </div>
-                                    )
-                                  ) : null}
-                                </div>
+                              <div key={user.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`user-${user.id}`}
+                                  checked={field.value?.includes(user.id) || false}
+                                  onCheckedChange={(checked) => {
+                                    const currentValue = field.value || [];
+                                    if (checked) {
+                                      field.onChange([...currentValue, user.id]);
+                                    } else {
+                                      field.onChange(currentValue.filter((id) => id !== user.id));
+                                    }
+                                  }}
+                                  disabled={isSubmitting || loadingUsers}
+                                />
+                                <Label
+                                  htmlFor={`user-${user.id}`}
+                                  className="flex items-center gap-2 cursor-pointer flex-1"
+                                >
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage src={user.image || undefined} alt={firstName} />
+                                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-sm font-normal truncate">{firstName}</span>
+                                </Label>
                               </div>
                             );
                           })}
                         </div>
-                        {expenseAllocationsPreview.error ? (
-                          <p className="text-sm text-destructive">{expenseAllocationsPreview.error}</p>
-                        ) : null}
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -1246,7 +1072,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                             onBlur={(e) => {
                               field.onBlur();
                               if (e.target.value === "") {
-                                field.onChange(0);
+                                field.onChange(undefined);
                               } else {
                                 field.onChange(parseFloat(e.target.value) || 0);
                               }

@@ -3,66 +3,9 @@
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import {
-  createClientSchema,
-  clientBillingExceptionSchema,
-  createCredentialSchema,
-  credentialGroupSchema,
-  deleteCredentialGroupSchema,
-  updateClientSchema,
-} from "@/schemas/client";
+import { createClientSchema, createCredentialSchema, updateClientSchema } from "@/schemas/client";
 import type { ApiResponse } from "@/types";
-import type { BrandAsset, Client, Credential, Prisma } from "@prisma/client";
-
-type ClientBillingExceptionRecord = {
-  id: string;
-  clientId: string;
-  month: number;
-  year: number;
-  type: string;
-  overrideAmount: number | null;
-  reason: string;
-  notes: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-async function getBillingExceptionsForClient(clientId: string): Promise<ClientBillingExceptionRecord[]> {
-  try {
-    const records = await db.$queryRaw<Array<{
-      id: string;
-      clientId: string;
-      month: number;
-      year: number;
-      type: string;
-      overrideAmount: number | null;
-      reason: string;
-      notes: string | null;
-      createdAt: Date;
-      updatedAt: Date;
-    }>>`
-      SELECT
-        "id",
-        "clientId",
-        "month",
-        "year",
-        "type",
-        "overrideAmount",
-        "reason",
-        "notes",
-        "createdAt",
-        "updatedAt"
-      FROM "ClientBillingException"
-      WHERE "clientId" = ${clientId}
-      ORDER BY "year" DESC, "month" DESC
-    `;
-
-    return records;
-  } catch (error) {
-    console.warn("No se pudieron obtener excepciones mensuales:", error);
-    return [];
-  }
-}
+import type { Client, Credential, ContentTask, BrandAsset, TaskMetrics } from "@prisma/client";
 
 /**
  * Server Action para crear un cliente
@@ -107,7 +50,6 @@ export async function createClient(
         monthlyShoots: validatedData.monthlyShoots ?? 0,
         monthlyRate: validatedData.monthlyRate ?? 0,
         paymentDay: validatedData.paymentDay ?? null,
-        billingStartDate: validatedData.billingStartDate ?? null,
         lastPostDate: validatedData.lastPostDate ?? null,
         editorId: validatedData.editorId ?? null,
         communityId: validatedData.communityId ?? null,
@@ -187,9 +129,6 @@ export async function updateClient(
         }),
         ...(validatedData.paymentDay !== undefined && {
           paymentDay: validatedData.paymentDay,
-        }),
-        ...(validatedData.billingStartDate !== undefined && {
-          billingStartDate: validatedData.billingStartDate ?? null,
         }),
         ...(validatedData.lastPostDate !== undefined && {
           lastPostDate: validatedData.lastPostDate ?? null,
@@ -469,128 +408,12 @@ export async function getClients(): Promise<ApiResponse<Array<
   }
 }
 
-const clientWithRelationsArgs = {
-  include: {
-    tasks: {
-      include: {
-        metrics: true,
-      },
-      orderBy: { createdAt: "desc" as const },
-    },
-    credentials: {
-      orderBy: { createdAt: "desc" as const },
-    },
-    brandAssets: {
-      orderBy: { createdAt: "desc" as const },
-    },
-    editor: {
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      },
-    },
-    community: {
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      },
-    },
-  },
-} satisfies Prisma.ClientDefaultArgs;
-
-export type ClientWithRelations = Prisma.ClientGetPayload<typeof clientWithRelationsArgs> & {
-  billingExceptions: ClientBillingExceptionRecord[];
+// Tipo para Client con relaciones incluidas
+export type ClientWithRelations = Client & {
+  tasks: (ContentTask & { metrics: TaskMetrics | null })[];
+  credentials: Credential[];
+  brandAssets: BrandAsset[];
 };
-
-export async function upsertClientBillingException(
-  input: unknown
-): Promise<ApiResponse<ClientBillingExceptionRecord>> {
-  try {
-    const { auth } = await import("@/auth");
-    const session = await auth();
-
-    if (!session?.user) {
-      return { success: false, error: "No autenticado" };
-    }
-
-    if (session.user.role !== "ADMIN") {
-      return { success: false, error: "Solo los administradores pueden crear excepciones mensuales" };
-    }
-
-    const validatedData = clientBillingExceptionSchema.parse(input);
-    const [yearText, monthText] = validatedData.period.split("-");
-    const year = Number(yearText);
-    const month = Number(monthText);
-
-    const client = await db.client.findUnique({
-      where: { id: validatedData.clientId },
-      select: { id: true },
-    });
-
-    if (!client) {
-      return { success: false, error: "Cliente no encontrado" };
-    }
-
-    const overrideAmount = validatedData.type === "OVERRIDE_AMOUNT"
-      ? validatedData.overrideAmount ?? null
-      : null;
-
-    await db.$executeRaw`
-      INSERT INTO "ClientBillingException" (
-        "id",
-        "clientId",
-        "month",
-        "year",
-        "type",
-        "overrideAmount",
-        "reason",
-        "notes",
-        "createdAt",
-        "updatedAt"
-      ) VALUES (
-        ${randomUUID()},
-        ${validatedData.clientId},
-        ${month},
-        ${year},
-        ${validatedData.type},
-        ${overrideAmount},
-        ${validatedData.reason},
-        ${validatedData.notes ?? null},
-        NOW(),
-        NOW()
-      )
-      ON CONFLICT ("clientId", "month", "year")
-      DO UPDATE SET
-        "type" = EXCLUDED."type",
-        "overrideAmount" = EXCLUDED."overrideAmount",
-        "reason" = EXCLUDED."reason",
-        "notes" = EXCLUDED."notes",
-        "updatedAt" = NOW()
-    `;
-
-    const [exception] = await getBillingExceptionsForClient(validatedData.clientId).then((records) =>
-      records.filter((record) => record.clientId === validatedData.clientId && record.month === month && record.year === year)
-    );
-
-    revalidatePath(`/clients/${validatedData.clientId}`);
-    revalidatePath("/finance");
-    revalidatePath("/finance/receivables");
-
-    if (!exception) {
-      return { success: false, error: "La excepción se guardó, pero no se pudo recargar" };
-    }
-
-    return { success: true, data: exception };
-  } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Error al guardar excepción mensual",
-    };
-  }
-}
 
 /**
  * Server Action para obtener un cliente por ID
@@ -602,7 +425,34 @@ export async function getClientById(
   try {
     const client = await db.client.findUnique({
       where: { id },
-      ...clientWithRelationsArgs,
+      include: {
+        tasks: {
+          include: {
+            metrics: true,
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        credentials: {
+          orderBy: { createdAt: "desc" },
+        },
+        brandAssets: {
+          orderBy: { createdAt: "desc" },
+        },
+        editor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        community: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
 
     if (!client) {
@@ -611,8 +461,6 @@ export async function getClientById(
         error: "Cliente no encontrado",
       };
     }
-
-    const billingExceptions = await getBillingExceptionsForClient(id);
 
     // Intentar obtener feedbacks pendientes de forma segura
     let hasPendingFeedback = false;
@@ -635,7 +483,6 @@ export async function getClientById(
       success: true,
       data: {
         ...client,
-        billingExceptions,
         hasPendingFeedback,
       } as ClientWithRelations & { hasPendingFeedback: boolean },
     };
@@ -919,7 +766,20 @@ export async function getClientByShareToken(
   try {
     const client = await db.client.findUnique({
       where: { shareToken },
-      ...clientWithRelationsArgs,
+      include: {
+        tasks: {
+          include: {
+            metrics: true,
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        credentials: {
+          orderBy: { createdAt: "desc" },
+        },
+        brandAssets: {
+          orderBy: { createdAt: "desc" },
+        },
+      },
     });
 
     if (!client) {
@@ -929,15 +789,7 @@ export async function getClientByShareToken(
       };
     }
 
-    const billingExceptions = await getBillingExceptionsForClient(client.id);
-
-    return {
-      success: true,
-      data: {
-        ...client,
-        billingExceptions,
-      } as ClientWithRelations,
-    };
+    return { success: true, data: client as ClientWithRelations };
   } catch (error) {
     return {
       success: false,
@@ -1025,129 +877,6 @@ export async function deleteCredential(
       success: false,
       error:
         error instanceof Error ? error.message : "Error al eliminar credencial",
-    };
-  }
-}
-
-/**
- * Server Action para crear o actualizar un grupo visual de credenciales
- */
-export async function saveCredentialGroup(
-  input: unknown
-): Promise<ApiResponse<Credential[]>> {
-  try {
-    const { auth } = await import("@/auth");
-    const session = await auth();
-    if (!session?.user) {
-      return { success: false, error: "No autenticado" };
-    }
-
-    const validatedData = credentialGroupSchema.parse(input);
-    const normalizedUrl = validatedData.url ?? null;
-
-    const existingCredentials = validatedData.existingCredentials.length
-      ? await db.credential.findMany({
-          where: {
-            id: {
-              in: validatedData.existingCredentials.map((credential) => credential.id),
-            },
-            clientId: validatedData.clientId,
-          },
-          orderBy: { createdAt: "asc" },
-        })
-      : [];
-
-    const existingMap = new Map(
-      existingCredentials.map((credential) => [credential.service, credential])
-    );
-    const selectedServices = new Set(validatedData.services);
-
-    const credentialsToDelete = existingCredentials.filter(
-      (credential) => !selectedServices.has(credential.service as (typeof validatedData.services)[number])
-    );
-
-    if (credentialsToDelete.length > 0) {
-      await db.credential.deleteMany({
-        where: {
-          id: {
-            in: credentialsToDelete.map((credential) => credential.id),
-          },
-        },
-      });
-    }
-
-    const savedCredentials = await Promise.all(
-      validatedData.services.map(async (service) => {
-        const existingCredential = existingMap.get(service);
-
-        if (existingCredential) {
-          return db.credential.update({
-            where: { id: existingCredential.id },
-            data: {
-              service,
-              username: validatedData.username,
-              password: validatedData.password,
-              url: normalizedUrl,
-            },
-          });
-        }
-
-        return db.credential.create({
-          data: {
-            service,
-            username: validatedData.username,
-            password: validatedData.password,
-            url: normalizedUrl,
-            clientId: validatedData.clientId,
-          },
-        });
-      })
-    );
-
-    revalidatePath(`/clients/${validatedData.clientId}`);
-
-    return { success: true, data: savedCredentials };
-  } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Error al guardar credenciales",
-    };
-  }
-}
-
-/**
- * Server Action para eliminar un grupo visual de credenciales
- */
-export async function deleteCredentialGroup(
-  input: unknown
-): Promise<ApiResponse<void>> {
-  try {
-    const { auth } = await import("@/auth");
-    const session = await auth();
-    if (!session?.user) {
-      return { success: false, error: "No autenticado" };
-    }
-
-    const validatedData = deleteCredentialGroupSchema.parse(input);
-
-    await db.credential.deleteMany({
-      where: {
-        id: {
-          in: validatedData.credentialIds,
-        },
-        clientId: validatedData.clientId,
-      },
-    });
-
-    revalidatePath(`/clients/${validatedData.clientId}`);
-
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Error al eliminar grupo de credenciales",
     };
   }
 }

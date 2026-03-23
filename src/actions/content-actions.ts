@@ -535,6 +535,7 @@ export async function updateTaskStatus(
     // Validar que el status sea válido
     const validStatuses = [
       "IDEA",
+      "SCRIPT",
       "RECORDED",
       "EDITING",
       "REVIEW_INTERNAL",

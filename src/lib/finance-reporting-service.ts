@@ -2,10 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { getFinanceSettingsWithFallback } from "@/actions/finance-settings-actions";
-import type { FinanceSettings } from "@/schemas/finance-settings";
 import type { ApiResponse } from "@/types";
-import type { BudgetUsageStatus, FinanceSettingsMetrics } from "@/types";
 
 /**
  * Interfaz para datos del mapa de calor operativo
@@ -49,187 +46,7 @@ export interface FinancialStats {
     userId?: string;
   }>;
   pendingReimbursements?: number;
-  honorariosReceived?: number;
-  heatmapData?: HeatmapCell[];
-  financeSettingsMetrics?: FinanceSettingsMetrics;
-}
-
-function resolveBudgetStatus(params: {
-  usagePercent: number;
-  approvalRequired: boolean;
-  alertThresholdPercent: number;
-  warningThresholdPercent: number;
-}): BudgetUsageStatus {
-  const { usagePercent, approvalRequired, alertThresholdPercent, warningThresholdPercent } = params;
-
-  if (approvalRequired && usagePercent > alertThresholdPercent) {
-    return "approval_required";
-  }
-
-  if (usagePercent >= alertThresholdPercent) {
-    return "alert";
-  }
-
-  if (usagePercent >= warningThresholdPercent) {
-    return "warning";
-  }
-
-  return "normal";
-}
-
-async function buildFinanceSettingsMetrics(params: {
-  totalIncome: number;
-  expensesThisMonth: Array<{ amount: number; category: string; paidByUserId: string | null }>;
-  expenseTransactionsThisMonth: Array<{ amount: number; category: string | null; assignedToId: string | null }>;
-}): Promise<FinanceSettingsMetrics> {
-  const settings: FinanceSettings = await getFinanceSettingsWithFallback();
-  const trackedCategories = new Set(settings.trackedCategories);
-
-  const trackedExpenseAmount = params.expensesThisMonth
-    .filter((expense) => trackedCategories.has(expense.category as FinanceSettings["trackedCategories"][number]))
-    .reduce((sum, expense) => sum + expense.amount, 0);
-
-  const trackedTransactionAmount = params.expenseTransactionsThisMonth
-    .filter((transaction) => transaction.category && trackedCategories.has(transaction.category as FinanceSettings["trackedCategories"][number]))
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const trackedExpenses = trackedExpenseAmount + trackedTransactionAmount;
-  const globalBudgetLimit = settings.budgetControlEnabled
-    ? (params.totalIncome * settings.globalBudgetPercentage) / 100
-    : 0;
-  const globalBudgetUsagePercent = globalBudgetLimit > 0 ? (trackedExpenses / globalBudgetLimit) * 100 : 0;
-  const globalBudgetRemaining = Math.max(globalBudgetLimit - trackedExpenses, 0);
-  const globalBudgetStatus = resolveBudgetStatus({
-    usagePercent: globalBudgetUsagePercent,
-    approvalRequired: settings.approvalRequiredOnExceed,
-    alertThresholdPercent: settings.alertThresholdPercent,
-    warningThresholdPercent: settings.warningThresholdPercent,
-  });
-
-  const users = await db.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      roleLegacy: true,
-    },
-  });
-
-  const adminUsers = users.filter((user) => user.roleLegacy === "ADMIN");
-
-  const userConsumedMap = new Map<string, number>();
-  params.expensesThisMonth.forEach((expense) => {
-    if (!expense.paidByUserId || !trackedCategories.has(expense.category as FinanceSettings["trackedCategories"][number])) {
-      return;
-    }
-
-    userConsumedMap.set(expense.paidByUserId, (userConsumedMap.get(expense.paidByUserId) ?? 0) + expense.amount);
-  });
-
-  params.expenseTransactionsThisMonth.forEach((transaction) => {
-    if (!transaction.assignedToId || !transaction.category || !trackedCategories.has(transaction.category as FinanceSettings["trackedCategories"][number])) {
-      return;
-    }
-
-    userConsumedMap.set(transaction.assignedToId, (userConsumedMap.get(transaction.assignedToId) ?? 0) + transaction.amount);
-  });
-
-  const adminBudgets = adminUsers.map((user) => {
-    const override = settings.adminBudgetOverrides.find((item) => item.userId === user.id);
-    const mode = override?.mode ?? settings.adminBudgetMode;
-    const rawValue = override?.value ?? settings.adminBudgetDefaultValue;
-    const limitAmount = settings.adminBudgetEnabled
-      ? mode === "PERCENTAGE"
-        ? (params.totalIncome * rawValue) / 100
-        : rawValue
-      : 0;
-    const consumedAmount = userConsumedMap.get(user.id) ?? 0;
-    const usagePercent = limitAmount > 0 ? (consumedAmount / limitAmount) * 100 : 0;
-    const remainingAmount = Math.max(limitAmount - consumedAmount, 0);
-
-    return {
-      userId: user.id,
-      userName: user.name ?? "Usuario",
-      consumedAmount,
-      limitAmount,
-      remainingAmount,
-      usagePercent,
-      status: resolveBudgetStatus({
-        usagePercent,
-        approvalRequired: settings.approvalRequiredOnExceed,
-        alertThresholdPercent: settings.alertThresholdPercent,
-        warningThresholdPercent: settings.warningThresholdPercent,
-      }),
-    };
-  });
-
-  const personalAnalyticsSummaries = users.map((user) => {
-    const paidAmount = params.expensesThisMonth
-      .filter((expense) => expense.paidByUserId === user.id)
-      .reduce((sum, expense) => sum + expense.amount, 0);
-    const consumedAmount = userConsumedMap.get(user.id) ?? 0;
-
-    return {
-      userId: user.id,
-      userName: user.name ?? "Usuario",
-      paidAmount,
-      consumedAmount,
-      balance: paidAmount - consumedAmount,
-    };
-  });
-
-  const creditors = personalAnalyticsSummaries
-    .filter((item) => item.balance > 0.01)
-    .map((item) => ({ ...item }));
-  const debtors = personalAnalyticsSummaries
-    .filter((item) => item.balance < -0.01)
-    .map((item) => ({ ...item, balance: Math.abs(item.balance) }));
-  const suggestedTransfers: FinanceSettingsMetrics["personalAnalytics"]["suggestedTransfers"] = [];
-
-  creditors.forEach((creditor) => {
-    let remainingCredit = creditor.balance;
-
-    debtors.forEach((debtor) => {
-      if (remainingCredit <= 0.01 || debtor.balance <= 0.01) {
-        return;
-      }
-
-      const amount = Math.min(remainingCredit, debtor.balance);
-      if (amount <= 0.01) {
-        return;
-      }
-
-      suggestedTransfers.push({
-        fromUserId: debtor.userId,
-        fromUserName: debtor.userName,
-        toUserId: creditor.userId,
-        toUserName: creditor.userName,
-        amount,
-      });
-
-      remainingCredit -= amount;
-      debtor.balance -= amount;
-    });
-  });
-
-  return {
-    overview: {
-      baseIncome: params.totalIncome,
-      trackedExpenses,
-      globalBudgetLimit,
-      globalBudgetRemaining,
-      globalBudgetUsagePercent,
-      globalBudgetStatus,
-      trackedCategories: Array.from(trackedCategories),
-      approvalRequiredOnExceed: settings.approvalRequiredOnExceed,
-    },
-    adminBudgets,
-    personalAnalytics: {
-      enabled: settings.personalAnalyticsEnabled,
-      summaries: personalAnalyticsSummaries,
-      suggestedTransfers,
-    },
-  };
-}
+  honorariosReceived?: number;  heatmapData?: HeatmapCell[];}
 
 /**
  * Interfaz para estadísticas de gastos
@@ -247,9 +64,6 @@ export interface ExpensesStatsData {
     assignedToName?: string;
     assignedToId?: string;
     reimbursed: boolean;
-    sourceType?: "EXPENSE" | "TRANSACTION";
-    clientName?: string;
-    clientId?: string;
   }>;
   categoryDistribution: Array<{
     category: string;
@@ -259,7 +73,6 @@ export interface ExpensesStatsData {
     clientName: string;
     amount: number;
   }>;
-  financeSettingsMetrics?: FinanceSettingsMetrics;
 }
 
 /**
@@ -607,7 +420,6 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         paidByUser: {
           select: {
             name: true,
-            image: true,
           },
         },
       },
@@ -794,22 +606,6 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
       });
     }
 
-    const financeSettingsMetrics = isAdmin
-      ? await buildFinanceSettingsMetrics({
-          totalIncome,
-          expensesThisMonth: paidExpensesThisMonth.map((expense) => ({
-            amount: expense.amount,
-            category: expense.category,
-            paidByUserId: expense.paidByUserId ?? null,
-          })),
-          expenseTransactionsThisMonth: paidExpenseTransactionsThisMonth.map((transaction) => ({
-            amount: transaction.amount,
-            category: transaction.category ?? null,
-            assignedToId: transaction.assignedToId ?? null,
-          })),
-        })
-      : undefined;
-
     return {
       success: true,
       data: {
@@ -825,7 +621,6 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
           totalHonorariosPaid,
           totalHonorariosPaidDeltaPct,
           heatmapData,
-          financeSettingsMetrics,
         }),
         ...(userId && {
           pendingReimbursements,
@@ -867,13 +662,8 @@ export async function getExpensesStatsFromDb(filters?: {
     }
 
     const now = new Date();
-    const [selectedYear, selectedMonth] = filters?.month ? filters.month.split("-") : [];
-    const parsedYear = selectedYear ? Number(selectedYear) : now.getFullYear();
-    const parsedMonthIndex = selectedMonth ? Number(selectedMonth) - 1 : now.getMonth();
-    const safeYear = Number.isNaN(parsedYear) ? now.getFullYear() : parsedYear;
-    const safeMonthIndex = Number.isNaN(parsedMonthIndex) ? now.getMonth() : parsedMonthIndex;
-    const monthStart = new Date(safeYear, safeMonthIndex, 1);
-    const monthEnd = new Date(safeYear, safeMonthIndex + 1, 0, 23, 59, 59, 999);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
     const expenseWhere: any = {
       date: {
@@ -945,53 +735,6 @@ export async function getExpensesStatsFromDb(filters?: {
       },
     });
 
-    const incomeWindowStart = monthStart;
-    const incomeWindowEnd = monthEnd;
-
-    const paidInvoices = isAdmin
-      ? await db.invoice.findMany({
-          where: {
-            status: "PAID",
-            generatedAt: {
-              gte: incomeWindowStart,
-              lte: incomeWindowEnd,
-            },
-          },
-        })
-      : [];
-
-    const incomeTransactions = await db.transaction.findMany({
-      where: {
-        type: isAdmin ? "INCOME" : "HONORARIOS",
-        status: "PAID",
-        ...(!isAdmin && userId ? { userId } : {}),
-        createdAt: {
-          gte: incomeWindowStart,
-          lte: incomeWindowEnd,
-        },
-      },
-    });
-
-    const totalIncome =
-      paidInvoices.reduce((sum, invoice) => sum + invoice.amount, 0) +
-      incomeTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
-
-    const financeSettingsMetrics = isAdmin
-      ? await buildFinanceSettingsMetrics({
-          totalIncome,
-          expensesThisMonth: expensesThisMonth.map((expense) => ({
-            amount: expense.amount,
-            category: expense.category,
-            paidByUserId: expense.paidByUserId,
-          })),
-          expenseTransactionsThisMonth: expenseTransactionsThisMonth.map((transaction) => ({
-            amount: transaction.amount,
-            category: transaction.category,
-            assignedToId: transaction.assignedToId,
-          })),
-        })
-      : undefined;
-
     const totalExpensesThisMonth =
       expensesThisMonth.reduce((sum, exp) => sum + exp.amount, 0) +
       expenseTransactionsThisMonth.reduce((sum, t) => sum + t.amount, 0);
@@ -1024,9 +767,6 @@ export async function getExpensesStatsFromDb(filters?: {
         assignedToName: exp.paidByUser?.name,
         assignedToId: exp.paidByUserId ?? undefined,
         reimbursed: exp.reimbursed,
-        sourceType: "EXPENSE" as const,
-        clientName: exp.client?.name,
-        clientId: exp.clientId ?? undefined,
       })),
       ...expenseTransactionsThisMonth
         .filter((t) => {
@@ -1047,9 +787,6 @@ export async function getExpensesStatsFromDb(filters?: {
           assignedToName: t.assignedTo?.name,
           assignedToId: t.assignedToId ?? undefined,
           reimbursed: t.status === "PAID",
-          sourceType: "TRANSACTION" as const,
-          clientName: t.relatedClient?.name,
-          clientId: t.relatedClientId ?? undefined,
         })),
     ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -1089,7 +826,6 @@ export async function getExpensesStatsFromDb(filters?: {
         expenses: expensesList,
         categoryDistribution,
         clientDistribution,
-        financeSettingsMetrics,
       },
     };
   } catch (error) {

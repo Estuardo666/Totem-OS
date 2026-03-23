@@ -52,40 +52,17 @@ interface EditClientDialogProps {
   users: User[];
 }
 
-type EditableClient = Client & {
-  billingStartDate?: Date | null;
-  paymentDay?: number | null;
-  editorId?: string | null;
-  communityId?: string | null;
-  contactEmails?: string | null;
-  logo?: string | null;
-  shareToken?: string | null;
-};
-
-function formatDateInputValue(date: Date | null | undefined): string {
-  if (!date) {
-    return "";
-  }
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
 export function EditClientDialog({
   client,
   open,
   onOpenChange,
   users,
 }: EditClientDialogProps) {
-  const editableClient: EditableClient = client;
   type UpdateClientFormInput = z.input<typeof updateClientSchema>;
   const contactEmailsValue = (() => {
-    if (!editableClient.contactEmails) return "";
+    if (!(client as any).contactEmails) return "";
     try {
-      const parsed = JSON.parse(editableClient.contactEmails) as string[];
+      const parsed = JSON.parse((client as any).contactEmails) as string[];
       return Array.isArray(parsed) ? parsed.join(", ") : "";
     } catch {
       return "";
@@ -94,8 +71,8 @@ export function EditClientDialog({
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const [currentShareToken, setCurrentShareToken] = useState<string | null>(editableClient.shareToken ?? null);
-  const [logoUrl, setLogoUrl] = useState<string | null>(editableClient.logo ?? null);
+  const [currentShareToken, setCurrentShareToken] = useState<string | null>(client.shareToken);
+  const [logoUrl, setLogoUrl] = useState<string | null>((client as any).logo || null);
   const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<UpdateClientFormInput>({
@@ -107,10 +84,9 @@ export function EditClientDialog({
       monthlyReels: client.monthlyReels ?? 0,
       monthlyFlyers: client.monthlyFlyers ?? 0,
       monthlyRate: client.monthlyRate ?? 0,
-      paymentDay: editableClient.paymentDay ?? null,
-      billingStartDate: editableClient.billingStartDate ?? null,
-      editorId: editableClient.editorId ?? null,
-      communityId: editableClient.communityId ?? null,
+      paymentDay: (client as any).paymentDay ?? null,
+      editorId: (client as any).editorId || null,
+      communityId: (client as any).communityId || null,
       contactEmails: contactEmailsValue,
     },
   });
@@ -125,14 +101,13 @@ export function EditClientDialog({
         monthlyReels: client.monthlyReels ?? 0,
         monthlyFlyers: client.monthlyFlyers ?? 0,
         monthlyRate: client.monthlyRate ?? 0,
-        paymentDay: editableClient.paymentDay ?? null,
-        billingStartDate: editableClient.billingStartDate ?? null,
-        editorId: editableClient.editorId ?? null,
-        communityId: editableClient.communityId ?? null,
+        paymentDay: (client as any).paymentDay ?? null,
+        editorId: (client as any).editorId || null,
+        communityId: (client as any).communityId || null,
         contactEmails: contactEmailsValue,
       });
     }
-  }, [client, editableClient.billingStartDate, editableClient.communityId, editableClient.editorId, editableClient.paymentDay, open, form]);
+  }, [client, open, form]);
 
   const handleAuthError = useRedirectOnAuthError();
 
@@ -185,9 +160,9 @@ export function EditClientDialog({
   // Actualizar el token cuando cambia el cliente
   useEffect(() => {
     if (client && open) {
-      setCurrentShareToken(editableClient.shareToken ?? null);
+      setCurrentShareToken((client as any).shareToken || null);
     }
-  }, [client, editableClient.shareToken, open]);
+  }, [client, open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -307,7 +282,7 @@ export function EditClientDialog({
                             allowedContent: "text-xs text-muted-foreground",
                           }}
                           content={{
-                            button({ ready }: { ready: boolean }) {
+                            button({ ready }) {
                               return ready ? "Subir logo" : "Preparando...";
                             },
                             allowedContent: "Imagen (máx. 4MB)",
@@ -315,7 +290,7 @@ export function EditClientDialog({
                           onUploadBegin={() => {
                             setIsUploading(true);
                           }}
-                          onClientUploadComplete={(res: Array<{ url: string }>) => {
+                          onClientUploadComplete={(res) => {
                             if (res && res.length > 0) {
                               setLogoUrl(res[0].url);
                               setIsUploading(false);
@@ -463,28 +438,6 @@ export function EditClientDialog({
                       <FormMessage />
                       <p className="text-sm text-muted-foreground">
                         Día fijo en que se generará la transacción mensual (1-31).
-                      </p>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="billingStartDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Inicio de facturación</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          value={field.value instanceof Date ? formatDateInputValue(field.value) : ""}
-                          onChange={(e) => field.onChange(e.target.value || null)}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                      <p className="text-sm text-muted-foreground">
-                        Define desde qué fecha empieza realmente el cobro del cliente, aunque haya sido creado antes.
                       </p>
                     </FormItem>
                   )}

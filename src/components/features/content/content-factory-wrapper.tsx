@@ -29,7 +29,7 @@ export function ContentFactoryWrapper({
   const [isCompactView, setIsCompactView] = useState(false);
 
   return (
-    <div className="px-0 md:px-0 md:max-w-none md:mx-auto py-3 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="w-full px-0 md:px-4 py-6 space-y-6">
       <ContentFilters
         tasks={tasks}
         clients={activeClients}
@@ -40,8 +40,8 @@ export function ContentFactoryWrapper({
       <MonthlyProgress selectedClientId={selectedClientId} clients={activeClients} />
 
       <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "kanban" | "calendar")}>
-        <div className="flex items-center justify-between px-4 sm:px-6">
-          <TabsList className="grid w-full max-w-[400px] grid-cols-2 h-12 items-center rounded-full bg-muted text-muted-foreground">
+        <div className="flex items-center justify-between">
+          <TabsList className="grid w-full max-w-[400px] grid-cols-2 h-12 items-center rounded-full bg-muted px-3 py-1 text-muted-foreground">
             <TabsTrigger value="kanban" className="rounded-full">Tablero</TabsTrigger>
             <TabsTrigger value="calendar" className="rounded-full">Calendario</TabsTrigger>
           </TabsList>

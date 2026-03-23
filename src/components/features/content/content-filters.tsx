@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { useSession } from "next-auth/react";
+import { SlidersHorizontal } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -22,42 +23,39 @@ const normalizeText = (text: string) =>
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
 
-const editorOwnedStatuses = new Set(["RECORDED", "EDITING", "REVIEW_INTERNAL", "REVIEW_CLIENT"]);
+const EDITOR_RESPONSIBLE_STATUSES = ["RECORDED", "EDITING", "REVIEW_CLIENT"] as const;
+const COMMUNITY_RESPONSIBLE_STATUSES = ["IDEA", "SCRIPT", "CLIENT_APPROVED"] as const;
 
-const getTaskMonthReferenceDate = (task: ContentTaskWithClient): Date | null => {
-  const referenceDate =
-    task.status === "PUBLISHED"
-      ? task.publishedAt
-      : task.dueDate ?? task.scheduledAt ?? task.createdAt;
-
-  return referenceDate ? new Date(referenceDate) : null;
-};
-
-const isTaskOwnedByUser = ({
-  task,
-  userId,
-  role,
-  specialty,
-}: {
-  task: ContentTaskWithClient;
-  userId: string;
-  role?: string | null;
-  specialty?: string | null;
-}) => {
-  if (task.status === "IDEA" || task.status === "SCRIPT") {
-    return task.assignedCommunityId === userId;
+function matchesTaskAssignment(
+  task: ContentTaskWithClient,
+  targetUserId?: string,
+  specialty?: string | null,
+  role?: string | null
+) {
+  if (!targetUserId) {
+    return true;
   }
 
-  if (editorOwnedStatuses.has(task.status)) {
-    return task.assignedEditorId === userId;
+  const normalizedSpecialty = specialty?.toUpperCase() ?? null;
+  const actsAsCommunity = normalizedSpecialty?.includes("COMMUNITY") ?? false;
+  const actsAsEditor = normalizedSpecialty === "EDITOR" || (!normalizedSpecialty && role === "EDITOR");
+
+  if (actsAsCommunity) {
+    return (
+      task.assignedCommunityId === targetUserId &&
+      COMMUNITY_RESPONSIBLE_STATUSES.includes(task.status as (typeof COMMUNITY_RESPONSIBLE_STATUSES)[number])
+    );
   }
 
-  if (task.status === "CLIENT_APPROVED") {
-    return role === "ADMIN" && specialty === "COMMUNITY" && task.assignedCommunityId === userId;
+  if (actsAsEditor) {
+    return (
+      task.assignedEditorId === targetUserId &&
+      EDITOR_RESPONSIBLE_STATUSES.includes(task.status as (typeof EDITOR_RESPONSIBLE_STATUSES)[number])
+    );
   }
 
-  return false;
-};
+  return task.assignedEditorId === targetUserId || task.assignedCommunityId === targetUserId;
+}
 
 interface ContentFiltersProps {
   tasks: ContentTaskWithClient[];
@@ -68,8 +66,6 @@ interface ContentFiltersProps {
   currentUserId?: string;
   defaultView?: "my-tasks" | "all";
 }
-
-const currentMonthKey = format(new Date(), "yyyy-MM");
 
 export function ContentFilters({
   tasks,
@@ -83,15 +79,14 @@ export function ContentFilters({
   const { data: session } = useSession();
   const userId = currentUserId || session?.user?.id;
   const userRole = session?.user?.role;
-  const userSpecialty = session?.user?.specialty;
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   
   // Por defecto, si es EDITOR o VIEWER, mostrar solo sus tareas
   const [viewMode, setViewMode] = useState<"my-tasks" | "all">(
     defaultView || (userRole === "EDITOR" || userRole === "VIEWER" ? "my-tasks" : "all")
   );
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
-  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => format(new Date(), "yyyy-MM"));
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [clientSearch, setClientSearch] = useState("");
@@ -106,10 +101,9 @@ export function ContentFilters({
   // Obtener meses únicos de las tareas
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
-    months.add(currentMonthKey);
     tasks.forEach((task) => {
-      const date = getTaskMonthReferenceDate(task);
-      if (date) {
+      if (task.dueDate) {
+        const date = new Date(task.dueDate);
         const monthKey = format(date, "yyyy-MM");
         months.add(monthKey);
       }
@@ -121,16 +115,14 @@ export function ContentFilters({
   const filteredTasks = useMemo(() => {
     let filtered = [...tasks];
 
+    const selectedUser = selectedUserId !== "all"
+      ? users.find((user) => user.id === selectedUserId)
+      : null;
+
     // Filtro principal: "Mis Tareas" vs "Todo el Equipo"
     if (viewMode === "my-tasks" && userId) {
-      filtered = filtered.filter(
-        (task) =>
-          isTaskOwnedByUser({
-            task,
-            userId,
-            role: userRole,
-            specialty: userSpecialty,
-          })
+      filtered = filtered.filter((task) =>
+        matchesTaskAssignment(task, userId, session?.user?.specialty, session?.user?.role ?? null)
       );
     }
 
@@ -146,8 +138,13 @@ export function ContentFilters({
       const endDate = endOfMonth(new Date(year, month - 1));
 
       filtered = filtered.filter((task) => {
-        const taskDate = getTaskMonthReferenceDate(task);
-        if (!taskDate) return false;
+        const referenceDate =
+          task.status === "PUBLISHED"
+            ? task.publishedAt
+            : task.dueDate ?? task.scheduledAt;
+
+        if (!referenceDate) return false;
+        const taskDate = new Date(referenceDate);
         return taskDate >= startDate && taskDate <= endDate;
       });
     }
@@ -159,15 +156,13 @@ export function ContentFilters({
           (task) => task.assignedEditorId === null && task.assignedCommunityId === null
         );
       } else {
-        const selectedUser = users.find((user) => user.id === selectedUserId);
-        filtered = filtered.filter(
-          (task) =>
-            isTaskOwnedByUser({
-              task,
-              userId: selectedUserId,
-              role: selectedUser?.roleLegacy,
-              specialty: selectedUser?.specialty,
-            })
+        filtered = filtered.filter((task) =>
+          matchesTaskAssignment(
+            task,
+            selectedUserId,
+            selectedUser?.specialty ?? null,
+            selectedUser?.roleLegacy ?? null
+          )
         );
       }
     }
@@ -178,7 +173,7 @@ export function ContentFilters({
     }
 
     return filtered;
-  }, [tasks, viewMode, userId, userRole, userSpecialty, users, selectedClientId, selectedMonth, selectedUserId, selectedType]);
+  }, [tasks, viewMode, userId, selectedClientId, selectedMonth, selectedUserId, selectedType]);
 
   // Actualizar el estado del padre cuando cambien las tareas filtradas
   useEffect(() => {
@@ -333,54 +328,60 @@ export function ContentFilters({
   );
 
   return (
-    <div className="rounded-xl border-0 bg-transparent p-0 shadow-none space-y-3 sm:space-y-4">
-      {/* Filtro rápido: Mis Tareas / Todo el Equipo (solo visible para ADMIN) */}
-      {userRole === "ADMIN" && (
-        <div className="flex items-center justify-between w-full px-4 sm:px-6">
-          <div className="flex items-center gap-2">
+    <div className="w-full px-0 space-y-3">
+      <div
+        className={`${
+          userRole === "ADMIN"
+            ? "grid grid-cols-3 md:flex md:items-center"
+            : "flex justify-end"
+        } w-full items-center gap-2`}
+      >
+        {/* Filtro rápido: Mis Tareas / Todo el Equipo (solo visible para ADMIN) */}
+        {userRole === "ADMIN" && (
+          <>
             <Button
               variant={viewMode === "my-tasks" ? "default" : "outline"}
               size="sm"
               onClick={() => setViewMode("my-tasks")}
               disabled={!userId}
-              className="gap-2 rounded-full px-2 sm:px-3"
+              className="w-full min-w-0 md:w-auto gap-1 rounded-full px-2 text-[12px] sm:text-sm"
             >
-              <Avatar className="h-4 w-4 sm:h-5 sm:w-5">
+              <Avatar className="hidden h-5 w-5 sm:flex">
                 <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || "Usuario"} />
                 <AvatarFallback className="text-xs">
                   {session?.user?.name?.charAt(0)?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
-              <span className="inline">Mis Tareas</span>
+              <span className="truncate">Mis Tareas</span>
             </Button>
             <Button
               variant={viewMode === "all" ? "default" : "outline"}
               size="sm"
               onClick={() => setViewMode("all")}
-              className="rounded-full px-2 sm:px-3"
+              className="w-full min-w-0 md:w-auto rounded-full px-2 text-[12px] sm:text-sm"
             >
-              <span className="hidden sm:inline">Ver todo el equipo</span>
-              <span className="sm:hidden text-xs">Equipo</span>
+              <span className="truncate">Ver todo el equipo</span>
             </Button>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="justify-between rounded-full px-3 py-2"
-            onClick={() => setMobileFiltersOpen((prev) => !prev)}
-          >
-            <span className="text-sm">Filtros</span>
-            <span className="text-xs text-muted-foreground">{mobileFiltersOpen ? "Ocultar" : "Mostrar"}</span>
-          </Button>
-        </div>
-      )}
+          </>
+        )}
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full min-w-0 md:w-auto md:ml-auto rounded-full px-2 text-[12px] sm:text-sm"
+          onClick={() => setFiltersOpen((prev) => !prev)}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          <span className="truncate">Filtros</span>
+        </Button>
+      </div>
 
       <div
         className={`overflow-hidden transition-all duration-200 ease-out ${
-          mobileFiltersOpen ? "max-h-[1200px] opacity-100" : "max-h-0 opacity-0 pointer-events-none"
+          filtersOpen ? "max-h-[1400px] opacity-100" : "max-h-0 opacity-0 pointer-events-none"
         }`}
       >
-        <div className="grid grid-cols-1 gap-2 pt-2 md:grid-cols-4">{FiltersGrid}</div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-2">{FiltersGrid}</div>
       </div>
     </div>
   );

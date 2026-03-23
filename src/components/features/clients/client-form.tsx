@@ -39,18 +39,6 @@ interface ClientFormProps {
   users: User[];
 }
 
-function formatDateInputValue(date: Date | null | undefined): string {
-  if (!date) {
-    return "";
-  }
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
 export function ClientForm({ users }: ClientFormProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -70,7 +58,6 @@ export function ClientForm({ users }: ClientFormProps) {
       monthlyFlyers: 0,
       monthlyRate: 0,
       paymentDay: null,
-      billingStartDate: null,
       editorId: null,
       communityId: null,
       contactEmails: "",
@@ -231,7 +218,7 @@ export function ClientForm({ users }: ClientFormProps) {
                   onUploadBegin={() => {
                     setIsUploading(true);
                   }}
-                  onClientUploadComplete={(res: Array<{ url: string }>) => {
+                  onClientUploadComplete={(res) => {
                     if (res && res.length > 0) {
                       setLogoUrl(res[0].url);
                       setIsUploading(false);
@@ -379,28 +366,6 @@ export function ClientForm({ users }: ClientFormProps) {
               <FormMessage />
               <p className="text-sm text-muted-foreground">
                 Día fijo en que se generará la transacción mensual (1-31).
-              </p>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="billingStartDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Inicio de facturación</FormLabel>
-              <FormControl>
-                <Input
-                  type="date"
-                  value={field.value instanceof Date ? formatDateInputValue(field.value) : ""}
-                  onChange={(e) => field.onChange(e.target.value || null)}
-                  disabled={isPending}
-                />
-              </FormControl>
-              <FormMessage />
-              <p className="text-sm text-muted-foreground">
-                Si el cliente se creó antes de empezar a trabajar, usa aquí el mes real desde el que se debe cobrar.
               </p>
             </FormItem>
           )}

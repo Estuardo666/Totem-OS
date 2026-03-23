@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Waves, StopCircle, X } from "lucide-react";
 import { interpretVoiceCommandAction } from "@/actions/voice-actions";
 import { voiceCommandResponseSchema } from "@/schemas/voice";
@@ -98,10 +98,13 @@ export function FloatingVoiceButton() {
     // For now, render the component and handle hiding client-side
   }
 
+  const pathname = usePathname();
   const router = useRouter();
 
-  // Ocultar en todo el sitio
-  const isHidden = true;
+  // Ocultar en Finanzas y /admin/voice-control
+  const isHidden =
+    pathname?.startsWith("/finanzas") ||
+    pathname?.startsWith("/admin/voice-control");
 
   const [open, setOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -294,6 +297,14 @@ export function FloatingVoiceButton() {
     stopListening();
   };
 
+  const handleToggleListening = () => {
+    if (isListening) {
+      stopListening();
+      void handleAutoInterpretAndCreate();
+    } else {
+      startListening();
+    }
+  };
 
   const handleFloatingButtonClick = () => {
     if (open) {
@@ -330,7 +341,7 @@ export function FloatingVoiceButton() {
             priority: "MEDIUM",
             postCopy: response.data.details,
             scheduledAt: (response.data as VoiceResponse).suggestedDate
-              ? formatDateTimeForInput(parseDDMMYYYY((response.data as VoiceResponse).suggestedDate || ""))
+              ? formatDateTimeForInput(parseDDMMYYYY((response.data as VoiceResponse).suggestedDate))
               : undefined,
             clientId: clientId || "",
           });
@@ -340,7 +351,7 @@ export function FloatingVoiceButton() {
             title: response.data.title,
             notes: response.data.details,
             scheduledAt: (response.data as VoiceResponse).suggestedDate
-              ? parseDDMMYYYY((response.data as VoiceResponse).suggestedDate || "")
+              ? parseDDMMYYYY((response.data as VoiceResponse).suggestedDate)
               : undefined,
             clientId: clientId || "",
             startTime: parseTimeToHHMM((response.data as VoiceResponse).suggestedStartTime || "") || "",

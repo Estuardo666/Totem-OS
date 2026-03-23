@@ -57,65 +57,6 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     setTasks(initialTasks);
   }, [initialTasks]);
 
-  useEffect(() => {
-    const handleTaskUpdated = (event: Event) => {
-      const customEvent = event as CustomEvent<{
-        taskId: string;
-        status?: ContentTaskStatus;
-        scheduledAt?: Date | string | null;
-        dueDate?: Date | string | null;
-      }>;
-
-      const detail = customEvent.detail;
-      if (!detail?.taskId) {
-        return;
-      }
-
-      const normalizedScheduledAt = detail.scheduledAt === undefined
-        ? undefined
-        : detail.scheduledAt === null
-          ? null
-          : new Date(detail.scheduledAt);
-      const normalizedDueDate = detail.dueDate === undefined
-        ? undefined
-        : detail.dueDate === null
-          ? null
-          : new Date(detail.dueDate);
-
-      setTasks((prev) =>
-        prev.map((task) =>
-          task.id === detail.taskId
-            ? {
-                ...task,
-                ...(detail.status ? { status: detail.status } : {}),
-                ...(normalizedScheduledAt !== undefined ? { scheduledAt: normalizedScheduledAt } : {}),
-                ...(normalizedDueDate !== undefined ? { dueDate: normalizedDueDate } : {}),
-              }
-            : task
-        )
-      );
-
-      setSelectedTask((prev) => {
-        if (!prev || prev.id !== detail.taskId) {
-          return prev;
-        }
-
-        return {
-          ...prev,
-          ...(detail.status ? { status: detail.status } : {}),
-          ...(normalizedScheduledAt !== undefined ? { scheduledAt: normalizedScheduledAt } : {}),
-          ...(normalizedDueDate !== undefined ? { dueDate: normalizedDueDate } : {}),
-        };
-      });
-    };
-
-    window.addEventListener("taskUpdated", handleTaskUpdated as EventListener);
-
-    return () => {
-      window.removeEventListener("taskUpdated", handleTaskUpdated as EventListener);
-    };
-  }, []);
-
   // useOptimistic para actualizaciones instantáneas
   const [optimisticTasks, setOptimisticTasks] = useOptimistic(
     tasks,
@@ -711,7 +652,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
             return (
               <div
                 key={column.status}
-                className="flex flex-col min-w-[40vw] sm:min-w-[350px] md:min-w-0 md:w-full md:flex-1 snap-center flex-shrink-0 first:ml-4 last:mr-4 px-2 md:px-0 h-full"
+                className="flex flex-col min-w-[40vw] sm:min-w-[350px] md:min-w-0 md:w-full md:flex-1 snap-center flex-shrink-0 px-0 h-full"
               >
                 <div className="flex flex-col h-full bg-slate-50/50 dark:bg-slate-90/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                   <div className="sticky top-0 z-30 w-full bg-white dark:bg-slate-900 py-2 px-2 md:py-2 md:px-2 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between rounded-t-xl">
@@ -793,7 +734,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
         {/* Mobile: scroll horizontal 98vw | Desktop: grid con columnas fijas */}
         <div
           ref={scrollRef}
-          className="flex md:grid md:grid-cols-7 md:gap-4 w-[98vw] md:w-full h-full items-start overflow-x-auto overflow-y-visible md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
+          className="flex md:grid md:grid-cols-7 md:gap-4 w-screen md:w-full h-full items-start overflow-x-auto overflow-y-visible md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
         >
           {KANBAN_COLUMNS.map((column) => {
             const columnTasks = tasksByStatus[column.status] || [];
