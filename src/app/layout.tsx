@@ -18,11 +18,19 @@ import { SplashProvider } from "@/components/providers/splash-provider";
 import { AppBadgeProvider } from "@/components/providers/app-badge-provider";
 import { RemoteLogoutProvider } from "@/components/providers/remote-logout-provider";
 import { getBrandSettings } from "@/actions/admin-actions";
+import { unstable_cache } from "next/cache";
 import { PRIMARY_COLOR_COOKIE, resolvePrimaryColor } from "@/lib/theme";
 import "./globals.css";
 
+// Cache brand settings for 1 hour — avoids a DB hit on every route render
+const getCachedBrandSettings = unstable_cache(
+  async () => getBrandSettings(),
+  ["brand-settings"],
+  { revalidate: 3600 }
+);
+
 export async function generateMetadata(): Promise<Metadata> {
-  const brandResult = await getBrandSettings();
+  const brandResult = await getCachedBrandSettings();
   const faviconUrl = brandResult.success && brandResult.data?.favicon 
     ? brandResult.data.favicon 
     : "/favicon.ico";
@@ -79,6 +87,14 @@ export default async function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning style={htmlStyle}>
       <head>
+        {/* Preload primary font — tells the browser to fetch it before CSS is parsed */}
+        <link
+          rel="preload"
+          href="/fonts/GoogleSans-Regular.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
         {/* Script para bloquear pinch zoom activamente */}
         <script
           dangerouslySetInnerHTML={{

@@ -17,8 +17,11 @@ import { Suspense } from "react";
 import { MetricSkeleton, CardSkeleton } from "@/components/ui/skeletons-composite";
 
 export default async function Home() {
-  // Obtener sesión del usuario autenticado
-  const session = await auth();
+  // Obtener sesión y workloads en paralelo para reducir TTFB
+  const [session, workloadsResult] = await Promise.all([
+    auth(),
+    getUserWorkloads(),
+  ]);
   const firstName = session?.user?.name?.split(" ")[0] || "Usuario";
   const userRole = session?.user?.role;
   const userId = session?.user?.id;
@@ -26,7 +29,6 @@ export default async function Home() {
   const isEditor = userRole === "EDITOR";
 
   // Data fetching para WorkloadPanel (se mantiene aquí porque es condicional y rápido)
-  const workloadsResult = await getUserWorkloads();
   const workloads = workloadsResult.success ? workloadsResult.data ?? [] : [];
 
   // Filtrar workloads para EDITOR: solo mostrar su propio workload

@@ -1,15 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Settings2 } from "lucide-react";
 import { KanbanBoard } from "./kanban-board";
-import { ContentCalendar } from "./content-calendar";
 import { ContentFilters } from "./content-filters";
 import { MonthlyProgress } from "./monthly-progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { Client, User } from "@prisma/client";
+
+// Calendar is only loaded when the user switches to the calendar tab
+const ContentCalendar = dynamic(
+  () => import("./content-calendar").then(m => ({ default: m.ContentCalendar })),
+  { loading: () => <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">Cargando calendario…</div> }
+);
 
 interface ContentFactoryWrapperProps {
   tasks: ContentTaskWithClient[];
