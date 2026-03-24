@@ -1,18 +1,12 @@
 import { Suspense } from "react";
-import dynamic from "next/dynamic";
 import { TrendingUp } from "lucide-react";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getFinancialStats, getGlobalProfitabilityStats, getStrategicClientPlans } from "@/actions/finance-actions";
+import { StrategicFinanceDashboardClient } from "@/components/features/finance/strategic-finance-dashboard-client";
 import { FinanceHeaderActions } from "@/components/features/finance/finance-header-actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { CardSkeleton } from "@/components/ui/skeletons-composite";
-
-// Recharts bundle (~400KB) is deferred until the component mounts on the client
-const StrategicFinanceDashboard = dynamic(
-  () => import("@/components/features/finance/strategic-finance-dashboard").then(m => ({ default: m.StrategicFinanceDashboard })),
-  { ssr: false, loading: () => <CardSkeleton /> }
-);
 
 // Streamed: fetches finance data, then renders the dashboard
 async function FinanceBody({ userRole }: { userRole: string }) {
@@ -38,7 +32,7 @@ async function FinanceBody({ userRole }: { userRole: string }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 pt-6 pb-6">
-      <StrategicFinanceDashboard
+      <StrategicFinanceDashboardClient
         stats={result.data}
         profitability={profitabilityResult.success ? profitabilityResult.data : null}
         clientPlans={clientPlansResult.success ? clientPlansResult.data ?? [] : []}
