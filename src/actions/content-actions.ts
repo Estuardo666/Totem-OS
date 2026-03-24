@@ -10,40 +10,6 @@ import type { ContentTask, Prisma, TaskMetrics } from "@prisma/client";
 import { sendNotification } from "./notification-actions";
 
 /**
- * Obtiene el Community Manager para un cliente
- * Prioridad: 1) communityId del cliente, 2) Primer ADMIN encontrado, 3) null
- */
-async function getCommunityManagerId(clientId: string): Promise<string | null> {
-  try {
-    // 1. Buscar el communityId del cliente
-    const client = await db.client.findUnique({
-      where: { id: clientId },
-      select: { communityId: true },
-    });
-
-    if (client?.communityId) {
-      return client.communityId;
-    }
-
-    // 2. Si no hay communityId, buscar el primer ADMIN como fallback
-    const adminUser = await db.user.findFirst({
-      where: { roleLegacy: "ADMIN" },
-      select: { id: true },
-    });
-
-    if (adminUser) {
-      return adminUser.id;
-    }
-
-    // 3. Si no hay ADMIN, retornar null
-    return null;
-  } catch (error) {
-    console.error("❌ Error al obtener Community Manager:", error);
-    return null;
-  }
-}
-
-/**
  * Dispara evento de Pusher para actualizar el dashboard de usuarios afectados
  */
 async function triggerDashboardUpdate(userIds: string[]): Promise<void> {
@@ -367,16 +333,24 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
     // Si es ADMIN y showOnlyMine es true, filtrar solo sus tareas
     // Si es ADMIN y showOnlyMine es false o undefined, mostrar todas
     const whereClause = 
-      (userRole === "EDITOR" && sessionUserId) || 
-      (userRole === "ADMIN" && showOnlyMine && sessionUserId)
+      (userRole === "EDITOR" && sessionUserId)
         ? { 
             client: {
               status: { not: "INACTIVE" },
             },
             OR: [
               { assignedEditorId: sessionUserId },
-              { assignedCommunityId: sessionUserId }
+              { assignedCommunityId: sessionUserId },
             ]
+          }
+        : (userRole === "ADMIN" && showOnlyMine && sessionUserId)
+        ? {
+            client: { status: { not: "INACTIVE" } },
+            OR: [
+              { assignedEditorId: sessionUserId },
+              { assignedCommunityId: sessionUserId },
+              { status: "CLIENT_APPROVED" as const },
+            ],
           }
         : {
             client: {
@@ -468,6 +442,19 @@ export async function getPendingTasksCount(): Promise<ApiResponse<number>> {
     // Si no hay userId en la sesión, retornar 0
     if (!sessionUserId) {
       return { success: true, data: 0 };
+    }
+
+    const userRole = session?.user?.role;
+
+    // ADMIN: ver todas las tareas CLIENT_APPROVED como pendientes (listas para publicar)
+    if (userRole === "ADMIN") {
+      const count = await db.contentTask.count({
+        where: {
+          status: "CLIENT_APPROVED",
+          client: { status: { not: "INACTIVE" } },
+        },
+      });
+      return { success: true, data: count };
     }
 
     // Obtener specialty del usuario desde la base de datos
@@ -592,17 +579,17 @@ export async function updateTaskStatus(
     let newAssignedCommunityId: string | null | undefined = undefined;
     let newAssignedEditorId: string | null | undefined = undefined;
     let shouldUpdateAssignedAt = false;
+    let adminIdToNotify: string | null = null;
 
     if (isChangingToClientApproved) {
-      // AUTOMATIZACIÓN: CLIENT_APPROVED -> asignar automáticamente al Community Manager
-      const cmId = await getCommunityManagerId(currentTask.clientId);
-      if (cmId) {
-        newAssignedCommunityId = cmId;
-        shouldUpdateAssignedAt = true;
-        console.log(`✅ [AUTOMATIZACIÓN] Tarea "${currentTask.title}" reasignada automáticamente al CM (${cmId})`);
-      } else {
-        console.warn(`⚠️ [AUTOMATIZACIÓN] No se encontró Community Manager para cliente ${currentTask.clientId}`);
-      }
+      // No se reasigna: mantener el assignedCommunityId original
+      // Buscar al admin para notificarle que la tarea está lista para publicar
+      const adminUser = await db.user.findFirst({
+        where: { roleLegacy: "ADMIN" },
+        select: { id: true },
+      });
+      adminIdToNotify = adminUser?.id ?? null;
+      console.log(`✅ [CLIENT_APPROVED] Tarea "${currentTask.title}" aprobada. Admin notificado (${adminIdToNotify}). CM original conservado.`);
     } else if (isChangingToEditing) {
       // Pase de estafeta: EDITING -> reasignar al editorId
       const client = await db.client.findUnique({
@@ -631,10 +618,10 @@ export async function updateTaskStatus(
         }),
         ...(shouldUpdateAssignedAt && { assignedAt: new Date() }),
         // Log de auditoría: agregar comentario automático si cambió a CLIENT_APPROVED
-        ...(isChangingToClientApproved && newAssignedCommunityId && {
+        ...(isChangingToClientApproved && {
           clientFeedback: appendSystemReviewNote(
             currentTask.clientFeedback,
-            "Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM."
+            "Estado cambiado a Aprobado Cliente. Lista para publicar."
           ),
         }),
       },
@@ -659,13 +646,13 @@ export async function updateTaskStatus(
       const clientLogo = currentTask.client?.logo || undefined;
       const clientName = currentTask.client?.name || undefined;
 
-      // AUTOMATIZACIÓN: Notificaciones específicas cuando cambia a CLIENT_APPROVED
-      if (isChangingToClientApproved && newAssignedCommunityId) {
-        // Notificar al Community Manager
-        if (newAssignedCommunityId !== sessionUserId) {
+      // Notificaciones específicas cuando cambia a CLIENT_APPROVED
+      if (isChangingToClientApproved) {
+        // Notificar al admin (Paty) que la tarea está lista para publicar
+        if (adminIdToNotify && adminIdToNotify !== sessionUserId) {
           await sendNotification({
-            userId: newAssignedCommunityId,
-            message: `✅ Tarea lista para publicar: "${currentTask.title}" ha sido aprobada por el cliente y se te ha asignado.`,
+            userId: adminIdToNotify,
+            message: `✅ Tarea lista para publicar: "${currentTask.title}" ha sido aprobada por el cliente.`,
             type: "ASSIGNED",
             createdBy: sessionUserId || undefined,
             clientLogo,
@@ -673,8 +660,20 @@ export async function updateTaskStatus(
           });
         }
 
-        // Notificar al Editor previo (si existe y es diferente del CM)
-        if (previousEditorId && previousEditorId !== newAssignedCommunityId && previousEditorId !== sessionUserId) {
+        // Notificar al Community Manager original (si existe y es diferente del admin)
+        if (previousCommunityId && previousCommunityId !== adminIdToNotify && previousCommunityId !== sessionUserId) {
+          await sendNotification({
+            userId: previousCommunityId,
+            message: `✅ Tarea "${currentTask.title}" aprobada por el cliente, lista para publicar.`,
+            type: "STATUS_CHANGE",
+            createdBy: sessionUserId || undefined,
+            clientLogo,
+            clientName,
+          });
+        }
+
+        // Notificar al Editor previo (si existe y es diferente del admin)
+        if (previousEditorId && previousEditorId !== adminIdToNotify && previousEditorId !== sessionUserId) {
           await sendNotification({
             userId: previousEditorId,
             message: `👍 ¡Buen trabajo! Tu tarea "${currentTask.title}" ha sido aprobada por el cliente.`,
@@ -740,6 +739,9 @@ export async function updateTaskStatus(
     }
     if (newAssignedCommunityId) {
       affectedUserIds.push(newAssignedCommunityId);
+    }
+    if (adminIdToNotify && !affectedUserIds.includes(adminIdToNotify)) {
+      affectedUserIds.push(adminIdToNotify);
     }
     if (sessionUserId && !affectedUserIds.includes(sessionUserId)) {
       affectedUserIds.push(sessionUserId);
@@ -829,20 +831,20 @@ export async function updateTask(
     const previousEditorId = taskBefore.assignedEditorId;
     const previousCommunityId = taskBefore.assignedCommunityId;
 
-    // AUTOMATIZACIÓN: Si cambia a CLIENT_APPROVED, asignar automáticamente al CM
+    // No se reasigna al pasar a CLIENT_APPROVED: se mantiene el CM original
     let newAssignedCommunityId: string | null | undefined = undefined;
     let newAssignedEditorId: string | null | undefined = undefined;
     let shouldUpdateAssignedAt = false;
+    let adminIdToNotify: string | null = null;
 
     if (isChangingToClientApproved) {
-      const cmId = await getCommunityManagerId(taskBefore.clientId);
-      if (cmId) {
-        newAssignedCommunityId = cmId;
-        shouldUpdateAssignedAt = true;
-        console.log(`✅ [AUTOMATIZACIÓN] Tarea "${taskBefore.title}" reasignada automáticamente al CM (${cmId})`);
-      } else {
-        console.warn(`⚠️ [AUTOMATIZACIÓN] No se encontró Community Manager para cliente ${taskBefore.clientId}`);
-      }
+      // Buscar al admin para notificarle que la tarea está lista para publicar
+      const adminUser = await db.user.findFirst({
+        where: { roleLegacy: "ADMIN" },
+        select: { id: true },
+      });
+      adminIdToNotify = adminUser?.id ?? null;
+      console.log(`✅ [CLIENT_APPROVED] Tarea "${taskBefore.title}" aprobada. Admin notificado (${adminIdToNotify}). CM original conservado.`);
     } else {
       // Detectar si cambió el responsable manualmente
       newAssignedEditorId = validatedData.assignedEditorId !== undefined 
@@ -870,13 +872,6 @@ export async function updateTask(
           scheduledAt: validatedData.scheduledAt ? new Date(validatedData.scheduledAt) : null,
         }),
         ...(validatedData.status && { status: validatedData.status }),
-        // AUTOMATIZACIÓN: Si cambió a CLIENT_APPROVED, usar el CM asignado automáticamente
-        // Si no, usar los IDs del formulario (si se proporcionaron)
-        ...(isChangingToClientApproved && newAssignedCommunityId !== undefined
-          ? {
-              assignedCommunityId: newAssignedCommunityId,
-            }
-          : {}),
         ...(validatedData.assignedEditorId !== undefined && {
           assignedEditorId: validatedData.assignedEditorId || null,
         }),
@@ -890,12 +885,11 @@ export async function updateTask(
           ? { assignedAt: new Date() }
           : {}),
         // Log de auditoría y clientFeedback
-        ...(isChangingToClientApproved && newAssignedCommunityId
+        ...(isChangingToClientApproved
           ? {
-              // Si cambió a CLIENT_APPROVED, agregar log de auditoría
               clientFeedback: validatedData.clientFeedback !== undefined
-                ? appendSystemReviewNote(validatedData.clientFeedback, "Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM.")
-                : appendSystemReviewNote(taskBefore.clientFeedback, "Estado cambiado a Aprobado Cliente. Tarea reasignada automáticamente al CM."),
+                ? appendSystemReviewNote(validatedData.clientFeedback, "Estado cambiado a Aprobado Cliente. Lista para publicar.")
+                : appendSystemReviewNote(taskBefore.clientFeedback, "Estado cambiado a Aprobado Cliente. Lista para publicar."),
             }
           : validatedData.clientFeedback !== undefined
           ? { clientFeedback: validatedData.clientFeedback }
@@ -919,13 +913,13 @@ export async function updateTask(
       const clientLogo = taskBefore.client?.logo || undefined;
       const clientName = taskBefore.client?.name || undefined;
 
-      if (isChangingToClientApproved && newAssignedCommunityId) {
-        // AUTOMATIZACIÓN: Notificaciones específicas cuando cambia a CLIENT_APPROVED
-        // Notificar al Community Manager
-        if (newAssignedCommunityId !== sessionUserId) {
+      if (isChangingToClientApproved) {
+        // Notificaciones cuando cambia a CLIENT_APPROVED
+        // Notificar al admin (Paty) que la tarea está lista para publicar
+        if (adminIdToNotify && adminIdToNotify !== sessionUserId) {
           await sendNotification({
-            userId: newAssignedCommunityId,
-            message: `✅ Tarea lista para publicar: "${taskBefore.title}" ha sido aprobada por el cliente y se te ha asignado.`,
+            userId: adminIdToNotify,
+            message: `✅ Tarea lista para publicar: "${taskBefore.title}" ha sido aprobada por el cliente.`,
             type: "ASSIGNED",
             createdBy: sessionUserId || undefined,
             clientLogo,
@@ -933,8 +927,20 @@ export async function updateTask(
           });
         }
 
-        // Notificar al Editor previo (si existe y es diferente del CM)
-        if (previousEditorId && previousEditorId !== newAssignedCommunityId && previousEditorId !== sessionUserId) {
+        // Notificar al Community Manager original (si existe y es diferente del admin)
+        if (previousCommunityId && previousCommunityId !== adminIdToNotify && previousCommunityId !== sessionUserId) {
+          await sendNotification({
+            userId: previousCommunityId,
+            message: `✅ Tarea "${taskBefore.title}" aprobada por el cliente, lista para publicar.`,
+            type: "STATUS_CHANGE",
+            createdBy: sessionUserId || undefined,
+            clientLogo,
+            clientName,
+          });
+        }
+
+        // Notificar al Editor previo (si existe y es diferente del admin)
+        if (previousEditorId && previousEditorId !== adminIdToNotify && previousEditorId !== sessionUserId) {
           await sendNotification({
             userId: previousEditorId,
             message: `👍 ¡Buen trabajo! Tu tarea "${taskBefore.title}" ha sido aprobada por el cliente.`,
@@ -1044,6 +1050,9 @@ export async function updateTask(
     }
     if (newAssignedCommunityId) {
       affectedUserIds.push(newAssignedCommunityId);
+    }
+    if (adminIdToNotify && !affectedUserIds.includes(adminIdToNotify)) {
+      affectedUserIds.push(adminIdToNotify);
     }
     if (sessionUserId && !affectedUserIds.includes(sessionUserId)) {
       affectedUserIds.push(sessionUserId);

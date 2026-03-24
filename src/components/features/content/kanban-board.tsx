@@ -239,39 +239,14 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
           
           // Fusionar: preservar el orden local, actualizar datos del servidor
           setTasks((prevTasks) => {
-            // Crear un mapa de tareas nuevas por ID para fácil acceso
+            // Solo actualizar datos de tareas existentes en el estado local.
+            // NO agregar tareas del servidor que no estén aquí: evita que tareas
+            // de otros clientes/filtros aparezcan brevemente (flash de +N tareas).
             const newTasksMap = new Map(filteredData.map(t => [t.id, t]));
-            
-            // 1. Actualizar tareas existentes con datos nuevos (preservando orden)
-            const updatedTasks = prevTasks.map(task => {
-              const newTaskData = newTasksMap.get(task.id);
-              if (newTaskData) {
-                // Fusionar: mantener el orden local, actualizar datos
-                return { ...task, ...newTaskData };
-              }
-              // Si la tarea ya no existe en el servidor, mantenerla
-              return task;
+            return prevTasks.map(task => {
+              const serverData = newTasksMap.get(task.id);
+              return serverData ? { ...task, ...serverData } : task;
             });
-            
-            // 2. Agregar tareas nuevas que no están en el estado local
-            const existingIds = new Set(prevTasks.map(t => t.id));
-            const newTasks = filteredData.filter(t => !existingIds.has(t.id));
-            
-            // 3. Combinar y eliminar cualquier duplicado accidental
-            const combined = [...updatedTasks, ...newTasks];
-            
-            // Verificar que no haya duplicados por ID
-            const seenIds = new Set();
-            const uniqueTasks = combined.filter(task => {
-              if (seenIds.has(task.id)) {
-                console.warn("⚠️ Duplicado detectado y eliminado:", task.id);
-                return false;
-              }
-              seenIds.add(task.id);
-              return true;
-            });
-            
-            return uniqueTasks;
           });
           
           // Mostrar toast de confirmación (solo si hubo cambios reales)
