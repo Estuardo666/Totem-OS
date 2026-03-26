@@ -65,9 +65,12 @@ export interface StrategicClientPlan {
   id: string;
   name: string;
   status: string;
+  logo: string | null;
   monthlyRate: number;
   monthlyReels: number;
   monthlyShoots: number;
+  paymentDay: number | null;
+  billingStartDate: Date | null;
 }
 
 export interface UserSettlementReport {
@@ -106,9 +109,12 @@ export async function getStrategicClientPlans():
         id: true,
         name: true,
         status: true,
+        logo: true,
         monthlyRate: true,
         monthlyReels: true,
         monthlyShoots: true,
+        paymentDay: true,
+        billingStartDate: true,
       },
       orderBy: { name: "asc" },
     });

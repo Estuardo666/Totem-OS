@@ -50,6 +50,7 @@ export async function createClient(
         monthlyShoots: validatedData.monthlyShoots ?? 0,
         monthlyRate: validatedData.monthlyRate ?? 0,
         paymentDay: validatedData.paymentDay ?? null,
+        billingStartDate: validatedData.billingStartDate ?? null,
         lastPostDate: validatedData.lastPostDate ?? null,
         editorId: validatedData.editorId ?? null,
         communityId: validatedData.communityId ?? null,
@@ -129,6 +130,9 @@ export async function updateClient(
         }),
         ...(validatedData.paymentDay !== undefined && {
           paymentDay: validatedData.paymentDay,
+        }),
+        ...(validatedData.billingStartDate !== undefined && {
+          billingStartDate: validatedData.billingStartDate ?? null,
         }),
         ...(validatedData.lastPostDate !== undefined && {
           lastPostDate: validatedData.lastPostDate ?? null,

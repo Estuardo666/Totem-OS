@@ -39,6 +39,15 @@ interface ClientFormProps {
   users: User[];
 }
 
+function formatDateInputValue(date: Date | string | null | undefined): string {
+  if (!date) return "";
+
+  const parsedDate = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) return "";
+
+  return parsedDate.toISOString().split("T")[0];
+}
+
 export function ClientForm({ users }: ClientFormProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -58,6 +67,7 @@ export function ClientForm({ users }: ClientFormProps) {
       monthlyFlyers: 0,
       monthlyRate: 0,
       paymentDay: null,
+      billingStartDate: null,
       editorId: null,
       communityId: null,
       contactEmails: "",
@@ -218,7 +228,7 @@ export function ClientForm({ users }: ClientFormProps) {
                   onUploadBegin={() => {
                     setIsUploading(true);
                   }}
-                  onClientUploadComplete={(res) => {
+                  onClientUploadComplete={(res: Array<{ url: string }>) => {
                     if (res && res.length > 0) {
                       setLogoUrl(res[0].url);
                       setIsUploading(false);
@@ -366,6 +376,28 @@ export function ClientForm({ users }: ClientFormProps) {
               <FormMessage />
               <p className="text-sm text-muted-foreground">
                 Día fijo en que se generará la transacción mensual (1-31).
+              </p>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="billingStartDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Inicio de facturación</FormLabel>
+              <FormControl>
+                <Input
+                  type="date"
+                  value={typeof field.value === "string" ? field.value : formatDateInputValue(field.value as Date | null | undefined)}
+                  onChange={(e) => field.onChange(e.target.value || null)}
+                  disabled={isPending}
+                />
+              </FormControl>
+              <FormMessage />
+              <p className="text-sm text-muted-foreground">
+                Si lo dejas vacío, se tomará la fecha de creación del cliente como inicio de cobro.
               </p>
             </FormItem>
           )}

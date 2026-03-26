@@ -1,0 +1,2 @@
+ALTER TABLE "Client"
+ADD COLUMN IF NOT EXISTS "billingStartDate" TIMESTAMP(3);

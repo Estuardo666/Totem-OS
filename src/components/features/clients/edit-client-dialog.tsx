@@ -52,6 +52,15 @@ interface EditClientDialogProps {
   users: User[];
 }
 
+function formatDateInputValue(date: Date | string | null | undefined): string {
+  if (!date) return "";
+
+  const parsedDate = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) return "";
+
+  return parsedDate.toISOString().split("T")[0];
+}
+
 export function EditClientDialog({
   client,
   open,
@@ -85,6 +94,7 @@ export function EditClientDialog({
       monthlyFlyers: client.monthlyFlyers ?? 0,
       monthlyRate: client.monthlyRate ?? 0,
       paymentDay: (client as any).paymentDay ?? null,
+      billingStartDate: formatDateInputValue((client as any).billingStartDate),
       editorId: (client as any).editorId || null,
       communityId: (client as any).communityId || null,
       contactEmails: contactEmailsValue,
@@ -102,6 +112,7 @@ export function EditClientDialog({
         monthlyFlyers: client.monthlyFlyers ?? 0,
         monthlyRate: client.monthlyRate ?? 0,
         paymentDay: (client as any).paymentDay ?? null,
+        billingStartDate: formatDateInputValue((client as any).billingStartDate),
         editorId: (client as any).editorId || null,
         communityId: (client as any).communityId || null,
         contactEmails: contactEmailsValue,
@@ -282,7 +293,7 @@ export function EditClientDialog({
                             allowedContent: "text-xs text-muted-foreground",
                           }}
                           content={{
-                            button({ ready }) {
+                            button({ ready }: { ready: boolean }) {
                               return ready ? "Subir logo" : "Preparando...";
                             },
                             allowedContent: "Imagen (máx. 4MB)",
@@ -290,7 +301,7 @@ export function EditClientDialog({
                           onUploadBegin={() => {
                             setIsUploading(true);
                           }}
-                          onClientUploadComplete={(res) => {
+                          onClientUploadComplete={(res: Array<{ url: string }>) => {
                             if (res && res.length > 0) {
                               setLogoUrl(res[0].url);
                               setIsUploading(false);
@@ -438,6 +449,28 @@ export function EditClientDialog({
                       <FormMessage />
                       <p className="text-sm text-muted-foreground">
                         Día fijo en que se generará la transacción mensual (1-31).
+                      </p>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="billingStartDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Inicio de facturación</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          value={typeof field.value === "string" ? field.value : formatDateInputValue(field.value as Date | null | undefined)}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-sm text-muted-foreground">
+                        Si lo dejas vacío, se tomará la fecha de creación del cliente como inicio de cobro.
                       </p>
                     </FormItem>
                   )}
