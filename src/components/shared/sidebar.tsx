@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, Mic, FileText, Moon, Sun } from "lucide-react";
+import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, FileText, Moon, Sun } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getBrandSettings } from "@/actions/admin-actions";
@@ -118,11 +118,6 @@ const adminNavItems: NavItem[] = [
     href: "/admin/files",
     label: "Gestión de Archivos",
     icon: FileText,
-  },
-  {
-    href: "/admin/voice-control",
-    label: "Control por voz (beta)",
-    icon: Mic,
   },
 ];
 
@@ -286,7 +281,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
   return (
     <div 
       className={cn(
-        "flex h-[calc(100vh-2rem)] w-56 flex-col bg-white/70 dark:bg-background/60 backdrop-blur-md dark:backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl rounded-3xl m-4 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+        "flex h-[calc(100vh-2rem)] w-56 flex-col bg-white/70 dark:bg-background/60 backdrop-blur-md dark:backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl rounded-3xl m-4 transition-all duration-500 ease-standard",
         className
       )}
       {...props}
@@ -413,7 +408,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-2 rounded-l-lg px-2 py-1.5 text-base font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] flex-1 h-full",
+                      "flex items-center gap-2 rounded-l-lg px-2 py-1.5 text-base font-medium transition-all duration-300 ease-standard flex-1 h-full",
                       isActive
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -429,7 +424,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                       toggleExpanded(item.href);
                     }}
                     className={cn(
-                      "flex items-center justify-center h-full aspect-square rounded-r-lg transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] shrink-0",
+                      "flex items-center justify-center h-full aspect-square rounded-r-lg transition-all duration-300 ease-standard shrink-0",
                       isActive
                         ? "bg-primary text-primary-foreground hover:bg-primary/90"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -437,7 +432,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   >
                     <ChevronRight
                       className={cn(
-                        "h-4 w-4 transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                        "h-4 w-4 transition-transform duration-300 ease-standard",
                         isExpanded && "rotate-90"
                       )}
                     />
@@ -447,7 +442,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                 {/* Sub-ítems con animación de acordeón */}
                 <div
                   className={cn(
-                    "overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                    "overflow-hidden transition-all duration-500 ease-standard",
                     isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
                   )}
                 >
@@ -470,7 +465,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                           key={child.href}
                           href={child.href}
                           className={cn(
-                            "flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                            "flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium transition-all duration-300 ease-standard",
                             childIsActive
                               ? "bg-primary/10 text-primary font-semibold"
                               : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -494,7 +489,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-2 py-1.5 text-base font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                "flex items-center gap-2 rounded-lg px-2 py-1.5 text-base font-medium transition-all duration-300 ease-standard",
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -520,7 +515,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                    "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-300 ease-standard",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"

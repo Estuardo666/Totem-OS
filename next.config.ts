@@ -76,12 +76,12 @@ const nextConfig: NextConfig = {
       "@radix-ui/react-alert-dialog",
     ],
     reactCompiler: false,
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
+  },
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
       },
     },
   },

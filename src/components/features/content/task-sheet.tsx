@@ -333,7 +333,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-0 pb-3 pr-1 transition-[height,max-height] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-[height] max-h-[calc(92vh-148px)] sm:pr-2">
+          <div className="flex-1 min-h-0 overflow-y-auto px-0 pb-3 pr-1 transition-[height,max-height] duration-500 ease-smooth will-change-[height] max-h-[calc(92vh-148px)] sm:pr-2">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
               <Tabs defaultValue="details" className="w-full">

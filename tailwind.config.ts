@@ -93,6 +93,13 @@ const config: Config = {
         "fade-out-slide": "fade-out-slide 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         "pulse-slow": "pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
+      transitionTimingFunction: {
+        standard: "cubic-bezier(0.4, 0, 0.2, 1)",
+        smooth: "cubic-bezier(0.32, 0.72, 0, 1)",
+        gentle: "cubic-bezier(0.25, 0.1, 0.25, 1)",
+        expressive: "cubic-bezier(0.68, -0.55, 0.27, 1.55)",
+        modal: "cubic-bezier(0.2, 0, 0.2, 1)",
+      },
     },
   },
   plugins: [

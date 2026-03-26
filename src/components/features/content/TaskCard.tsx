@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, startTransition } from "react";
 import { format, isToday } from "date-fns";
-import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2, ChevronRight } from "lucide-react";
+import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2 } from "lucide-react";
 import {
   Draggable,
   DraggableProvided,
@@ -63,10 +62,7 @@ interface TaskCardProps {
   clients?: Array<{ id: string; name: string; logo?: string | null }>;
 }
 
-export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromoteTask, onOptimisticStatusChange, isCompactView = false, clients = [] }: TaskCardProps) {
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [isPromoting, setIsPromoting] = useState(false);
-  const [shouldRender, setShouldRender] = useState(true);
+export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, isCompactView = false, clients = [] }: TaskCardProps) {
   const assignees = (task.status === "IDEA" || task.status === "SCRIPT"
     ? [task.assignedCommunity]
     : [task.assignedCommunity, task.assignedEditor]
@@ -74,65 +70,8 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
     (assignee): assignee is NonNullable<typeof task.assignedCommunity> => Boolean(assignee)
   );
 
-  // LÓGICA DE PUBLICACIÓN (handleQuickPublish)
-  const handleQuickPublish = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    // Prevenir múltiples clics
-    if (isPublishing) return;
-
-    // Establecer estado local a true
-    setIsPublishing(true);
-
-    try {
-      // Esperar exactamente 500ms para completar la transición CSS visualmente
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Envolver la server action dentro de startTransition (React 19)
-      await new Promise<void>((resolve, reject) => {
-        startTransition(async () => {
-          try {
-            await optimisticPublish(task.id);
-            resolve();
-          } catch (error) {
-            reject(error);
-          }
-        });
-      });
-
-      // ÉXITO: Desmontar el componente limpiamente
-      setShouldRender(false);
-
-    } catch (error) {
-      // FALLO: Revertir estado
-      console.error("Error en handleQuickPublish:", error);
-      setIsPublishing(false);
-    }
-  };
-
-  // LÓGICA DE PROMOVER TAREA (handlePromote)
-  const handlePromote = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    if (isPromoting || !onPromoteTask) return;
-    setIsPromoting(true);
-
-    try {
-      await onPromoteTask(task.id);
-    } catch (error) {
-      console.error("Error en handlePromote:", error);
-    } finally {
-      setIsPromoting(false);
-    }
-  };
-
-  // Si debe desaparecer, no renderizar nada
-  if (!shouldRender) {
-    return null;
-  }
-
   // Para TODAS las tareas: Envolver en Draggable
-  const isDragDisabled = isPublishing;
+  const isDragDisabled = false;
 
   return (
     <Draggable draggableId={task.id} index={index} isDragDisabled={isDragDisabled}>
@@ -153,10 +92,8 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
             className={`
               ${snapshot.isDragging 
                 ? "transition-none duration-0" 
-                : "transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"}
-              ${isPublishing 
-                ? "opacity-0 scale-90 translate-y-4 blur-sm pointer-events-none" 
-                : "opacity-100 scale-100 translate-y-0 blur-0"}
+                : "transition-all duration-500 ease-standard"}
+              opacity-100 scale-100 translate-y-0 blur-0
               animate-fade-in-view
             `}
           >
@@ -184,8 +121,8 @@ export function TaskCard({ task, index, onCardClick, optimisticPublish, onPromot
                   borderColor: `${task.client.color || "#000000"}80`,
                 }}
                 onClick={(e) => {
-                  // Si estamos publicando o arrastrando, no hacer nada
-                  if (isPublishing || snapshot.isDragging) {
+                  // Si está siendo arrastrada, no abrir el sheet
+                  if (snapshot.isDragging) {
                     e.stopPropagation();
                     return;
                   }

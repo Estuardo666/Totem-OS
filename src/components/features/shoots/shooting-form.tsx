@@ -378,7 +378,7 @@ export function ShootingForm({
 
         <div
           ref={scrollAreaRef}
-          className="px-4 pb-4 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)] transition-[height,max-height] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-[height]
+          className="px-4 pb-4 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)] transition-[height,max-height] duration-500 ease-smooth will-change-[height]
           scrollbar-track-transparent scrollbar-thumb-transparent hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40 hover:[&::-webkit-scrollbar-thumb]:transition hover:[&::-webkit-scrollbar-thumb]:duration-500 md:scrollbar-thin"
           style={{ scrollbarGutter: "stable" }}
         >
@@ -516,7 +516,7 @@ export function ShootingForm({
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent
-              className="mt-4 overflow-hidden transition-all duration-1000 ease-[cubic-bezier(0.25,0.1,0.25,1)] data-[state=closed]:max-h-0 data-[state=closed]:opacity-0 data-[state=open]:max-h-[3000px] data-[state=open]:opacity-100"
+              className="mt-4 overflow-hidden transition-all duration-1000 ease-gentle data-[state=closed]:max-h-0 data-[state=closed]:opacity-0 data-[state=open]:max-h-[3000px] data-[state=open]:opacity-100"
             >
               <div className="space-y-6">
                 {/* Ubicación - Primero */}

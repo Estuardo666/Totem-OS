@@ -28,13 +28,4 @@ export const LAZY_COMPONENTS = {
       default: m.ShootsCalendar,
     }))
   ),
-
-  // Admin
-  ConversationalVoicePanel: lazy(() =>
-    import("@/components/features/admin/voice-control/conversational-voice-panel").then(
-      (m) => ({
-        default: m.ConversationalVoicePanel,
-      })
-    )
-  ),
 } as const;

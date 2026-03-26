@@ -57,7 +57,7 @@ export function AnimatedModal({ open, onOpenChange, children, title, description
   const maxViewportHeight = typeof window !== "undefined" ? Math.round(window.innerHeight * 0.9) : null;
   const clampedHeight = maxViewportHeight ? Math.min(resolvedHeight, maxViewportHeight) : resolvedHeight;
   const animatedHeight = open ? `${clampedHeight}px` : "0px";
-  const animateClassBase = "duration-700 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] data-[state=closed]:opacity-0 data-[state=closed]:scale-95 data-[state=open]:opacity-100 data-[state=open]:scale-100";
+  const animateClassBase = "duration-700 ease-expressive data-[state=closed]:opacity-0 data-[state=closed]:scale-95 data-[state=open]:opacity-100 data-[state=open]:scale-100";
   const shouldAnimateHeight = ready && height !== null;
   const shouldAnimateScale = ready;
 
@@ -76,7 +76,7 @@ export function AnimatedModal({ open, onOpenChange, children, title, description
             "fixed left-1/2 top-1/2 z-50 w-[93vw] sm:w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[2.5rem] border border-white/20 bg-white/10 dark:bg-black/10 text-black dark:text-white shadow-2xl backdrop-blur-[40px]",
             // Use tailwindcss-animate utilities for entry/exit + fallback transitions
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-            "transition-transform transition-opacity duration-400 ease-[cubic-bezier(0.2,0,0.2,1)]",
+            "transition-transform transition-opacity duration-400 ease-modal",
             "data-[state=open]:opacity-100 data-[state=closed]:opacity-0",
             "data-[state=open]:translate-y-0 data-[state=closed]:translate-y-6",
             "data-[state=open]:scale-100 data-[state=closed]:scale-95",

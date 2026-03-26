@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { Receipt, X } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
 
 export function FloatingExpenseButton() {
@@ -11,10 +10,7 @@ export function FloatingExpenseButton() {
   // Ocultar en páginas donde no tiene sentido mostrar el botón
   const isHidden =
     pathname?.startsWith("/sign-in") ||
-    pathname?.startsWith("/sign-up") ||
-    pathname?.startsWith("/admin/voice-control");
-
-  const [open, setOpen] = useState(false);
+    pathname?.startsWith("/sign-up");
 
   if (isHidden) {
     return null;

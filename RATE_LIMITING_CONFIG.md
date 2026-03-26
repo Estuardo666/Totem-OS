@@ -15,17 +15,10 @@ Implementación: **In-memory store** (sin necesidad de Redis)
 ### 🔴 **Crítico: API de Transcripción & TTS**
 | Endpoint | Límite | Ventana | Uso |
 |----------|--------|---------|-----|
-| `POST /api/transcribe` | 10/min | 60s | Conversión voz→texto |
-| `POST /api/tts` | 10/min | 60s | Conversión texto→voz |
-
-**Cuándo se activa:** Si usuario hace >10 requests en 60 segundos
-**Respuesta:** HTTP 429 + header `Retry-After`
-
-### 🟠 **Alto: Registro & Bootstrap**
+### 🟠 **Alto: Registro**
 | Endpoint | Límite | Ventana | Uso |
 |----------|--------|---------|-----|
 | `POST /api/onesignal/register` | 30/min | 60s | Registro de push notifications |
-| `GET /api/voice/bootstrap` | 60/min | 60s | Inicialización de voice control |
 
 ---
 

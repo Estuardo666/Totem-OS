@@ -128,7 +128,6 @@ function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
     notifications: "Notificaciones",
     users: "Usuarios",
     settings: "Configuración",
-    "voice-control": "Control por Voz",
     integrations: "Integraciones",
     reports: "Reportes",
   };

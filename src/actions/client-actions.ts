@@ -3,7 +3,13 @@
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { createClientSchema, createCredentialSchema, updateClientSchema } from "@/schemas/client";
+import {
+  createClientSchema,
+  createCredentialSchema,
+  credentialGroupSchema,
+  deleteCredentialGroupSchema,
+  updateClientSchema,
+} from "@/schemas/client";
 import type { ApiResponse } from "@/types";
 import type { Client, Credential, ContentTask, BrandAsset, TaskMetrics } from "@prisma/client";
 
@@ -843,6 +849,94 @@ export async function addCredential(
       success: false,
       error:
         error instanceof Error ? error.message : "Error al crear credencial",
+    };
+  }
+}
+
+/**
+ * Server Action para guardar un grupo de credenciales
+ * Reemplaza las credenciales existentes del grupo cuando aplica
+ */
+export async function saveCredentialGroup(
+  input: unknown
+): Promise<ApiResponse<Credential[]>> {
+  try {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    const validatedData = credentialGroupSchema.parse(input);
+    const existingCredentialIds = validatedData.existingCredentials.map((credential) => credential.id);
+
+    const credentials = await db.$transaction(async (tx) => {
+      if (existingCredentialIds.length > 0) {
+        await tx.credential.deleteMany({
+          where: {
+            clientId: validatedData.clientId,
+            id: { in: existingCredentialIds },
+          },
+        });
+      }
+
+      return Promise.all(
+        validatedData.services.map((service) =>
+          tx.credential.create({
+            data: {
+              service,
+              username: validatedData.username,
+              password: validatedData.password,
+              url: validatedData.url || null,
+              clientId: validatedData.clientId,
+            },
+          })
+        )
+      );
+    });
+
+    revalidatePath(`/clients/${validatedData.clientId}`);
+
+    return { success: true, data: credentials };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Error al guardar grupo de credenciales",
+    };
+  }
+}
+
+/**
+ * Server Action para eliminar un grupo de credenciales
+ */
+export async function deleteCredentialGroup(
+  input: unknown
+): Promise<ApiResponse<void>> {
+  try {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    const validatedData = deleteCredentialGroupSchema.parse(input);
+
+    await db.credential.deleteMany({
+      where: {
+        clientId: validatedData.clientId,
+        id: { in: validatedData.credentialIds },
+      },
+    });
+
+    revalidatePath(`/clients/${validatedData.clientId}`);
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Error al eliminar grupo de credenciales",
     };
   }
 }
