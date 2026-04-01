@@ -7,9 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { updateTaskStatus } from "@/actions/content-actions";
 import { useToast } from "@/components/ui/use-toast";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
+import { updateTaskStatusRequest } from "@/lib/content-task-status-client";
 
 interface TodayScheduledTasksProps {
   tasks: ContentTaskWithClient[];
@@ -34,7 +34,7 @@ export function TodayScheduledTasks({ tasks: initialTasks }: TodayScheduledTasks
     setUpdatingTasks((prev) => new Set(prev).add(taskId));
 
     try {
-      const result = await updateTaskStatus(taskId, "PUBLISHED");
+      const result = await updateTaskStatusRequest(taskId, "PUBLISHED");
 
       if (result.success) {
         setTasks((prevTasks) =>

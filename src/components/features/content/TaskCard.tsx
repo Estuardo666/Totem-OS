@@ -1,7 +1,7 @@
 "use client";
 
-import { format, isToday } from "date-fns";
-import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2 } from "lucide-react";
+import { format, isBefore, isToday, startOfDay } from "date-fns";
+import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2, AlertCircle } from "lucide-react";
 import {
   Draggable,
   DraggableProvided,
@@ -68,6 +68,13 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
     : [task.assignedCommunity, task.assignedEditor]
   ).filter(
     (assignee): assignee is NonNullable<typeof task.assignedCommunity> => Boolean(assignee)
+  );
+  const displayDate = task.status === "PUBLISHED" ? task.publishedAt : task.scheduledAt ?? task.dueDate;
+  const showDateRow = !isCompactView && task.status !== "IDEA";
+  const isOverdue = Boolean(
+    displayDate &&
+    task.status !== "PUBLISHED" &&
+    isBefore(new Date(displayDate), startOfDay(new Date()))
   );
 
   // Para TODAS las tareas: Envolver en Draggable
@@ -213,17 +220,32 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
                       </div>
                     )}
 
-                    {/* Fecha de entrega interna - Oculta en vista compacta y en IDEA/Guión */}
-                    {!isCompactView && task.scheduledAt && task.status !== "IDEA" && (
+                    {/* Fecha de entrega interna - Oculta en vista compacta y en IDEA */}
+                    {showDateRow && (
                       <div className={`text-[9px] md:text-[10px] flex items-center gap-1 mt-1 ${
-                        isToday(new Date(task.scheduledAt))
+                        displayDate && (isOverdue || isToday(new Date(displayDate)))
                           ? "text-orange-600 font-semibold"
                           : "text-muted-foreground"
                       }`}>
                         <span>📅</span>
-                        <span className="truncate">
-                          {format(new Date(task.scheduledAt), "dd MMM")}
-                        </span>
+                        {displayDate ? (
+                          <span className="truncate">
+                            {format(new Date(displayDate), "dd MMM")}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0 text-[7px] font-semibold text-muted-foreground">
+                            Sin fecha
+                          </span>
+                        )}
+                        {displayDate && isOverdue && (
+                          <span
+                            className="inline-flex items-center gap-0.5 rounded-full bg-orange-100/90 px-1 py-0 text-[7px] font-semibold text-orange-700"
+                            title="Actualizar fecha"
+                          >
+                            <AlertCircle className="h-2 w-2" />
+                            <span className="hidden truncate sm:inline">Actualizar fecha</span>
+                          </span>
+                        )}
                       </div>
                     )}
                   </>

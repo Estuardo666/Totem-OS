@@ -1,11 +1,23 @@
 import { z } from "zod";
 
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseDateInput(value: string) {
+  if (DATE_ONLY_PATTERN.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day, 12, 0, 0, 0);
+  }
+
+  return new Date(value);
+}
+
 export const contentTaskSchema = z.object({
   id: z.string().cuid().optional(),
   title: z.string().min(1, "El título es requerido"),
   type: z.enum(["REEL", "FLYER", "STORY"]),
   status: z.enum([
     "IDEA",
+    "SCRIPT",
     "RECORDED",
     "EDITING",
     "REVIEW_INTERNAL",
@@ -17,11 +29,11 @@ export const contentTaskSchema = z.object({
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
   dueDate: z.union([z.date(), z.string()]).optional().transform((val) => {
     if (!val) return undefined;
-    return typeof val === "string" ? new Date(val) : val;
+    return typeof val === "string" ? parseDateInput(val) : val;
   }),
   scheduledAt: z.union([z.date(), z.string()]).optional().transform((val) => {
     if (!val) return undefined;
-    return typeof val === "string" ? new Date(val) : val;
+    return typeof val === "string" ? parseDateInput(val) : val;
   }),
   publishedAt: z.date().optional(),
   reviewToken: z.string().optional(),
@@ -42,6 +54,7 @@ export const createContentTaskSchema = contentTaskSchema
     status: z
       .enum([
         "IDEA",
+        "SCRIPT",
         "RECORDED",
         "EDITING",
         "REVIEW_INTERNAL",
@@ -82,6 +95,7 @@ export const bulkUpdateTasksSchema = z.object({
     .min(1, "Debes seleccionar al menos una tarea"),
   status: z.enum([
     "IDEA",
+    "SCRIPT",
     "RECORDED",
     "EDITING",
     "REVIEW_INTERNAL",

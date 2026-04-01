@@ -35,6 +35,10 @@ async function triggerDashboardUpdate(userIds: string[]): Promise<void> {
   }
 }
 
+function shouldResetPublicationDates(previousStatus: string, nextStatus: string) {
+  return previousStatus === "IDEA" && nextStatus === "SCRIPT";
+}
+
 // Tipo para ContentTask con relación de cliente incluida
 export type ContentTaskWithClient = Prisma.ContentTaskGetPayload<{
   include: {
@@ -570,6 +574,7 @@ export async function updateTaskStatus(
     const isChangingToPublished = newStatus === "PUBLISHED" && currentTask.status !== "PUBLISHED";
     const isChangingToClientApproved = newStatus === "CLIENT_APPROVED" && currentTask.status !== "CLIENT_APPROVED";
     const isChangingToEditing = newStatus === "EDITING" && currentTask.status !== "EDITING";
+    const shouldResetDates = shouldResetPublicationDates(currentTask.status, newStatus);
 
     // Guardar IDs previos antes de reasignar (para notificaciones)
     const previousEditorId = currentTask.assignedEditorId;
@@ -609,6 +614,11 @@ export async function updateTaskStatus(
         status: newStatus,
         // Si cambia a PUBLISHED, actualizar publishedAt
         ...(isChangingToPublished && { publishedAt: new Date() }),
+        ...(shouldResetDates && {
+          scheduledAt: null,
+          dueDate: null,
+          publishedAt: null,
+        }),
         // Pase de estafeta: actualizar assignedCommunityId/assignedEditorId y assignedAt
         ...(newAssignedCommunityId !== undefined && {
           assignedCommunityId: newAssignedCommunityId,
@@ -631,6 +641,7 @@ export async function updateTaskStatus(
     try {
       const statusLabels: Record<string, string> = {
         IDEA: "Idea",
+        SCRIPT: "Guión",
         RECORDED: "Grabado",
         EDITING: "Editando",
         REVIEW_INTERNAL: "Revisión Interna",
@@ -826,6 +837,9 @@ export async function updateTask(
     const isChangingToClientApproved = 
       validatedData.status === "CLIENT_APPROVED" && 
       taskBefore.status !== "CLIENT_APPROVED";
+    const shouldResetDates = Boolean(
+      validatedData.status && shouldResetPublicationDates(taskBefore.status, validatedData.status)
+    );
 
     // Guardar los IDs previos antes de reasignar (para notificaciones)
     const previousEditorId = taskBefore.assignedEditorId;
@@ -870,6 +884,11 @@ export async function updateTask(
         }),
         ...(validatedData.scheduledAt !== undefined && {
           scheduledAt: validatedData.scheduledAt ? new Date(validatedData.scheduledAt) : null,
+        }),
+        ...(shouldResetDates && {
+          scheduledAt: null,
+          dueDate: null,
+          publishedAt: null,
         }),
         ...(validatedData.status && { status: validatedData.status }),
         ...(validatedData.assignedEditorId !== undefined && {

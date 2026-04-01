@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useOptimistic, useRef, startTransition } from "react";
+import { useRouter } from "next/navigation";
 
 import Pusher from "pusher-js";
 import { CheckCircle2 } from "lucide-react";
@@ -10,10 +11,11 @@ import {
   DragUpdate,
 } from "@hello-pangea/dnd";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
-import { updateTaskStatus, getTasks } from "@/actions/content-actions";
+import { getTasks } from "@/actions/content-actions";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { updateTaskStatusRequest } from "@/lib/content-task-status-client";
 import type { ContentTaskStatus } from "@/types";
 import type { User } from "@prisma/client";
 import { KanbanColumn } from "./KanbanColumn";
@@ -41,8 +43,31 @@ const KANBAN_COLUMNS: {
   { status: "PUBLISHED", label: "Publicado" },
 ];
 
+function applyOptimisticTaskStatusChange(
+  task: ContentTaskWithClient,
+  newStatus: ContentTaskStatus
+): ContentTaskWithClient {
+  const nextTask: ContentTaskWithClient = {
+    ...task,
+    status: newStatus,
+  };
+
+  if (task.status === "IDEA" && newStatus === "SCRIPT") {
+    nextTask.scheduledAt = null;
+    nextTask.dueDate = null;
+    nextTask.publishedAt = null;
+  }
+
+  if (newStatus === "PUBLISHED" && task.status !== "PUBLISHED") {
+    nextTask.publishedAt = new Date();
+  }
+
+  return nextTask;
+}
+
 export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompactView = false, clientId }: KanbanBoardProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [tasks, setTasks] = useState<ContentTaskWithClient[]>(initialTasks);
   const [isMounted, setIsMounted] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ContentTaskWithClient | null>(null);
@@ -62,7 +87,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     tasks,
     (state, { taskId, newStatus }: { taskId: string; newStatus: ContentTaskStatus }) => {
       return state.map((task) =>
-        task.id === taskId ? { ...task, status: newStatus } : task
+        task.id === taskId ? applyOptimisticTaskStatusChange(task, newStatus) : task
       );
     }
   );
@@ -302,7 +327,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     }
     
     // Crear la tarea actualizada
-    const updatedTask = { ...taskToMove, status: destinationStatus };
+    const updatedTask = applyOptimisticTaskStatusChange(taskToMove, destinationStatus);
     
     // Remover la tarea del estado actual
     const taskIndex = newTasks.findIndex((t) => t.id === taskToMove.id);
@@ -346,7 +371,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     setTasks((prev) =>
       prev.map((t) => 
         t.id === taskId 
-          ? { ...t, status: "PUBLISHED", publishedAt: new Date() } 
+          ? applyOptimisticTaskStatusChange(t, "PUBLISHED") 
           : t
       )
     );
@@ -423,18 +448,19 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     // 1. Optimismo: Actualizar localmente (envuelto en startTransition para React 19)
     startTransition(() => {
       setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: nextStatus } : t))
+        prev.map((t) => (t.id === taskId ? applyOptimisticTaskStatusChange(t, nextStatus) : t))
       );
       setOptimisticTasks({ taskId, newStatus: nextStatus });
     });
 
     // 2. Llamar al server action
     try {
-      const result = await updateTaskStatus(taskId, nextStatus);
+      const result = await updateTaskStatusRequest(taskId, nextStatus);
 
       if (!result.success) {
         // REVERSIÓN
         setTasks(previousTasks);
+        router.refresh();
         toast({
           variant: "destructive",
           title: "Error al mover tarea",
@@ -470,18 +496,19 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     // 1. Actualización optimista local
     startTransition(() => {
       setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+        prev.map((t) => (t.id === taskId ? applyOptimisticTaskStatusChange(t, newStatus) : t))
       );
       setOptimisticTasks({ taskId, newStatus });
     });
 
     // 2. Llamar al servidor en segundo plano
     try {
-      const result = await updateTaskStatus(taskId, newStatus);
+      const result = await updateTaskStatusRequest(taskId, newStatus);
 
       if (!result.success) {
         // REVERSIÓN
         setTasks(previousTasks);
+        router.refresh();
         toast({
           variant: "destructive",
           title: "Error",
@@ -569,9 +596,10 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
 
     if (sourceStatus !== destinationStatus) {
       try {
-        const resultUpdate = await updateTaskStatus(taskToMove.id, destinationStatus);
+        const resultUpdate = await updateTaskStatusRequest(taskToMove.id, destinationStatus);
         if (!resultUpdate.success) {
           setTasks(previousTasks);
+          router.refresh();
           toast({
             variant: "destructive",
             title: "Error al actualizar tarea",

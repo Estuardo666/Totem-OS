@@ -53,6 +53,7 @@ import { TaskReviewTab } from "@/components/features/content/task-review-tab";
 const CONTENT_TASK_TYPES: readonly ContentTaskType[] = ["REEL", "FLYER", "STORY"];
 const CONTENT_TASK_STATUSES: readonly ContentTaskStatus[] = [
   "IDEA",
+  "SCRIPT",
   "RECORDED",
   "EDITING",
   "REVIEW_INTERNAL",
@@ -96,22 +97,15 @@ const formatDateForInput = (value?: Date | string | null) => {
   if (!value) return undefined;
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date?.getTime())) return undefined;
-  return date.toISOString().split("T")[0];
-};
-
-const formatDateTimeForInput = (value?: Date | string | null) => {
-  if (!value) return undefined;
-  const date = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(date?.getTime())) return undefined;
-  
-  // ✨ Usar getters locales (no UTC) para que el input datetime-local muestre correctamente
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateInputValue = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0, 0);
 };
 
 const buildTaskFormValues = (
@@ -120,8 +114,8 @@ const buildTaskFormValues = (
   initialDefaults?: Partial<CreateTaskFormValues>
 ): TaskFormValues => {
   const scheduledValue = currentTask
-    ? formatDateTimeForInput(currentTask.scheduledAt)
-    : formatDateTimeForInput(initialScheduledAt);
+    ? formatDateForInput(currentTask.scheduledAt)
+    : formatDateForInput(initialScheduledAt);
 
   return {
     title: initialDefaults?.title ?? currentTask?.title ?? "",
@@ -132,7 +126,10 @@ const buildTaskFormValues = (
     assignedEditorId: currentTask?.assignedEditorId ?? initialDefaults?.assignedEditorId ?? undefined,
     assignedCommunityId: currentTask?.assignedCommunityId ?? initialDefaults?.assignedCommunityId ?? undefined,
     dueDate: formatDateForInput(currentTask?.dueDate ?? (initialDefaults as any)?.dueDate) ?? undefined,
-    scheduledAt: scheduledValue ?? formatDateTimeForInput((initialDefaults as any)?.scheduledAt) ?? undefined,
+    scheduledAt:
+      scheduledValue ??
+      formatDateForInput((initialDefaults as any)?.scheduledAt) ??
+      (!currentTask ? formatDateForInput(new Date()) : undefined),
     postCopy: currentTask?.postCopy ?? initialDefaults?.postCopy ?? undefined,
     coverImageUrl: currentTask?.coverImageUrl ?? initialDefaults?.coverImageUrl ?? undefined,
     audioBriefUrl: currentTask?.audioBriefUrl ?? initialDefaults?.audioBriefUrl ?? undefined,
@@ -585,15 +582,15 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                         </FormLabel>
                         <FormControl>
                           <Input
-                            type="datetime-local"
-                            value={typeof field.value === "string" ? field.value : formatDateTimeForInput(field.value) || ""}
+                            type="date"
+                            value={typeof field.value === "string" ? field.value : formatDateForInput(field.value) || ""}
                             onChange={(e) => {
                               field.onChange(e.target.value || undefined);
                               // Calcular automáticamente la fecha de entrega cuando cambia la fecha programada
                               if (e.target.value) {
-                                const scheduledDate = new Date(e.target.value);
+                                const scheduledDate = parseDateInputValue(e.target.value);
                                 const calculatedDueDate = subHours(scheduledDate, 24);
-                                form.setValue("dueDate", calculatedDueDate.toISOString().split("T")[0]);
+                                form.setValue("dueDate", formatDateForInput(calculatedDueDate));
                               } else {
                                 form.setValue("dueDate", undefined);
                               }
@@ -604,7 +601,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                         </FormControl>
                         <FormMessage />
                         <p className="text-xs text-muted-foreground">
-                          Fecha cuando debe estar lista la tarea para publicar
+                          Selecciona el dia de publicacion. La hora no es obligatoria.
                         </p>
                       </FormItem>
                     )}
@@ -665,6 +662,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                         </FormControl>
                         <SelectContent className="rounded-xl">
                           <SelectItem value="IDEA" className="rounded-lg">💡 Idea</SelectItem>
+                          <SelectItem value="SCRIPT" className="rounded-lg">📝 Guión</SelectItem>
                           <SelectItem value="RECORDED" className="rounded-lg">🎥 Grabado</SelectItem>
                           <SelectItem value="EDITING" className="rounded-lg">✏️ Editando</SelectItem>
                           <SelectItem value="REVIEW_INTERNAL" className="rounded-lg">👀 Revisión Interna</SelectItem>

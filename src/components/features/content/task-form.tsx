@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition, useState, useEffect } from "react";
+import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -49,23 +50,21 @@ interface TaskFormProps {
   users: UserWithTaskCount[];
 }
 
+type CreateTaskFormValues = z.input<typeof createContentTaskSchema>;
+
 /**
- * Convierte una fecha UTC a formato YYYY-MM-DDTHH:mm para datetime-local input
- * ✨ Esto asegura que la fecha se muestre correctamente en la hora local del navegador
+ * Convierte una fecha a formato YYYY-MM-DD usando la zona local del navegador.
  */
-const formatToDatetimeLocal = (value?: Date | string | null): string => {
+const formatToDateInput = (value?: Date | string | null): string => {
   if (!value) return "";
   const date = typeof value === "string" ? new Date(value) : value;
   if (isNaN(date.getTime())) return "";
-  
-  // Usar getters locales (no UTC) para que el input muestre la hora correcta
+
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+
+  return `${year}-${month}-${day}`;
 };
 
 export function TaskForm({ clients, users }: TaskFormProps) {
@@ -73,7 +72,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
-  const form = useForm<CreateContentTaskInput>({
+  const form = useForm<CreateTaskFormValues>({
     resolver: zodResolver(createContentTaskSchema),
     mode: "onBlur",
     defaultValues: {
@@ -85,7 +84,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
       assignedEditorId: undefined,
       assignedCommunityId: undefined,
       dueDate: undefined,
-      scheduledAt: undefined,
+      scheduledAt: formatToDateInput(new Date()),
       postCopy: undefined,
       coverImageUrl: undefined,
       audioBriefUrl: undefined,
@@ -147,21 +146,23 @@ export function TaskForm({ clients, users }: TaskFormProps) {
     }
   };
 
-  const onSubmit = async (data: CreateContentTaskInput) => {
+  const onSubmit = async (data: CreateTaskFormValues) => {
     startTransition(async () => {
       try {
+        const parsedData = createContentTaskSchema.parse(data);
+
         // Calcular automáticamente la fecha de entrega: 24 horas antes de la fecha programada
         let calculatedDueDate: Date | undefined = undefined;
-        if (data.scheduledAt) {
-          const scheduledDate = typeof data.scheduledAt === "string" 
-            ? new Date(data.scheduledAt) 
-            : data.scheduledAt;
+        if (parsedData.scheduledAt) {
+          const scheduledDate = parsedData.scheduledAt instanceof Date
+            ? parsedData.scheduledAt
+            : new Date(parsedData.scheduledAt);
           calculatedDueDate = subHours(scheduledDate, 24);
         }
 
         // Preparar los datos con la fecha de entrega calculada
         const taskData: CreateContentTaskInput = {
-          ...data,
+          ...parsedData,
           dueDate: calculatedDueDate,
         };
 
@@ -449,8 +450,8 @@ export function TaskForm({ clients, users }: TaskFormProps) {
               <FormLabel>Fecha de Entrega Interna</FormLabel>
               <FormControl>
                 <Input
-                  type="datetime-local"
-                  value={field.value ? formatToDatetimeLocal(field.value) : ""}
+                  type="date"
+                  value={field.value ? formatToDateInput(field.value) : ""}
                   onChange={(e) => {
                     field.onChange(e.target.value || undefined);
                   }}
@@ -459,7 +460,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
               </FormControl>
               <FormMessage />
               <p className="text-xs text-muted-foreground">
-                Fecha cuando debe estar lista la tarea para publicar
+                Selecciona el dia de publicacion. La hora no es obligatoria.
               </p>
             </FormItem>
           )}
@@ -516,7 +517,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                 {selectedClientId ? (
                   <AiContentAssistant
                     taskId="" // No hay taskId en creación, pero el componente maneja este caso
-                    currentCopy={postCopy}
+                    currentCopy={postCopy ?? undefined}
                     onInsertCopy={(content) => {
                       form.setValue("postCopy", content, {
                         shouldDirty: true,

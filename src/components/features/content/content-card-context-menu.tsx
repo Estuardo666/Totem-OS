@@ -25,10 +25,10 @@ import { useToast } from "@/components/ui/use-toast";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import {
   duplicateTask,
-  updateTaskStatus,
   deleteTask,
   updateTaskClient,
 } from "@/actions/content-actions";
+import { updateTaskStatusRequest } from "@/lib/content-task-status-client";
 import type { ContentTaskStatus } from "@/types";
 import {
   AlertDialog,
@@ -144,7 +144,7 @@ export function ContentCardContextMenu({
     
     router.refresh();
     
-    updateTaskStatus(task.id, newStatus).then((result) => {
+    updateTaskStatusRequest(task.id, newStatus).then((result) => {
       if (result.success) {
         toast({
           title: "Éxito",
