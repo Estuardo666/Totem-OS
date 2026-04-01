@@ -84,6 +84,7 @@ model User {
   timeEntries       TimeEntry[]        // Registros de tiempo trabajado
   googleCalendarToken GoogleCalendarToken? // Token de Google Calendar
   financeAlertsAssigned FinanceAlert[] @relation("FinanceAlertAssigned")
+  approvedMonthlyClosures ClientMonthlyClosure[] @relation("MonthlyClosureApprovedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -207,6 +208,7 @@ model Client {
   feedbacks    ClientFeedback[]
   shootings    Shoot[]
   metrics      ClientMetric[]
+  monthlyClosures ClientMonthlyClosure[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -645,6 +647,32 @@ model ClientMetric {
 
   @@unique([clientId, platform, metricName, date]) // Evita duplicados para el mismo día
   @@index([clientId, date]) // Optimiza la carga de gráficas
+}
+
+// CIERRE MENSUAL CONTABLE POR CLIENTE
+model ClientMonthlyClosure {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  year          Int
+  month         Int
+  accrualStatus String   // FULL, PARTIAL, NONE
+  accruedAmount Float    @default(0)
+  recommendation String? // FULL, PARTIAL, NONE, REVIEW
+  recommendationReason String?
+  evidenceSummary String? // JSON con métricas operativas del período
+  notes         String?
+  approvedById  String?
+  approvedBy    User?    @relation("MonthlyClosureApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([clientId, year, month])
+  @@index([year, month])
+  @@index([clientId])
+  @@index([accrualStatus])
+  @@index([approvedById])
 }
 
 // CONTROL DE TIEMPO - TOTEM CHRONOS

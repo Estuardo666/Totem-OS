@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Settings2 } from "lucide-react";
 import { KanbanBoard } from "./kanban-board";
@@ -23,21 +23,78 @@ interface ContentFactoryWrapperProps {
   users: User[];
 }
 
+function applyLocalTaskStatusChange(
+  task: ContentTaskWithClient,
+  oldStatus: string,
+  newStatus: string
+) {
+  const updatedTask: ContentTaskWithClient = {
+    ...task,
+    status: newStatus,
+  };
+
+  if (oldStatus === "IDEA" && newStatus === "SCRIPT") {
+    updatedTask.scheduledAt = null;
+    updatedTask.dueDate = null;
+    updatedTask.publishedAt = null;
+  }
+
+  if (newStatus === "PUBLISHED" && oldStatus !== "PUBLISHED") {
+    updatedTask.publishedAt = new Date();
+  }
+
+  return updatedTask;
+}
+
 export function ContentFactoryWrapper({
   tasks,
   clients,
   users,
 }: ContentFactoryWrapperProps) {
   const activeClients = clients.filter((client) => client.status !== "INACTIVE");
+  const [allTasks, setAllTasks] = useState<ContentTaskWithClient[]>(tasks);
   const [filteredTasks, setFilteredTasks] = useState<ContentTaskWithClient[]>(tasks);
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"kanban" | "calendar">("kanban");
   const [isCompactView, setIsCompactView] = useState(false);
 
+  useEffect(() => {
+    setAllTasks(tasks);
+  }, [tasks]);
+
+  useEffect(() => {
+    const handleTaskStatusUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        taskId: string;
+        oldStatus: string;
+        newStatus: string;
+      }>;
+
+      const detail = customEvent.detail;
+      if (!detail?.taskId || !detail?.oldStatus || !detail?.newStatus) {
+        return;
+      }
+
+      setAllTasks((prev) =>
+        prev.map((task) =>
+          task.id === detail.taskId
+            ? applyLocalTaskStatusChange(task, detail.oldStatus, detail.newStatus)
+            : task
+        )
+      );
+    };
+
+    window.addEventListener("taskStatusUpdated", handleTaskStatusUpdated as EventListener);
+
+    return () => {
+      window.removeEventListener("taskStatusUpdated", handleTaskStatusUpdated as EventListener);
+    };
+  }, []);
+
   return (
     <div className="w-full px-0 md:px-4 py-6 space-y-6">
       <ContentFilters
-        tasks={tasks}
+        tasks={allTasks}
         clients={activeClients}
         users={users}
         onFilterChange={setFilteredTasks}

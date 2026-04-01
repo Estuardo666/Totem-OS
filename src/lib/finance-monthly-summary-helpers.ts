@@ -128,8 +128,16 @@ export function groupReceivables(entries: ReceivableEntry[]): Array<{
     .slice(0, 5);
 }
 
-export function buildAlerts(input: Pick<MonthlyFinancialSummaryData, "executive" | "quality" | "receivables">): MonthlySummaryAlert[] {
+export function buildAlerts(input: Pick<MonthlyFinancialSummaryData, "executive" | "quality" | "receivables" | "closureControl">): MonthlySummaryAlert[] {
   const alerts: MonthlySummaryAlert[] = [];
+
+  if (input.closureControl.pendingCount > 0) {
+    alerts.push({
+      tone: "critical",
+      title: "Clientes recurrentes sin cierre mensual",
+      description: `${input.closureControl.pendingCount} cliente(s) recurrente(s) siguen sin cierre del período por ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(input.closureControl.pendingAmount)}. Esa lectura puede inflar o distorsionar el ingreso devengado.`,
+    });
+  }
 
   if (input.executive.operatingResult < 0) {
     alerts.push({

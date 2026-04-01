@@ -1,6 +1,7 @@
 import type { MonthlyFinancialSummaryData } from "@/actions/finance-actions";
 import { FinanceSectionNav } from "@/components/features/finance/finance-section-nav";
 import { MonthlySummaryBreakdown } from "@/components/features/finance/monthly-summary-breakdown";
+import { MonthlySummaryClosureAlert } from "@/components/features/finance/monthly-summary-closure-alert";
 import { MonthlySummaryClientsTable } from "@/components/features/finance/monthly-summary-clients-table";
 import { MonthlySummaryComparison } from "@/components/features/finance/monthly-summary-comparison";
 import { MonthlySummaryHeroFocus } from "@/components/features/finance/monthly-summary-hero-focus";
@@ -75,6 +76,7 @@ export function MonthlySummaryDashboard({ summary, userRole }: MonthlySummaryDas
       </div>
 
       <MonthlySummaryComparison summary={summary} />
+  <MonthlySummaryClosureAlert summary={summary} />
       <MonthlySummaryKpis summary={summary} />
       <MonthlySummaryBreakdown summary={summary} />
       <MonthlySummaryClientsTable summary={summary} />

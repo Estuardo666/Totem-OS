@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Plus, Receipt, Scale, TrendingDown } from "lucide-react";
+import { BarChart3, BookCheck, Plus, Receipt, Scale, TrendingDown } from "lucide-react";
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -31,6 +31,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/finance/receivables",
     label: "Cuentas por Cobrar",
     icon: Receipt,
+    adminOnly: true,
+  },
+  {
+    href: "/finance/monthly-close",
+    label: "Cierre Mensual",
+    icon: BookCheck,
     adminOnly: true,
   },
   {

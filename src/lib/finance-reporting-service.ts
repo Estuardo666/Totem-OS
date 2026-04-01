@@ -46,7 +46,29 @@ export interface FinancialStats {
     userId?: string;
   }>;
   pendingReimbursements?: number;
-  honorariosReceived?: number;  heatmapData?: HeatmapCell[];}
+  honorariosReceived?: number;
+  heatmapData?: HeatmapCell[];
+  closureControl?: {
+    pendingCount: number;
+    pendingAmount: number;
+    pendingClients: Array<{
+      id: string;
+      name: string;
+      monthlyRate: number;
+    }>;
+    currentMonthLabel: string;
+  };
+}
+
+type RecurringClientRow = {
+  id: string;
+  name: string;
+  monthlyRate: number;
+};
+
+type ClosureClientRow = {
+  clientId: string;
+};
 
 /**
  * Interfaz para estadísticas de gastos
@@ -115,6 +137,35 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    const currentMonthLabel = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(monthStart);
+    let recurringClients: RecurringClientRow[] = [];
+    let currentMonthClosures: ClosureClientRow[] = [];
+
+    if (isAdmin) {
+      [recurringClients, currentMonthClosures] = await Promise.all([
+        db.client.findMany({
+          where: {
+            monthlyRate: { gt: 0 },
+            paymentDay: { not: null },
+            status: { notIn: ["PAUSED", "INACTIVE"] },
+          },
+          select: {
+            id: true,
+            name: true,
+            monthlyRate: true,
+          },
+        }),
+        db.$queryRaw<Array<ClosureClientRow>>`
+          SELECT "clientId"
+          FROM "ClientMonthlyClosure"
+          WHERE "year" = ${now.getFullYear()}
+            AND "month" = ${now.getMonth() + 1}
+        `,
+      ]);
+    }
+
+    const closureClientIds = new Set(currentMonthClosures.map((closure: ClosureClientRow) => closure.clientId));
+    const pendingClosureClients = recurringClients.filter((client: RecurringClientRow) => !closureClientIds.has(client.id));
 
     // Obtener facturas pagadas (solo ADMIN)
     const paidInvoicesThisMonth = isAdmin
@@ -420,6 +471,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         paidByUser: {
           select: {
             name: true,
+            image: true,
           },
         },
       },
@@ -621,6 +673,12 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
           totalHonorariosPaid,
           totalHonorariosPaidDeltaPct,
           heatmapData,
+          closureControl: {
+            pendingCount: pendingClosureClients.length,
+            pendingAmount: pendingClosureClients.reduce((sum: number, client: RecurringClientRow) => sum + client.monthlyRate, 0),
+            pendingClients: pendingClosureClients,
+            currentMonthLabel,
+          },
         }),
         ...(userId && {
           pendingReimbursements,

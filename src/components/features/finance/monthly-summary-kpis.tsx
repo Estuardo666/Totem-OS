@@ -53,12 +53,15 @@ const KPI_CONFIG = [
 ] as const;
 
 export function MonthlySummaryKpis({ summary }: MonthlySummaryKpisProps) {
+  const isProvisional = summary.quality.isProvisional;
+
   return (
     <section className="space-y-4">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">Lectura ejecutiva</h2>
         <p className="text-sm text-muted-foreground">
           Resultado, caja y cartera en bloques separados para tomar decisiones sin mezclar señales.
+          {isProvisional ? " El ingreso recurrente sigue en estado provisional mientras existan cierres pendientes." : ""}
         </p>
       </div>
 
@@ -66,8 +69,11 @@ export function MonthlySummaryKpis({ summary }: MonthlySummaryKpisProps) {
         {KPI_CONFIG.map((item) => {
           const Icon = item.icon;
           const value = summary.executive[item.key];
-          const secondary = item.key === "recognizedRevenue"
-            ? `Recurrente ${formatPercent(summary.quality.recurringSharePct)}`
+          const isRecognizedRevenueCard = item.key === "recognizedRevenue";
+          const secondary = isRecognizedRevenueCard
+            ? isProvisional
+              ? `Confirmado ${formatCurrency(summary.quality.confirmedRecurringRevenue)} · Pendiente ${formatCurrency(summary.quality.pendingRecurringRevenue)}`
+              : `Recurrente ${formatPercent(summary.quality.recurringSharePct)}`
             : item.key === "collectedCash"
               ? `Eficiencia ${formatPercent(summary.quality.collectionEfficiencyPct)}`
               : item.key === "directCosts"
@@ -82,7 +88,9 @@ export function MonthlySummaryKpis({ summary }: MonthlySummaryKpisProps) {
             <Card key={item.key} className="border-border/60 shadow-sm">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
                 <div className="space-y-1">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">{item.title}</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {isRecognizedRevenueCard && isProvisional ? `${item.title} provisional` : item.title}
+                  </CardTitle>
                   <p className="text-xs leading-relaxed text-muted-foreground">{item.helper}</p>
                 </div>
                 <Icon className={`h-5 w-5 ${item.accent}`} />

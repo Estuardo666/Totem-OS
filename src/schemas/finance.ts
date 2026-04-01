@@ -128,3 +128,32 @@ export const processSalaryPaymentSchema = z.object({
 
 export type ProcessSalaryPaymentInput = z.infer<typeof processSalaryPaymentSchema>;
 
+export const clientMonthlyClosureSchema = z
+  .object({
+    clientId: z.string().cuid(),
+    year: z.number().int().min(2000).max(2100),
+    month: z.number().int().min(1).max(12),
+    accrualStatus: z.enum(["FULL", "PARTIAL", "NONE"]),
+    accruedAmount: z.number().min(0, "El monto devengado no puede ser negativo"),
+    notes: z.string().max(1000, "Máximo 1000 caracteres").optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.accrualStatus === "NONE" && data.accruedAmount !== 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["accruedAmount"],
+        message: "Si el mes no se devenga, el monto debe ser 0",
+      });
+    }
+
+    if (data.accrualStatus !== "NONE" && data.accruedAmount <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["accruedAmount"],
+        message: "Indica un monto devengado mayor a 0",
+      });
+    }
+  });
+
+export type ClientMonthlyClosureInput = z.infer<typeof clientMonthlyClosureSchema>;
+

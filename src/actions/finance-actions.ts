@@ -55,6 +55,14 @@ import {
   getMonthlyFinancialSummaryFromDb,
 } from "@/lib/finance-monthly-summary-service";
 export type { MonthlyFinancialSummaryData } from "@/lib/finance-monthly-summary-types";
+import {
+  getClientMonthlyClosuresFromDb,
+  upsertClientMonthlyClosureFromDb,
+} from "@/lib/finance-monthly-close-service";
+export type {
+  ClientMonthlyClosurePageData,
+  MonthlyClosureAccrualStatus,
+} from "@/lib/finance-monthly-close-service";
 
 // Type definitions
 export type FinancialStats = FinancialStatsData;
@@ -87,6 +95,9 @@ export interface UserSettlementReport {
 function revalidateFinanceViews() {
   revalidatePath("/finance");
   revalidatePath("/finance/transactions");
+  revalidatePath("/finance/monthly-close");
+  revalidatePath("/finance/monthly-summary");
+  revalidatePath("/finance/receivables");
 }
 
 /**
@@ -686,6 +697,48 @@ export async function getGlobalProfitabilityStats(): Promise<ApiResponse<any>> {
 
 export async function getMonthlyFinancialSummary(monthValue?: string): Promise<ApiResponse<any>> {
   return getMonthlyFinancialSummaryFromDb(monthValue);
+}
+
+export async function getClientMonthlyClosures(
+  month: number,
+  year: number
+): Promise<ApiResponse<any>> {
+  try {
+    const session = await auth();
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return { success: false, error: "No autorizado" };
+    }
+
+    return getClientMonthlyClosuresFromDb(year, month);
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al obtener cierres mensuales",
+    };
+  }
+}
+
+export async function saveClientMonthlyClosure(input: unknown): Promise<ApiResponse<{ id: string }>> {
+  try {
+    const session = await auth();
+    const userId = session?.user?.id;
+    const userRole = session?.user?.role;
+
+    if (!userId || userRole !== "ADMIN") {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const result = await upsertClientMonthlyClosureFromDb(input, userId);
+    if (result.success) {
+      revalidateFinanceViews();
+    }
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al guardar el cierre mensual",
+    };
+  }
 }
 
 // ============ SALARY & SETTLEMENT OPERATIONS ============

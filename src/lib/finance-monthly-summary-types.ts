@@ -96,10 +96,23 @@ export interface MonthlyFinancialSummaryData {
   };
   quality: {
     recurringCommittedRevenue: number;
+    confirmedRecurringRevenue: number;
+    pendingRecurringRevenue: number;
     extraordinaryRevenue: number;
     recurringSharePct: number;
     collectionEfficiencyPct: number;
     topClientConcentrationPct: number;
+    isProvisional: boolean;
+  };
+  closureControl: {
+    pendingCount: number;
+    pendingAmount: number;
+    pendingClients: Array<{
+      id: string;
+      name: string;
+      logo?: string | null;
+      monthlyRate: number;
+    }>;
   };
   treasury: {
     collectedCash: number;

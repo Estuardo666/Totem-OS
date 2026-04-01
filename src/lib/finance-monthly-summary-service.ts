@@ -15,6 +15,7 @@ import {
   resolveSummaryMonth,
   toPercent,
 } from "@/lib/finance-monthly-summary-helpers";
+import { getClientMonthlyClosureRows } from "@/lib/finance-monthly-close-service";
 import { getReceivablesFromDb } from "@/lib/finance-transaction-service";
 import type {
   ClientSummaryAccumulator,
@@ -144,8 +145,25 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
   ]);
 
   const recurringClientIds = clients.filter((client) => client.paymentDay && client.monthlyRate > 0 && client.status !== "PAUSED").map((client) => client.id);
-  const billingExceptions = await getBillingExceptions(recurringClientIds, monthStart.getFullYear(), monthStart.getMonth() + 1);
+  const [billingExceptions, closureRows] = await Promise.all([
+    getBillingExceptions(recurringClientIds, monthStart.getFullYear(), monthStart.getMonth() + 1),
+    getClientMonthlyClosureRows(recurringClientIds, {
+      maxYear: monthStart.getFullYear(),
+      maxMonth: monthStart.getMonth() + 1,
+    }),
+  ]);
   const exceptionsByClient = new Map(billingExceptions.map((exception) => [exception.clientId, exception]));
+  const closuresByClient = new Map(
+    closureRows
+      .filter((row) => row.year === monthStart.getFullYear() && row.month === monthStart.getMonth() + 1)
+      .map((row) => [row.clientId, row])
+  );
+  const pendingClosureClients: Array<{
+    id: string;
+    name: string;
+    logo?: string | null;
+    monthlyRate: number;
+  }> = [];
   const billedInvoicesByClient = new Map<string, number>();
   const clientRows = new Map<string, ClientSummaryAccumulator>();
 
@@ -162,6 +180,8 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
   }
 
   let recurringCommittedRevenue = 0;
+  let confirmedRecurringRevenue = 0;
+  let pendingRecurringRevenue = 0;
   let extraordinaryRevenue = 0;
 
   for (const client of clients) {
@@ -172,15 +192,34 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
     if (startMonth.getTime() > monthStart.getTime()) continue;
 
     const exception = exceptionsByClient.get(client.id);
+    const closure = closuresByClient.get(client.id);
+    if (!closure) {
+      pendingClosureClients.push({
+        id: client.id,
+        name: client.name,
+        logo: client.logo,
+        monthlyRate: client.monthlyRate,
+      });
+    }
     let plannedAmount = client.monthlyRate;
-    if (exception?.type === "SKIP" || exception?.type === "MARK_AS_PAID") plannedAmount = 0;
-    if (exception?.type === "OVERRIDE_AMOUNT") plannedAmount = exception.overrideAmount ?? client.monthlyRate;
+
+    if (closure) {
+      plannedAmount = closure.accrualStatus === "NONE" ? 0 : closure.accruedAmount;
+    } else {
+      if (exception?.type === "SKIP" || exception?.type === "MARK_AS_PAID") plannedAmount = 0;
+      if (exception?.type === "OVERRIDE_AMOUNT") plannedAmount = exception.overrideAmount ?? client.monthlyRate;
+    }
 
     const billedAmount = billedInvoicesByClient.get(client.id) ?? 0;
     const extraAmount = Math.max(0, billedAmount - plannedAmount);
     const row = getRow({ id: client.id, name: client.name, logo: client.logo, billingModel: "Recurrente" });
     row.recognizedRevenue += plannedAmount + extraAmount;
     recurringCommittedRevenue += plannedAmount;
+    if (closure) {
+      confirmedRecurringRevenue += plannedAmount;
+    } else {
+      pendingRecurringRevenue += plannedAmount;
+    }
     extraordinaryRevenue += extraAmount;
   }
 
@@ -299,10 +338,18 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
     },
     quality: {
       recurringCommittedRevenue,
+      confirmedRecurringRevenue,
+      pendingRecurringRevenue,
       extraordinaryRevenue,
       recurringSharePct: toPercent(recurringCommittedRevenue, recognizedRevenue),
       collectionEfficiencyPct: toPercent(collectedCash, recognizedRevenue),
       topClientConcentrationPct: toPercent(clientsData[0]?.recognizedRevenue ?? 0, recognizedRevenue),
+      isProvisional: pendingClosureClients.length > 0,
+    },
+    closureControl: {
+      pendingCount: pendingClosureClients.length,
+      pendingAmount: pendingClosureClients.reduce((sum, client) => sum + client.monthlyRate, 0),
+      pendingClients: pendingClosureClients,
     },
     treasury: {
       collectedCash,

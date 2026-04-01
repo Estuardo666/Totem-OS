@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { sendNotification } from "@/actions/notification-actions";
+import { getClientMonthlyClosureRows } from "@/lib/finance-monthly-close-service";
 
 type MonthlyBillingExceptionRow = {
   clientId: string;
@@ -130,9 +131,18 @@ export async function createMonthlyPaymentTransactions(): Promise<{
     now.getFullYear(),
     now.getMonth() + 1
   );
+  const closureRows = await getClientMonthlyClosureRows(clientIds, {
+    maxYear: now.getFullYear(),
+    maxMonth: now.getMonth() + 1,
+  });
 
   const exceptionByClient = new Map(
     billingExceptions.map((exception: MonthlyBillingExceptionRow) => [exception.clientId, exception])
+  );
+  const closureByClient = new Map(
+    closureRows
+      .filter((row) => row.year === now.getFullYear() && row.month === now.getMonth() + 1)
+      .map((row) => [row.clientId, row])
   );
 
   let created = 0;
@@ -148,8 +158,9 @@ export async function createMonthlyPaymentTransactions(): Promise<{
       }
 
       const billingException = exceptionByClient.get(client.id);
+      const closure = closureByClient.get(client.id);
 
-      if (billingException?.type === "SKIP" || billingException?.type === "MARK_AS_PAID") {
+      if (!closure && (billingException?.type === "SKIP" || billingException?.type === "MARK_AS_PAID")) {
         skipped++;
         continue;
       }
@@ -167,9 +178,13 @@ export async function createMonthlyPaymentTransactions(): Promise<{
         continue;
       }
 
-      const amountToCharge = billingException?.type === "OVERRIDE_AMOUNT"
-        ? billingException.overrideAmount ?? client.monthlyRate
-        : client.monthlyRate;
+      const amountToCharge = closure
+        ? closure.accrualStatus === "NONE"
+          ? 0
+          : closure.accruedAmount
+        : billingException?.type === "OVERRIDE_AMOUNT"
+          ? billingException.overrideAmount ?? client.monthlyRate
+          : client.monthlyRate;
 
       if (amountToCharge <= 0) {
         skipped++;

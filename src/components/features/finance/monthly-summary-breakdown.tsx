@@ -49,6 +49,8 @@ function AgingBar({ label, value, total }: { label: string; value: number; total
 }
 
 export function MonthlySummaryBreakdown({ summary }: MonthlySummaryBreakdownProps) {
+  const isProvisional = summary.quality.isProvisional;
+
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
       <div className="space-y-6">
@@ -64,20 +66,32 @@ export function MonthlySummaryBreakdown({ summary }: MonthlySummaryBreakdownProp
           </CardHeader>
           <CardContent className="space-y-4">
             <LedgerRow
-              label="Ingreso recurrente comprometido"
-              value={summary.quality.recurringCommittedRevenue}
-              helper="Fee mensual activo del período. Es la base que sostiene el negocio mes a mes."
+              label={isProvisional ? "Ingreso recurrente confirmado" : "Ingreso recurrente comprometido"}
+              value={isProvisional ? summary.quality.confirmedRecurringRevenue : summary.quality.recurringCommittedRevenue}
+              helper={isProvisional
+                ? "Solo incluye clientes con cierre mensual aprobado."
+                : "Fee mensual activo del período. Es la base que sostiene el negocio mes a mes."}
             />
+            {isProvisional ? (
+              <LedgerRow
+                label="Ingreso recurrente pendiente de cierre"
+                value={summary.quality.pendingRecurringRevenue}
+                tone="negative"
+                helper="Monto recurrente todavía sin decisión formal de devengo para el período."
+              />
+            ) : null}
             <LedgerRow
               label="Ingreso extraordinario registrado"
               value={summary.quality.extraordinaryRevenue}
               helper="Proyectos, adicionales o registros que no dependen del fee base."
             />
             <LedgerRow
-              label="Ingreso del mes"
+              label={isProvisional ? "Ingreso del mes provisional" : "Ingreso del mes"}
               value={summary.executive.recognizedRevenue}
               emphasis
-              helper="Ingreso operativo total reconocido en el sistema para el mes actual."
+              helper={isProvisional
+                ? "Lectura preliminar mientras sigan existiendo cierres mensuales pendientes."
+                : "Ingreso operativo total reconocido en el sistema para el mes actual."}
             />
             <LedgerRow
               label="Costos directos"

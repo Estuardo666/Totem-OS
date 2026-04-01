@@ -5,6 +5,7 @@ import { createTransactionSchema, updateTransactionSchema } from "@/schemas/fina
 import { sendNotification } from "@/actions/notification-actions";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
+import { getClientMonthlyClosureRows } from "@/lib/finance-monthly-close-service";
 import type { Transaction } from "@prisma/client";
 import type { ApiResponse } from "@/types";
 
@@ -368,6 +369,10 @@ function buildRecurringPeriods(input: {
     type: string;
     overrideAmount: number | null;
   }>;
+  closureAmountsByPeriod: Map<string, {
+    accrualStatus: string;
+    accruedAmount: number;
+  }>;
   paidAmountsByPeriod: Map<string, number>;
 }): Array<{
   id: string;
@@ -408,20 +413,27 @@ function buildRecurringPeriods(input: {
   let remainingPaid = input.totalPaid;
 
   return periods.flatMap((period) => {
-    const exception = exceptionMap.get(
-      getPeriodKey(period.monthStart.getFullYear(), period.monthStart.getMonth() + 1)
-    );
+    const periodKey = getPeriodKey(period.monthStart.getFullYear(), period.monthStart.getMonth() + 1);
+    const exception = exceptionMap.get(periodKey);
+    const closure = input.closureAmountsByPeriod.get(periodKey);
 
-    if (exception?.type === "SKIP" || exception?.type === "MARK_AS_PAID") {
+    if (closure?.accrualStatus === "NONE") {
+      return [];
+    }
+
+    if (!closure && (exception?.type === "SKIP" || exception?.type === "MARK_AS_PAID")) {
       return [];
     }
 
     const paidPeriodAmount = input.paidAmountsByPeriod.get(
-      getPeriodKey(period.monthStart.getFullYear(), period.monthStart.getMonth() + 1)
+      periodKey
     ) ?? 0;
-    const periodAmount = exception?.type === "OVERRIDE_AMOUNT"
-      ? exception.overrideAmount ?? input.monthlyRate
-      : Math.max(input.monthlyRate, paidPeriodAmount);
+    const basePeriodAmount = closure
+      ? closure.accruedAmount
+      : exception?.type === "OVERRIDE_AMOUNT"
+        ? exception.overrideAmount ?? input.monthlyRate
+        : input.monthlyRate;
+    const periodAmount = Math.max(basePeriodAmount, paidPeriodAmount);
 
     if (periodAmount <= 0) {
       return [];
@@ -546,16 +558,28 @@ export async function getReceivablesFromDb(
     });
 
     const recurringClientIdsArray = recurringClients.map((client) => client.id);
-    const billingExceptions = await getBillingExceptions({
-      clientIds: recurringClientIdsArray,
-      maxYear: monthStart.getFullYear(),
-      maxMonth: monthStart.getMonth() + 1,
-    });
+    const [billingExceptions, closureRows] = await Promise.all([
+      getBillingExceptions({
+        clientIds: recurringClientIdsArray,
+        maxYear: monthStart.getFullYear(),
+        maxMonth: monthStart.getMonth() + 1,
+      }),
+      getClientMonthlyClosureRows(recurringClientIdsArray, {
+        maxYear: monthStart.getFullYear(),
+        maxMonth: monthStart.getMonth() + 1,
+      }),
+    ]);
 
     const exceptionsByClient = new Map(
       recurringClientIdsArray.map((clientId) => [
         clientId,
         billingExceptions.filter((exception) => exception.clientId === clientId),
+      ])
+    );
+    const closuresByClient = new Map(
+      recurringClientIdsArray.map((clientId) => [
+        clientId,
+        closureRows.filter((row) => row.clientId === clientId),
       ])
     );
 
@@ -593,6 +617,7 @@ export async function getReceivablesFromDb(
       const billingReferenceDate = new Date(client.billingStartDate ?? client.createdAt);
       const startMonth = getRecurringStartMonth(billingReferenceDate, paymentDay);
       const clientExceptions = exceptionsByClient.get(client.id) ?? [];
+      const clientClosures = closuresByClient.get(client.id) ?? [];
 
       if (startMonth.getTime() > monthStart.getTime()) {
         return [];
@@ -619,6 +644,16 @@ export async function getReceivablesFromDb(
           paidAmountsByPeriod.set(key, (paidAmountsByPeriod.get(key) ?? 0) + transaction.amount);
         });
 
+      const closureAmountsByPeriod = new Map(
+        clientClosures.map((closure) => [
+          getPeriodKey(closure.year, closure.month),
+          {
+            accrualStatus: closure.accrualStatus,
+            accruedAmount: closure.accruedAmount,
+          },
+        ])
+      );
+
       return buildRecurringPeriods({
         startMonth,
         endMonth: monthStart,
@@ -630,6 +665,7 @@ export async function getReceivablesFromDb(
         clientLogo: client.logo ?? undefined,
         totalPaid,
         exceptions: clientExceptions,
+        closureAmountsByPeriod,
         paidAmountsByPeriod,
       });
     });
@@ -703,6 +739,13 @@ export async function getReceivablesFromDb(
         const currentMonthException = (exceptionsByClient.get(client.id) ?? []).find(
           (exception) => exception.year === monthStart.getFullYear() && exception.month === monthStart.getMonth() + 1
         );
+        const currentMonthClosure = (closuresByClient.get(client.id) ?? []).find(
+          (closure) => closure.year === monthStart.getFullYear() && closure.month === monthStart.getMonth() + 1
+        );
+
+        if (currentMonthClosure) {
+          return sum + (currentMonthClosure.accrualStatus === "NONE" ? 0 : currentMonthClosure.accruedAmount);
+        }
 
         if (currentMonthException?.type === "SKIP" || currentMonthException?.type === "MARK_AS_PAID") {
           return sum;

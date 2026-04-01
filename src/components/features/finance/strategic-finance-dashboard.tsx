@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
+  ArrowRight,
   Filter,
   LineChart,
   PieChart,
@@ -417,6 +419,52 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
   return (
     <div className="space-y-8">
       <FinanceSectionNav userRole={userRole} />
+
+      {stats.closureControl && stats.closureControl.pendingCount > 0 ? (
+        <Card className="border-rose-300 bg-rose-50 shadow-sm">
+          <CardContent className="space-y-4 p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-rose-700">
+                  <AlertTriangle className="h-4 w-4" />
+                  Cierre contable pendiente
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-rose-950">
+                    {stats.closureControl.pendingCount} cliente(s) recurrente(s) siguen sin cierre de {stats.closureControl.currentMonthLabel}
+                  </p>
+                  <p className="mt-1 max-w-3xl text-sm text-rose-800">
+                    Mientras esos cierres no se aprueben, la lectura del ingreso recurrente del mes sigue siendo provisional. El monto potencial pendiente es {formatCurrency(stats.closureControl.pendingAmount)}.
+                  </p>
+                </div>
+              </div>
+
+              <Button asChild className="rounded-full bg-rose-600 hover:bg-rose-700">
+                <Link href="/finance/monthly-close">
+                  Ir al cierre mensual
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {stats.closureControl.pendingClients.slice(0, 8).map((client) => (
+                <span
+                  key={client.id}
+                  className="rounded-full border border-rose-200 bg-white px-3 py-1 text-sm font-medium text-rose-900"
+                >
+                  {client.name}
+                </span>
+              ))}
+              {stats.closureControl.pendingClients.length > 8 ? (
+                <span className="rounded-full border border-rose-200 bg-white px-3 py-1 text-sm font-medium text-rose-900">
+                  +{stats.closureControl.pendingClients.length - 8} más
+                </span>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

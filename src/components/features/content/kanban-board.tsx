@@ -473,6 +473,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
             detail: { taskId, oldStatus: task.status, newStatus: nextStatus },
           })
         );
+        router.refresh();
         console.log(`✅ Tarea promovida: ${task.status} → ${nextStatus}`);
       }
     } catch (error) {
@@ -521,6 +522,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
             detail: { taskId, oldStatus: task.status, newStatus },
           })
         );
+        router.refresh();
       }
     } catch (error) {
       // REVERSIÓN
@@ -561,13 +563,6 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
 
     if (!destination && hoverColumn) {
       destination = { droppableId: hoverColumn, index: optimisticTasks.filter((t) => t.status === hoverColumn).length };
-    }
-
-    if (destination && hoverColumn && destination.droppableId !== hoverColumn) {
-      destination = {
-        droppableId: hoverColumn,
-        index: optimisticTasks.filter((t) => t.status === hoverColumn).length,
-      };
     }
 
     if (!destination) {
@@ -611,6 +606,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
               detail: { taskId: taskToMove.id, oldStatus: sourceStatus, newStatus: destinationStatus },
             })
           );
+          router.refresh();
         }
       } catch (error) {
         setTasks(previousTasks);
@@ -729,7 +725,10 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
   // Versión con drag & drop
   return (
     <DragDropContext
-      onDragStart={() => setIsDragging(true)}
+      onDragStart={() => {
+        setIsDragging(true);
+        setHoverColumn(null);
+      }}
       onDragUpdate={handleDragUpdate}
       onDragEnd={handleDragEnd}
     >
