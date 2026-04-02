@@ -40,6 +40,10 @@ export default async function PersonalFinancePage() {
               </p>
             </CardContent>
           </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/30">

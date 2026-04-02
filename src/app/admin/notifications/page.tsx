@@ -48,6 +48,10 @@ export default async function AdminNotificationsPage() {
               </p>
             </CardContent>
           </Card>
+        </div>
+      </div>
+    );
+  }
 
   const notifications = notificationsResult.data;
   const unreadCount = notifications.filter((n) => !n.read).length;
