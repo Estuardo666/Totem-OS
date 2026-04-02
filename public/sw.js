@@ -1,3 +1,12 @@
+// Register message handler at initial evaluation so the browser can bind it
+// before any async work (required by the SW spec; avoids the "must be added on
+// initial evaluation" warning from OneSignal/WorkBox).
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 // Import OneSignal SDK for push notifications (must be at the top)
 importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
 

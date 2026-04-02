@@ -56,6 +56,9 @@ export async function generateMetadata(): Promise<Metadata> {
       statusBarStyle: "default",
       title: "Totem OS",
     },
+    other: {
+      "mobile-web-app-capable": "yes",
+    },
     formatDetection: {
       telephone: false,
     },
