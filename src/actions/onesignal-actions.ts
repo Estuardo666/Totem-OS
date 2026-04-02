@@ -22,7 +22,7 @@ interface SendNotificationOptions {
 interface OneSignalResponse {
   id?: string;
   recipients?: number;
-  errors?: string[];
+  errors?: string[] | { invalid_player_ids?: string[]; invalid_external_user_ids?: string[] };
 }
 
 /**
@@ -115,6 +115,19 @@ export async function sendPushNotification(options: SendNotificationOptions) {
 
     console.log("[OneSignal] Respuesta completa de OneSignal:", JSON.stringify(result, null, 2));
     console.log("[OneSignal] Notificación enviada:", result.id, "Recipients:", result.recipients);
+
+    // Limpiar playerIds inválidos/caducados de la BD
+    const invalidIds =
+      result.errors &&
+      !Array.isArray(result.errors) &&
+      result.errors.invalid_player_ids;
+    if (invalidIds && invalidIds.length > 0) {
+      console.warn("[OneSignal] PlayerIds inválidos detectados, marcando como no suscritos:", invalidIds);
+      await db.oneSignalPlayer.updateMany({
+        where: { playerId: { in: invalidIds } },
+        data: { subscribed: false },
+      });
+    }
 
     return {
       success: true,

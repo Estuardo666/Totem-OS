@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useState } from "react";
 import { useSession } from "next-auth/react";
+import { PushPermissionBanner } from "./PushPermissionBanner";
 
 // Tipo para OneSignal
 declare global {
@@ -162,6 +163,7 @@ export function useOneSignal() {
 export function OneSignalProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const [oneSignalReady, setOneSignalReady] = useState(false);
+  const [showBanner, setShowBanner] = useState(false);
 
   // Inicializar OneSignal una sola vez
   useEffect(() => {
@@ -347,6 +349,14 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
         console.log("[OneSignal] SDK inicializado correctamente (con soporte para notificaciones en primer plano)");
         if (mounted) {
           setOneSignalReady(true);
+          // Mostrar banner si el usuario aún no tomó una decisión sobre notificaciones
+          if (
+            typeof window !== "undefined" &&
+            "Notification" in window &&
+            oneSignal.Notifications.permissionNative === "default"
+          ) {
+            setShowBanner(true);
+          }
         }
       } catch (error) {
         console.error("[OneSignal] Error al inicializar:", error);
@@ -452,7 +462,27 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
     };
   }, [oneSignalReady, session?.user?.id, session?.user?.name, session?.user?.role]);
 
-  return <>{children}</>;
+  const handleEnableNotifications = useCallback(async (): Promise<boolean> => {
+    const oneSignal = await waitForOneSignal();
+    if (!oneSignal) return false;
+    try {
+      await oneSignal.Notifications.requestPermission();
+      const granted = oneSignal.Notifications.permission === true;
+      if (granted) setShowBanner(false);
+      return granted;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  return (
+    <>
+      {children}
+      {showBanner && session?.user?.id && (
+        <PushPermissionBanner onEnable={handleEnableNotifications} />
+      )}
+    </>
+  );
 }
 
 /**
