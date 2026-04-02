@@ -8,6 +8,7 @@ import { createContentTaskSchema, updateContentTaskSchema, updateTaskMetricsSche
 import type { ApiResponse } from "@/types";
 import type { ContentTask, Prisma, TaskMetrics } from "@prisma/client";
 import { sendNotification } from "./notification-actions";
+import { auth } from "@/auth";
 
 /**
  * Dispara evento de Pusher para actualizar el dashboard de usuarios afectados
@@ -1648,7 +1649,7 @@ export async function bulkUpdateTasks(
 
           // Notificar a admins sobre bulk update
           const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
-          const clientNames = [...new Set(updated.map((t) => t.client?.name))].filter(Boolean);
+          const clientNames = [...new Set(tasks.map((t) => t.client?.name))].filter(Boolean);
           const clientSummary = clientNames.length <= 2 
             ? clientNames.join(", ") 
             : `${clientNames[0]} y ${clientNames.length - 1} más`;

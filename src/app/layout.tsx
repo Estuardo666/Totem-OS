@@ -81,10 +81,15 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const cookieColor = cookieStore.get(PRIMARY_COLOR_COOKIE)?.value;
-  const { hex: primaryColorHex, hsl: primaryColorHsl } = resolvePrimaryColor(cookieColor);
+  const {
+    hex: primaryColorHex,
+    hsl: primaryColorHsl,
+    foregroundHsl: primaryForegroundHsl,
+  } = resolvePrimaryColor(cookieColor);
   const htmlStyle: CSSProperties & Record<string, string> = {
     "--primary-color": primaryColorHex,
     "--primary": primaryColorHsl,
+    "--primary-foreground": primaryForegroundHsl,
   };
 
   return (

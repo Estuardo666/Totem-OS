@@ -2,6 +2,9 @@ export function ThemeScript() {
   const script = `(() => {
     try {
       var primaryKey = 'primaryColor';
+      var defaultPrimary = '#27221F';
+      var lightForeground = '22 11% 14%';
+      var darkForeground = '0 0% 100%';
 
       var readCookie = function(name) {
         try {
@@ -29,7 +32,42 @@ export function ThemeScript() {
         return trimmed.startsWith('#') ? trimmed : '#' + trimmed;
       };
 
-      var hex = sanitizeHex(primaryHex) || '#27221F';
+      var hexToRgb = function(hexVal) {
+        var normalized = hexVal.replace('#', '');
+        return {
+          r: parseInt(normalized.substring(0, 2), 16) / 255,
+          g: parseInt(normalized.substring(2, 4), 16) / 255,
+          b: parseInt(normalized.substring(4, 6), 16) / 255,
+        };
+      };
+
+      var getRelativeLuminance = function(hexVal) {
+        var rgb = hexToRgb(hexVal);
+        var normalize = function(channel) {
+          return channel <= 0.03928
+            ? channel / 12.92
+            : Math.pow((channel + 0.055) / 1.055, 2.4);
+        };
+
+        var red = normalize(rgb.r);
+        var green = normalize(rgb.g);
+        var blue = normalize(rgb.b);
+
+        return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+      };
+
+      var normalizePrimary = function(hexVal) {
+        if (getRelativeLuminance(hexVal) > 0.92) {
+          return defaultPrimary;
+        }
+        return hexVal;
+      };
+
+      var getPrimaryForeground = function(hexVal) {
+        return getRelativeLuminance(hexVal) > 0.58 ? lightForeground : darkForeground;
+      };
+
+      var hex = normalizePrimary(sanitizeHex(primaryHex) || defaultPrimary);
 
       var hexToHsl = function(hexVal) {
         var normalized = hexVal.replace('#', '');
@@ -57,10 +95,12 @@ export function ThemeScript() {
       };
 
       var primaryHsl = hexToHsl(hex);
+      var primaryForeground = getPrimaryForeground(hex);
 
       var html = document.documentElement;
       html.style.setProperty('--primary-color', hex);
       html.style.setProperty('--primary', primaryHsl);
+      html.style.setProperty('--primary-foreground', primaryForeground);
 
       var theme = null;
       try {
