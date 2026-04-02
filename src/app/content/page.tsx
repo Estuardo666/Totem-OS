@@ -68,7 +68,7 @@ export default async function ContentPage({
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header renders immediately — h1 is the LCP element */}
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b">
+      <div data-content-page-header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b">
         <div className="w-full px-0">
           <div className="flex items-center justify-between py-2 sm:py-4 px-4 sm:px-6">
             <div className="flex items-center gap-2 sm:gap-3">

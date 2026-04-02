@@ -19,6 +19,7 @@ import { updateTaskStatusRequest } from "@/lib/content-task-status-client";
 import type { ContentTaskStatus } from "@/types";
 import type { User } from "@prisma/client";
 import { KanbanColumn } from "./KanbanColumn";
+import { KanbanStickyHeaders } from "./KanbanStickyHeaders";
 import { TaskSheet } from "./task-sheet";
 
 interface KanbanBoardProps {
@@ -77,10 +78,82 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
   const lastPointer = useRef<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [hoverColumn, setHoverColumn] = useState<ContentTaskStatus | null>(null);
+  const [showStickyHeaders, setShowStickyHeaders] = useState(false);
+  const [stickyScrollLeft, setStickyScrollLeft] = useState(0);
+  const [stickyTopOffset, setStickyTopOffset] = useState(0);
+  const [stickyBoardLeft, setStickyBoardLeft] = useState(0);
+  const [stickyBoardWidth, setStickyBoardWidth] = useState(0);
 
   useEffect(() => {
     setTasks(initialTasks);
   }, [initialTasks]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const mobileNavbar = document.querySelector("[data-mobile-navbar]") as HTMLElement | null;
+
+    let frame: number | null = null;
+
+    const updateHeaderOffset = () => {
+      // Desktop: pin to very top; mobile: fixed 62px below the sticky navbar
+      const nextOffset = window.innerWidth >= 768 ? 0 : 62;
+      setStickyTopOffset((prev) => (prev === nextOffset ? prev : nextOffset));
+      return nextOffset;
+    };
+
+    const updateStickyHeaders = () => {
+      frame = null;
+
+      const rect = container.getBoundingClientRect();
+      const topOffset = updateHeaderOffset();
+      const nextVisible = rect.top < topOffset && rect.bottom > topOffset + 48;
+      const nextScrollLeft = container.scrollLeft;
+      const nextBoardLeft = Math.max(0, rect.left);
+      const nextBoardWidth = window.innerWidth - nextBoardLeft;
+
+      setShowStickyHeaders((prev) => (prev === nextVisible ? prev : nextVisible));
+      setStickyScrollLeft((prev) => (prev === nextScrollLeft ? prev : nextScrollLeft));
+      setStickyBoardLeft((prev) => (prev === nextBoardLeft ? prev : nextBoardLeft));
+      setStickyBoardWidth((prev) => (prev === nextBoardWidth ? prev : nextBoardWidth));
+    };
+
+    const requestUpdate = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(updateStickyHeaders);
+    };
+
+    requestUpdate();
+
+    const resizeObserver = mobileNavbar && typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(() => requestUpdate())
+      : null;
+
+    if (mobileNavbar && resizeObserver) {
+      resizeObserver.observe(mobileNavbar);
+    }
+
+    container.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate);
+
+    return () => {
+      container.removeEventListener("scroll", requestUpdate);
+      window.removeEventListener("scroll", requestUpdate);
+      window.removeEventListener("resize", requestUpdate);
+
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+      }
+    };
+  }, [isMounted]);
 
   // useOptimistic para actualizaciones instantáneas
   const [optimisticTasks, setOptimisticTasks] = useOptimistic(
@@ -638,6 +711,14 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     {} as Record<ContentTaskStatus, ContentTaskWithClient[]>
   );
 
+  const taskCountsByStatus = KANBAN_COLUMNS.reduce(
+    (acc, column) => {
+      acc[column.status] = tasksByStatus[column.status]?.length ?? 0;
+      return acc;
+    },
+    {} as Partial<Record<ContentTaskStatus, number>>
+  );
+
   // Si no está montado, mostrar versión estática (sin drag & drop)
   // Usamos una versión simplificada sin Droppable para evitar errores de contexto
   if (!isMounted) {
@@ -733,6 +814,16 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
       onDragEnd={handleDragEnd}
     >
       <div className="w-full h-full overflow-visible">
+        <KanbanStickyHeaders
+          columns={KANBAN_COLUMNS}
+          counts={taskCountsByStatus}
+          isVisible={showStickyHeaders}
+          scrollLeft={stickyScrollLeft}
+          topOffset={stickyTopOffset}
+          boardLeft={stickyBoardLeft}
+          boardWidth={stickyBoardWidth}
+        />
+
         {/* Mobile: scroll horizontal 98vw | Desktop: grid con columnas fijas */}
         <div
           ref={scrollRef}
