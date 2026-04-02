@@ -734,8 +734,8 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
                 key={column.status}
                 className="flex flex-col min-w-[40vw] sm:min-w-[350px] md:min-w-0 md:w-full md:flex-1 snap-center flex-shrink-0 px-0 h-full"
               >
-                <div className="flex flex-col h-full bg-slate-50/50 dark:bg-slate-90/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                  <div className="sticky top-0 z-30 w-full bg-white dark:bg-slate-900 py-2 px-2 md:py-2 md:px-2 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between rounded-t-xl">
+                <div className="flex flex-col h-full bg-slate-50/50 dark:bg-background/50 rounded-xl border border-slate-200 dark:border-border overflow-hidden">
+                  <div className="sticky top-0 z-30 w-full bg-white dark:bg-card py-2 px-2 md:py-2 md:px-2 border-b border-slate-200 dark:border-border flex items-center justify-between rounded-t-xl">
                     <h3 className="font-semibold text-xs md:text-sm truncate">
                       {column.label}
                     </h3>

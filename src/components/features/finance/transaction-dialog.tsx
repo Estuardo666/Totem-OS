@@ -545,7 +545,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                         }}
                         className={`rounded-full px-3 py-1 text-sm border transition ${
                           incomeAmountMode === opt.key
-                            ? "bg-primary/10 border-primary text-primary"
+                            ? "bg-primary/10 border-primary text-primary dark:bg-foreground/10 dark:border-foreground/50 dark:text-foreground"
                             : "border-muted-foreground/20 text-muted-foreground"
                         } ${disabledPct ? "opacity-50 cursor-not-allowed" : ""}`}
                       >

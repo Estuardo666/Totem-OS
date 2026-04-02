@@ -21,13 +21,7 @@ export default async function TransactionsPage() {
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between py-4">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-lg">
-                  <DollarSign className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold">Transacciones</h1>
-                  <p className="text-xs text-muted-foreground">Gestiona todas las transacciones financieras</p>
-                </div>
+                <DollarSign className="h-6 w-6 text-foreground" />
               </div>
             </div>
           </div>
@@ -51,9 +45,7 @@ export default async function TransactionsPage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-lg">
-                <DollarSign className="h-5 w-5 text-white" />
-              </div>
+              <DollarSign className="h-6 w-6 text-foreground" />
               <div>
                 <h1 className="text-xl font-bold">Transacciones</h1>
                 <p className="text-xs text-muted-foreground">

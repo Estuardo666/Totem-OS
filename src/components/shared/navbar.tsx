@@ -161,7 +161,7 @@ export function Navbar() {
       <div className="flex items-center gap-3">
         <button
           onClick={toggleTheme}
-          className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
+          className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent/25 transition-colors"
           title={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
         >
           {isDarkMode ? (

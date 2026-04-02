@@ -615,7 +615,7 @@ export function ShootingForm({
                         {users.map((user) => (
                           <div
                             key={user.id}
-                            className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer"
+                            className="flex items-center gap-3 p-2 rounded hover:bg-accent/25 cursor-pointer"
                             onClick={() => toggleCrew(user.id)}
                           >
                             <Checkbox
@@ -658,7 +658,7 @@ export function ShootingForm({
                         {availableTasks.map((task) => (
                           <div
                             key={task.id}
-                            className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer"
+                            className="flex items-center gap-3 p-2 rounded hover:bg-accent/25 cursor-pointer"
                             onClick={() => toggleTask(task.id)}
                           >
                             <Checkbox

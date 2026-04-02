@@ -73,9 +73,7 @@ export async function KPICards() {
             <span className="text-sm font-medium text-muted-foreground">
               Ingresos del Mes
             </span>
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
-              <TrendingUp className="h-4 w-4 text-white" />
-            </div>
+            <TrendingUp className="h-5 w-5 text-foreground" />
           </div>
           <div className="text-3xl font-bold text-emerald-600">
             {financialStats
@@ -99,15 +97,13 @@ export async function KPICards() {
             <span className="text-sm font-medium text-muted-foreground">
               Tareas Pendientes
             </span>
-            <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${
+            <CheckCircle2 className={`h-5 w-5 ${
               pendingTasksCount === 0 
-                ? 'bg-gradient-to-br from-emerald-500 to-green-600' 
+                ? 'text-emerald-500' 
                 : pendingTasksCount >= 10 
-                  ? 'bg-gradient-to-br from-red-500 to-rose-600' 
-                  : 'bg-gradient-to-br from-amber-500 to-orange-600'
-            }`}>
-              <CheckCircle2 className="h-4 w-4 text-white" />
-            </div>
+                  ? 'text-red-500' 
+                  : 'text-amber-500'
+            }`} />
           </div>
           <div className={`text-5xl font-bold ${getCountColor(pendingTasksCount)}`}>
             {pendingTasksCount}
@@ -131,9 +127,7 @@ export async function KPICards() {
             <span className="text-sm font-medium text-muted-foreground">
               Clientes Activos
             </span>
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-              <Users className="h-4 w-4 text-white" />
-            </div>
+            <Users className="h-5 w-5 text-foreground" />
           </div>
           <div className="text-3xl font-bold text-violet-600">
             {activeClientsCount}

@@ -53,9 +53,7 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
     <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
       <div className="p-5 border-b">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
-            <Users className="h-4 w-4 text-white" />
-          </div>
+          <Users className="h-5 w-5 text-foreground" />
           <h3 className="font-semibold">Carga de Trabajo por Socio</h3>
         </div>
       </div>

@@ -28,9 +28,9 @@ const ContextMenuSubTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       "flex cursor-default select-none items-center rounded-lg px-2.5 py-1.5 text-sm outline-none",
-      "hover:bg-[color:hsl(var(--primary)/0.15)] dark:hover:bg-white/20 hover:text-[color:hsl(var(--primary))] dark:hover:text-slate-100",
-      "focus:bg-[color:hsl(var(--primary)/0.1)] dark:focus:bg-white/15 data-[state=open]:bg-[color:hsl(var(--primary)/0.15)] dark:data-[state=open]:bg-white/20",
-      "focus:text-[color:hsl(var(--primary))] dark:focus:text-slate-100 data-[state=open]:text-[color:hsl(var(--primary))] dark:data-[state=open]:text-slate-100",
+      "hover:bg-accent/25 hover:text-accent-foreground",
+      "focus:bg-accent/20 data-[state=open]:bg-accent/25",
+      "focus:text-accent-foreground data-[state=open]:text-accent-foreground",
       "transition-all duration-150 ease-out",
       inset && "pl-8",
       className
@@ -53,7 +53,7 @@ const ContextMenuSubContent = React.forwardRef<
       className={cn(
         // iOS 26 Liquid Glass Effect
         "relative z-[100] min-w-[11rem] overflow-visible rounded-xl border p-1",
-        "bg-white/75 dark:bg-slate-950/40",
+        "bg-white/75 dark:bg-background/60",
         "backdrop-blur-3xl backdrop-saturate-150",
         "border-white/40 dark:border-white/10",
         "shadow-[0_8px_30px_rgb(0,0,0,0.12),0_0_1px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.4),inset_0_-1px_0_rgba(0,0,0,0.1)]",
@@ -78,7 +78,7 @@ const ContextMenuContent = React.forwardRef<
       className={cn(
         // iOS 26 Liquid Glass Effect - Main Menu
         "relative z-50 min-w-[13rem] overflow-visible rounded-xl border p-1",
-        "bg-white/75 dark:bg-slate-950/40",
+        "bg-white/75 dark:bg-background/60",
         "backdrop-blur-3xl backdrop-saturate-200",
         "border-white/50 dark:border-white/10",
         "shadow-[0_12px_40px_rgb(0,0,0,0.15),0_0_1px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(0,0,0,0.1)]",
@@ -108,8 +108,8 @@ const ContextMenuItem = React.forwardRef<
     className={cn(
       "relative flex cursor-default select-none items-center rounded-lg px-2.5 py-1.5 text-sm outline-none",
       "transition-all duration-150 ease-out",
-      "hover:bg-[color:hsl(var(--primary)/0.15)] dark:hover:bg-white/20 hover:text-[color:hsl(var(--primary))] dark:hover:text-slate-100",
-      "focus:bg-[color:hsl(var(--primary)/0.1)] dark:focus:bg-white/15 focus:text-[color:hsl(var(--primary))] dark:focus:text-slate-100",
+      "hover:bg-accent/25 hover:text-accent-foreground dark:hover:text-foreground",
+      "focus:bg-accent/20 focus:text-accent-foreground dark:focus:text-foreground",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       variant === "destructive" && [
         "text-red-600 dark:text-red-400",

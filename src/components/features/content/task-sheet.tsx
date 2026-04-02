@@ -355,7 +355,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                           placeholder="Título de la tarea"
                           {...field}
                           disabled={isPending}
-                          className="text-xl md:text-2xl font-semibold border border-input rounded-xl px-4 py-3 md:py-4 bg-white dark:bg-slate-950 focus:border-primary transition-all"
+                          className="text-xl md:text-2xl font-semibold border border-input rounded-xl px-4 py-3 md:py-4 bg-white dark:bg-background focus:border-primary transition-all"
                         />
                       </FormControl>
                       <FormMessage />

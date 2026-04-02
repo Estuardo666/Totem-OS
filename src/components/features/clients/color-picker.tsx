@@ -2,8 +2,11 @@
 
 import { cn } from "@/lib/utils";
 
-// Paleta de 32 colores vibrantes basados en Tailwind
+// Paleta de 34 colores vibrantes basados en Tailwind + colores de marca
 const COLOR_PALETTE = [
+  // Marca
+  "#27221F", // INK
+  "#A8E635", // Verde Fosforescente
   // Rojos y Rosas
   "#ef4444", // red-500
   "#f97316", // orange-500

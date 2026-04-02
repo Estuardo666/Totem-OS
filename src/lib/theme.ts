@@ -1,4 +1,4 @@
-export const DEFAULT_PRIMARY_COLOR = "#5f40ff";
+export const DEFAULT_PRIMARY_COLOR = "#27221F";
 export const PRIMARY_COLOR_COOKIE = "primaryColor";
 export const PRIMARY_COLOR_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 año
 

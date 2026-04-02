@@ -20,7 +20,7 @@ export function ThemeScript() {
         try { primaryFromCookie = decodeURIComponent(primaryFromCookie); } catch (_) {}
       }
 
-      var primaryHex = primaryFromLocal || primaryFromCookie || '#5f40ff';
+      var primaryHex = primaryFromLocal || primaryFromCookie || '#27221F';
 
       var sanitizeHex = function(val) {
         if (!val) return null;
@@ -29,7 +29,7 @@ export function ThemeScript() {
         return trimmed.startsWith('#') ? trimmed : '#' + trimmed;
       };
 
-      var hex = sanitizeHex(primaryHex) || '#5f40ff';
+      var hex = sanitizeHex(primaryHex) || '#27221F';
 
       var hexToHsl = function(hexVal) {
         var normalized = hexVal.replace('#', '');

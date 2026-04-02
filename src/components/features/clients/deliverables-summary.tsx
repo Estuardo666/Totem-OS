@@ -80,7 +80,7 @@ export function DeliverablesSummary({
             </p>
           </div>
 
-          <div className="rounded-lg border p-4 bg-blue-50 dark:bg-blue-950/20 print:bg-gray-50">
+          <div className="rounded-lg border p-4 bg-blue-50 dark:bg-card print:bg-gray-50">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">Flyers</span>
               <Badge

@@ -61,7 +61,7 @@ export function NextShootWidget({ shoots }: NextShootWidgetProps) {
   };
 
   return (
-    <div className="rounded-3xl border border-blue-200 dark:border-blue-800/50 bg-gradient-to-br from-blue-50 via-white to-blue-50/50 dark:from-blue-950/30 dark:via-gray-900 dark:to-blue-900/20 shadow-sm hover:shadow-md transition-shadow p-6 space-y-4">
+    <div className="rounded-3xl border border-blue-200 dark:border-border bg-gradient-to-br from-blue-50 via-white to-blue-50/50 dark:from-card dark:via-card dark:to-card shadow-sm hover:shadow-md transition-shadow p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {hasMultipleShoots && (
@@ -69,7 +69,7 @@ export function NextShootWidget({ shoots }: NextShootWidgetProps) {
               variant="ghost"
               size="icon"
               onClick={handlePrevious}
-              className="h-8 w-8 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/30"
+              className="h-8 w-8 rounded-full hover:bg-blue-100 dark:hover:bg-muted"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -80,7 +80,7 @@ export function NextShootWidget({ shoots }: NextShootWidgetProps) {
               variant="ghost"
               size="icon"
               onClick={handleNext}
-              className="h-8 w-8 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/30"
+              className="h-8 w-8 rounded-full hover:bg-blue-100 dark:hover:bg-muted"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>

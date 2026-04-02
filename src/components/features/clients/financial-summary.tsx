@@ -101,7 +101,7 @@ export function FinancialSummary({
         <div>
           <h3 className="text-lg font-semibold mb-3">Estado de Pago Mensual</h3>
           {financial.currentMonthInvoice ? (
-            <div className="rounded-lg border p-4 bg-blue-50 dark:bg-blue-950/20 print:bg-gray-50">
+            <div className="rounded-lg border p-4 bg-blue-50 dark:bg-card print:bg-gray-50">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Factura del Mes</span>
                 <Badge

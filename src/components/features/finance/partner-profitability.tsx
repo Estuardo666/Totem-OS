@@ -31,7 +31,7 @@ export function PartnerProfitability({ stats }: PartnerProfitabilityProps) {
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Stuart */}
-            <div className="rounded-lg border p-4 bg-blue-50 dark:bg-blue-950/20">
+            <div className="rounded-lg border p-4 bg-blue-50 dark:bg-card">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
                   Stuart Pérez

@@ -43,9 +43,7 @@ export default async function Home() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                <HomeIcon className="h-5 w-5 text-white" />
-              </div>
+              <HomeIcon className="h-6 w-6 text-foreground" />
               <div>
                 <h1 className="text-xl font-bold">Hola, {firstName} 👋</h1>
                 <p className="text-xs text-muted-foreground">
@@ -65,9 +63,7 @@ export default async function Home() {
         {isAdmin && (
           <div className="rounded-2xl border bg-card p-5 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                <Zap className="h-4 w-4 text-white" />
-              </div>
+              <Zap className="h-5 w-5 text-foreground" />
               <h2 className="font-semibold">Acciones Rápidas</h2>
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

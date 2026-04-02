@@ -71,7 +71,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           return `${h} ${s}% ${lPercent}%`;
         };
 
-        const primaryHex = user.primaryColor || "#2563eb";
+        const primaryHex = user.primaryColor || "#27221F";
         const hslColor = hexToHsl(primaryHex);
         rootElement.style.setProperty("--primary", hslColor);
         rootElement.style.setProperty("--primary-color", primaryHex);

@@ -20,9 +20,7 @@ export function ShootsClient({ shootings, clients }: ShootsClientProps) {
           {/* Left side: Icon + Title + Description */}
           <div className="flex items-center gap-4">
             {/* Gradient Icon */}
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center shadow-lg flex-shrink-0">
-              <Video className="h-5 w-5 text-white" />
-            </div>
+            <Video className="h-6 w-6 text-foreground flex-shrink-0" />
             
             {/* Title + Description */}
             <div className="hidden sm:block">

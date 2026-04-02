@@ -193,7 +193,7 @@ export function ClientList({ clients, isAdmin, canEditClient = false, users }: C
                         ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
                         : client.status === "DEBT"
                           ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                          : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                          : "bg-slate-100 text-slate-600 dark:bg-muted dark:text-muted-foreground"
                   }`}
                 >
                   {client.status === "ACTIVE"
@@ -210,14 +210,14 @@ export function ClientList({ clients, isAdmin, canEditClient = false, users }: C
                   <>
                     <Badge 
                       variant="outline" 
-                      className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+                      className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-muted dark:text-muted-foreground dark:border-border"
                     >
                       Cobro: día {client.paymentDay}
                     </Badge>
                     {isAdmin && (
                       <Badge 
                         variant="outline" 
-                        className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+                        className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-muted dark:text-muted-foreground dark:border-border"
                       >
                         {formatCurrency(client.monthlyRate)}
                       </Badge>

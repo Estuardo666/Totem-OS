@@ -384,7 +384,7 @@ export function GooglePlacesAutocomplete({
               key={prediction.place_id}
               type="button"
               onClick={() => handlePlaceSelect(prediction)}
-              className="w-full px-3 py-2 text-left hover:bg-accent flex items-start gap-2 transition-colors"
+              className="w-full px-3 py-2 text-left hover:bg-accent/25 flex items-start gap-2 transition-colors"
             >
               <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
               <div className="flex-1 min-w-0">

@@ -9,15 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 dark:text-[#ffffff]",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-white dark:text-[#27221F] dark:hover:bg-[#A8E635] dark:hover:text-[#27221F]",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 dark:text-[#ffffff]",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-[#ffffff]",
+          "border border-input bg-background hover:bg-accent/25 hover:text-accent-foreground dark:border-white/20 dark:bg-transparent dark:text-white dark:hover:bg-[#3d3530] dark:hover:text-white",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 dark:bg-gray-700 dark:text-[#ffffff] dark:hover:bg-gray-600",
-        ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-gray-700 dark:text-[#ffffff]",
-        link: "text-primary underline-offset-4 hover:underline dark:text-blue-400",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 dark:bg-[#3d3530] dark:text-white dark:hover:bg-[#4a403a]",
+        ghost: "hover:bg-accent/25 hover:text-accent-foreground dark:text-white dark:hover:bg-[#3d3530] dark:hover:text-white",
+        link: "text-primary underline-offset-4 hover:underline dark:text-[#A8E635]",
         cancel: "border-2 border-gray-300 bg-background hover:!border-red-500 hover:bg-red-50 hover:text-red-600 dark:border-gray-600 dark:bg-gray-800 dark:hover:!border-red-500 dark:hover:bg-red-950 dark:text-[#ffffff] dark:hover:text-red-400 transition-all duration-200",
       },
       size: {

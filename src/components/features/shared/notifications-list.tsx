@@ -63,7 +63,7 @@ export function NotificationsList({ notifications }: NotificationsListProps) {
           key={notification.id}
           onClick={() => handleMarkAsRead(notification.id)}
           className={cn(
-            "w-full p-4 text-left rounded-lg border transition-colors hover:bg-accent/50",
+            "w-full p-4 text-left rounded-lg border transition-colors hover:bg-accent/25",
             !notification.read && "bg-accent/30 border-primary/20"
           )}
         >

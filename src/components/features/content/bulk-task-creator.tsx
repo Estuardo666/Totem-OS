@@ -359,14 +359,14 @@ export function BulkTaskCreator({ clients, variant = "card", showHeader = true, 
               type="button" 
               onClick={handleCreate} 
               disabled={!hasRows || isPending} 
-              className="w-full rounded-full h-11 font-medium bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-md hover:shadow-lg transition-all"
+              className="w-full rounded-full h-11 font-medium bg-[#27221F] hover:bg-[#3d3530] text-white shadow-md hover:shadow-lg transition-all dark:bg-white dark:text-[#27221F] dark:hover:bg-[#A8E635] dark:hover:text-[#27221F]"
             >
               {isPending ? "Creando..." : `Crear ${validRows.length}`}
             </Button>
           </div>
           {hasRows && (
-            <div className="px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50">
-              <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+            <div className="px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-muted border border-blue-200 dark:border-border">
+              <p className="text-sm font-medium text-blue-700 dark:text-muted-foreground">
                 ✓ {validRows.length} válidas / {parsedRows.length} totales
               </p>
             </div>

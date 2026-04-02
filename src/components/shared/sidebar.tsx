@@ -374,7 +374,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
             <div className="flex items-center gap-1 flex-shrink-0 hidden md:flex">
               <button
                 onClick={toggleTheme}
-                className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
+                className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent/25 transition-colors"
                 title={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
               >
                 {isDarkMode ? (
@@ -411,7 +411,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                       "flex items-center gap-2 rounded-l-lg px-2 py-1.5 text-base font-medium transition-all duration-300 ease-standard flex-1 h-full",
                       isActive
                         ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        : "text-muted-foreground hover:bg-accent/25 hover:text-accent-foreground dark:hover:text-foreground"
                     )}
                     onClick={() => onNavigate?.()}
                   >
@@ -427,7 +427,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                       "flex items-center justify-center h-full aspect-square rounded-r-lg transition-all duration-300 ease-standard shrink-0",
                       isActive
                         ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        : "text-muted-foreground hover:bg-accent/25 hover:text-accent-foreground dark:hover:text-foreground"
                     )}
                   >
                     <ChevronRight
@@ -468,7 +468,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                             "flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium transition-all duration-300 ease-standard",
                             childIsActive
                               ? "bg-primary/10 text-primary font-semibold"
-                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                              : "text-muted-foreground hover:bg-accent/25 hover:text-accent-foreground dark:hover:text-foreground"
                           )}
                           onClick={() => onNavigate?.()}
                         >
@@ -492,7 +492,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                 "flex items-center gap-2 rounded-lg px-2 py-1.5 text-base font-medium transition-all duration-300 ease-standard",
                 isActive
                   ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent/25 hover:text-accent-foreground dark:hover:text-foreground"
               )}
               onClick={() => onNavigate?.()}
             >
@@ -518,7 +518,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                     "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-300 ease-standard",
                     isActive
                       ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/25 hover:text-accent-foreground dark:hover:text-foreground"
                   )}
                   onClick={() => onNavigate?.()}
                 >

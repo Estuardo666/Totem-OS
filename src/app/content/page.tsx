@@ -72,9 +72,7 @@ export default async function ContentPage({
         <div className="w-full px-0">
           <div className="flex items-center justify-between py-2 sm:py-4 px-4 sm:px-6">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
-                <Layout className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-              </div>
+              <Layout className="h-6 w-6 sm:h-7 sm:w-7 text-foreground" />
               <div>
                 <h1 className="text-lg sm:text-xl font-bold">Content Factory</h1>
                 <p className="text-xs text-muted-foreground hidden sm:block">

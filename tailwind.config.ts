@@ -55,8 +55,8 @@ const config: Config = {
           "5": "hsl(var(--chart-5))",
         },
         gray: {
-          750: "rgb(31 41 55)", // Slightly lighter than gray-800
-          800: "rgb(17 24 39)", // Dark input background
+          750: "hsl(23, 1%, 13%)", // Slightly lighter input hover — warm neutral
+          800: "hsl(23, 1%, 11%)", // Dark input background — warm neutral
         },
       },
       borderRadius: {

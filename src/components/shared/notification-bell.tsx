@@ -357,7 +357,7 @@ export function NotificationBell({ align = "start", side = "right" }: Notificati
                       key={notification.id}
                       onClick={() => handleMarkAsRead(notification.id)}
                       className={cn(
-                        "w-full p-4 text-left hover:bg-accent/50 transition-colors",
+                        "w-full p-4 text-left hover:bg-accent/25 transition-colors",
                         !notification.read && "bg-accent/30"
                       )}
                     >

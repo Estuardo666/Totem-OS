@@ -10,9 +10,7 @@ export async function CurrentMonthTaskSummary() {
   return (
     <div className="rounded-2xl border bg-card p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600">
-          <ClipboardList className="h-4 w-4 text-white" />
-        </div>
+        <ClipboardList className="h-5 w-5 text-foreground" />
         <div>
           <h2 className="font-semibold">Resumen del mes actual</h2>
           <p className="text-xs text-muted-foreground">Visibilidad rápida de producción del mes en curso</p>
@@ -22,9 +20,7 @@ export async function CurrentMonthTaskSummary() {
         <div className="rounded-2xl border bg-background p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">Total tareas del mes</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-600">
-              <ClipboardList className="h-4 w-4 text-white" />
-            </div>
+            <ClipboardList className="h-5 w-5 text-foreground" />
           </div>
           <div className="text-4xl font-bold text-sky-600">{summary.totalTasks}</div>
           <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">
@@ -40,9 +36,7 @@ export async function CurrentMonthTaskSummary() {
         <div className="rounded-2xl border bg-background p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">Tareas publicadas del mes</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-600">
-              <CheckCircle2 className="h-4 w-4 text-white" />
-            </div>
+            <CheckCircle2 className="h-5 w-5 text-foreground" />
           </div>
           <div className="text-4xl font-bold text-emerald-600">{summary.publishedTasks}</div>
           <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">
