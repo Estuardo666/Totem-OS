@@ -52,9 +52,18 @@ export function AnimatedModal({ open, onOpenChange, children, title, description
     }
   }, [open]);
 
+  const [viewportHeight, setViewportHeight] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    const update = () => setViewportHeight(window.innerHeight);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   const fallbackOpenHeight = 400; // altura base para evitar línea fina antes de medir
   const resolvedHeight = height ?? fallbackOpenHeight;
-  const maxViewportHeight = typeof window !== "undefined" ? Math.round(window.innerHeight * 0.9) : null;
+  const maxViewportHeight = viewportHeight ? Math.round(viewportHeight * 0.9) : null;
   const clampedHeight = maxViewportHeight ? Math.min(resolvedHeight, maxViewportHeight) : resolvedHeight;
   const animatedHeight = open ? `${clampedHeight}px` : "0px";
   const animateClassBase = "duration-700 ease-expressive data-[state=closed]:opacity-0 data-[state=closed]:scale-95 data-[state=open]:opacity-100 data-[state=open]:scale-100";

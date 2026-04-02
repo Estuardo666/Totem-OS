@@ -1,13 +1,11 @@
 import Link from "next/link";
 
 export function Footer() {
-  const currentYear = new Date().getFullYear();
-
   return (
     <footer className="border-t bg-background/50 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="text-xs md:text-sm text-muted-foreground">
-          © {currentYear} Totem OS | Tótem Mass Media
+        <div className="text-xs md:text-sm text-muted-foreground" suppressHydrationWarning>
+          © {new Date().getFullYear()} Totem OS | Tótem Mass Media
         </div>
         
         <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
