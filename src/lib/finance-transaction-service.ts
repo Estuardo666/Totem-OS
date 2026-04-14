@@ -362,7 +362,6 @@ function buildRecurringPeriods(input: {
   clientId: string;
   clientName: string;
   clientLogo?: string | null;
-  totalPaid: number;
   exceptions: Array<{
     month: number;
     year: number;
@@ -410,8 +409,6 @@ function buildRecurringPeriods(input: {
     cursor = addMonths(cursor, 1);
   }
 
-  let remainingPaid = input.totalPaid;
-
   return periods.flatMap((period) => {
     const periodKey = getPeriodKey(period.monthStart.getFullYear(), period.monthStart.getMonth() + 1);
     const exception = exceptionMap.get(periodKey);
@@ -439,16 +436,14 @@ function buildRecurringPeriods(input: {
       return [];
     }
 
-    const appliedAmount = Math.min(periodAmount, remainingPaid);
-    const remainingAmount = Math.max(0, periodAmount - appliedAmount);
-    remainingPaid = Math.max(0, remainingPaid - appliedAmount);
+    const remainingAmount = Math.max(0, periodAmount - paidPeriodAmount);
 
     if (remainingAmount <= 0) {
       return [];
     }
 
-    const description = appliedAmount > 0
-      ? `Saldo pendiente ${formatBillingMonth(period.monthStart)} - ${input.clientName} (Abonó $${appliedAmount.toFixed(2)})`
+    const description = paidPeriodAmount > 0
+      ? `Saldo pendiente ${formatBillingMonth(period.monthStart)} - ${input.clientName} (Abonó $${paidPeriodAmount.toFixed(2)})`
       : `Fee mensual ${formatBillingMonth(period.monthStart)} - ${input.clientName}`;
 
     const daysOverdue = Math.floor(
@@ -601,19 +596,6 @@ export async function getReceivablesFromDb(
       if (!paymentDay || client.monthlyRate <= 0) {
         return [];
       }
-
-      const paidFromInvoices = allInvoices
-        .filter((invoice) => invoice.clientId === client.id && invoice.status === "PAID")
-        .reduce((sum, invoice) => sum + invoice.amount, 0);
-
-      const paidFromTransactions = allTransactions
-        .filter((transaction) => {
-          const relatedClientId = transaction.relatedClientId ?? transaction.clientId ?? null;
-          return relatedClientId === client.id && transaction.status === "PAID";
-        })
-        .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-      const totalPaid = paidFromInvoices + paidFromTransactions;
       const billingReferenceDate = new Date(client.billingStartDate ?? client.createdAt);
       const startMonth = getRecurringStartMonth(billingReferenceDate, paymentDay);
       const clientExceptions = exceptionsByClient.get(client.id) ?? [];
@@ -663,7 +645,6 @@ export async function getReceivablesFromDb(
         clientId: client.id,
         clientName: client.name || "Cliente sin nombre",
         clientLogo: client.logo ?? undefined,
-        totalPaid,
         exceptions: clientExceptions,
         closureAmountsByPeriod,
         paidAmountsByPeriod,

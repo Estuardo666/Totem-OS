@@ -18,7 +18,9 @@ import {
   Film,
   Eye,
   Search,
-  Edit
+  Edit,
+  LayoutGrid,
+  Rows3,
 } from "lucide-react";
 import {
   Tooltip,
@@ -73,13 +75,24 @@ function formatCurrency(amount: number): string {
 export function ClientList({ clients, isAdmin, canEditClient = false, users }: ClientListProps) {
   const [query, setQuery] = useState("");
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"compact" | "expanded">("expanded");
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredClients = useMemo(() => {
-    if (!normalizedQuery) return clients;
-    return clients.filter((client) =>
-      client.name.toLowerCase().startsWith(normalizedQuery)
-    );
+    const visibleClients = normalizedQuery
+      ? clients.filter((client) => client.name.toLowerCase().startsWith(normalizedQuery))
+      : clients;
+
+    return [...visibleClients].sort((firstClient, secondClient) => {
+      const firstPriority = firstClient.status === "PAUSED" || firstClient.status === "INACTIVE" ? 1 : 0;
+      const secondPriority = secondClient.status === "PAUSED" || secondClient.status === "INACTIVE" ? 1 : 0;
+
+      if (firstPriority !== secondPriority) {
+        return firstPriority - secondPriority;
+      }
+
+      return firstClient.name.localeCompare(secondClient.name, "es", { sensitivity: "base" });
+    });
   }, [clients, normalizedQuery]);
 
   const listIsEmpty = clients.length === 0;
@@ -100,14 +113,29 @@ export function ClientList({ clients, isAdmin, canEditClient = false, users }: C
   return (
     <TooltipProvider>
       <div className="mb-8 mt-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="w-full md:w-96 relative">
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar cliente..."
-            className="pl-10 h-11 rounded-xl bg-card border shadow-sm"
-          />
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
+          <div className="relative w-full md:w-96">
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar cliente..."
+              className="pl-10 h-11 rounded-xl bg-card border shadow-sm"
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setViewMode((currentMode) => currentMode === "compact" ? "expanded" : "compact")}
+            className="h-11 rounded-xl border-border/70 bg-card px-4 shadow-sm"
+          >
+            {viewMode === "compact" ? (
+              <LayoutGrid className="mr-2 h-4 w-4" />
+            ) : (
+              <Rows3 className="mr-2 h-4 w-4" />
+            )}
+            {viewMode === "compact" ? "Vista expandida" : "Vista compacta"}
+          </Button>
         </div>
         <p className="text-sm text-muted-foreground">
           Mostrando {filteredClients.length} de {clients.length} clientes
@@ -124,30 +152,36 @@ export function ClientList({ clients, isAdmin, canEditClient = false, users }: C
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {filteredClients.map((client, index) => {
         const userColor = client.color || "#6366f1";
+        const isDisabledClient = client.status === "PAUSED" || client.status === "INACTIVE";
+        const accentColor = isDisabledClient ? "#94a3b8" : userColor;
         const monthlyReels = client.monthlyReels || 0;
         const monthlyFlyers = client.monthlyFlyers || 0;
         const isEditOpen = editingClientId === client.id;
+        const cardBackground = isDisabledClient
+          ? "linear-gradient(145deg, rgba(148, 163, 184, 0.12) 0%, rgba(148, 163, 184, 0.07) 28%, rgba(148, 163, 184, 0.03) 58%, transparent 100%)"
+          : `linear-gradient(145deg, ${hexToRgba(userColor, 0.14)} 0%, ${hexToRgba(userColor, 0.08)} 22%, ${hexToRgba(userColor, 0.03)} 48%, transparent 100%)`;
+        const paymentBadgeClassName = isDisabledClient
+          ? "bg-slate-100 text-slate-500 border-slate-200 dark:bg-muted dark:text-muted-foreground dark:border-border"
+          : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-muted dark:text-muted-foreground dark:border-border";
         
         const clientCard = (
           <div
-            className={`group h-full transition-all duration-200 rounded-2xl p-5 border bg-card shadow-sm hover:shadow-md ${canEditClient ? 'cursor-pointer' : 'cursor-not-allowed'} animate-fade-in`}
+            className={`group h-full rounded-[2rem] border border-border/60 bg-card shadow-sm transition-all duration-200 ${viewMode === 'compact' ? 'h-[154px] p-3.5' : 'p-6'} ${isDisabledClient ? 'opacity-75 saturate-0' : 'hover:-translate-y-0.5 hover:shadow-md'} ${canEditClient ? 'cursor-pointer' : 'cursor-not-allowed'} animate-fade-in`}
             style={{
               animationDelay: `${Math.min(index, 6) * 50}ms`,
+              backgroundColor: "hsl(var(--card))",
+              backgroundImage: cardBackground,
+              borderColor: isDisabledClient ? "rgba(148, 163, 184, 0.2)" : hexToRgba(userColor, 0.12),
             }}
           >
-            
-            {/* Barra de color superior */}
-            <div 
-              className="h-1 -mx-5 -mt-5 mb-4 rounded-t-2xl"
-              style={{ backgroundColor: userColor }}
-            />
-            
-            {/* Logo iOS-style */}
-            <div className="mb-4">
+            <div className={`${viewMode === 'compact' ? 'mb-0 flex items-start gap-3' : 'mb-5 flex items-start gap-4'}`}>
               {client.logo ? (
                 <div 
-                  className="relative h-14 w-14 rounded-xl overflow-hidden flex items-center justify-center ring-2 ring-border/30 shadow-sm"
-                  style={{ backgroundColor: hexToRgba(userColor, 0.08) }}
+                  className={`relative flex items-center justify-center overflow-hidden border shadow-sm ${viewMode === 'compact' ? 'h-16 w-16 rounded-[1.4rem]' : 'h-14 w-14 rounded-2xl'}`}
+                  style={{ 
+                    backgroundColor: hexToRgba(accentColor, isDisabledClient ? 0.08 : 0.1),
+                    borderColor: hexToRgba(accentColor, isDisabledClient ? 0.16 : 0.14),
+                  }}
                 >
                   <Image
                     src={client.logo}
@@ -155,80 +189,125 @@ export function ClientList({ clients, isAdmin, canEditClient = false, users }: C
                     fill
                     className="object-cover"
                     priority={index < 4}
-                    sizes="56px"
+                    sizes={viewMode === 'compact' ? '64px' : '56px'}
                   />
                 </div>
               ) : (
                 <div 
-                  className="h-14 w-14 rounded-xl flex items-center justify-center font-bold text-xl ring-2 ring-border/30 shadow-sm"
+                  className={`flex items-center justify-center border font-bold shadow-sm ${viewMode === 'compact' ? 'h-16 w-16 rounded-[1.4rem] text-2xl' : 'h-14 w-14 rounded-2xl text-xl'}`}
                   style={{ 
-                    backgroundColor: hexToRgba(userColor, 0.15),
-                    color: userColor 
+                    backgroundColor: hexToRgba(accentColor, isDisabledClient ? 0.1 : 0.16),
+                    color: accentColor,
+                    borderColor: hexToRgba(accentColor, isDisabledClient ? 0.16 : 0.14),
                   }}
                 >
                   {client.name.charAt(0).toUpperCase()}
                 </div>
               )}
-            </div>
 
-            {/* Título y Estado */}
-            <div className="mb-4">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <h2 className="text-xl font-bold leading-tight line-clamp-1">{client.name}</h2>
-                <div className="flex items-center gap-1">
-                  {client.hasPendingFeedback && (
-                    <div className="relative shrink-0">
-                      <Bell className="h-4 w-4 text-orange-500" />
-                      <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-orange-500 rounded-full animate-pulse" />
+              <div className={`min-w-0 flex-1 ${isAdmin ? (viewMode === 'compact' ? 'pr-7' : 'pr-8') : ''}`}>
+                <div className={`flex items-start justify-between gap-2 ${viewMode === 'compact' ? 'mb-1.5' : 'mb-2'}`}>
+                  <h2 className={`${viewMode === 'compact' ? 'line-clamp-2 text-[18px] leading-[1.1]' : 'line-clamp-1 text-xl'} font-bold ${isDisabledClient ? 'text-muted-foreground' : ''}`}>{client.name}</h2>
+                  {viewMode === 'expanded' && (
+                    <div className="flex items-center gap-1">
+                      {client.hasPendingFeedback && (
+                        <div className="relative shrink-0">
+                          <Bell className="h-4 w-4 text-orange-500" />
+                          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge
-                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    client.status === "ACTIVE"
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : client.status === "PAUSED"
-                        ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                        : client.status === "DEBT"
-                          ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                          : "bg-slate-100 text-slate-600 dark:bg-muted dark:text-muted-foreground"
-                  }`}
-                >
-                  {client.status === "ACTIVE"
-                    ? "Activo"
-                    : client.status === "PAUSED"
-                      ? "Pausado"
-                      : client.status === "INACTIVE"
-                        ? "Inactivo"
-                        : "En Deuda"}
-                </Badge>
-                
-                {/* Mostrar fecha de cobro si existe tarifa mensual */}
-                {client.monthlyRate && client.monthlyRate > 0 && client.paymentDay && (
-                  <>
-                    <Badge 
-                      variant="outline" 
-                      className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-muted dark:text-muted-foreground dark:border-border"
+
+                {viewMode === 'compact' ? (
+                  <div className="flex flex-col items-start gap-1">
+                    <Badge
+                      className={`h-5 px-2.5 py-0 text-[11px] leading-none font-medium rounded-full ${
+                        client.status === "ACTIVE"
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          : client.status === "PAUSED"
+                            ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                            : client.status === "DEBT"
+                              ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                              : "bg-slate-100 text-slate-600 dark:bg-muted dark:text-muted-foreground"
+                      }`}
                     >
-                      Cobro: día {client.paymentDay}
+                      {client.status === "ACTIVE"
+                        ? "Activo"
+                        : client.status === "PAUSED"
+                          ? "Pausado"
+                          : client.status === "INACTIVE"
+                            ? "Inactivo"
+                            : "En Deuda"}
                     </Badge>
-                    {isAdmin && (
-                      <Badge 
-                        variant="outline" 
-                        className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-muted dark:text-muted-foreground dark:border-border"
-                      >
-                        {formatCurrency(client.monthlyRate)}
-                      </Badge>
+
+                    {client.monthlyRate && client.monthlyRate > 0 && client.paymentDay && (
+                      <>
+                        <Badge 
+                          variant="outline" 
+                          className={`h-5 whitespace-nowrap px-2.5 py-0 text-[11px] leading-none font-medium rounded-full ${paymentBadgeClassName}`}
+                        >
+                          Cobro: día {client.paymentDay}
+                        </Badge>
+                        <Badge 
+                          variant="outline" 
+                          className={`h-5 whitespace-nowrap px-2.5 py-0 text-[11px] leading-none font-medium rounded-full ${paymentBadgeClassName}`}
+                        >
+                          {formatCurrency(client.monthlyRate)}
+                        </Badge>
+                      </>
                     )}
-                  </>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div>
+                      <Badge
+                        className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                          client.status === "ACTIVE"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : client.status === "PAUSED"
+                              ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                              : client.status === "DEBT"
+                                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                : "bg-slate-100 text-slate-600 dark:bg-muted dark:text-muted-foreground"
+                        }`}
+                      >
+                        {client.status === "ACTIVE"
+                          ? "Activo"
+                          : client.status === "PAUSED"
+                            ? "Pausado"
+                            : client.status === "INACTIVE"
+                              ? "Inactivo"
+                              : "En Deuda"}
+                      </Badge>
+                    </div>
+
+                    {client.monthlyRate && client.monthlyRate > 0 && client.paymentDay && (
+                      <div className="flex flex-nowrap items-center gap-2">
+                        <Badge 
+                          variant="outline" 
+                          className={`whitespace-nowrap px-2 py-0.5 text-xs font-medium rounded-full ${paymentBadgeClassName}`}
+                        >
+                          Cobro: día {client.paymentDay}
+                        </Badge>
+                        {isAdmin && (
+                          <Badge 
+                            variant="outline" 
+                            className={`whitespace-nowrap px-2 py-0.5 text-xs font-medium rounded-full ${paymentBadgeClassName}`}
+                          >
+                            {formatCurrency(client.monthlyRate)}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Métricas */}
-            <div className="space-y-2.5">
+            {viewMode === "expanded" && (
+              <div className="space-y-2.5">
               {/* Reels y Flyers */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex items-center gap-2">
@@ -316,7 +395,13 @@ export function ClientList({ clients, isAdmin, canEditClient = false, users }: C
               </div>
 
               {/* Tareas Publicadas y Pendientes */}
-              <div className="grid grid-cols-2 gap-3 pt-2.5 mt-2 border-t border-border/50">
+              <div
+                className="mt-3 grid grid-cols-2 gap-3 rounded-3xl border px-4 py-3"
+                style={{
+                  backgroundColor: isDisabledClient ? "rgba(148, 163, 184, 0.06)" : hexToRgba(userColor, 0.05),
+                  borderColor: isDisabledClient ? "rgba(148, 163, 184, 0.12)" : hexToRgba(userColor, 0.1),
+                }}
+              >
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -332,7 +417,8 @@ export function ClientList({ clients, isAdmin, canEditClient = false, users }: C
                   </div>
                 </div>
               </div>
-            </div>
+              </div>
+            )}
           </div>
         );
 
@@ -354,17 +440,17 @@ export function ClientList({ clients, isAdmin, canEditClient = false, users }: C
             </ClientCardContextMenu>
             {isAdmin && (
               <div
-                className="absolute top-4 right-4 z-10"
+                className={`absolute z-10 ${viewMode === 'compact' ? 'right-3 top-3' : 'right-4 top-4'}`}
                 onClick={(e) => e.stopPropagation()}
               >
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setEditingClientId(client.id)}
-                  className="h-6 w-6 p-0"
+                  className={`${viewMode === 'compact' ? 'h-5 w-5' : 'h-6 w-6'} p-0`}
                   title="Editar cliente"
                 >
-                  <Edit className="h-3.5 w-3.5" />
+                  <Edit className={`${viewMode === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'}`} />
                 </Button>
               </div>
             )}

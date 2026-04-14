@@ -196,6 +196,66 @@ export async function markInvoiceAsPaid(invoiceId: string): Promise<ApiResponse<
   }
 }
 
+/**
+ * Marca una transacción recurrente como pagada:
+ * 1. Crea una factura PAID con generatedAt del mes/año correspondiente (historial)
+ * 2. Inserta una excepción MARK_AS_PAID (elimina de Por Cobrar)
+ * El ID tiene formato: recurring-{clientId}-{year}-{month}
+ */
+export async function markRecurringAsPaid(
+  recurringId: string,
+  amount: number
+): Promise<ApiResponse<any>> {
+  try {
+    const match = recurringId.match(/^recurring-(.+)-(\d{4})-(\d{1,2})$/);
+    if (!match) {
+      return { success: false, error: "ID de transacción recurrente inválido" };
+    }
+
+    const [, clientId, yearStr, monthStr] = match;
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+
+    const client = await db.client.findUnique({
+      where: { id: clientId },
+      select: { id: true, paymentDay: true, name: true },
+    });
+
+    if (!client) {
+      return { success: false, error: "Cliente no encontrado" };
+    }
+
+    const paymentDay = client.paymentDay ?? 1;
+    const lastDay = new Date(year, month, 0).getDate();
+    const day = Math.min(paymentDay, lastDay);
+    const generatedAt = new Date(year, month - 1, day);
+
+    // 1. Create PAID invoice for transaction history
+    await createInvoiceInDb({
+      amount,
+      status: "PAID",
+      clientId,
+      generatedAt,
+    });
+
+    // 2. Insert MARK_AS_PAID billing exception (removes from receivables)
+    await db.$executeRaw`
+      INSERT INTO "ClientBillingException" ("id", "clientId", "year", "month", "type", "reason", "createdAt", "updatedAt")
+      VALUES (${`cbe-${clientId}-${year}-${month}`}, ${clientId}, ${year}, ${month}, 'MARK_AS_PAID', 'Marcado como pagado desde Por Cobrar', NOW(), NOW())
+      ON CONFLICT ("clientId", "year", "month")
+      DO UPDATE SET "type" = 'MARK_AS_PAID', "reason" = 'Marcado como pagado desde Por Cobrar', "updatedAt" = NOW()
+    `;
+
+    revalidateFinanceViews();
+    return { success: true, data: { clientId, year, month } };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al registrar pago recurrente",
+    };
+  }
+}
+
 export async function updateInvoice(
   id: string,
   input: unknown

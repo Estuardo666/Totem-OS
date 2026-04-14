@@ -11,7 +11,132 @@ import {
   updateClientSchema,
 } from "@/schemas/client";
 import type { ApiResponse } from "@/types";
-import type { Client, Credential, ContentTask, BrandAsset, TaskMetrics } from "@prisma/client";
+import type { Prisma, Client, Credential, ContentTask, BrandAsset, TaskMetrics } from "@prisma/client";
+
+function getPeriodKey(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+async function freezePaidRecurringPeriodsBeforeRateChange(
+  tx: Prisma.TransactionClient,
+  input: {
+    clientId: string;
+    previousMonthlyRate: number;
+    nextMonthlyRate: number;
+  }
+): Promise<void> {
+  if (input.previousMonthlyRate <= 0 || input.previousMonthlyRate === input.nextMonthlyRate) {
+    return;
+  }
+
+  const now = new Date();
+  const currentMonthEnd = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999
+  );
+
+  const [paidInvoices, paidTransactions, existingExceptions] = await Promise.all([
+    tx.invoice.findMany({
+      where: {
+        clientId: input.clientId,
+        status: "PAID",
+        generatedAt: { lte: currentMonthEnd },
+      },
+      select: {
+        amount: true,
+        generatedAt: true,
+      },
+    }),
+    tx.transaction.findMany({
+      where: {
+        type: "INCOME",
+        status: "PAID",
+        createdAt: { lte: currentMonthEnd },
+        OR: [
+          { relatedClientId: input.clientId },
+          { clientId: input.clientId },
+        ],
+      },
+      select: {
+        amount: true,
+        createdAt: true,
+      },
+    }),
+    tx.$queryRaw<Array<{ year: number; month: number; type: string }>>`
+      SELECT year, month, type
+      FROM "ClientBillingException"
+      WHERE "clientId" = ${input.clientId}
+        AND (
+          year < ${now.getFullYear()}
+          OR (
+            year = ${now.getFullYear()}
+            AND month <= ${now.getMonth() + 1}
+          )
+        )
+    `,
+  ]);
+
+  const paidAmountsByPeriod = new Map<string, number>();
+
+  for (const invoice of paidInvoices) {
+    const date = new Date(invoice.generatedAt);
+    const key = getPeriodKey(date.getFullYear(), date.getMonth() + 1);
+    paidAmountsByPeriod.set(key, (paidAmountsByPeriod.get(key) ?? 0) + invoice.amount);
+  }
+
+  for (const transaction of paidTransactions) {
+    const date = new Date(transaction.createdAt);
+    const key = getPeriodKey(date.getFullYear(), date.getMonth() + 1);
+    paidAmountsByPeriod.set(key, (paidAmountsByPeriod.get(key) ?? 0) + transaction.amount);
+  }
+
+  const protectedPeriods = new Set(
+    existingExceptions.map((exception) => getPeriodKey(exception.year, exception.month))
+  );
+
+  for (const [key, paidAmount] of paidAmountsByPeriod.entries()) {
+    if (paidAmount < input.previousMonthlyRate || protectedPeriods.has(key)) {
+      continue;
+    }
+
+    const [yearStr, monthStr] = key.split("-");
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+
+    await tx.$executeRaw`
+      INSERT INTO "ClientBillingException" (
+        "id",
+        "clientId",
+        "month",
+        "year",
+        "type",
+        "overrideAmount",
+        "reason",
+        "notes",
+        "createdAt",
+        "updatedAt"
+      )
+      VALUES (
+        ${randomUUID()},
+        ${input.clientId},
+        ${month},
+        ${year},
+        'OVERRIDE_AMOUNT',
+        ${input.previousMonthlyRate},
+        'Fee congelado por cambio de tarifa',
+        ${`Se preserva el fee previo de ${input.previousMonthlyRate} antes de cambiarlo a ${input.nextMonthlyRate}.`},
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT ("clientId", month, year) DO NOTHING
+    `;
+  }
+}
 
 /**
  * Server Action para crear un cliente
@@ -98,63 +223,99 @@ export async function updateClient(
     // 1. Validar con Zod
     const validatedData = updateClientSchema.parse(input);
 
-    // 2. Operación de DB
-    const client = await db.client.update({
+    const existingClient = await db.client.findUnique({
       where: { id },
-      data: {
-        ...(validatedData.name !== undefined && { name: validatedData.name }),
-        ...(validatedData.status !== undefined && { status: validatedData.status }),
-        ...(validatedData.color !== undefined && { color: validatedData.color }),
-        ...(validatedData.contactEmails !== undefined && {
-          contactEmails:
-            validatedData.contactEmails && validatedData.contactEmails.length > 0
-              ? JSON.stringify(validatedData.contactEmails)
-              : null,
-        }),
-        ...(validatedData.brandKit !== undefined && {
-          brandKit: validatedData.brandKit
-            ? JSON.stringify(validatedData.brandKit)
-            : null,
-        }),
-        ...(validatedData.vault !== undefined && {
-          vault: validatedData.vault
-            ? JSON.stringify(validatedData.vault)
-            : null,
-        }),
-        ...(validatedData.logo !== undefined && { logo: validatedData.logo }),
-        ...(validatedData.monthlyReels !== undefined && {
-          monthlyReels: validatedData.monthlyReels,
-        }),
-        ...(validatedData.monthlyFlyers !== undefined && {
-          monthlyFlyers: validatedData.monthlyFlyers,
-        }),
-        ...(validatedData.monthlyShoots !== undefined && {
-          monthlyShoots: validatedData.monthlyShoots,
-        }),
-        ...(validatedData.monthlyRate !== undefined && {
-          monthlyRate: validatedData.monthlyRate,
-        }),
-        ...(validatedData.paymentDay !== undefined && {
-          paymentDay: validatedData.paymentDay,
-        }),
-        ...(validatedData.billingStartDate !== undefined && {
-          billingStartDate: validatedData.billingStartDate ?? null,
-        }),
-        ...(validatedData.lastPostDate !== undefined && {
-          lastPostDate: validatedData.lastPostDate ?? null,
-        }),
-        ...(validatedData.editorId !== undefined && {
-          editorId: validatedData.editorId ?? null,
-        }),
-        ...(validatedData.communityId !== undefined && {
-          communityId: validatedData.communityId ?? null,
-        }),
+      select: {
+        id: true,
+        monthlyRate: true,
       },
+    });
+
+    if (!existingClient) {
+      return { success: false, error: "Cliente no encontrado" };
+    }
+
+    // 2. Operación de DB
+    const client = await db.$transaction(async (tx) => {
+      if (
+        validatedData.monthlyRate !== undefined &&
+        validatedData.monthlyRate !== existingClient.monthlyRate
+      ) {
+        await freezePaidRecurringPeriodsBeforeRateChange(tx, {
+          clientId: id,
+          previousMonthlyRate: existingClient.monthlyRate,
+          nextMonthlyRate: validatedData.monthlyRate,
+        });
+      }
+
+      return tx.client.update({
+        where: { id },
+        data: {
+          ...(validatedData.name !== undefined && { name: validatedData.name }),
+          ...(validatedData.status !== undefined && { status: validatedData.status }),
+          ...(validatedData.color !== undefined && { color: validatedData.color }),
+          ...(validatedData.contactEmails !== undefined && {
+            contactEmails:
+              validatedData.contactEmails && validatedData.contactEmails.length > 0
+                ? JSON.stringify(validatedData.contactEmails)
+                : null,
+          }),
+          ...(validatedData.brandKit !== undefined && {
+            brandKit: validatedData.brandKit
+              ? JSON.stringify(validatedData.brandKit)
+              : null,
+          }),
+          ...(validatedData.vault !== undefined && {
+            vault: validatedData.vault
+              ? JSON.stringify(validatedData.vault)
+              : null,
+          }),
+          ...(validatedData.logo !== undefined && { logo: validatedData.logo }),
+          ...(validatedData.monthlyReels !== undefined && {
+            monthlyReels: validatedData.monthlyReels,
+          }),
+          ...(validatedData.monthlyFlyers !== undefined && {
+            monthlyFlyers: validatedData.monthlyFlyers,
+          }),
+          ...(validatedData.monthlyShoots !== undefined && {
+            monthlyShoots: validatedData.monthlyShoots,
+          }),
+          ...(validatedData.monthlyRate !== undefined && {
+            monthlyRate: validatedData.monthlyRate,
+          }),
+          ...(validatedData.paymentDay !== undefined && {
+            paymentDay: validatedData.paymentDay,
+          }),
+          ...(validatedData.billingStartDate !== undefined && {
+            billingStartDate: validatedData.billingStartDate ?? null,
+          }),
+          ...(validatedData.lastPostDate !== undefined && {
+            lastPostDate: validatedData.lastPostDate ?? null,
+          }),
+          ...(validatedData.editorId !== undefined && {
+            editorId: validatedData.editorId ?? null,
+          }),
+          ...(validatedData.communityId !== undefined && {
+            communityId: validatedData.communityId ?? null,
+          }),
+        },
+      });
     });
 
     // 3. Revalidar las rutas
     revalidatePath("/clients");
     revalidatePath(`/clients/${id}`);
+    if (
+      validatedData.monthlyRate !== undefined ||
+      validatedData.paymentDay !== undefined ||
+      validatedData.billingStartDate !== undefined ||
+      validatedData.status !== undefined
+    ) {
+      revalidatePath("/finance");
+      revalidatePath("/finance/receivables");
+      revalidatePath("/finance/monthly-summary");
+      revalidatePath("/finance/monthly-close");
+    }
     // Si se actualizó editorId o communityId, revalidar /content para que las asignaciones automáticas funcionen
     if (validatedData.editorId !== undefined || validatedData.communityId !== undefined) {
       revalidatePath("/content");

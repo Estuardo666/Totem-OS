@@ -7,6 +7,7 @@ import { Check, MessageCircle, Loader2 } from "lucide-react";
 import {
   markTransactionAsPaid,
   markInvoiceAsPaid,
+  markRecurringAsPaid,
 } from "@/actions/finance-actions";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +54,7 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
   // Ensure transactions is an array
   const safeTransactions = Array.isArray(transactions) ? transactions : [];
 
-  const handleMarkAsPaid = async (transactionId: string, sourceType: "INVOICE" | "TRANSACTION" | "RECURRING") => {
+  const handleMarkAsPaid = async (transactionId: string, sourceType: "INVOICE" | "TRANSACTION" | "RECURRING", amount?: number) => {
     setProcessingId(transactionId);
     try {
       let result;
@@ -62,12 +63,7 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
       } else if (sourceType === "TRANSACTION") {
         result = await markTransactionAsPaid(transactionId);
       } else if (sourceType === "RECURRING") {
-        // Para transacciones recurrentes, mostrar un toast informativo
-        toast({
-          title: "Pago recurrente",
-          description: "Esta es una tarifa mensual del cliente. Registra el pago en Transacciones.",
-        });
-        return;
+        result = await markRecurringAsPaid(transactionId, amount ?? 0);
       }
 
       if (result && result.success) {
@@ -209,41 +205,40 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    {transaction.sourceType === "RECURRING" ? (
+                    {transaction.sourceType === "RECURRING" && (
                       <Badge className="bg-purple-500 hover:bg-purple-600 text-white">
                         Tarifa Mensual
                       </Badge>
-                    ) : (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleSendWhatsApp(transaction)}
-                          className="h-8 bg-green-500 hover:bg-green-600 text-white"
-                        >
-                          <MessageCircle className="h-3 w-3 mr-1" />
-                          WhatsApp
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() =>
-                            handleMarkAsPaid(transaction.id, transaction.sourceType)
-                          }
-                          disabled={isProcessing}
-                          className="h-8 bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          {isProcessing ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <>
-                              <Check className="h-3 w-3 mr-1" />
-                              Marcar como Pagada
-                            </>
-                          )}
-                        </Button>
-                      </>
                     )}
+                    {transaction.sourceType !== "RECURRING" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSendWhatsApp(transaction)}
+                        className="h-8 bg-green-500 hover:bg-green-600 text-white"
+                      >
+                        <MessageCircle className="h-3 w-3 mr-1" />
+                        WhatsApp
+                      </Button>
+                    )}
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() =>
+                        handleMarkAsPaid(transaction.id, transaction.sourceType, transaction.amount)
+                      }
+                      disabled={isProcessing}
+                      className="h-8 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      {isProcessing ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <>
+                          <Check className="h-3 w-3 mr-1" />
+                          Marcar como Pagada
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
