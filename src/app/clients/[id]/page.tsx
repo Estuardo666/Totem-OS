@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
-import { getClientById, getClientProfitability } from "@/actions/client-actions";
+import {
+  getClientBillingExceptions,
+  getClientById,
+  getClientProfitability,
+} from "@/actions/client-actions";
 import { getUsers } from "@/actions/user.actions";
 import { getClientGlobalMetrics, getClientRecentTasksWithMetrics, getClientFacebookMetrics } from "@/actions/metrics-actions";
 import { ClientHeader } from "@/components/features/clients/client-header";
@@ -16,6 +20,7 @@ import { TikTokPanel } from "@/components/features/clients/tiktok-panel";
 import { StrategyCorePanel } from "@/components/features/clients/strategy-core-panel";
 import { RevenueROIPanel } from "@/components/features/clients/revenue-roi-panel";
 import { MetricsBulkEditor } from "@/components/features/clients/metrics-bulk-editor";
+import { MonthlyBillingExceptionCard } from "@/components/features/clients/monthly-billing-exception-card";
 import { ClientStrategyForm } from "@/components/features/clients/client-strategy-form";
 import { AiOverviewCard } from "@/components/features/metrics/ai-overview-card";
 import { KanbanBoard } from "@/components/features/content/kanban-board";
@@ -110,6 +115,13 @@ export default async function ClientDetailPage({
   }
 
   const client = result.data;
+  const hasRecurringMonthlyFee = client.monthlyRate > 0 && Boolean(client.paymentDay);
+  const billingExceptionsResult = isAdmin && hasRecurringMonthlyFee
+    ? await getClientBillingExceptions(id)
+    : { success: true as const, data: [] };
+  const billingExceptions = billingExceptionsResult.success
+    ? billingExceptionsResult.data ?? []
+    : [];
 
   // Convertir recentTasksResult.data al tipo TaskWithMetrics[]
   const recentTasks: TaskWithMetrics[] = recentTasksResult.success && recentTasksResult.data 
@@ -131,8 +143,11 @@ export default async function ClientDetailPage({
     client: {
       id: client.id,
       name: client.name,
+      logo: client.logo,
       status: client.status,
       color: client.color,
+      editorId: client.editorId,
+      communityId: client.communityId,
       brandDNA: client.brandDNA, // ✅ Campo crítico para IA - agregado
       brandKit: client.brandKit,
       vault: client.vault,
@@ -148,6 +163,8 @@ export default async function ClientDetailPage({
         fileType: asset.fileType,
       })),
     },
+    assignedEditor: null,
+    assignedCommunity: null,
   })) as (ContentTaskWithClient & { metrics: TaskMetrics | null })[];
 
   const users = usersResult.success ? usersResult.data ?? [] : [];
@@ -440,7 +457,14 @@ export default async function ClientDetailPage({
           </TabsContent>
 
           {isAdmin && (
-            <TabsContent value="account" className="mt-6">
+            <TabsContent value="account" className="mt-6 space-y-6">
+              {hasRecurringMonthlyFee ? (
+                <MonthlyBillingExceptionCard
+                  clientId={client.id}
+                  monthlyRate={client.monthlyRate}
+                  exceptions={billingExceptions}
+                />
+              ) : null}
               <AccountStatus clientId={client.id} />
             </TabsContent>
           )}

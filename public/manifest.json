@@ -24,12 +24,5 @@
     { "name": "Clientes", "url": "/clients", "description": "Ver módulo de clientes" },
     { "name": "Tareas", "url": "/content", "description": "Acceder al Kanban" },
     { "name": "Finanzas", "url": "/finance", "description": "Ir al módulo financiero" }
-  ],
-  "screenshots": [
-    {
-      "src": "/splash.jpg",
-      "type": "image/jpeg",
-      "label": "Pantalla de bienvenida Totem OS"
-    }
   ]
 }

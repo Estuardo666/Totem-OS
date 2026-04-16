@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Check, Loader2, Edit } from "lucide-react";
 import { markExpenseAsReimbursed, markTransactionAsPaid } from "@/actions/finance-actions";
+import {
+  buildFinanceOfflineQueueId,
+  enqueueFinanceAction,
+} from "@/lib/finance-offline-store";
 import { EditExpenseDialog } from "./edit-expense-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -85,6 +89,31 @@ export function ExpensesTable({ expenses, onUpdate }: ExpensesTableProps) {
   const handleMarkAsReimbursed = async (expenseId: string, isTransaction: boolean) => {
     setProcessingId(expenseId);
     try {
+      const currentExpense = expenses.find((expense) => expense.id === expenseId);
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        enqueueFinanceAction({
+          id: buildFinanceOfflineQueueId("expense-status"),
+          kind: isTransaction ? "MARK_TRANSACTION_PAID" : "MARK_EXPENSE_REIMBURSED",
+          createdAt: new Date().toISOString(),
+          payload: isTransaction
+            ? {
+                transactionId: expenseId,
+                amount: currentExpense?.amount,
+              }
+            : {
+                expenseId,
+                amount: currentExpense?.amount,
+              },
+        });
+
+        toast({
+          title: "Estado guardado offline",
+          description: "Se sincronizará automáticamente cuando vuelva la conexión.",
+        });
+        return;
+      }
+
       let result;
       
       // Intentar primero con el tipo detectado, si falla, intentar con el otro

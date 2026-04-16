@@ -1,11 +1,45 @@
 "use server";
 
 import { db } from "@/lib/db";
+import {
+  clearPrismaConnectionBackoff,
+  registerPrismaConnectionIssue,
+  shouldSkipPrismaConnectionAttempt,
+} from "@/lib/prisma-connection-resilience";
 import { createUserSchema, updateUserSchema, registerSchema, userSettingsSchema } from "@/schemas/user";
 import type { ApiResponse } from "@/types";
 import type { User } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+
+function buildCurrentUserFallback(session: Awaited<ReturnType<typeof import("@/auth")["auth"]>>) {
+  const now = new Date();
+  const sessionUser = session?.user;
+
+  return {
+    id: sessionUser?.id || "",
+    name: sessionUser?.name || "",
+    firstName: null,
+    lastName: null,
+    email: sessionUser?.email || "",
+    emailVerified: null,
+    image: sessionUser?.image || null,
+    password: null,
+    roleLegacy: sessionUser?.roleLegacy || sessionUser?.role || "EDITOR",
+    specialty: sessionUser?.specialty || null,
+    salaryType: "MONTHLY",
+    baseSalary: null,
+    profitSharePercent: null,
+    bankAccountInfo: null,
+    hourlyRate: 0,
+    currency: "USD",
+    soundNotifications: true,
+    primaryColor: sessionUser?.primaryColor || "#27221F",
+    darkMode: false,
+    createdAt: now,
+    updatedAt: now,
+  } satisfies User;
+}
 
 /**
  * Ejemplo de Server Action para crear un usuario
@@ -400,9 +434,14 @@ export async function getCurrentUser(): Promise<ApiResponse<User>> {
       };
     }
 
+    if (shouldSkipPrismaConnectionAttempt()) {
+      return { success: true, data: buildCurrentUserFallback(session) };
+    }
+
     const user = await db.user.findUnique({
       where: { id: currentUserId },
     });
+    clearPrismaConnectionBackoff();
 
     if (!user) {
       return {
@@ -414,6 +453,13 @@ export async function getCurrentUser(): Promise<ApiResponse<User>> {
     const { password: _, ...userWithoutPassword } = user;
     return { success: true, data: userWithoutPassword as User };
   } catch (error) {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+
+    if (registerPrismaConnectionIssue(error) && session?.user?.id) {
+      return { success: true, data: buildCurrentUserFallback(session) };
+    }
+
     return {
       success: false,
       error:

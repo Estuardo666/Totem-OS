@@ -15,14 +15,43 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!session?.user?.id) return;
 
+    const htmlElement = document.documentElement;
+    const rootElement = document.documentElement;
+
+    const applyThemeFromClientState = () => {
+      const storedTheme = localStorage.getItem("theme");
+      if (storedTheme === "dark") {
+        htmlElement.classList.add("dark");
+      } else if (storedTheme === "light") {
+        htmlElement.classList.remove("dark");
+      }
+
+      const colorCandidate =
+        session.user.primaryColor || localStorage.getItem("primaryColor");
+
+      const { hex: primaryHex, hsl, foregroundHsl } = resolvePrimaryColor(colorCandidate);
+      rootElement.style.setProperty("--primary", hsl);
+      rootElement.style.setProperty("--primary-color", primaryHex);
+      rootElement.style.setProperty("--primary-foreground", foregroundHsl);
+
+      try {
+        localStorage.setItem("primaryColor", primaryHex);
+        setPrimaryColorCookieClient(primaryHex);
+      } catch (_) {}
+    };
+
+    applyThemeFromClientState();
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      return;
+    }
+
     const syncTheme = async () => {
       try {
         const result = await getCurrentUser();
         if (!result.success || !result.data) return;
 
         const user = result.data;
-        const htmlElement = document.documentElement;
-        const rootElement = document.documentElement;
 
         // Sincronizar darkMode con la clase .dark
         if (user.darkMode) {
@@ -51,7 +80,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     syncTheme();
-  }, [session?.user?.id]);
+  }, [session?.user?.id, session?.user?.primaryColor]);
 
   return <>{children}</>;
 }

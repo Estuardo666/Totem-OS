@@ -14,11 +14,22 @@ import {
   type CreateExpenseInput,
   type CreateTransactionInput,
 } from "@/schemas/finance";
-import type { Client, User } from "@prisma/client";
 import { getClients } from "@/actions/client-actions";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getUsers } from "@/actions/user.actions";
 import { createInvoice, createExpense, createTransaction } from "@/actions/finance-actions";
+import type {
+  OfflineClientOption,
+  OfflineUserOption,
+} from "@/lib/finance-offline-types";
+import {
+  buildFinanceOfflineQueueId,
+  cacheFinanceClients,
+  cacheFinanceUsers,
+  enqueueFinanceAction,
+  getCachedFinanceClients,
+  getCachedFinanceUsers,
+} from "@/lib/finance-offline-store";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,13 +76,13 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   EQUIPOS: ["equipo", "equipment", "cámara", "camera", "micrófono", "mic", "monitor", "pantalla", "computadora", "laptop", "teclado", "keyboard", "mouse", "disco", "drone", "luz", "light"],
 };
 
-const detectCategory = (description: string): string => {
+const detectCategory = (description: string): CreateExpenseInput["category"] => {
   const lowerDescription = description.toLowerCase().trim();
   
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
     for (const keyword of keywords) {
       if (lowerDescription.includes(keyword)) {
-        return category;
+        return category as CreateExpenseInput["category"];
       }
     }
   }
@@ -82,6 +93,7 @@ const detectCategory = (description: string): string => {
 interface TransactionDialogProps {
   children?: React.ReactNode;
   defaultTab?: "income" | "expense" | "honorarios";
+  isAdminOverride?: boolean;
 }
 
 // Función helper para obtener la fecha actual en zona horaria de Ecuador (America/Guayaquil)
@@ -129,16 +141,30 @@ const parseDateFromInput = (value?: string) => {
   return new Date(y, m - 1, d);
 };
 
-export function TransactionDialog({ children, defaultTab }: TransactionDialogProps) {
+function getPreferredUsers(users: OfflineUserOption[]) {
+  return users
+    .filter(
+      (user) =>
+        user.name?.toLowerCase().includes("paty") ||
+        user.name?.toLowerCase().includes("stuart")
+    )
+    .map((user) => user.id);
+}
+
+export function TransactionDialog({
+  children,
+  defaultTab,
+  isAdminOverride,
+}: TransactionDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { data: session } = useSession();
   const userRole = session?.user?.role;
-  const isAdmin = userRole === "ADMIN";
+  const isAdmin = isAdminOverride ?? userRole === "ADMIN";
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [clients, setClients] = useState<OfflineClientOption[]>([]);
+  const [users, setUsers] = useState<OfflineUserOption[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(isAdmin ? "income" : "expense");
@@ -193,23 +219,59 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
   // Cargar clientes y usuarios cuando se abre el dialog
   useEffect(() => {
     if (open) {
+      const cachedClients = getCachedFinanceClients();
+      if (cachedClients.length > 0) {
+        setClients(cachedClients);
+      }
+
+      const cachedUsers = getCachedFinanceUsers();
+      if (cachedUsers.length > 0) {
+        setUsers(cachedUsers);
+        const preferredUsers = getPreferredUsers(cachedUsers);
+        if (preferredUsers.length > 0) {
+          expenseForm.setValue("paidByUserIds", preferredUsers);
+        }
+      }
+
+      const incomeAmt = incomeForm.getValues("amount");
+      const expenseAmt = expenseForm.getValues("amount");
+      const honorAmt = honorariosForm.getValues("amount");
+
+      setIncomeAmountInput(incomeAmt && incomeAmt !== 0 ? String(incomeAmt) : "");
+      setExpenseAmountInput(expenseAmt && expenseAmt !== 0 ? String(expenseAmt) : "");
+      setHonorariosAmountInput(honorAmt && honorAmt !== 0 ? String(honorAmt) : "");
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        setLoadingClients(false);
+        setLoadingUsers(false);
+        return;
+      }
+
       setLoadingClients(true);
       setLoadingUsers(true);
       
       Promise.all([getClients(), getUsers()])
         .then(([clientsResult, usersResult]) => {
           if (clientsResult.success && clientsResult.data) {
-            setClients(clientsResult.data);
+            const nextClients = clientsResult.data.map((client) => ({
+              id: client.id,
+              name: client.name,
+              logo: client.logo ?? null,
+              monthlyRate: client.monthlyRate ?? 0,
+            }));
+            setClients(nextClients);
+            cacheFinanceClients(nextClients);
           }
           if (usersResult.success && usersResult.data) {
-            setUsers(usersResult.data);
-            // Pre-seleccionar a Paty y Stuart en el formulario de gastos
-            const patyAndStuart = usersResult.data
-              .filter((user) => 
-                user.name?.toLowerCase().includes("paty") || 
-                user.name?.toLowerCase().includes("stuart")
-              )
-              .map((user) => user.id);
+            const nextUsers = usersResult.data.map((user) => ({
+              id: user.id,
+              name: user.name,
+              image: "image" in user ? user.image ?? null : null,
+            }));
+            setUsers(nextUsers);
+            cacheFinanceUsers(nextUsers);
+
+            const patyAndStuart = getPreferredUsers(nextUsers);
             
             if (patyAndStuart.length > 0) {
               expenseForm.setValue("paidByUserIds", patyAndStuart);
@@ -220,14 +282,6 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
           setLoadingClients(false);
           setLoadingUsers(false);
         });
-      // Inicializar los inputs locales de monto según valores del formulario
-      const incomeAmt = incomeForm.getValues("amount");
-      const expenseAmt = expenseForm.getValues("amount");
-      const honorAmt = honorariosForm.getValues("amount");
-
-      setIncomeAmountInput(incomeAmt && incomeAmt !== 0 ? String(incomeAmt) : "");
-      setExpenseAmountInput(expenseAmt && expenseAmt !== 0 ? String(expenseAmt) : "");
-      setHonorariosAmountInput(honorAmt && honorAmt !== 0 ? String(honorAmt) : "");
     }
   }, [open, expenseForm]);
 
@@ -271,14 +325,14 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
     if (incomeAmountMode === "100") {
       const val = monthly;
       setIncomeAmountInput(val ? String(val) : "");
-      incomeForm.setValue("amount", val || undefined);
+      incomeForm.setValue("amount", Number(val || 0));
     } else if (incomeAmountMode === "50") {
       const val = monthly ? monthly / 2 : 0;
       setIncomeAmountInput(val ? String(val) : "");
-      incomeForm.setValue("amount", val || undefined);
+      incomeForm.setValue("amount", Number(val || 0));
     } else if (incomeAmountMode === "other") {
       // leave input as-is but if it's empty, clear form amount
-      if (!incomeAmountInput) incomeForm.setValue("amount", undefined);
+      if (!incomeAmountInput) incomeForm.setValue("amount", Number(0));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incomeSelectedClientId, incomeAmountMode, clients]);
@@ -288,7 +342,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
     if (descriptionValue && descriptionValue.trim()) {
       const detectedCategory = detectCategory(descriptionValue);
       console.log("Detected category:", detectedCategory, "from description:", descriptionValue);
-      expenseForm.setValue("category", detectedCategory);
+      expenseForm.setValue("category", detectCategory(descriptionValue));
     }
   };
 
@@ -296,6 +350,22 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
     setIsSubmitting(true);
 
     try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        enqueueFinanceAction({
+          id: buildFinanceOfflineQueueId("invoice"),
+          kind: "CREATE_INVOICE",
+          createdAt: new Date().toISOString(),
+          payload: data,
+        });
+
+        toast({
+          title: "Ingreso guardado offline",
+          description: "Se sincronizará automáticamente cuando vuelva la conexión.",
+        });
+        setOpen(false);
+        return;
+      }
+
       const result = await createInvoice(data);
 
       if (result.success) {
@@ -330,6 +400,22 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
     setIsSubmitting(true);
 
     try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        enqueueFinanceAction({
+          id: buildFinanceOfflineQueueId("expense"),
+          kind: "CREATE_EXPENSE",
+          createdAt: new Date().toISOString(),
+          payload: data,
+        });
+
+        toast({
+          title: "Gasto guardado offline",
+          description: "Se sincronizará automáticamente cuando vuelva la conexión.",
+        });
+        setOpen(false);
+        return;
+      }
+
       const result = await createExpense(data);
 
       if (result.success) {
@@ -370,6 +456,27 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
           title: "Selecciona usuarios",
           description: "Debes seleccionar al menos un usuario para registrar honorarios.",
         });
+        return;
+      }
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        honorariosUserIds.forEach((userId) => {
+          enqueueFinanceAction({
+            id: buildFinanceOfflineQueueId("honorarios"),
+            kind: "CREATE_TRANSACTION",
+            createdAt: new Date().toISOString(),
+            payload: {
+              ...data,
+              userId,
+            },
+          });
+        });
+
+        toast({
+          title: "Honorarios guardados offline",
+          description: `Se encolaron ${honorariosUserIds.length} registro(s) para sincronizar luego.`,
+        });
+        setOpen(false);
         return;
       }
 
@@ -540,7 +647,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                           setIncomeAmountMode(opt.key as any);
                           if (opt.key === "other") {
                             setIncomeAmountInput("");
-                            incomeForm.setValue("amount", undefined);
+                            incomeForm.setValue("amount", Number(0));
                           }
                         }}
                         className={`rounded-full px-3 py-1 text-sm border transition ${
@@ -580,7 +687,7 @@ export function TransactionDialog({ children, defaultTab }: TransactionDialogPro
                                 field.onChange(parseFloat(e.target.value) || 0);
                               }
                             }}
-                            onFocus={(e) => {
+                            onFocus={() => {
                               // allow clearing the 0 on focus
                               if (field.value === 0) {
                                 setIncomeAmountInput("");

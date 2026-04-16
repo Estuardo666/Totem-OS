@@ -9,6 +9,10 @@ import {
   markInvoiceAsPaid,
   markRecurringAsPaid,
 } from "@/actions/finance-actions";
+import {
+  buildFinanceOfflineQueueId,
+  enqueueFinanceAction,
+} from "@/lib/finance-offline-store";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,6 +61,37 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
   const handleMarkAsPaid = async (transactionId: string, sourceType: "INVOICE" | "TRANSACTION" | "RECURRING", amount?: number) => {
     setProcessingId(transactionId);
     try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        if (sourceType === "INVOICE") {
+          enqueueFinanceAction({
+            id: buildFinanceOfflineQueueId("receivable"),
+            kind: "MARK_INVOICE_PAID",
+            createdAt: new Date().toISOString(),
+            payload: { invoiceId: transactionId, amount },
+          });
+        } else if (sourceType === "TRANSACTION") {
+          enqueueFinanceAction({
+            id: buildFinanceOfflineQueueId("receivable"),
+            kind: "MARK_TRANSACTION_PAID",
+            createdAt: new Date().toISOString(),
+            payload: { transactionId, amount },
+          });
+        } else {
+          enqueueFinanceAction({
+            id: buildFinanceOfflineQueueId("receivable"),
+            kind: "MARK_RECURRING_PAID",
+            createdAt: new Date().toISOString(),
+            payload: { recurringId: transactionId, amount: amount ?? 0 },
+          });
+        }
+
+        toast({
+          title: "Pago guardado offline",
+          description: "Se sincronizará automáticamente cuando vuelva la conexión.",
+        });
+        return;
+      }
+
       let result;
       if (sourceType === "INVOICE") {
         result = await markInvoiceAsPaid(transactionId);

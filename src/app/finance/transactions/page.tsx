@@ -1,10 +1,9 @@
 import { auth } from "@/auth";
 import { getFinancialStats } from "@/actions/finance-actions";
-import { TransactionList } from "@/components/features/finance/transaction-list";
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
+import { TransactionsOfflineView } from "@/components/features/finance/transactions-offline-view";
 import { Button } from "@/components/ui/button";
 import { Plus, DollarSign, FileText } from "lucide-react";
-import { PageHeader } from "@/components/shared";
 import Link from "next/link";
 
 export default async function TransactionsPage() {
@@ -57,7 +56,7 @@ export default async function TransactionsPage() {
             </div>
 
             <div className="flex flex-wrap gap-2 items-center">
-              <TransactionDialog>
+              <TransactionDialog isAdminOverride={isAdmin}>
                 <Button className="gap-2 rounded-full">
                   <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">Crear nueva transacción</span>
@@ -96,7 +95,7 @@ export default async function TransactionsPage() {
             <h2 className="text-lg font-semibold">Historial de Transacciones</h2>
           </div>
           <div className="p-4">
-            <TransactionList transactions={result.data.recentTransactions} />
+            <TransactionsOfflineView transactions={result.data.recentTransactions} />
           </div>
         </div>
       </div>

@@ -6,10 +6,22 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { z } from "zod";
-import type { User, Client } from "@prisma/client";
+import type { CreateExpenseInput as FinanceCreateExpenseInput } from "@/schemas/finance";
 import { createExpense } from "@/actions/finance-actions";
 import { getUsers } from "@/actions/user.actions";
 import { getClients } from "@/actions/client-actions";
+import type {
+  OfflineClientOption,
+  OfflineUserOption,
+} from "@/lib/finance-offline-types";
+import {
+  buildFinanceOfflineQueueId,
+  cacheFinanceClients,
+  cacheFinanceUsers,
+  enqueueFinanceAction,
+  getCachedFinanceClients,
+  getCachedFinanceUsers,
+} from "@/lib/finance-offline-store";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,7 +109,7 @@ const createExpenseSchema = z.object({
   clientId: z.string().optional(),
 });
 
-type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
+type CreateExpenseFormInput = z.infer<typeof createExpenseSchema>;
 
 interface CreateExpenseDialogProps {
   open: boolean;
@@ -111,12 +123,12 @@ function CreateExpenseDialogComponent({
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const [users, setUsers] = useState<OfflineUserOption[]>([]);
+  const [clients, setClients] = useState<OfflineClientOption[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
 
-  const form = useForm<CreateExpenseInput>({
+  const form = useForm<CreateExpenseFormInput>({
     resolver: zodResolver(createExpenseSchema),
     defaultValues: {
       description: "",
@@ -130,16 +142,43 @@ function CreateExpenseDialogComponent({
 
   // Cargar usuarios y clientes solo una vez al montar el componente
   useEffect(() => {
+    const cachedUsers = getCachedFinanceUsers();
+    if (cachedUsers.length > 0) {
+      setUsers(cachedUsers);
+    }
+
+    const cachedClients = getCachedFinanceClients();
+    if (cachedClients.length > 0) {
+      setClients(cachedClients);
+    }
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      return;
+    }
+
     setLoadingUsers(true);
     setLoadingClients(true);
 
     Promise.all([getUsers(), getClients()])
       .then(([usersResult, clientsResult]) => {
         if (usersResult.success && usersResult.data) {
-          setUsers(usersResult.data);
+          const nextUsers = usersResult.data.map((user) => ({
+            id: user.id,
+            name: user.name,
+            image: "image" in user ? user.image ?? null : null,
+          }));
+          setUsers(nextUsers);
+          cacheFinanceUsers(nextUsers);
         }
         if (clientsResult.success && clientsResult.data) {
-          setClients(clientsResult.data);
+          const nextClients = clientsResult.data.map((client) => ({
+            id: client.id,
+            name: client.name,
+            logo: client.logo ?? null,
+            monthlyRate: client.monthlyRate ?? 0,
+          }));
+          setClients(nextClients);
+          cacheFinanceClients(nextClients);
         }
       })
       .finally(() => {
@@ -171,16 +210,17 @@ function CreateExpenseDialogComponent({
     }
   }, [open, form]);
 
-  const onSubmit = async (data: CreateExpenseInput) => {
+  const onSubmit = async (data: CreateExpenseFormInput) => {
     setIsSubmitting(true);
 
     try {
       // Procesar datos antes de enviar
-      const processedData: any = {
+      const processedData: FinanceCreateExpenseInput = {
         description: data.description,
         amount: data.amount,
         category: data.category,
         date: data.date,
+        reimbursed: false,
       };
 
       // Agregar clientId solo si no es undefined
@@ -196,6 +236,22 @@ function CreateExpenseDialogComponent({
         if (data.paidByUserIds.length > 1) {
           processedData.description = `${data.description} (Compartido - ${data.paidByUserIds.length} personas)`;
         }
+      }
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        enqueueFinanceAction({
+          id: buildFinanceOfflineQueueId("expense"),
+          kind: "CREATE_EXPENSE",
+          createdAt: new Date().toISOString(),
+          payload: processedData,
+        });
+
+        toast({
+          title: "Gasto guardado offline",
+          description: "Se sincronizará automáticamente cuando vuelva la conexión.",
+        });
+        onOpenChange(false);
+        return;
       }
 
       const result = await createExpense(processedData);

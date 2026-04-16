@@ -2,6 +2,11 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { db as prisma } from "@/lib/db";
+import {
+  clearPrismaConnectionBackoff,
+  registerPrismaConnectionIssue,
+  shouldSkipPrismaConnectionAttempt,
+} from "@/lib/prisma-connection-resilience";
 import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
 
@@ -183,12 +188,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Sincronizar rol desde BD solo si es posible
       // IMPORTANTE: Si hay error o no hay datos, MANTENER el rol actual del token
       // para evitar downgrades accidentales durante deployments o problemas de BD
-      if (token.id) {
+      if (token.id && !shouldSkipPrismaConnectionAttempt()) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
             select: { roleLegacy: true, image: true, specialty: true, primaryColor: true },
           });
+          clearPrismaConnectionBackoff();
           
           // Solo actualizar si la consulta fue exitosa Y hay un valor válido
           if (dbUser?.roleLegacy) {
@@ -207,7 +213,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.primaryColor = dbUser.primaryColor;
           }
         } catch (error) {
-          console.error("Error al obtener rol del usuario:", error);
+          if (!registerPrismaConnectionIssue(error)) {
+            console.error("Error al obtener rol del usuario:", error);
+          }
           // ⚠️ En caso de error de BD, MANTENER el rol actual del token
           // NO hacer downgrade a EDITOR - el usuario conserva sus permisos
           console.warn("⚠️ Manteniendo rol actual del token debido a error de BD");

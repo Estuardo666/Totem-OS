@@ -68,6 +68,11 @@ export function NotificationBell({ align = "start", side = "right" }: Notificati
   useEffect(() => {
     if (!userId) return;
 
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setIsLoading(false);
+      return;
+    }
+
     const loadNotifications = async () => {
       try {
         const [notificationsResult, countResult, userResult] = await Promise.all([
@@ -99,7 +104,7 @@ export function NotificationBell({ align = "start", side = "right" }: Notificati
 
   // Configurar Pusher para notificaciones en tiempo real
   useEffect(() => {
-    if (!userId || typeof window === "undefined") return;
+    if (!userId || typeof window === "undefined" || !navigator.onLine) return;
 
     // Limpiar suscripción anterior si existe
     if (pusherRef.current) {

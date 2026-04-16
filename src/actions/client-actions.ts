@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import {
+  clientBillingExceptionSchema,
   createClientSchema,
   createCredentialSchema,
   credentialGroupSchema,
@@ -15,6 +16,44 @@ import type { Prisma, Client, Credential, ContentTask, BrandAsset, TaskMetrics }
 
 function getPeriodKey(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+type ClientBillingExceptionRecord = {
+  id: string;
+  clientId: string;
+  month: number;
+  year: number;
+  type: "SKIP" | "OVERRIDE_AMOUNT" | "MARK_AS_PAID";
+  overrideAmount: number | null;
+  reason: string;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+async function listClientBillingExceptions(
+  clientId: string
+): Promise<ClientBillingExceptionRecord[]> {
+  try {
+    return await db.$queryRaw<Array<ClientBillingExceptionRecord>>`
+      SELECT
+        "id",
+        "clientId",
+        "month",
+        "year",
+        "type",
+        "overrideAmount",
+        "reason",
+        "notes",
+        "createdAt",
+        "updatedAt"
+      FROM "ClientBillingException"
+      WHERE "clientId" = ${clientId}
+      ORDER BY "year" DESC, "month" DESC, "updatedAt" DESC
+    `;
+  } catch {
+    return [];
+  }
 }
 
 async function freezePaidRecurringPeriodsBeforeRateChange(
@@ -135,6 +174,174 @@ async function freezePaidRecurringPeriodsBeforeRateChange(
       )
       ON CONFLICT ("clientId", month, year) DO NOTHING
     `;
+  }
+}
+
+export async function getClientBillingExceptions(
+  clientId: string
+): Promise<ApiResponse<ClientBillingExceptionRecord[]>> {
+  try {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const client = await db.client.findUnique({
+      where: { id: clientId },
+      select: { id: true },
+    });
+
+    if (!client) {
+      return { success: false, error: "Cliente no encontrado" };
+    }
+
+    return {
+      success: true,
+      data: await listClientBillingExceptions(clientId),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Error al obtener excepciones mensuales",
+    };
+  }
+}
+
+export async function upsertClientBillingException(
+  input: unknown
+): Promise<ApiResponse<{ id: string }>> {
+  try {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const validatedData = clientBillingExceptionSchema.parse(input);
+    const [yearStr, monthStr] = validatedData.period.split("-");
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+
+    const client = await db.client.findUnique({
+      where: { id: validatedData.clientId },
+      select: { id: true },
+    });
+
+    if (!client) {
+      return { success: false, error: "Cliente no encontrado" };
+    }
+
+    const overrideAmount =
+      validatedData.type === "OVERRIDE_AMOUNT"
+        ? validatedData.overrideAmount ?? null
+        : null;
+    const reason = validatedData.reason.trim();
+    const notes = validatedData.notes?.trim() ? validatedData.notes.trim() : null;
+
+    const rows = await db.$queryRaw<Array<{ id: string }>>`
+      INSERT INTO "ClientBillingException" (
+        "id",
+        "clientId",
+        "month",
+        "year",
+        "type",
+        "overrideAmount",
+        "reason",
+        "notes",
+        "createdAt",
+        "updatedAt"
+      )
+      VALUES (
+        ${randomUUID()},
+        ${validatedData.clientId},
+        ${month},
+        ${year},
+        ${validatedData.type},
+        ${overrideAmount},
+        ${reason},
+        ${notes},
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT ("clientId", "year", "month")
+      DO UPDATE SET
+        "type" = EXCLUDED."type",
+        "overrideAmount" = EXCLUDED."overrideAmount",
+        "reason" = EXCLUDED."reason",
+        "notes" = EXCLUDED."notes",
+        "updatedAt" = NOW()
+      RETURNING "id"
+    `;
+
+    revalidatePath(`/clients/${validatedData.clientId}`);
+    revalidatePath("/finance");
+    revalidatePath("/finance/receivables");
+    revalidatePath("/finance/monthly-summary");
+    revalidatePath("/finance/monthly-close");
+
+    return {
+      success: true,
+      data: {
+        id:
+          rows[0]?.id ??
+          `${validatedData.clientId}-${year}-${String(month).padStart(2, "0")}`,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Error al guardar la excepción mensual",
+    };
+  }
+}
+
+export async function deleteClientBillingException(
+  exceptionId: string
+): Promise<ApiResponse<void>> {
+  try {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const rows = await db.$queryRaw<Array<{ clientId: string }>>`
+      DELETE FROM "ClientBillingException"
+      WHERE "id" = ${exceptionId}
+      RETURNING "clientId"
+    `;
+
+    const clientId = rows[0]?.clientId;
+
+    if (!clientId) {
+      return { success: false, error: "Excepción no encontrada" };
+    }
+
+    revalidatePath(`/clients/${clientId}`);
+    revalidatePath("/finance");
+    revalidatePath("/finance/receivables");
+    revalidatePath("/finance/monthly-summary");
+    revalidatePath("/finance/monthly-close");
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Error al eliminar la excepción mensual",
+    };
   }
 }
 

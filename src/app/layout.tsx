@@ -16,6 +16,7 @@ import { PwaServiceWorker } from "@/components/providers/pwa-service-worker";
 import { OneSignalProvider } from "@/components/providers/onesignal-provider";
 import { SplashProvider } from "@/components/providers/splash-provider";
 import { AppBadgeProvider } from "@/components/providers/app-badge-provider";
+import { OfflineFinanceSyncProvider } from "@/components/providers/offline-finance-sync-provider";
 import { RemoteLogoutProvider } from "@/components/providers/remote-logout-provider";
 import { getBrandSettings } from "@/actions/admin-actions";
 import { unstable_cache } from "next/cache";
@@ -164,6 +165,7 @@ export default async function RootLayout({
         <PwaServiceWorker />
         <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
         <NextAuthSessionProvider>
+          <OfflineFinanceSyncProvider />
           <RemoteLogoutProvider>
             <OneSignalProvider>
               <SplashProvider>

@@ -12,8 +12,10 @@ import { Label } from "@/components/ui/label";
 import { OptimizedAvatar } from "@/components/ui/optimized-avatar";
 import type { User } from "@prisma/client";
 
+type UserListRowUser = Pick<User, "id" | "name" | "image">;
+
 interface UserRowProps {
-  user: User;
+  user: UserListRowUser;
   isSelected: boolean;
   isDisabled: boolean;
   onCheckedChange: (checked: boolean | string) => void;
@@ -94,7 +96,7 @@ export const UserRow = React.memo(
 UserRow.displayName = "UserRow";
 
 interface UserListProps {
-  users: User[];
+  users: UserListRowUser[];
   selectedIds: string[];
   isLoading: boolean;
   onChange: (userId: string) => void;

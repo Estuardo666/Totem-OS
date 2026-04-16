@@ -4,7 +4,11 @@ import { useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { upsertClientBillingException } from "@/actions/client-actions";
+import { Trash2 } from "lucide-react";
+import {
+  deleteClientBillingException,
+  upsertClientBillingException,
+} from "@/actions/client-actions";
 import { clientBillingExceptionSchema } from "@/schemas/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +31,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type BillingExceptionFormInput = {
   clientId: string;
@@ -42,7 +57,7 @@ type BillingExceptionItem = {
   clientId: string;
   month: number;
   year: number;
-  type: string;
+  type: "SKIP" | "OVERRIDE_AMOUNT" | "MARK_AS_PAID";
   overrideAmount: number | null;
   reason: string;
   notes: string | null;
@@ -71,14 +86,38 @@ function formatPeriod(month: number, year: number): string {
 
 function getTypeLabel(type: string): string {
   if (type === "SKIP") {
-    return "No cobrar";
+    return "Exonerado";
   }
 
   if (type === "OVERRIDE_AMOUNT") {
     return "Monto especial";
   }
 
-  return "Mes cubierto";
+  return "Cubierto por pago previo";
+}
+
+function getTypeDescription(type: BillingExceptionItem["type"]): string {
+  if (type === "SKIP") {
+    return "Este período no se cobrará. El fee base del cliente se mantiene para los demás meses.";
+  }
+
+  if (type === "OVERRIDE_AMOUNT") {
+    return "Este período se cobrará con un valor distinto al fee mensual configurado.";
+  }
+
+  return "Este período se considera cubierto por un pago realizado previamente, así que no volverá a cobrarse.";
+}
+
+function getTypeBadgeClass(type: BillingExceptionItem["type"]): string {
+  if (type === "SKIP") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+
+  if (type === "OVERRIDE_AMOUNT") {
+    return "border-sky-200 bg-sky-50 text-sky-700";
+  }
+
+  return "border-emerald-200 bg-emerald-50 text-emerald-700";
 }
 
 export function MonthlyBillingExceptionCard({
@@ -88,7 +127,9 @@ export function MonthlyBillingExceptionCard({
 }: MonthlyBillingExceptionCardProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const [isSaving, startSaveTransition] = useTransition();
+  const [isDeleting, startDeleteTransition] = useTransition();
+  const isBusy = isSaving || isDeleting;
 
   const sortedExceptions = useMemo(() => {
     return [...exceptions].sort((a, b) => {
@@ -115,7 +156,7 @@ export function MonthlyBillingExceptionCard({
   const selectedType = form.watch("type");
 
   const onSubmit = (data: BillingExceptionFormInput) => {
-    startTransition(async () => {
+    startSaveTransition(async () => {
       const result = await upsertClientBillingException(data);
 
       if (!result.success) {
@@ -144,12 +185,34 @@ export function MonthlyBillingExceptionCard({
     });
   };
 
+  const handleDelete = (exceptionId: string) => {
+    startDeleteTransition(async () => {
+      const result = await deleteClientBillingException(exceptionId);
+
+      if (!result.success) {
+        toast({
+          variant: "destructive",
+          title: "Error al eliminar excepción",
+          description: result.error || "No se pudo eliminar la excepción mensual",
+        });
+        return;
+      }
+
+      toast({
+        title: "Excepción eliminada",
+        description: "La excepción mensual se eliminó correctamente.",
+      });
+
+      router.refresh();
+    });
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Excepción mensual de facturación</CardTitle>
-        <CardDescription>
-          Úsala para no cobrar un mes, marcarlo como cubierto o asignar un monto especial sin alterar el fee base del cliente.
+        <CardTitle>Exonerar o ajustar fee mensual</CardTitle>
+        <CardDescription className="text-xs leading-relaxed">
+          Úsala para exonerar el fee de un mes, marcarlo como cubierto por un pago previo o asignar un monto especial sin alterar el fee base del cliente.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -163,7 +226,7 @@ export function MonthlyBillingExceptionCard({
                   <FormItem>
                     <FormLabel>Período</FormLabel>
                     <FormControl>
-                      <Input type="month" {...field} disabled={isPending} />
+                      <Input type="month" {...field} disabled={isBusy} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -176,7 +239,7 @@ export function MonthlyBillingExceptionCard({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo de excepción</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isPending}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isBusy}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecciona un tipo" />
@@ -185,15 +248,15 @@ export function MonthlyBillingExceptionCard({
                       <SelectContent>
                         <SelectItem value="MARK_AS_PAID">
                           <div className="flex flex-col items-start">
-                            <span>Mes cubierto</span>
+                            <span>Mes cubierto por pago previo</span>
                             <span className="text-xs text-muted-foreground">
-                              Úsalo cuando el mes ya fue pagado o debe considerarse cubierto.
+                              Ejemplo: si febrero se pagó pero el trabajo se ejecuta en marzo, marca marzo como cubierto para no volver a cobrarlo.
                             </span>
                           </div>
                         </SelectItem>
                         <SelectItem value="SKIP">
                           <div className="flex flex-col items-start">
-                            <span>No cobrar</span>
+                            <span>Exonerar cobro</span>
                             <span className="text-xs text-muted-foreground">
                               Omite completamente el cobro de ese mes sin afectar el fee base.
                             </span>
@@ -229,7 +292,7 @@ export function MonthlyBillingExceptionCard({
                         step="0.01"
                         value={typeof field.value === "number" || typeof field.value === "string" ? field.value : ""}
                         onChange={(event) => field.onChange(event.target.value)}
-                        disabled={isPending}
+                        disabled={isBusy}
                       />
                     </FormControl>
                     <FormMessage />
@@ -245,7 +308,7 @@ export function MonthlyBillingExceptionCard({
                 <FormItem>
                   <FormLabel>Motivo</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: Pago anticipado aplicado a marzo" {...field} disabled={isPending} />
+                    <Input placeholder="Ej: Pago de febrero cubre el trabajo de marzo" {...field} disabled={isBusy} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -263,7 +326,7 @@ export function MonthlyBillingExceptionCard({
                       placeholder="Detalles opcionales para auditoría interna"
                       value={field.value ?? ""}
                       onChange={field.onChange}
-                      disabled={isPending}
+                      disabled={isBusy}
                     />
                   </FormControl>
                   <FormMessage />
@@ -271,8 +334,8 @@ export function MonthlyBillingExceptionCard({
               )}
             />
 
-            <Button type="submit" disabled={isPending}>
-              {isPending ? "Guardando..." : "Guardar excepción"}
+            <Button type="submit" disabled={isBusy}>
+              {isSaving ? "Guardando..." : "Guardar excepción"}
             </Button>
           </form>
         </Form>
@@ -288,18 +351,56 @@ export function MonthlyBillingExceptionCard({
               {sortedExceptions.map((exception) => (
                 <div key={exception.id} className="rounded-lg border p-4 space-y-2">
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline">{formatPeriod(exception.month, exception.year)}</Badge>
-                      <Badge>{getTypeLabel(exception.type)}</Badge>
+                      <Badge variant="outline" className={getTypeBadgeClass(exception.type)}>
+                        {getTypeLabel(exception.type)}
+                      </Badge>
                       {exception.type === "OVERRIDE_AMOUNT" && exception.overrideAmount !== null && (
                         <Badge variant="secondary">${exception.overrideAmount.toFixed(2)}</Badge>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      Creada: {new Date(exception.createdAt).toLocaleDateString("es-ES")}
-                    </span>
+                    <div className="flex items-center gap-2 self-start md:self-center">
+                      <span className="text-xs text-muted-foreground">
+                        Creada: {new Date(exception.createdAt).toLocaleDateString("es-ES")}
+                      </span>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            disabled={isBusy}
+                            title="Eliminar excepción"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Eliminar excepción</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar excepción mensual?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Se eliminará la excepción de {formatPeriod(exception.month, exception.year)} y el sistema volverá a calcular ese período según el fee base y los pagos registrados.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(exception.id)}
+                              disabled={isDeleting}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              {isDeleting ? "Eliminando..." : "Eliminar"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                   <p className="text-sm font-medium">{exception.reason}</p>
+                  <p className="text-xs text-muted-foreground">{getTypeDescription(exception.type)}</p>
                   {exception.notes ? (
                     <p className="text-sm text-muted-foreground">{exception.notes}</p>
                   ) : null}

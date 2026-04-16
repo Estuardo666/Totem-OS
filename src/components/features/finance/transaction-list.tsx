@@ -18,6 +18,10 @@ import {
   bulkDeleteExpenses,
   bulkUpdateTransactionStatus,
 } from "@/actions/finance-actions";
+import {
+  buildFinanceOfflineQueueId,
+  enqueueFinanceAction,
+} from "@/lib/finance-offline-store";
 import type { Transaction, Invoice } from "@prisma/client";
 import { EditTransactionDialog } from "./edit-transaction-dialog";
 import { EditInvoiceDialog } from "./edit-invoice-dialog";
@@ -251,6 +255,56 @@ export function TransactionList({ transactions }: TransactionListProps) {
   const handleMarkAsPaid = async (transactionId: string, sourceType?: string) => {
     setProcessingId(transactionId);
     try {
+      const queuedTransaction = transactions.find((transaction) => transaction.id === transactionId);
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        if (sourceType === "INVOICE") {
+          enqueueFinanceAction({
+            id: buildFinanceOfflineQueueId("transaction"),
+            kind: "MARK_INVOICE_PAID",
+            createdAt: new Date().toISOString(),
+            payload: {
+              invoiceId: transactionId,
+              amount: queuedTransaction?.amount,
+            },
+          });
+        } else if (sourceType === "TRANSACTION") {
+          enqueueFinanceAction({
+            id: buildFinanceOfflineQueueId("transaction"),
+            kind: "MARK_TRANSACTION_PAID",
+            createdAt: new Date().toISOString(),
+            payload: {
+              transactionId,
+              amount: queuedTransaction?.amount,
+            },
+          });
+        } else if (sourceType === "EXPENSE") {
+          enqueueFinanceAction({
+            id: buildFinanceOfflineQueueId("transaction"),
+            kind: "MARK_EXPENSE_REIMBURSED",
+            createdAt: new Date().toISOString(),
+            payload: {
+              expenseId: transactionId,
+              amount: queuedTransaction?.amount,
+            },
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Este tipo de transacción no puede marcarse como pagada",
+          });
+          setProcessingId(null);
+          return;
+        }
+
+        toast({
+          title: sourceType === "EXPENSE" ? "Gasto guardado offline" : "Pago guardado offline",
+          description: "Se sincronizará automáticamente cuando vuelva la conexión.",
+        });
+        return;
+      }
+
       let result;
       // Usar la función correcta según el tipo de transacción
       if (sourceType === "INVOICE") {

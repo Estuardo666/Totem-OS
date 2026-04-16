@@ -88,7 +88,7 @@ export function FinanceSectionNav({ userRole, className }: FinanceSectionNavProp
         );
       })}
 
-      <TransactionDialog>
+      <TransactionDialog isAdminOverride={isAdmin}>
         <Button variant="outline" className="rounded-full px-4 shadow-sm">
           <Plus className="mr-2 h-4 w-4" />
           Nueva Transacción
