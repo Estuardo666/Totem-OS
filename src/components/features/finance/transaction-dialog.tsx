@@ -141,6 +141,16 @@ const parseDateFromInput = (value?: string) => {
   return new Date(y, m - 1, d);
 };
 
+const normalizeDecimalInputValue = (value: string) =>
+  value.replace(/,/g, ".").replace(/[^\d.]/g, "").replace(/\.(?=.*\.)/g, "");
+
+const parseDecimalInputValue = (value: string) => {
+  const normalizedValue = normalizeDecimalInputValue(value);
+  const parsedValue = parseFloat(normalizedValue);
+
+  return Number.isFinite(parsedValue) ? parsedValue : 0;
+};
+
 function getPreferredUsers(users: OfflineUserOption[]) {
   return users
     .filter(
@@ -671,20 +681,21 @@ export function TransactionDialog({
                         <FormLabel>Monto ($)</FormLabel>
                         <FormControl>
                           <Input
-                            type="number"
-                            step="0.01"
-                            min="0.01"
+                            type="text"
                             placeholder="0.00"
                             className="text-2xl font-bold"
                             inputMode="decimal"
+                            pattern="[0-9]*[.,]?[0-9]*"
                             value={incomeAmountInput}
-                            onChange={(e) => setIncomeAmountInput(e.target.value)}
+                            onChange={(e) => setIncomeAmountInput(normalizeDecimalInputValue(e.target.value))}
                             onBlur={(e) => {
                               field.onBlur();
                               if (e.target.value === "") {
                                 field.onChange(undefined);
                               } else {
-                                field.onChange(parseFloat(e.target.value) || 0);
+                                const normalizedValue = normalizeDecimalInputValue(e.target.value);
+                                setIncomeAmountInput(normalizedValue);
+                                field.onChange(parseDecimalInputValue(normalizedValue));
                               }
                             }}
                             onFocus={() => {
@@ -868,20 +879,21 @@ export function TransactionDialog({
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground dark:text-gray-400">$</span>
                             <Input
-                              type="number"
-                              step="0.01"
-                              min="0.01"
+                              type="text"
                               placeholder="0.00"
                               className="pl-8 text-2xl font-bold"
                               inputMode="decimal"
+                              pattern="[0-9]*[.,]?[0-9]*"
                               value={expenseAmountInput}
-                              onChange={(e) => setExpenseAmountInput(e.target.value)}
+                              onChange={(e) => setExpenseAmountInput(normalizeDecimalInputValue(e.target.value))}
                               onBlur={(e) => {
                                 field.onBlur();
                                 if (e.target.value === "") {
                                   field.onChange(undefined);
                                 } else {
-                                  field.onChange(parseFloat(e.target.value) || 0);
+                                  const normalizedValue = normalizeDecimalInputValue(e.target.value);
+                                  setExpenseAmountInput(normalizedValue);
+                                  field.onChange(parseDecimalInputValue(normalizedValue));
                                 }
                               }}
                               onFocus={() => {
@@ -1168,20 +1180,21 @@ export function TransactionDialog({
                         <FormLabel>Monto ($)</FormLabel>
                         <FormControl>
                           <Input
-                            type="number"
-                            step="0.01"
-                            min="0.01"
+                            type="text"
                             placeholder="0.00"
                             inputMode="decimal"
+                            pattern="[0-9]*[.,]?[0-9]*"
                             className="text-2xl font-bold"
                             value={honorariosAmountInput}
-                            onChange={(e) => setHonorariosAmountInput(e.target.value)}
+                            onChange={(e) => setHonorariosAmountInput(normalizeDecimalInputValue(e.target.value))}
                             onBlur={(e) => {
                               field.onBlur();
                               if (e.target.value === "") {
                                 field.onChange(undefined);
                               } else {
-                                field.onChange(parseFloat(e.target.value) || 0);
+                                const normalizedValue = normalizeDecimalInputValue(e.target.value);
+                                setHonorariosAmountInput(normalizedValue);
+                                field.onChange(parseDecimalInputValue(normalizedValue));
                               }
                             }}
                             onFocus={() => {
