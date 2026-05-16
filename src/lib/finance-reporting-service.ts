@@ -29,9 +29,11 @@ export interface FinancialStats {
   totalIncome: number;
   totalExpenses: number;
   netProfit: number;
+  cashBalance: number;
   incomeDeltaPct?: number;
   expensesDeltaPct?: number;
   netProfitDeltaPct?: number;
+  cashBalanceDeltaPct?: number;
   marginDeltaPct?: number;
   pendingReimbursementsDeltaPct?: number;
   honorariosDeltaPct?: number;
@@ -290,6 +292,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         })
       : [];
 
+
     // Obtener transacciones EXPENSE pagadas
     const paidExpenseTransactionsThisMonth = await db.transaction.findMany({
       where: {
@@ -329,6 +332,27 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
       },
     });
 
+    // Todas las transacciones EXPENSE del mes (PAID + PENDING) — para Saldo en Caja
+    const allExpenseTransactionsThisMonth = isAdmin
+      ? await db.transaction.findMany({
+          where: {
+            type: "EXPENSE",
+            createdAt: { gte: monthStart, lte: monthEnd },
+          },
+          select: { amount: true },
+        })
+      : [];
+
+    const allExpenseTransactionsPrevMonth = isAdmin
+      ? await db.transaction.findMany({
+          where: {
+            type: "EXPENSE",
+            createdAt: { gte: prevMonthStart, lte: prevMonthEnd },
+          },
+          select: { amount: true },
+        })
+      : [];
+
     // Calcular gastos totales
     const totalExpenses = sumCurrency([
       paidExpensesThisMonth.reduce((sum, expense) => sum + expense.amount, 0),
@@ -358,6 +382,24 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
     const prevMargin = prevTotalIncome > 0 ? (prevNetProfit / prevTotalIncome) * 100 : 0;
     const marginDeltaPct = calculateDeltaPct(currentMargin, prevMargin);
 
+    const cashBalance = isAdmin
+      ? roundCurrency(
+          totalIncome -
+            sumCurrency(paidExpensesThisMonth.map((e) => e.amount)) -
+            sumCurrency(allExpenseTransactionsThisMonth.map((t) => t.amount)) -
+            sumCurrency(paidHonorariosThisMonth.map((t) => t.amount))
+        )
+      : netProfit;
+    const prevCashBalance = isAdmin
+      ? roundCurrency(
+          prevTotalIncome -
+            sumCurrency(paidExpensesPrevMonth.map((e) => e.amount)) -
+            sumCurrency(allExpenseTransactionsPrevMonth.map((t) => t.amount)) -
+            sumCurrency(paidHonorariosPrevMonth.map((t) => t.amount))
+        )
+      : prevNetProfit;
+    const cashBalanceDeltaPct = calculateDeltaPct(cashBalance, prevCashBalance);
+
     // Calcular honorarios totales pagados (para ADMIN)
     let totalHonorariosPaid: number | undefined;
     let totalHonorariosPaidDeltaPct: number | undefined;
@@ -386,7 +428,15 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         where: {
           type: "EXPENSE",
           status: "PENDING",
-          assignedToId: userId,
+          ...(isAdmin ? {} : { assignedToId: userId }),
+          ...(isAdmin
+            ? {
+                createdAt: {
+                  gte: monthStart,
+                  lte: monthEnd,
+                },
+              }
+            : {}),
         },
       });
 
@@ -394,29 +444,47 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         where: {
           type: "EXPENSE",
           status: "PENDING",
-          assignedToId: userId,
-          createdAt: {
-            gte: prevWeekStart,
-            lte: prevWeekEnd,
-          },
+          ...(isAdmin ? {} : { assignedToId: userId }),
+          createdAt: isAdmin
+            ? {
+                gte: monthStart,
+                lte: prevWeekEnd,
+              }
+            : {
+                gte: prevWeekStart,
+                lte: prevWeekEnd,
+              },
         },
       });
 
       const pendingExpenses = await db.expense.findMany({
         where: {
           reimbursed: false,
-          paidByUserId: userId,
+          ...(isAdmin ? { paidByUserId: { not: null } } : { paidByUserId: userId }),
+          ...(isAdmin
+            ? {
+                date: {
+                  gte: monthStart,
+                  lte: monthEnd,
+                },
+              }
+            : {}),
         },
       });
 
       const pendingExpensesPrevWeek = await db.expense.findMany({
         where: {
           reimbursed: false,
-          paidByUserId: userId,
-          date: {
-            gte: prevWeekStart,
-            lte: prevWeekEnd,
-          },
+          ...(isAdmin ? { paidByUserId: { not: null } } : { paidByUserId: userId }),
+          date: isAdmin
+            ? {
+                gte: monthStart,
+                lte: prevWeekEnd,
+              }
+            : {
+                gte: prevWeekStart,
+                lte: prevWeekEnd,
+              },
         },
       });
 
@@ -678,9 +746,11 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         totalIncome,
         totalExpenses,
         netProfit,
+        cashBalance,
         incomeDeltaPct,
         expensesDeltaPct,
         netProfitDeltaPct,
+        cashBalanceDeltaPct,
         marginDeltaPct,
         recentTransactions: transactions,
         ...(isAdmin && {

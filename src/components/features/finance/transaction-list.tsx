@@ -1042,6 +1042,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                           if ((isInvoice || isTransaction || isExpense || isHonorario) && isPending) {
                             return (
                               <>
+                                {(!isExpense || transaction.assignedToId) && (
                                 <Button
                                   variant="default"
                                   size="sm"
@@ -1058,6 +1059,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                     </>
                                   )}
                                 </Button>
+                                )}
                                 {/* Botón Editar para transacciones, facturas, gastos y honorarios pendientes */}
                                 <Button
                                   variant="outline"

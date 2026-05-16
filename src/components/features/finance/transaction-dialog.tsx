@@ -237,10 +237,6 @@ export function TransactionDialog({
       const cachedUsers = getCachedFinanceUsers();
       if (cachedUsers.length > 0) {
         setUsers(cachedUsers);
-        const preferredUsers = getPreferredUsers(cachedUsers);
-        if (preferredUsers.length > 0) {
-          expenseForm.setValue("paidByUserIds", preferredUsers);
-        }
       }
 
       const incomeAmt = incomeForm.getValues("amount");
@@ -280,12 +276,6 @@ export function TransactionDialog({
             }));
             setUsers(nextUsers);
             cacheFinanceUsers(nextUsers);
-
-            const patyAndStuart = getPreferredUsers(nextUsers);
-            
-            if (patyAndStuart.length > 0) {
-              expenseForm.setValue("paidByUserIds", patyAndStuart);
-            }
           }
         })
         .finally(() => {

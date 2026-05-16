@@ -228,16 +228,22 @@ export function ExpensesTable({ expenses, onUpdate }: ExpensesTableProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={isReimbursed ? "default" : "secondary"}
-                      className={
-                        isReimbursed
-                          ? "bg-green-500 hover:bg-green-600 text-white"
-                          : "bg-yellow-500 hover:bg-yellow-600 text-white"
-                      }
-                    >
-                      {getStatusLabel(expense.status, expense.reimbursed)}
-                    </Badge>
+                    {expense.assignedToId ? (
+                      <Badge
+                        variant={isReimbursed ? "default" : "secondary"}
+                        className={
+                          isReimbursed
+                            ? "bg-green-500 hover:bg-green-600 text-white"
+                            : "bg-yellow-500 hover:bg-yellow-600 text-white"
+                        }
+                      >
+                        {getStatusLabel(expense.status, expense.reimbursed)}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        Empresa
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right font-semibold text-red-600">
                     -{formatCurrency(expense.amount)}
