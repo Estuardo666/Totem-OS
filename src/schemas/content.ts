@@ -1,5 +1,20 @@
 import { z } from "zod";
 
+const CONTENT_TASK_STATUS_VALUES = [
+  "IDEA",
+  "SCRIPT",
+  "RECORDED",
+  "EDITING",
+  "REVIEW_INTERNAL",
+  "REVIEW_CLIENT",
+  "CLIENT_APPROVED",
+  "APPROVED",
+  "PAUSED",
+  "CANCELLED",
+  "REJECTED",
+  "PUBLISHED",
+] as const;
+
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function parseDateInput(value: string) {
@@ -15,17 +30,7 @@ export const contentTaskSchema = z.object({
   id: z.string().cuid().optional(),
   title: z.string().min(1, "El título es requerido"),
   type: z.enum(["REEL", "FLYER", "STORY"]),
-  status: z.enum([
-    "IDEA",
-    "SCRIPT",
-    "RECORDED",
-    "EDITING",
-    "REVIEW_INTERNAL",
-    "REVIEW_CLIENT",
-    "CLIENT_APPROVED",
-    "APPROVED",
-    "PUBLISHED",
-  ]),
+  status: z.enum(CONTENT_TASK_STATUS_VALUES),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
   dueDate: z.union([z.date(), z.string()]).optional().transform((val) => {
     if (!val) return undefined;
@@ -51,19 +56,7 @@ export const contentTaskSchema = z.object({
 export const createContentTaskSchema = contentTaskSchema
   .omit({ id: true })
   .extend({
-    status: z
-      .enum([
-        "IDEA",
-        "SCRIPT",
-        "RECORDED",
-        "EDITING",
-        "REVIEW_INTERNAL",
-        "REVIEW_CLIENT",
-        "CLIENT_APPROVED",
-        "APPROVED",
-        "PUBLISHED",
-      ])
-      .default("IDEA"),
+    status: z.enum(CONTENT_TASK_STATUS_VALUES).default("IDEA"),
     priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
   });
 export const updateContentTaskSchema = contentTaskSchema.partial();
@@ -93,17 +86,7 @@ export const bulkUpdateTasksSchema = z.object({
   taskIds: z
     .array(z.string().cuid())
     .min(1, "Debes seleccionar al menos una tarea"),
-  status: z.enum([
-    "IDEA",
-    "SCRIPT",
-    "RECORDED",
-    "EDITING",
-    "REVIEW_INTERNAL",
-    "REVIEW_CLIENT",
-    "CLIENT_APPROVED",
-    "APPROVED",
-    "PUBLISHED",
-  ]),
+  status: z.enum(CONTENT_TASK_STATUS_VALUES),
   assignedEditorId: z.string().cuid().optional().nullable(),
   assignedCommunityId: z.string().cuid().optional().nullable(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),

@@ -106,6 +106,9 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
             gte: currentMonthStart,
             lte: currentMonthEnd,
           },
+          status: {
+            notIn: ["PAUSED", "CANCELLED", "REJECTED"],
+          },
         },
         select: {
           id: true,
@@ -156,7 +159,7 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
             // Tareas urgentes/atrasadas
             {
               status: {
-                notIn: ["PUBLISHED", "CLIENT_APPROVED"],
+                notIn: ["PUBLISHED", "CLIENT_APPROVED", "PAUSED", "CANCELLED", "REJECTED"],
               },
               scheduledAt: {
                 lte: twoDaysFromNow,
@@ -287,7 +290,9 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
 
     // Procesar Semáforo
     const semaphore = clientsData.map((client) => {
-      const clientTasks = tasksData.filter((task) => task.clientId === client.id);
+      const clientTasks = tasksData.filter(
+        (task) => task.clientId === client.id && !["PAUSED", "CANCELLED", "REJECTED"].includes(task.status)
+      );
       const totalTasks = clientTasks.length;
       const completedTasks = clientTasks.filter(
         (task) => task.status === "PUBLISHED" || task.status === "APPROVED"

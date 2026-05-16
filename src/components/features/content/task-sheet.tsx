@@ -669,6 +669,9 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                           <SelectItem value="REVIEW_CLIENT" className="rounded-lg">📋 Revisión Cliente</SelectItem>
                           <SelectItem value="CLIENT_APPROVED" className="rounded-lg">✅ Aprobado Cliente</SelectItem>
                           <SelectItem value="APPROVED" className="rounded-lg">✅ Aprobado</SelectItem>
+                          <SelectItem value="PAUSED" className="rounded-lg">⏸️ En pausa</SelectItem>
+                          <SelectItem value="CANCELLED" className="rounded-lg">🛑 Cancelado</SelectItem>
+                          <SelectItem value="REJECTED" className="rounded-lg">↩️ Rechazado</SelectItem>
                           <SelectItem value="PUBLISHED" className="rounded-lg">🚀 Publicado</SelectItem>
                         </SelectContent>
                       </Select>

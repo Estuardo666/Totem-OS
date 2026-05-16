@@ -4,6 +4,14 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
 
+function roundCurrency(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function sumCurrency(values: number[]): number {
+  return roundCurrency(values.reduce((sum, value) => sum + value, 0));
+}
+
 /**
  * Interfaz para datos del mapa de calor operativo
  */
@@ -224,13 +232,15 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
     });
 
     // Calcular ingresos totales
-    const totalIncome =
-      paidInvoicesThisMonth.reduce((sum, invoice) => sum + invoice.amount, 0) +
-      paidTransactionsThisMonth.reduce((sum, transaction) => sum + transaction.amount, 0);
+    const totalIncome = sumCurrency([
+      paidInvoicesThisMonth.reduce((sum, invoice) => sum + invoice.amount, 0),
+      paidTransactionsThisMonth.reduce((sum, transaction) => sum + transaction.amount, 0),
+    ]);
 
-    const prevTotalIncome =
-      paidInvoicesPrevMonth.reduce((sum, invoice) => sum + invoice.amount, 0) +
-      paidTransactionsPrevMonth.reduce((sum, transaction) => sum + transaction.amount, 0);
+    const prevTotalIncome = sumCurrency([
+      paidInvoicesPrevMonth.reduce((sum, invoice) => sum + invoice.amount, 0),
+      paidTransactionsPrevMonth.reduce((sum, transaction) => sum + transaction.amount, 0),
+    ]);
 
     // Obtener gastos
     const paidExpensesThisMonth = await db.expense.findMany({
@@ -320,19 +330,21 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
     });
 
     // Calcular gastos totales
-    const totalExpenses =
-      paidExpensesThisMonth.reduce((sum, expense) => sum + expense.amount, 0) +
-      paidExpenseTransactionsThisMonth.reduce((sum, transaction) => sum + transaction.amount, 0) +
-      paidHonorariosThisMonth.reduce((sum, transaction) => sum + transaction.amount, 0);
+    const totalExpenses = sumCurrency([
+      paidExpensesThisMonth.reduce((sum, expense) => sum + expense.amount, 0),
+      paidExpenseTransactionsThisMonth.reduce((sum, transaction) => sum + transaction.amount, 0),
+      paidHonorariosThisMonth.reduce((sum, transaction) => sum + transaction.amount, 0),
+    ]);
 
-    const prevTotalExpenses =
-      paidExpensesPrevMonth.reduce((sum, expense) => sum + expense.amount, 0) +
-      paidExpenseTransactionsPrevMonth.reduce((sum, transaction) => sum + transaction.amount, 0) +
-      paidHonorariosPrevMonth.reduce((sum, transaction) => sum + transaction.amount, 0);
+    const prevTotalExpenses = sumCurrency([
+      paidExpensesPrevMonth.reduce((sum, expense) => sum + expense.amount, 0),
+      paidExpenseTransactionsPrevMonth.reduce((sum, transaction) => sum + transaction.amount, 0),
+      paidHonorariosPrevMonth.reduce((sum, transaction) => sum + transaction.amount, 0),
+    ]);
 
     // Calcular ganancias netas
-    const netProfit = totalIncome - totalExpenses;
-    const prevNetProfit = prevTotalIncome - prevTotalExpenses;
+    const netProfit = roundCurrency(totalIncome - totalExpenses);
+    const prevNetProfit = roundCurrency(prevTotalIncome - prevTotalExpenses);
 
     const calculateDeltaPct = (current: number, previous: number) => {
       if (previous === 0) return current === 0 ? 0 : 100;
@@ -351,8 +363,8 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
     let totalHonorariosPaidDeltaPct: number | undefined;
 
     if (isAdmin) {
-      totalHonorariosPaid = paidHonorariosThisMonth.reduce((sum, t) => sum + t.amount, 0);
-      const prevTotalHonorariosPaid = paidHonorariosPrevMonth.reduce((sum, t) => sum + t.amount, 0);
+      totalHonorariosPaid = sumCurrency(paidHonorariosThisMonth.map((t) => t.amount));
+      const prevTotalHonorariosPaid = sumCurrency(paidHonorariosPrevMonth.map((t) => t.amount));
       totalHonorariosPaidDeltaPct = calculateDeltaPct(totalHonorariosPaid, prevTotalHonorariosPaid);
     }
 
@@ -408,13 +420,15 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         },
       });
 
-      pendingReimbursements =
-        pendingExpenseTransactions.reduce((sum, t) => sum + t.amount, 0) +
-        pendingExpenses.reduce((sum, e) => sum + e.amount, 0);
+      pendingReimbursements = sumCurrency([
+        pendingExpenseTransactions.reduce((sum, t) => sum + t.amount, 0),
+        pendingExpenses.reduce((sum, e) => sum + e.amount, 0),
+      ]);
 
-      const pendingReimbursementsPrevWeek =
-        pendingExpenseTransactionsPrevWeek.reduce((sum, t) => sum + t.amount, 0) +
-        pendingExpensesPrevWeek.reduce((sum, e) => sum + e.amount, 0);
+      const pendingReimbursementsPrevWeek = sumCurrency([
+        pendingExpenseTransactionsPrevWeek.reduce((sum, t) => sum + t.amount, 0),
+        pendingExpensesPrevWeek.reduce((sum, e) => sum + e.amount, 0),
+      ]);
 
       // Honorarios pagados
       const honorariosThisMonth = await db.transaction.findMany({
@@ -441,8 +455,8 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         },
       });
 
-      honorariosReceived = honorariosThisMonth.reduce((sum, t) => sum + t.amount, 0);
-      const honorariosPrev = honorariosPrevMonth.reduce((sum, t) => sum + t.amount, 0);
+      honorariosReceived = sumCurrency(honorariosThisMonth.map((t) => t.amount));
+      const honorariosPrev = sumCurrency(honorariosPrevMonth.map((t) => t.amount));
       pendingReimbursementsDeltaPct = calculateDeltaPct(
         pendingReimbursements,
         pendingReimbursementsPrevWeek

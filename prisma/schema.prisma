@@ -209,6 +209,8 @@ model Client {
   shootings    Shoot[]
   metrics      ClientMetric[]
   monthlyClosures ClientMonthlyClosure[]
+  monthlyStrategies ClientMonthlyStrategy[]
+  billingExceptions ClientBillingException[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -460,6 +462,49 @@ model ClientFeedback {
   @@index([clientId])
   @@index([month, year])
   @@unique([clientId, month, year]) // Un solo feedback por cliente/mes/año
+}
+
+// EXCEPCIONES DE FACTURACION MENSUAL POR CLIENTE
+model ClientBillingException {
+  id             String   @id @default(cuid())
+  clientId       String
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  month          Int
+  year           Int
+  type           String
+  overrideAmount Float?
+  reason         String
+  notes          String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([clientId, year, month])
+  @@index([clientId])
+  @@index([year, month])
+  @@index([type])
+}
+
+// TRACKING MENSUAL DE ESTRATEGIA POR CLIENTE
+model ClientMonthlyStrategy {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  month     Int
+  year      Int
+
+  prepared  Boolean  @default(false)
+  sentAt    DateTime?
+  approved  Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, month, year])
+  @@index([clientId])
+  @@index([month, year])
 }
 
 // TRANSFERENCIAS INTERNAS (Liquidación de Honorarios y Salarios)

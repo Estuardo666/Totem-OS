@@ -534,6 +534,9 @@ export async function updateTaskStatus(
       "REVIEW_CLIENT",
       "CLIENT_APPROVED",
       "APPROVED",
+      "PAUSED",
+      "CANCELLED",
+      "REJECTED",
       "PUBLISHED",
     ];
 
@@ -649,6 +652,9 @@ export async function updateTaskStatus(
         REVIEW_CLIENT: "Revisión Cliente",
         CLIENT_APPROVED: "Aprobado por Cliente",
         APPROVED: "Aprobado",
+        PAUSED: "En pausa",
+        CANCELLED: "Cancelado",
+        REJECTED: "Rechazado",
         PUBLISHED: "Publicado",
       };
 

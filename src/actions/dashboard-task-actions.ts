@@ -16,6 +16,9 @@ export type CurrentMonthTaskSummary = {
 };
 
 const currentMonthTaskWhere = (currentMonthStart: Date, currentMonthEnd: Date) => ({
+  status: {
+    notIn: ["PAUSED", "CANCELLED", "REJECTED"],
+  },
   OR: [
     {
       scheduledAt: {

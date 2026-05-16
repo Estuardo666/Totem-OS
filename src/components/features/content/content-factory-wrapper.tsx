@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Settings2 } from "lucide-react";
 import { KanbanBoard } from "./kanban-board";
 import { ContentFilters } from "./content-filters";
 import { MonthlyProgress } from "./monthly-progress";
+import { ContentAccountsView } from "./content-accounts-view";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { Client, User } from "@prisma/client";
+import type { ContentFactoryShoot, ContentMonthlyStrategyRecord } from "./content-accounts-utils";
 
 // Calendar is only loaded when the user switches to the calendar tab
 const ContentCalendar = dynamic(
@@ -21,6 +24,18 @@ interface ContentFactoryWrapperProps {
   tasks: ContentTaskWithClient[];
   clients: Client[];
   users: User[];
+  shootings: ContentFactoryShoot[];
+  strategies: ContentMonthlyStrategyRecord[];
+}
+
+function getCurrentMonthValue() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${now.getFullYear()}-${month}`;
+}
+
+function isValidMonthValue(value: string | null) {
+  return Boolean(value && /^\d{4}-(0[1-9]|1[0-2])$/.test(value));
 }
 
 function applyLocalTaskStatusChange(
@@ -50,17 +65,117 @@ export function ContentFactoryWrapper({
   tasks,
   clients,
   users,
+  shootings,
+  strategies,
 }: ContentFactoryWrapperProps) {
   const activeClients = clients.filter((client) => client.status !== "INACTIVE");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentMonthValue = getCurrentMonthValue();
+  const requestedView = searchParams.get("view");
+  const requestedAccountsClientId = searchParams.get("accountsClient");
+  const requestedAccountsMonth = isValidMonthValue(searchParams.get("accountsMonth"))
+    ? searchParams.get("accountsMonth")!
+    : currentMonthValue;
   const [allTasks, setAllTasks] = useState<ContentTaskWithClient[]>(tasks);
+  const [allStrategies, setAllStrategies] = useState<ContentMonthlyStrategyRecord[]>(strategies);
   const [filteredTasks, setFilteredTasks] = useState<ContentTaskWithClient[]>(tasks);
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"kanban" | "calendar">("kanban");
+  const [selectedAccountsClientId, setSelectedAccountsClientId] = useState<string>(() => {
+    if (requestedAccountsClientId && activeClients.some((client) => client.id === requestedAccountsClientId)) {
+      return requestedAccountsClientId;
+    }
+
+    return activeClients[0]?.id ?? "all";
+  });
+  const [selectedAccountsMonth, setSelectedAccountsMonth] = useState<string>(requestedAccountsMonth);
+  const [viewMode, setViewMode] = useState<"kanban" | "calendar" | "accounts">(
+    requestedView === "accounts" ? "accounts" : "kanban"
+  );
   const [isCompactView, setIsCompactView] = useState(false);
 
   useEffect(() => {
     setAllTasks(tasks);
   }, [tasks]);
+
+  useEffect(() => {
+    setAllStrategies(strategies);
+  }, [strategies]);
+
+  useEffect(() => {
+    if (activeClients.length === 0) {
+      setSelectedAccountsClientId("all");
+      return;
+    }
+
+    setSelectedAccountsClientId((current) => {
+      if (current !== "all" && activeClients.some((client) => client.id === current)) {
+        return current;
+      }
+
+      return activeClients[0].id;
+    });
+  }, [activeClients]);
+
+  useEffect(() => {
+    const hasAccountsContext =
+      requestedView === "accounts" ||
+      searchParams.has("accountsClient") ||
+      searchParams.has("accountsMonth");
+
+    if (!hasAccountsContext) {
+      return;
+    }
+
+    setViewMode("accounts");
+
+    if (requestedAccountsClientId && activeClients.some((client) => client.id === requestedAccountsClientId)) {
+      setSelectedAccountsClientId((current) =>
+        current === requestedAccountsClientId ? current : requestedAccountsClientId
+      );
+    }
+
+    setSelectedAccountsMonth((current) =>
+      current === requestedAccountsMonth ? current : requestedAccountsMonth
+    );
+  }, [activeClients, requestedAccountsClientId, requestedAccountsMonth, requestedView, searchParams]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+
+    if (viewMode === "accounts") {
+      nextParams.set("view", "accounts");
+
+      if (selectedAccountsClientId && selectedAccountsClientId !== "all") {
+        nextParams.set("accountsClient", selectedAccountsClientId);
+      } else {
+        nextParams.delete("accountsClient");
+      }
+
+      if (selectedAccountsMonth) {
+        nextParams.set("accountsMonth", selectedAccountsMonth);
+      } else {
+        nextParams.delete("accountsMonth");
+      }
+    } else {
+      if (nextParams.get("view") === "accounts") {
+        nextParams.delete("view");
+      }
+
+      nextParams.delete("accountsClient");
+      nextParams.delete("accountsMonth");
+    }
+
+    const nextQuery = nextParams.toString();
+    const currentQuery = searchParams.toString();
+
+    if (nextQuery === currentQuery) {
+      return;
+    }
+
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams, selectedAccountsClientId, selectedAccountsMonth, viewMode]);
 
   useEffect(() => {
     const handleTaskStatusUpdated = (event: Event) => {
@@ -91,6 +206,25 @@ export function ContentFactoryWrapper({
     };
   }, []);
 
+  const handleStrategySaved = (strategy: ContentMonthlyStrategyRecord) => {
+    setAllStrategies((current) => {
+      const existingIndex = current.findIndex(
+        (item) =>
+          item.clientId === strategy.clientId &&
+          item.year === strategy.year &&
+          item.month === strategy.month
+      );
+
+      if (existingIndex === -1) {
+        return [strategy, ...current];
+      }
+
+      const next = [...current];
+      next[existingIndex] = strategy;
+      return next;
+    });
+  };
+
   return (
     <div className="w-full px-0 md:px-4 py-6 space-y-6">
       <ContentFilters
@@ -102,11 +236,12 @@ export function ContentFactoryWrapper({
       />
       <MonthlyProgress selectedClientId={selectedClientId} clients={activeClients} />
 
-      <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "kanban" | "calendar")}>
+      <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "kanban" | "calendar" | "accounts")}>
         <div className="flex items-center justify-between">
-          <TabsList className="grid w-full max-w-[400px] grid-cols-2 h-12 items-center rounded-full bg-muted px-3 py-1 text-muted-foreground">
+          <TabsList className="grid w-full max-w-[520px] grid-cols-3 h-12 items-center rounded-full bg-muted px-3 py-1 text-muted-foreground">
             <TabsTrigger value="kanban" className="rounded-full">Tablero</TabsTrigger>
             <TabsTrigger value="calendar" className="rounded-full">Calendario</TabsTrigger>
+            <TabsTrigger value="accounts" className="rounded-full">Cuentas</TabsTrigger>
           </TabsList>
           
           {viewMode === "kanban" && (
@@ -136,6 +271,21 @@ export function ContentFactoryWrapper({
             tasks={filteredTasks} 
             users={users} 
             clients={activeClients.map(c => ({ id: c.id, name: c.name, logo: c.logo, color: c.color }))}
+          />
+        </TabsContent>
+
+        <TabsContent value="accounts" className="mt-4">
+          <ContentAccountsView
+            tasks={allTasks}
+            clients={activeClients}
+            users={users}
+            shootings={shootings}
+            strategies={allStrategies}
+            selectedClientId={selectedAccountsClientId}
+            selectedMonth={selectedAccountsMonth}
+            onClientChange={setSelectedAccountsClientId}
+            onMonthChange={setSelectedAccountsMonth}
+            onStrategySaved={handleStrategySaved}
           />
         </TabsContent>
       </Tabs>

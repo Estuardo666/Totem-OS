@@ -3,8 +3,10 @@ import { Plus, Video, Layout } from "lucide-react";
 import { Suspense } from "react";
 import { auth } from "@/auth";
 import { getTasks } from "@/actions/content-actions";
+import { getContentMonthlyStrategies } from "@/actions/content-strategy-actions";
 import { getClients } from "@/actions/client-actions";
 import { getUsers } from "@/actions/user.actions";
+import { getShootings } from "@/actions/shooting-actions";
 import { Button } from "@/components/ui/button";
 import { ContentFactoryWrapper } from "@/components/features/content/content-factory-wrapper";
 import { BulkTaskDialog } from "@/components/features/content/bulk-task-dialog";
@@ -28,10 +30,12 @@ async function BulkTaskDialogServer({ shouldOpenBulkDialog }: { shouldOpenBulkDi
 
 // Streamed: fetches all board data and renders the full kanban
 async function ContentBody() {
-  const [tasksResult, clientsResult, usersResult] = await Promise.all([
+  const [tasksResult, clientsResult, usersResult, shootingsResult, strategiesResult] = await Promise.all([
     getTasks(),
     getClients(),
     getUsers(),
+    getShootings(),
+    getContentMonthlyStrategies(),
   ]);
 
   if (!tasksResult.success || !tasksResult.data) {
@@ -49,8 +53,23 @@ async function ContentBody() {
   const tasks = tasksResult.data;
   const clients = clientsResult.success ? (clientsResult.data ?? []) : [];
   const users = usersResult.success ? (usersResult.data ?? []) : [];
+  const shootings = shootingsResult.success ? (shootingsResult.data ?? []).map((shoot) => ({
+    id: shoot.id,
+    title: shoot.title,
+    startTime: shoot.startTime,
+    endTime: shoot.endTime,
+    status: shoot.status,
+    clientId: shoot.clientId,
+    client: {
+      id: shoot.client.id,
+      name: shoot.client.name,
+      logo: shoot.client.logo,
+      color: shoot.client.color,
+    },
+  })) : [];
+  const strategies = strategiesResult.success ? (strategiesResult.data ?? []) : [];
 
-  return <ContentFactoryWrapper tasks={tasks} clients={clients} users={users} />;
+  return <ContentFactoryWrapper tasks={tasks} clients={clients} users={users} shootings={shootings} strategies={strategies} />;
 }
 
 export default async function ContentPage({

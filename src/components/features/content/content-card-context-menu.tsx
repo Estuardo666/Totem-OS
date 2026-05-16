@@ -52,6 +52,9 @@ const STATUS_OPTIONS: Array<{ value: ContentTaskStatus; label: string; emoji: st
   { value: "EDITING", label: "Editando", emoji: "✂️" },
   { value: "REVIEW_CLIENT", label: "Revisión Cliente", emoji: "👀" },
   { value: "CLIENT_APPROVED", label: "Aprobado por Cliente", emoji: "✅" },
+  { value: "PAUSED", label: "En pausa", emoji: "⏸️" },
+  { value: "CANCELLED", label: "Cancelado", emoji: "🛑" },
+  { value: "REJECTED", label: "Rechazado", emoji: "↩️" },
   { value: "PUBLISHED", label: "Publicado", emoji: "🚀" },
 ];
 
@@ -62,6 +65,9 @@ const STATUS_HOVER_CLASSES: Partial<Record<ContentTaskStatus, string>> = {
   EDITING:          "focus:bg-sky-100     dark:focus:bg-sky-950/50",
   REVIEW_CLIENT:    "focus:bg-cyan-100    dark:focus:bg-cyan-950/50",
   CLIENT_APPROVED:  "focus:bg-emerald-100 dark:focus:bg-emerald-950/50",
+  PAUSED:           "focus:bg-amber-100   dark:focus:bg-amber-950/50",
+  CANCELLED:        "focus:bg-rose-100    dark:focus:bg-rose-950/50",
+  REJECTED:         "focus:bg-orange-100  dark:focus:bg-orange-950/50",
   PUBLISHED:        "focus:bg-teal-100    dark:focus:bg-teal-950/50",
 };
 

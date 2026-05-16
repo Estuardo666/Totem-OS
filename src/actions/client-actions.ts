@@ -738,9 +738,9 @@ export async function getClients(): Promise<ApiResponse<Array<
         (task) => task.status === "PUBLISHED"
       ).length;
 
-      // 5. Tareas pendientes (todas): NO PUBLISHED ni CANCELLED (de todas las fechas)
+      // 5. Tareas pendientes (todas): excluir finalizadas o no publicables
       const pendingTasksCount = client.tasks.filter(
-        (task) => task.status !== "PUBLISHED" && task.status !== "CANCELLED"
+        (task) => !["PUBLISHED", "CANCELLED", "REJECTED", "PAUSED"].includes(task.status)
       ).length;
 
       // Próximo rodaje

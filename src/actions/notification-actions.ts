@@ -513,7 +513,7 @@ export async function sendDailyTaskDigest(): Promise<ApiResponse<{ sentCount: nu
           lte: endToday,
         },
         status: {
-          notIn: ["PUBLISHED", "APPROVED"], // Excluir tareas ya finalizadas
+          notIn: ["PUBLISHED", "APPROVED", "PAUSED", "CANCELLED", "REJECTED"], // Excluir tareas ya finalizadas o detenidas
         },
       },
       include: {

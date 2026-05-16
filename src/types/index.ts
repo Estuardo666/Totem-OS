@@ -16,6 +16,9 @@ export type ContentTaskStatus =
   | "REVIEW_CLIENT"
   | "CLIENT_APPROVED"
   | "APPROVED"
+  | "PAUSED"
+  | "CANCELLED"
+  | "REJECTED"
   | "PUBLISHED";
 
 export type ExpenseStatus = "PENDING" | "REIMBURSED";

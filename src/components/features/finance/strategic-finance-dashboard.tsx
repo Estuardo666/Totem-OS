@@ -70,9 +70,13 @@ function formatCurrency(value: number | null) {
   return new Intl.NumberFormat("es-ES", {
     style: "currency",
     currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value);
+}
+
+function roundToCents(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 function formatPercent(value: number | null) {
@@ -338,11 +342,34 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
     ];
   }, [totals.totalRate, stats.netProfit, stats.totalIncome]);
 
+  const totalIncomeForKpis = useMemo(
+    () => roundToCents(stats.totalIncome ?? 0),
+    [stats.totalIncome]
+  );
+
+  const totalExpensesForKpis = useMemo(
+    () => roundToCents(stats.totalExpenses ?? 0),
+    [stats.totalExpenses]
+  );
+
+  const netProfitForKpis = useMemo(
+    () => roundToCents(totalIncomeForKpis - totalExpensesForKpis),
+    [totalIncomeForKpis, totalExpensesForKpis]
+  );
+
+  const operatingMarginForKpis = useMemo(
+    () =>
+      totalIncomeForKpis > 0
+        ? ((netProfitForKpis / totalIncomeForKpis) * 100)
+        : 0,
+    [netProfitForKpis, totalIncomeForKpis]
+  );
+
   const kpiCards = useMemo<KpiCard[]>(() => {
     const base: KpiCard[] = [
       {
         title: "Ingresos brutos",
-        value: stats.totalIncome,
+        value: totalIncomeForKpis,
         delta: stats.incomeDeltaPct ?? 0,
         tone: "positive",
         compareLabel: "vs. mes anterior",
@@ -351,7 +378,7 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
       },
       {
         title: "Gasto operativo",
-        value: stats.totalExpenses,
+        value: totalExpensesForKpis,
         delta: stats.expensesDeltaPct ?? 0,
         tone: "negative",
         compareLabel: "vs. mes anterior",
@@ -360,28 +387,28 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
       },
       {
         title: "Utilidad neta",
-        value: stats.netProfit,
+        value: netProfitForKpis,
         delta: stats.netProfitDeltaPct ?? 0,
-        tone: stats.netProfit >= 0 ? "positive" : "negative",
-        compareLabel: "vs. promedio 90d",
+        tone: netProfitForKpis >= 0 ? "positive" : "negative",
+        compareLabel: "vs. mes anterior",
         explanation: "Lo que realmente nos queda después de pagar todos los gastos. Es la ganancia real del negocio.",
         tooltip: "Utilidad neta = Ingresos brutos - Gastos operativos. Es el dinero real que te queda para reinvertir, pagar dividendos o ahorrar. Si es negativa, estás perdiendo dinero y necesitas reducir gastos o aumentar ingresos.",
       },
       {
         title: "Saldo en Caja",
-        value: stats.netProfit,
+        value: netProfitForKpis,
         delta: stats.netProfitDeltaPct ?? 0,
-        tone: stats.netProfit >= 0 ? "positive" : "negative",
+        tone: netProfitForKpis >= 0 ? "positive" : "negative",
         compareLabel: "vs. mes anterior",
         explanation: "Flujo de efectivo neto disponible. Diferencia entre lo que entra y lo que sale del negocio.",
         tooltip: "Saldo en Caja = Flujo neto de efectivo (Ingresos - Gastos). Representa el dinero disponible después de todas las operaciones. Un saldo positivo indica liquidez saludable; negativo requiere atención inmediata para evitar problemas de caja.",
       },
       {
         title: "Margen operativo",
-        value: profitability?.profitMargin ?? null,
+        value: operatingMarginForKpis,
         delta: stats.marginDeltaPct ?? 0,
         tone: "positive",
-        compareLabel: "vs. meta anual",
+        compareLabel: "vs. mes anterior",
         isPercent: true,
         explanation: "Porcentaje de cada dólar que se convierte en ganancia. Si es 30%, de $100 ganamos $30.",
         tooltip: "Margen operativo = (Utilidad neta ÷ Ingresos brutos) × 100. Mide eficiencia: cuánto ganas por cada peso que ingresa. Un margen saludable suele ser 20-40%. Si es muy bajo, tus gastos son muy altos respecto a tus ingresos.",
@@ -413,7 +440,14 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
     }
 
     return base;
-  }, [profitability?.profitMargin, stats, userRole]);
+  }, [
+    netProfitForKpis,
+    operatingMarginForKpis,
+    stats,
+    totalExpensesForKpis,
+    totalIncomeForKpis,
+    userRole,
+  ]);
 
 
   return (
