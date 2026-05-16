@@ -6,6 +6,7 @@ import type { ContentTaskWithClient } from "@/actions/content-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { KanbanBoard } from "./kanban-board";
 import { ContentStrategyCard } from "./content-strategy-card";
 import type { ContentFactoryShoot } from "./content-accounts-utils";
@@ -32,6 +33,15 @@ interface ContentAccountsViewProps {
 
 function EmptyList({ text }: { text: string }) {
   return <p className="text-sm text-muted-foreground">{text}</p>;
+}
+
+function getClientInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("") || "CL";
 }
 
 function DeliverableList({
@@ -127,11 +137,29 @@ export function ContentAccountsView({
         <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-[1fr_220px]">
           <Select value={selectedClientId} onValueChange={onClientChange}>
             <SelectTrigger className="h-11 rounded-full">
-              <SelectValue placeholder="Selecciona cliente" />
+              {selectedClient ? (
+                <div className="flex items-center gap-2 min-w-0">
+                  <Avatar className="h-6 w-6 border border-border/70">
+                    {selectedClient.logo ? <AvatarImage src={selectedClient.logo} alt={selectedClient.name} /> : null}
+                    <AvatarFallback className="text-[10px] font-semibold">{getClientInitials(selectedClient.name)}</AvatarFallback>
+                  </Avatar>
+                  <span className="truncate text-sm">{selectedClient.name}</span>
+                </div>
+              ) : (
+                <SelectValue placeholder="Selecciona cliente" />
+              )}
             </SelectTrigger>
             <SelectContent>
               {activeClients.map((client) => (
-                <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                <SelectItem key={client.id} value={client.id}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar className="h-5 w-5 border border-border/70">
+                      {client.logo ? <AvatarImage src={client.logo} alt={client.name} /> : null}
+                      <AvatarFallback className="text-[9px] font-semibold">{getClientInitials(client.name)}</AvatarFallback>
+                    </Avatar>
+                    <span className="truncate">{client.name}</span>
+                  </div>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>

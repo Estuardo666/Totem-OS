@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Settings2 } from "lucide-react";
 import { KanbanBoard } from "./kanban-board";
 import { ContentFilters } from "./content-filters";
@@ -68,8 +68,10 @@ export function ContentFactoryWrapper({
   shootings,
   strategies,
 }: ContentFactoryWrapperProps) {
-  const activeClients = clients.filter((client) => client.status !== "INACTIVE");
-  const router = useRouter();
+  const activeClients = useMemo(
+    () => clients.filter((client) => client.status !== "INACTIVE"),
+    [clients]
+  );
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentMonthValue = getCurrentMonthValue();
@@ -119,30 +121,7 @@ export function ContentFactoryWrapper({
   }, [activeClients]);
 
   useEffect(() => {
-    const hasAccountsContext =
-      requestedView === "accounts" ||
-      searchParams.has("accountsClient") ||
-      searchParams.has("accountsMonth");
-
-    if (!hasAccountsContext) {
-      return;
-    }
-
-    setViewMode("accounts");
-
-    if (requestedAccountsClientId && activeClients.some((client) => client.id === requestedAccountsClientId)) {
-      setSelectedAccountsClientId((current) =>
-        current === requestedAccountsClientId ? current : requestedAccountsClientId
-      );
-    }
-
-    setSelectedAccountsMonth((current) =>
-      current === requestedAccountsMonth ? current : requestedAccountsMonth
-    );
-  }, [activeClients, requestedAccountsClientId, requestedAccountsMonth, requestedView, searchParams]);
-
-  useEffect(() => {
-    const nextParams = new URLSearchParams(searchParams.toString());
+    const nextParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
 
     if (viewMode === "accounts") {
       nextParams.set("view", "accounts");
@@ -168,14 +147,16 @@ export function ContentFactoryWrapper({
     }
 
     const nextQuery = nextParams.toString();
-    const currentQuery = searchParams.toString();
+    const currentQuery = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).toString()
+      : "";
 
     if (nextQuery === currentQuery) {
       return;
     }
 
-    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
-  }, [pathname, router, searchParams, selectedAccountsClientId, selectedAccountsMonth, viewMode]);
+    window.history.replaceState(window.history.state, "", nextQuery ? `${pathname}?${nextQuery}` : pathname);
+  }, [pathname, selectedAccountsClientId, selectedAccountsMonth, viewMode]);
 
   useEffect(() => {
     const handleTaskStatusUpdated = (event: Event) => {
@@ -283,8 +264,8 @@ export function ContentFactoryWrapper({
             strategies={allStrategies}
             selectedClientId={selectedAccountsClientId}
             selectedMonth={selectedAccountsMonth}
-            onClientChange={setSelectedAccountsClientId}
-            onMonthChange={setSelectedAccountsMonth}
+            onClientChange={(clientId) => setSelectedAccountsClientId((current) => (current === clientId ? current : clientId))}
+            onMonthChange={(month) => setSelectedAccountsMonth((current) => (current === month ? current : month))}
             onStrategySaved={handleStrategySaved}
           />
         </TabsContent>
