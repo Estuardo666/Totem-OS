@@ -5,7 +5,8 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
-  Filter,
+  ChevronDown,
+  ChevronUp,
   LineChart,
   PieChart,
   TrendingDown,
@@ -22,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SimpleAIInsights } from "@/components/features/finance/ai-insights-simple";
 import { FinanceSectionNav } from "@/components/features/finance/finance-section-nav";
 import { cn } from "@/lib/utils";
@@ -88,9 +90,18 @@ function formatPercent(value: number | null) {
   }).format(value / 100);
 }
 
-function KpiValue({ value, isPercent }: { value: number | null; isPercent?: boolean }) {
+function KpiValue({ value, isPercent, tone }: { value: number | null; isPercent?: boolean; tone: KpiTone }) {
   return (
-    <span className="text-2xl font-semibold tracking-tight">
+    <span
+      className={cn(
+        "text-2xl font-semibold tracking-tight",
+        tone === "positive"
+          ? "text-emerald-600"
+          : tone === "negative"
+            ? "text-rose-600"
+            : ""
+      )}
+    >
       {isPercent ? formatPercent(value) : formatCurrency(value)}
     </span>
   );
@@ -146,6 +157,7 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
   const [period, setPeriod] = useState("current_month");
   const [client, setClient] = useState("all");
   const [service, setService] = useState("all");
+  const [isClosureExpanded, setIsClosureExpanded] = useState(true);
 
   const periodLabel = useMemo(() => {
     const now = new Date();
@@ -452,68 +464,72 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
 
   return (
     <div className="space-y-8">
-      <FinanceSectionNav userRole={userRole} />
-
       {stats.closureControl && stats.closureControl.pendingCount > 0 ? (
-        <Card className="border-rose-300 bg-rose-50 shadow-sm">
-          <CardContent className="space-y-4 p-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-rose-700">
-                  <AlertTriangle className="h-4 w-4" />
-                  Cierre contable pendiente
+        <Collapsible open={isClosureExpanded} onOpenChange={setIsClosureExpanded}>
+          <Card className="border-rose-300 bg-rose-50 shadow-sm">
+            <CardContent className="space-y-4 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-rose-700">
+                    <AlertTriangle className="h-4 w-4" />
+                    Cierre contable pendiente
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-rose-950">
+                      {stats.closureControl.pendingCount} cliente(s) recurrente(s) siguen sin cierre de {stats.closureControl.currentMonthLabel}
+                    </p>
+                    <p className="mt-1 max-w-3xl text-sm text-rose-800">
+                      Mientras esos cierres no se aprueben, la lectura del ingreso recurrente del mes sigue siendo provisional. El monto potencial pendiente es {formatCurrency(stats.closureControl.pendingAmount)}.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-lg font-semibold text-rose-950">
-                    {stats.closureControl.pendingCount} cliente(s) recurrente(s) siguen sin cierre de {stats.closureControl.currentMonthLabel}
-                  </p>
-                  <p className="mt-1 max-w-3xl text-sm text-rose-800">
-                    Mientras esos cierres no se aprueben, la lectura del ingreso recurrente del mes sigue siendo provisional. El monto potencial pendiente es {formatCurrency(stats.closureControl.pendingAmount)}.
-                  </p>
+
+                <div className="flex items-center gap-2">
+                  <Button asChild className="rounded-full bg-rose-600 hover:bg-rose-700">
+                    <Link href="/finance/monthly-close">
+                      Ir al cierre mensual
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-rose-700">
+                      {isClosureExpanded ? "Ver menos" : "Ver más"}
+                      {isClosureExpanded ? (
+                        <ChevronUp className="ml-1 h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="ml-1 h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
                 </div>
               </div>
 
-              <Button asChild className="rounded-full bg-rose-600 hover:bg-rose-700">
-                <Link href="/finance/monthly-close">
-                  Ir al cierre mensual
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {stats.closureControl.pendingClients.slice(0, 8).map((client) => (
-                <span
-                  key={client.id}
-                  className="rounded-full border border-rose-200 bg-white px-3 py-1 text-sm font-medium text-rose-900"
-                >
-                  {client.name}
-                </span>
-              ))}
-              {stats.closureControl.pendingClients.length > 8 ? (
-                <span className="rounded-full border border-rose-200 bg-white px-3 py-1 text-sm font-medium text-rose-900">
-                  +{stats.closureControl.pendingClients.length - 8} más
-                </span>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
+              <CollapsibleContent>
+                <div className="flex flex-wrap gap-2">
+                  {stats.closureControl.pendingClients.slice(0, 8).map((client) => (
+                    <span
+                      key={client.id}
+                      className="rounded-full border border-rose-200 bg-white px-3 py-1 text-sm font-medium text-rose-900"
+                    >
+                      {client.name}
+                    </span>
+                  ))}
+                  {stats.closureControl.pendingClients.length > 8 ? (
+                    <span className="rounded-full border border-rose-200 bg-white px-3 py-1 text-sm font-medium text-rose-900">
+                      +{stats.closureControl.pendingClients.length - 8} más
+                    </span>
+                  ) : null}
+                </div>
+              </CollapsibleContent>
+            </CardContent>
+          </Card>
+        </Collapsible>
       ) : null}
 
+      <FinanceSectionNav userRole={userRole} />
+
       <Card className="border-primary/20 bg-primary/5">
-        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <CardTitle>Filtros estratégicos</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Ajusta la vista por período, cliente y tipo de servicio para un análisis profundo.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Filter className="h-4 w-4" />
-            Filtros activos
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
+        <CardContent className="grid gap-4 md:grid-cols-3 p-5">
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger>
               <SelectValue placeholder="Selecciona período" />
@@ -566,18 +582,18 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
               Actualización automática
             </Badge>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-3">
             {kpiCards.map((kpi) => (
               <Card key={kpi.title} className="shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-3 pt-3 pb-1">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">{kpi.title}</CardTitle>
                     <ExplainedTooltip title={kpi.title} explanation={kpi.explanation} tooltip={kpi.tooltip} />
                   </div>
                   <TrendBadge delta={kpi.delta} tone={kpi.tone} />
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  <KpiValue value={kpi.value} isPercent={kpi.isPercent} />
+                <CardContent className="px-3 pb-3 pt-1 space-y-1">
+                  <KpiValue value={kpi.value} isPercent={kpi.isPercent} tone={kpi.tone} />
                   <p className="text-xs text-muted-foreground">{kpi.compareLabel}</p>
                   {kpi.actionHref && kpi.actionLabel && (
                     <Link
