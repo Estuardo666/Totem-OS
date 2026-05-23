@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { format } from "date-fns";
 import { getExpensesStats } from "@/actions/finance-actions";
 import { getUsers } from "@/actions/user.actions";
 import { getClients } from "@/actions/client-actions";
@@ -40,7 +41,7 @@ export function ExpensesWrapper() {
   const { toast } = useToast();
   const { queue } = useFinanceOfflineState();
   const [filters, setFilters] = useState({
-    month: "",
+    month: format(new Date(), "yyyy-MM"),
     userId: "all",
     clientId: "all",
     category: "all",

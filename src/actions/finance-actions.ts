@@ -751,6 +751,61 @@ export async function getExpensesStats(filters?: {
   return getExpensesStatsFromDb(filters);
 }
 
+export async function getAvailableExpenseMonths(): Promise<
+  ApiResponse<{ value: string; label: string }[]>
+> {
+  try {
+    const [oldestExpense, oldestTransaction] = await Promise.all([
+      db.expense.findFirst({ orderBy: { date: "asc" }, select: { date: true } }),
+      db.transaction.findFirst({
+        where: { type: "EXPENSE" },
+        orderBy: { createdAt: "asc" },
+        select: { createdAt: true },
+      }),
+    ]);
+
+    const oldestDate = (() => {
+      const dates: Date[] = [];
+      if (oldestExpense?.date) dates.push(oldestExpense.date);
+      if (oldestTransaction?.createdAt) dates.push(oldestTransaction.createdAt);
+      if (dates.length === 0) return new Date();
+      return new Date(Math.min(...dates.map((d) => d.getTime())));
+    })();
+
+    const monthNames = [
+      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+    ];
+
+    const months: { value: string; label: string }[] = [];
+    const current = new Date();
+    let cursor = new Date(oldestDate.getFullYear(), oldestDate.getMonth(), 1);
+    const end = new Date(current.getFullYear(), current.getMonth(), 1);
+
+    while (cursor <= end) {
+      const year = cursor.getFullYear();
+      const month = String(cursor.getMonth() + 1).padStart(2, "0");
+      months.push({
+        value: `${year}-${month}`,
+        label: `${monthNames[cursor.getMonth()]} ${year}`,
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    months.sort((a, b) => b.value.localeCompare(a.value));
+
+    return { success: true, data: months };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Error al obtener meses disponibles",
+    };
+  }
+}
+
 export async function getGlobalProfitabilityStats(): Promise<ApiResponse<any>> {
   return getGlobalProfitabilityStatsFromDb();
 }

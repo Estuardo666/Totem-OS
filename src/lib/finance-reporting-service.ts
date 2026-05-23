@@ -428,7 +428,9 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         where: {
           type: "EXPENSE",
           status: "PENDING",
-          ...(isAdmin ? {} : { assignedToId: userId }),
+          ...(isAdmin
+            ? { assignedToId: { not: null } }
+            : { assignedToId: userId }),
           ...(isAdmin
             ? {
                 createdAt: {
@@ -444,7 +446,9 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         where: {
           type: "EXPENSE",
           status: "PENDING",
-          ...(isAdmin ? {} : { assignedToId: userId }),
+          ...(isAdmin
+            ? { assignedToId: { not: null } }
+            : { assignedToId: userId }),
           createdAt: isAdmin
             ? {
                 gte: monthStart,
@@ -803,9 +807,18 @@ export async function getExpensesStatsFromDb(filters?: {
       };
     }
 
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    let monthStart: Date;
+    let monthEnd: Date;
+
+    if (filters?.month && filters.month !== "all") {
+      const [year, month] = filters.month.split("-").map(Number);
+      monthStart = new Date(year, month - 1, 1);
+      monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+    } else {
+      const now = new Date();
+      monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
 
     const expenseWhere: any = {
       date: {

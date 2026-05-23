@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { liquidateReimbursements } from "@/actions/finance-actions";
+import { getAvailableExpenseMonths, liquidateReimbursements } from "@/actions/finance-actions";
 import { useToast } from "@/components/ui/use-toast";
 
 interface ExpensesFiltersProps {
@@ -54,66 +54,30 @@ export function ExpensesFilters({
   onLiquidate,
 }: ExpensesFiltersProps) {
   const { toast } = useToast();
-  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    format(new Date(), "yyyy-MM")
+  );
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isLiquidating, setIsLiquidating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [monthOptions, setMonthOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
 
-  // Generar opciones de mes/año únicas desde los gastos reales
-  const monthOptions = (() => {
-    const monthNames = [
-      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-    ];
-
-    // Extraer todas las fechas de los gastos
-    const allDates = expenses
-      .map((exp) => {
-        const date = typeof exp.date === "string" ? new Date(exp.date) : exp.date;
-        return date;
+  // Cargar meses disponibles desde el backend
+  useEffect(() => {
+    getAvailableExpenseMonths()
+      .then((result) => {
+        if (result.success && result.data) {
+          setMonthOptions(result.data);
+        }
       })
-      .filter((date) => !isNaN(date.getTime())); // Filtrar fechas inválidas
-
-    // Crear un Set de meses únicos en formato 'yyyy-MM'
-    const uniqueMonthKeys = Array.from(
-      new Set(
-        allDates.map((date) => {
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, "0");
-          return `${year}-${month}`;
-        })
-      )
-    );
-
-    // Convertir a objetos con value y label, y ordenar de forma descendente
-    const options = uniqueMonthKeys
-      .map((monthKey) => {
-        const [year, month] = monthKey.split("-");
-        const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-        return {
-          value: monthKey,
-          label: `${monthNames[date.getMonth()]} ${date.getFullYear()}`,
-          sortKey: monthKey, // Para ordenar
-        };
-      })
-      .sort((a, b) => b.sortKey.localeCompare(a.sortKey)); // Orden descendente (más reciente primero)
-
-    // Si no hay gastos, mostrar al menos los últimos 12 meses
-    if (options.length === 0) {
-      return Array.from({ length: 12 }, (_, i) => {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i);
-        return {
-          value: format(date, "yyyy-MM"),
-          label: `${monthNames[date.getMonth()]} ${date.getFullYear()}`,
-        };
+      .catch(() => {
+        // Fallback silencioso: dejar el mes actual
       });
-    }
-
-    return options.map(({ value, label }) => ({ value, label }));
-  })();
+  }, []);
 
   useEffect(() => {
     onFilterChange({
@@ -136,7 +100,7 @@ export function ExpensesFilters({
 
     setIsLiquidating(true);
     try {
-      const result = await liquidateReimbursements(selectedUserId);
+      const result = await liquidateReimbursements([selectedUserId]);
       
       if (result.success) {
         toast({
@@ -189,7 +153,7 @@ export function ExpensesFilters({
           <div className="space-y-2">
             <Label>Usuario</Label>
             <div className="flex items-center gap-2">
-              <Select value={selectedUserId} onValueChange={setSelectedUserId} className="flex-1">
+              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos los usuarios" />
                 </SelectTrigger>
