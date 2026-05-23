@@ -461,15 +461,6 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
     userRole,
   ]);
 
-  const getKpiCardClassName = (index: number) => {
-    if (index === 0 || index === 3 || index === 6) {
-      return "xl:col-span-2";
-    }
-
-    return "xl:col-span-1";
-  };
-
-
   return (
     <div className="space-y-8">
       {stats.closureControl && stats.closureControl.pendingCount > 0 ? (
@@ -585,9 +576,9 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
               Actualización automática
             </Badge>
           </div>
-          <div className="grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-6">
-            {kpiCards.map((kpi, index) => (
-              <Card key={kpi.title} className={cn("shadow-sm", getKpiCardClassName(index))}>
+          <div className="grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {kpiCards.map((kpi) => (
+              <Card key={kpi.title} className="shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 px-3 pt-3 pb-1">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">{kpi.title}</CardTitle>
