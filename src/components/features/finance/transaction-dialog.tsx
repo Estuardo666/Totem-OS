@@ -7,17 +7,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSession } from "next-auth/react";
 import { Loader2, Plus } from "lucide-react";
 import {
-  createInvoiceSchema,
   createExpenseSchema,
   createTransactionSchema,
-  type CreateInvoiceInput,
   type CreateExpenseInput,
   type CreateTransactionInput,
 } from "@/schemas/finance";
 import { getClients } from "@/actions/client-actions";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getUsers } from "@/actions/user.actions";
-import { createInvoice, createExpense, createTransaction } from "@/actions/finance-actions";
+import { createExpense, createTransaction } from "@/actions/finance-actions";
 import type {
   OfflineClientOption,
   OfflineUserOption,
@@ -65,6 +63,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+const INCOME_OTHER_OPTION = "__OTHER__";
 
 // Mapeo de palabras clave a categorías
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
@@ -151,16 +151,6 @@ const parseDecimalInputValue = (value: string) => {
   return Number.isFinite(parsedValue) ? parsedValue : 0;
 };
 
-function getPreferredUsers(users: OfflineUserOption[]) {
-  return users
-    .filter(
-      (user) =>
-        user.name?.toLowerCase().includes("paty") ||
-        user.name?.toLowerCase().includes("stuart")
-    )
-    .map((user) => user.id);
-}
-
 export function TransactionDialog({
   children,
   defaultTab,
@@ -186,17 +176,19 @@ export function TransactionDialog({
   const [expenseAmountInput, setExpenseAmountInput] = useState<string>("");
   const [honorariosAmountInput, setHonorariosAmountInput] = useState<string>("");
   const [incomeAmountMode, setIncomeAmountMode] = useState<"100" | "50" | "other">("other");
+  const [incomeOtherText, setIncomeOtherText] = useState("");
   const [honorariosUserIds, setHonorariosUserIds] = useState<string[]>([]);
 
   // Formulario de Ingreso
-  const incomeForm = useForm<CreateInvoiceInput>({
-    resolver: zodResolver(createInvoiceSchema),
+  const incomeForm = useForm<CreateTransactionInput>({
+    resolver: zodResolver(createTransactionSchema),
     defaultValues: {
+      type: "INCOME",
       amount: 0,
       status: "PAID",
-      clientId: "",
-      dueDate: undefined,
-      generatedAt: getCurrentDateInEcuador(),
+      clientId: undefined,
+      relatedClientId: undefined,
+      description: "",
     },
   });
 
@@ -296,6 +288,7 @@ export function TransactionDialog({
       setIncomeAmountInput("");
       setExpenseAmountInput("");
       setHonorariosAmountInput("");
+      setIncomeOtherText("");
       setHonorariosUserIds([]);
     }
   }, [open, incomeForm, expenseForm, honorariosForm]);
@@ -314,11 +307,17 @@ export function TransactionDialog({
 
   // Watch selected client for income form to populate percentage-based amount
   const incomeSelectedClientId = incomeForm.watch("clientId");
+  const isIncomeOtherSelected = incomeSelectedClientId === INCOME_OTHER_OPTION;
   const incomeSelectedClient = clients.find((c) => c.id === incomeSelectedClientId);
   const incomeSelectedMonthly = incomeSelectedClient?.monthlyRate ?? 0;
 
   useEffect(() => {
-    if (!incomeSelectedClientId) return;
+    if (!incomeSelectedClientId || isIncomeOtherSelected) {
+      if (incomeAmountMode !== "other") {
+        setIncomeAmountMode("other");
+      }
+      return;
+    }
     const client = clients.find((c) => c.id === incomeSelectedClientId);
     const monthly = client?.monthlyRate ?? 0;
 
@@ -335,7 +334,7 @@ export function TransactionDialog({
       if (!incomeAmountInput) incomeForm.setValue("amount", Number(0));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incomeSelectedClientId, incomeAmountMode, clients]);
+  }, [incomeSelectedClientId, incomeAmountMode, clients, isIncomeOtherSelected]);
 
   // Handler para auto-detectar categoría cuando se sale del campo de descripción
   const handleExpenseDescriptionBlur = (descriptionValue: string) => {
@@ -346,16 +345,37 @@ export function TransactionDialog({
     }
   };
 
-  const onIncomeSubmit = async (data: CreateInvoiceInput) => {
+  const onIncomeSubmit = async (data: CreateTransactionInput) => {
     setIsSubmitting(true);
 
     try {
+      if (isIncomeOtherSelected && !incomeOtherText.trim()) {
+        toast({
+          variant: "destructive",
+          title: "Texto requerido",
+          description: "Debes ingresar el nombre del cliente extra, persona o trabajo.",
+        });
+        return;
+      }
+
+      const payload: CreateTransactionInput = {
+        ...data,
+        type: "INCOME",
+        description: isIncomeOtherSelected
+          ? incomeOtherText.trim()
+          : incomeSelectedClient?.name || "Ingreso",
+        clientId:
+          isIncomeOtherSelected || !data.clientId ? undefined : data.clientId,
+        relatedClientId:
+          isIncomeOtherSelected || !data.clientId ? undefined : data.clientId,
+      };
+
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         enqueueFinanceAction({
-          id: buildFinanceOfflineQueueId("invoice"),
-          kind: "CREATE_INVOICE",
+          id: buildFinanceOfflineQueueId("income"),
+          kind: "CREATE_TRANSACTION",
           createdAt: new Date().toISOString(),
-          payload: data,
+          payload,
         });
 
         toast({
@@ -366,11 +386,11 @@ export function TransactionDialog({
         return;
       }
 
-      const result = await createInvoice(data);
+      const result = await createTransaction(payload);
 
       if (result.success) {
         toast({
-          title: "Factura creada",
+          title: "Ingreso creado",
           description: "El ingreso se ha registrado correctamente.",
         });
         router.refresh();
@@ -378,14 +398,14 @@ export function TransactionDialog({
       } else {
         toast({
           variant: "destructive",
-          title: "Error al crear factura",
+          title: "Error al crear ingreso",
           description: result.error || "Ocurrió un error inesperado",
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error al crear factura",
+        title: "Error al crear ingreso",
         description:
           error instanceof Error
             ? error.message
@@ -572,7 +592,7 @@ export function TransactionDialog({
                       <FormLabel>Cliente</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value ?? ""}
                         disabled={isSubmitting || loadingClients}
                       >
                         <FormControl>
@@ -614,12 +634,25 @@ export function TransactionDialog({
                               </SelectItem>
                             ))
                           )}
+                          <SelectItem value={INCOME_OTHER_OPTION}>Otros</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                {isIncomeOtherSelected ? (
+                  <div className="space-y-2">
+                    <Label>Nombre del cliente extra / persona / trabajo</Label>
+                    <Input
+                      value={incomeOtherText}
+                      onChange={(event) => setIncomeOtherText(event.target.value)}
+                      placeholder="Ej: Trabajo extra de cobertura de evento"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                ) : null}
 
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium">Monto pagado:</span>
@@ -763,7 +796,6 @@ export function TransactionDialog({
                         />
                       </FormControl>
                       <FormMessage />
-                      {/** Natural language preview */}
                       <div className="text-sm text-muted-foreground mt-1">
                         {formatDateNatural(field.value as Date | string | undefined) || formatDateNatural(getCurrentDateInEcuador())}
                       </div>

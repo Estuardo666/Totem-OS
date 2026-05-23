@@ -157,7 +157,7 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
   const [period, setPeriod] = useState("current_month");
   const [client, setClient] = useState("all");
   const [service, setService] = useState("all");
-  const [isClosureExpanded, setIsClosureExpanded] = useState(true);
+  const [isClosureExpanded, setIsClosureExpanded] = useState(false);
 
   const periodLabel = useMemo(() => {
     const now = new Date();
@@ -461,30 +461,28 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
     userRole,
   ]);
 
+  const getKpiCardClassName = (index: number) => {
+    if (index === 0 || index === 3 || index === 6) {
+      return "xl:col-span-2";
+    }
+
+    return "xl:col-span-1";
+  };
+
 
   return (
     <div className="space-y-8">
       {stats.closureControl && stats.closureControl.pendingCount > 0 ? (
         <Collapsible open={isClosureExpanded} onOpenChange={setIsClosureExpanded}>
           <Card className="border-rose-300 bg-rose-50 shadow-sm">
-            <CardContent className="space-y-4 p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-2">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-rose-700">
-                    <AlertTriangle className="h-4 w-4" />
-                    Cierre contable pendiente
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-rose-950">
-                      {stats.closureControl.pendingCount} cliente(s) recurrente(s) siguen sin cierre de {stats.closureControl.currentMonthLabel}
-                    </p>
-                    <p className="mt-1 max-w-3xl text-sm text-rose-800">
-                      Mientras esos cierres no se aprueben, la lectura del ingreso recurrente del mes sigue siendo provisional. El monto potencial pendiente es {formatCurrency(stats.closureControl.pendingAmount)}.
-                    </p>
-                  </div>
+            <CardContent className="space-y-4 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-rose-700">
+                  <AlertTriangle className="h-4 w-4" />
+                  Cierre contable pendiente
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button asChild className="rounded-full bg-rose-600 hover:bg-rose-700">
                     <Link href="/finance/monthly-close">
                       Ir al cierre mensual
@@ -505,7 +503,11 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
               </div>
 
               <CollapsibleContent>
-                <div className="flex flex-wrap gap-2">
+                <div className="space-y-3 border-t border-rose-200 pt-3">
+                  <p className="max-w-3xl text-sm text-rose-800">
+                    {stats.closureControl.pendingCount} cliente(s) recurrente(s) siguen sin cierre de {stats.closureControl.currentMonthLabel}. El monto potencial pendiente es {formatCurrency(stats.closureControl.pendingAmount)}.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
                   {stats.closureControl.pendingClients.slice(0, 8).map((client) => (
                     <span
                       key={client.id}
@@ -519,6 +521,7 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
                       +{stats.closureControl.pendingClients.length - 8} más
                     </span>
                   ) : null}
+                  </div>
                 </div>
               </CollapsibleContent>
             </CardContent>
@@ -582,9 +585,9 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
               Actualización automática
             </Badge>
           </div>
-          <div className="grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {kpiCards.map((kpi) => (
-              <Card key={kpi.title} className="shadow-sm">
+          <div className="grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-6">
+            {kpiCards.map((kpi, index) => (
+              <Card key={kpi.title} className={cn("shadow-sm", getKpiCardClassName(index))}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 px-3 pt-3 pb-1">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">{kpi.title}</CardTitle>
