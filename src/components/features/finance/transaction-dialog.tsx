@@ -177,6 +177,9 @@ export function TransactionDialog({
   const [honorariosAmountInput, setHonorariosAmountInput] = useState<string>("");
   const [incomeAmountMode, setIncomeAmountMode] = useState<"100" | "50" | "other">("other");
   const [incomeOtherText, setIncomeOtherText] = useState("");
+  const [incomeClientSelection, setIncomeClientSelection] = useState<string>("");
+  const [incomeInvoiceDate, setIncomeInvoiceDate] = useState<Date>(getCurrentDateInEcuador());
+  const [incomeDueDate, setIncomeDueDate] = useState<Date | undefined>(undefined);
   const [honorariosUserIds, setHonorariosUserIds] = useState<string[]>([]);
 
   // Formulario de Ingreso
@@ -289,6 +292,9 @@ export function TransactionDialog({
       setExpenseAmountInput("");
       setHonorariosAmountInput("");
       setIncomeOtherText("");
+      setIncomeClientSelection("");
+      setIncomeInvoiceDate(getCurrentDateInEcuador());
+      setIncomeDueDate(undefined);
       setHonorariosUserIds([]);
     }
   }, [open, incomeForm, expenseForm, honorariosForm]);
@@ -307,9 +313,21 @@ export function TransactionDialog({
 
   // Watch selected client for income form to populate percentage-based amount
   const incomeSelectedClientId = incomeForm.watch("clientId");
-  const isIncomeOtherSelected = incomeSelectedClientId === INCOME_OTHER_OPTION;
+  const isIncomeOtherSelected = incomeClientSelection === INCOME_OTHER_OPTION;
   const incomeSelectedClient = clients.find((c) => c.id === incomeSelectedClientId);
   const incomeSelectedMonthly = incomeSelectedClient?.monthlyRate ?? 0;
+
+  useEffect(() => {
+    const currentClientId = incomeForm.getValues("clientId");
+    if (currentClientId) {
+      setIncomeClientSelection(currentClientId);
+      return;
+    }
+
+    if (!isIncomeOtherSelected) {
+      setIncomeClientSelection("");
+    }
+  }, [incomeForm, isIncomeOtherSelected]);
 
   useEffect(() => {
     if (!incomeSelectedClientId || isIncomeOtherSelected) {
@@ -591,8 +609,16 @@ export function TransactionDialog({
                     <FormItem>
                       <FormLabel>Cliente</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
-                        value={field.value ?? ""}
+                        onValueChange={(value) => {
+                          setIncomeClientSelection(value);
+                          if (value === INCOME_OTHER_OPTION) {
+                            field.onChange(undefined);
+                            return;
+                          }
+
+                          field.onChange(value);
+                        }}
+                        value={incomeClientSelection}
                         disabled={isSubmitting || loadingClients}
                       >
                         <FormControl>
@@ -777,57 +803,45 @@ export function TransactionDialog({
                   />
                 </div>
 
-                <FormField
-                  control={incomeForm.control}
-                  name="generatedAt"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fecha (Factura)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          value={formatDateValue(field.value as Date | string | undefined) || formatDateValue(getCurrentDateInEcuador())}
-                          onChange={(e) => {
-                            field.onChange(
-                              e.target.value ? parseDateFromInput(e.target.value) : getCurrentDateInEcuador()
-                            );
-                          }}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                      <div className="text-sm text-muted-foreground mt-1">
-                        {formatDateNatural(field.value as Date | string | undefined) || formatDateNatural(getCurrentDateInEcuador())}
-                      </div>
-                    </FormItem>
-                  )}
-                />
+                <div className="space-y-4">
+                  <FormItem>
+                    <FormLabel>Fecha (Factura)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        value={formatDateValue(incomeInvoiceDate)}
+                        onChange={(e) => {
+                          setIncomeInvoiceDate(
+                            e.target.value ? parseDateFromInput(e.target.value) ?? getCurrentDateInEcuador() : getCurrentDateInEcuador()
+                          );
+                        }}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {formatDateNatural(incomeInvoiceDate)}
+                    </div>
+                  </FormItem>
 
-                <FormField
-                  control={incomeForm.control}
-                  name="dueDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fecha de Vencimiento (Opcional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          value={formatDateValue(field.value as Date | string | undefined)}
-                          onChange={(e) => {
-                            field.onChange(
-                              e.target.value ? parseDateFromInput(e.target.value) : undefined
-                            );
-                          }}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                      <div className="text-sm text-muted-foreground mt-1">
-                        {formatDateNatural(field.value as Date | string | undefined)}
-                      </div>
-                    </FormItem>
-                  )}
-                />
+                  <FormItem>
+                    <FormLabel>Fecha de Vencimiento (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        value={formatDateValue(incomeDueDate)}
+                        onChange={(e) => {
+                          setIncomeDueDate(
+                            e.target.value ? parseDateFromInput(e.target.value) : undefined
+                          );
+                        }}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {formatDateNatural(incomeDueDate)}
+                    </div>
+                  </FormItem>
+                </div>
 
                 <div className="flex gap-4 pt-4">
                   <Button
