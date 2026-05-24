@@ -96,6 +96,9 @@ export interface ExpensesStatsData {
     assignedToName?: string;
     assignedToId?: string;
     reimbursed: boolean;
+    clientName?: string;
+    clientId?: string;
+    sourceType?: "EXPENSE" | "TRANSACTION";
   }>;
   categoryDistribution: Array<{
     category: string;
@@ -852,67 +855,14 @@ export async function getExpensesStatsFromDb(filters?: {
       },
     });
 
-    const transactionWhere: any = {
-      type: "EXPENSE",
-      createdAt: {
-        gte: monthStart,
-        lte: monthEnd,
-      },
-    };
+    const totalExpensesThisMonth = expensesThisMonth.reduce((sum, exp) => sum + exp.amount, 0);
 
-    if (filters?.userId && filters.userId !== "all") {
-      transactionWhere.assignedToId = filters.userId;
-    } else if (!isAdmin) {
-      transactionWhere.assignedToId = userId;
-    }
+    const pendingReimbursement = expensesThisMonth
+      .filter((exp) => exp.paidByUserId && !exp.reimbursed)
+      .reduce((sum, exp) => sum + exp.amount, 0);
 
-    if (filters?.clientId && filters.clientId !== "all") {
-      transactionWhere.relatedClientId = filters.clientId;
-      transactionWhere.clientId = filters.clientId;
-    }
-
-    if (filters?.category && filters.category !== "all") {
-      transactionWhere.category = filters.category;
-    }
-
-    const expenseTransactionsThisMonth = await db.transaction.findMany({
-      where: transactionWhere,
-      include: {
-        assignedTo: {
-          select: {
-            name: true,
-          },
-        },
-        relatedClient: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    const totalExpensesThisMonth =
-      expensesThisMonth.reduce((sum, exp) => sum + exp.amount, 0) +
-      expenseTransactionsThisMonth.reduce((sum, t) => sum + t.amount, 0);
-
-    const pendingReimbursement =
-      expensesThisMonth
-        .filter((exp) => exp.paidByUserId && !exp.reimbursed)
-        .reduce((sum, exp) => sum + exp.amount, 0) +
-      expenseTransactionsThisMonth
-        .filter((t) => t.assignedToId && t.status === "PENDING")
-        .reduce((sum, t) => sum + t.amount, 0);
-
-    const expenseMap = new Map<string, boolean>();
-    expensesThisMonth.forEach((exp) => {
-      if (exp.clientId && exp.paidByUserId) {
-        const dateKey = exp.date.toISOString().split('T')[0];
-        const key = `${exp.clientId}-${exp.paidByUserId}-${dateKey}-${exp.amount}`;
-        expenseMap.set(key, true);
-      }
-    });
-
-    const expensesList = [
-      ...expensesThisMonth.map((exp) => ({
+    const expensesList = expensesThisMonth
+      .map((exp) => ({
         id: exp.id,
         description: exp.description,
         amount: exp.amount,
@@ -922,28 +872,11 @@ export async function getExpensesStatsFromDb(filters?: {
         assignedToName: exp.paidByUser?.name,
         assignedToId: exp.paidByUserId ?? undefined,
         reimbursed: exp.reimbursed,
-      })),
-      ...expenseTransactionsThisMonth
-        .filter((t) => {
-          if (t.relatedClientId && t.assignedToId) {
-            const dateKey = t.createdAt.toISOString().split('T')[0];
-            const key = `${t.relatedClientId}-${t.assignedToId}-${dateKey}-${t.amount}`;
-            return !expenseMap.has(key);
-          }
-          return true;
-        })
-        .map((t) => ({
-          id: t.id,
-          description: t.description || "Gasto",
-          amount: t.amount,
-          category: t.category || "OTROS",
-          date: t.createdAt,
-          status: t.status,
-          assignedToName: t.assignedTo?.name,
-          assignedToId: t.assignedToId ?? undefined,
-          reimbursed: t.status === "PAID",
-        })),
-    ].sort((a, b) => b.date.getTime() - a.date.getTime());
+        clientName: exp.client?.name,
+        clientId: exp.clientId ?? undefined,
+        sourceType: "EXPENSE" as const,
+      }))
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
 
     const categoryMap = new Map<string, number>();
     expensesList.forEach((exp) => {
@@ -960,12 +893,9 @@ export async function getExpensesStatsFromDb(filters?: {
       if (exp.client) {
         const current = clientMap.get(exp.client.name) || 0;
         clientMap.set(exp.client.name, current + exp.amount);
-      }
-    });
-    expenseTransactionsThisMonth.forEach((t) => {
-      if (t.relatedClient) {
-        const current = clientMap.get(t.relatedClient.name) || 0;
-        clientMap.set(t.relatedClient.name, current + t.amount);
+      } else {
+        const current = clientMap.get("Sin cliente") || 0;
+        clientMap.set("Sin cliente", current + exp.amount);
       }
     });
     const clientDistribution = Array.from(clientMap.entries()).map(([clientName, amount]) => ({

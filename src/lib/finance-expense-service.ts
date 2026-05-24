@@ -94,22 +94,6 @@ export async function createExpenseInDb(
       },
     });
     expenses.push(expense);
-
-    // Crear transacción asociada si hay cliente
-    if (input.clientId) {
-      await db.transaction.create({
-        data: {
-          amount: input.amount,
-          type: "EXPENSE",
-          status: input.reimbursed ? "PAID" : "PENDING",
-          description: input.description,
-          category: input.category,
-          relatedClientId: input.clientId,
-          clientId: input.clientId,
-          assignedToId: null,
-        },
-      });
-    }
   }
 
   return expenses[0];

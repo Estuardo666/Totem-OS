@@ -5,7 +5,6 @@ import type {
   OfflineClientOption,
   OfflineUserOption,
   ReceivablesSnapshot,
-  TransactionSnapshotItem,
   TransactionsSnapshot,
 } from "@/lib/finance-offline-types";
 
@@ -293,7 +292,7 @@ export function projectReceivablesSnapshot(
               new Date()
             )
         )
-        .reduce((sum, item) => sum + item.payload.amount, 0),
+        .reduce((sum, item) => sum + (item.payload.amount ?? 0), 0),
     pendingTransactions,
   };
 }
@@ -397,6 +396,11 @@ export function projectExpensesSnapshot(
       clientMap.set(
         expense.clientName,
         (clientMap.get(expense.clientName) || 0) + expense.amount
+      );
+    } else {
+      clientMap.set(
+        "Sin cliente",
+        (clientMap.get("Sin cliente") || 0) + expense.amount
       );
     }
   });
