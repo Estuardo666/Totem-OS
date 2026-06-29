@@ -31,18 +31,9 @@ export function SplashProvider({ children }: SplashProviderProps) {
   const [canHide, setCanHide] = useState(false);
   const [appReady, setAppReady] = useState(false);
 
-  // Initialize splash on mount - only for desktop PWAs (Windows/macOS)
-  // iOS and Android have native splash screens that work correctly
+  // Splash disabled for desktop PWAs
   useEffect(() => {
-    const isDesktopPwa = isPwa && (platform === "windows" || platform === "macos");
-    
-    // Check if we've shown splash in this session already
-    const hasShownSplash = sessionStorage.getItem("splash-shown");
-    
-    if (isDesktopPwa && !hasShownSplash) {
-      setShowSplash(true);
-      sessionStorage.setItem("splash-shown", "true");
-    }
+    // No splash screen for desktop Chrome PWA
   }, [isPwa, platform]);
 
   // Minimum duration timer

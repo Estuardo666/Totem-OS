@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { format } from "date-fns";
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronRight, ChevronDown } from "lucide-react";
 import {
@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   type SortConfig,
   nextSortDirection,
@@ -58,7 +57,10 @@ export function ExpensesClientTable({ data, expenses }: ExpensesClientTableProps
   const clientRows = useMemo(() => {
     return data.map((item) => {
       const clientExpenses = expenses.filter(
-        (e) => e.clientId === item.clientName || e.clientName === item.clientName || (item.clientName === "Sin cliente" && !e.clientId && !e.clientName)
+        (e) =>
+          e.clientId === item.clientName ||
+          e.clientName === item.clientName ||
+          (item.clientName === "Sin cliente" && !e.clientId && !e.clientName)
       );
       const count = clientExpenses.length;
       return {
@@ -105,8 +107,6 @@ export function ExpensesClientTable({ data, expenses }: ExpensesClientTableProps
   };
 
   const getDetailExpenses = (clientKey: string) => {
-    const row = clientRows.find((r) => r.key === clientKey);
-    if (!row) return [];
     if (clientKey === "Sin cliente") {
       return expenses.filter((e) => !e.clientId && !e.clientName);
     }
@@ -169,120 +169,111 @@ export function ExpensesClientTable({ data, expenses }: ExpensesClientTableProps
             const detailTotal = detailExpenses.reduce((s, e) => s + e.amount, 0);
 
             return (
-              <Collapsible
-                key={row.key}
-                open={isExpanded}
-                onOpenChange={() => handleRowClick(row.key)}
-                asChild
-              >
-                <>
-                  <CollapsibleTrigger asChild>
-                    <TableRow
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleRowClick(row.key)}
-                    >
-                      <TableCell className="w-8">
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium">{row.clientName}</TableCell>
-                      <TableCell className="text-right font-semibold text-red-600">
-                        -{formatCurrency(row.amount)}
-                      </TableCell>
-                      <TableCell className="text-right">{row.count}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(row.avg)}</TableCell>
-                      <TableCell className="text-right">{row.pct.toFixed(1)}%</TableCell>
-                    </TableRow>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent asChild>
-                    <tr>
-                      <TableCell colSpan={6} className="p-0 bg-muted/20">
-                        <div className="p-4">
-                          <div className="rounded-md border bg-background">
-                            <Table>
-                              <TableHeader>
+              <Fragment key={row.key}>
+                <TableRow
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleRowClick(row.key)}
+                >
+                  <TableCell className="w-8">
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </TableCell>
+                  <TableCell className="font-medium">{row.clientName}</TableCell>
+                  <TableCell className="text-right font-semibold text-red-600">
+                    -{formatCurrency(row.amount)}
+                  </TableCell>
+                  <TableCell className="text-right">{row.count}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(row.avg)}</TableCell>
+                  <TableCell className="text-right">{row.pct.toFixed(1)}%</TableCell>
+                </TableRow>
+                {isExpanded && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="p-0 bg-muted/20">
+                      <div className="p-4">
+                        <div className="rounded-md border bg-background">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Fecha</TableHead>
+                                <TableHead>Descripción</TableHead>
+                                <TableHead>Categoría</TableHead>
+                                <TableHead>Asignado a</TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead className="text-right">Monto</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {detailExpenses.length === 0 ? (
                                 <TableRow>
-                                  <TableHead>Fecha</TableHead>
-                                  <TableHead>Descripción</TableHead>
-                                  <TableHead>Categoría</TableHead>
-                                  <TableHead>Asignado a</TableHead>
-                                  <TableHead>Estado</TableHead>
-                                  <TableHead className="text-right">Monto</TableHead>
+                                  <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                                    Sin movimientos
+                                  </TableCell>
                                 </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {detailExpenses.length === 0 ? (
-                                  <TableRow>
-                                    <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
-                                      Sin movimientos
-                                    </TableCell>
-                                  </TableRow>
-                                ) : (
-                                  detailExpenses.map((exp) => {
-                                    const isReimbursed = exp.reimbursed || exp.status === "PAID" || exp.status === "REIMBURSED";
-                                    return (
-                                      <TableRow key={exp.id}>
-                                        <TableCell className="text-muted-foreground">
-                                          {format(new Date(exp.date), "dd/MM/yyyy")}
-                                        </TableCell>
-                                        <TableCell className="font-medium">{exp.description}</TableCell>
-                                        <TableCell>
-                                          <Badge variant="outline">{getCategoryLabel(exp.category)}</Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                          {exp.assignedToName ? (
-                                            <span className="text-sm">{exp.assignedToName}</span>
-                                          ) : (
-                                            <span className="text-muted-foreground text-sm">-</span>
-                                          )}
-                                        </TableCell>
-                                        <TableCell>
-                                          {exp.assignedToId ? (
-                                            <Badge
-                                              variant={isReimbursed ? "default" : "secondary"}
-                                              className={
-                                                isReimbursed
-                                                  ? "bg-green-500 hover:bg-green-600 text-white"
-                                                  : "bg-yellow-500 hover:bg-yellow-600 text-white"
-                                              }
-                                            >
-                                              {getStatusLabel(exp.status, exp.reimbursed)}
-                                            </Badge>
-                                          ) : (
-                                            <Badge variant="outline" className="text-muted-foreground">
-                                              Empresa
-                                            </Badge>
-                                          )}
-                                        </TableCell>
-                                        <TableCell className="text-right font-semibold text-red-600">
-                                          -{formatCurrency(exp.amount)}
-                                        </TableCell>
-                                      </TableRow>
-                                    );
-                                  })
-                                )}
-                              </TableBody>
-                            </Table>
-                            {detailExpenses.length > 0 && (
-                              <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/30 text-sm">
-                                <span className="text-muted-foreground">
-                                  {detailExpenses.length} movimiento{detailExpenses.length !== 1 ? "s" : ""}
-                                </span>
-                                <span className="font-semibold text-red-600">
-                                  Subtotal: -{formatCurrency(detailTotal)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
+                              ) : (
+                                detailExpenses.map((exp) => {
+                                  const isReimbursed = exp.reimbursed || exp.status === "PAID" || exp.status === "REIMBURSED";
+                                  return (
+                                    <TableRow key={exp.id}>
+                                      <TableCell className="text-muted-foreground">
+                                        {format(new Date(exp.date), "dd/MM/yyyy")}
+                                      </TableCell>
+                                      <TableCell className="font-medium">{exp.description}</TableCell>
+                                      <TableCell>
+                                        <Badge variant="outline">{getCategoryLabel(exp.category)}</Badge>
+                                      </TableCell>
+                                      <TableCell>
+                                        {exp.assignedToName ? (
+                                          <span className="text-sm">{exp.assignedToName}</span>
+                                        ) : (
+                                          <span className="text-muted-foreground text-sm">-</span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        {exp.assignedToId ? (
+                                          <Badge
+                                            variant={isReimbursed ? "default" : "secondary"}
+                                            className={
+                                              isReimbursed
+                                                ? "bg-green-500 hover:bg-green-600 text-white"
+                                                : "bg-yellow-500 hover:bg-yellow-600 text-white"
+                                            }
+                                          >
+                                            {getStatusLabel(exp.status, exp.reimbursed)}
+                                          </Badge>
+                                        ) : (
+                                          <Badge variant="outline" className="text-muted-foreground">
+                                            Empresa
+                                          </Badge>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="text-right font-semibold text-red-600">
+                                        -{formatCurrency(exp.amount)}
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })
+                              )}
+                            </TableBody>
+                          </Table>
+                          {detailExpenses.length > 0 && (
+                            <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/30 text-sm">
+                              <span className="text-muted-foreground">
+                                {detailExpenses.length} movimiento{detailExpenses.length !== 1 ? "s" : ""}
+                              </span>
+                              <span className="font-semibold text-red-600">
+                                Subtotal: -{formatCurrency(detailTotal)}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      </TableCell>
-                    </tr>
-                  </CollapsibleContent>
-                </>
-              </Collapsible>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </Fragment>
             );
           })}
         </TableBody>
