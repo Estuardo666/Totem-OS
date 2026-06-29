@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { emergencyFundSettingsSchema } from "@/schemas/emergency-fund";
 
 export const financeBudgetCategorySchema = z.enum([
   "COMIDA",
@@ -37,6 +38,23 @@ export const financeSettingsSchema = z.object({
   personalAnalyticsEnabled: z.boolean().default(false),
   showPersonalAnalyticsInDashboard: z.boolean().default(false),
   personalAnalyticsAdminsOnly: z.boolean().default(true),
+
+  // Distribución de utilidades
+  profitDistributionEnabled: z.boolean().default(false),
+  profitDistributionBase: z.enum(["COLLECTED_CASH", "NET_INCOME"]).default("COLLECTED_CASH"),
+  reserveBeforeDistribution: z.boolean().default(true),
+  autoGenerateOnClose: z.boolean().default(false),
+
+  // Fondo de emergencia
+  emergencyFund: emergencyFundSettingsSchema.default({
+    enabled: false,
+    monthlyContributionPct: 10,
+    minBalance: 0,
+    approvalRequired: true,
+    approverMode: "ANY_ADMIN",
+    approverUserIds: [],
+    autoContributeOnClose: true,
+  }),
 });
 
 export const updateFinanceSettingsSchema = financeSettingsSchema.superRefine((data, ctx) => {

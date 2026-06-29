@@ -2,6 +2,7 @@
 
 import { MonthYearSelector } from "./month-year-selector";
 import { SettlementCard } from "./settlement-card";
+import { HonorariosOverviewPanel } from "./honorarios-overview-panel";
 import { UserSettlementReport } from "@/actions/finance-actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
@@ -91,6 +92,9 @@ export function SettlementPageClient({
           })}
         </div>
       )}
+
+      {/* Honorarios fijados — panel centralizado (solo admin) */}
+      {isAdmin && <HonorariosOverviewPanel />}
     </div>
   );
 }

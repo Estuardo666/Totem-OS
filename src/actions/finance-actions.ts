@@ -87,6 +87,8 @@ export interface UserSettlementReport {
   userRole: string;
   salaryType: string;
   salary: number;
+  profitShare: number;
+  profitSharePercent: number;
   reimbursements: number;
   paidSoFar: number;
   remaining: number;
@@ -1012,9 +1014,11 @@ export async function getSettlementReport(
     const settlementReports = await Promise.all(
       users.map(async (user) => {
         let salary = 0;
+        let profitShare = 0;
         let reimbursements = 0;
         let paidSoFar = 0;
 
+        // Base compensation (salaryType determines the formula)
         if (user.salaryType === "MONTHLY") {
           salary = user.baseSalary ?? 0;
         } else if (user.salaryType === "HOURLY") {
@@ -1032,9 +1036,12 @@ export async function getSettlementReport(
             0
           );
           salary = totalHours * (user.hourlyRate ?? 0);
-        } else if (user.salaryType === "PROFIT_SHARE") {
-          const profitSharePercent = user.profitSharePercent ?? 0;
-          salary = netIncome * (profitSharePercent / 100);
+        }
+
+        // Profit share is ADITIVE — applies on top of any salaryType
+        const userProfitSharePercent = user.profitSharePercent ?? 0;
+        if (userProfitSharePercent > 0 && netIncome > 0) {
+          profitShare = netIncome * (userProfitSharePercent / 100);
         }
 
         const pendingExpenses = await db.expense.findMany({
@@ -1054,7 +1061,7 @@ export async function getSettlementReport(
         );
 
         paidSoFar = userPaidTransactions.reduce((sum, t) => sum + t.amount, 0);
-        const remaining = salary + reimbursements - paidSoFar;
+        const remaining = salary + profitShare + reimbursements - paidSoFar;
 
         return {
           userId: user.id,
@@ -1062,6 +1069,8 @@ export async function getSettlementReport(
           userRole: "STAFF",
           salaryType: user.salaryType ?? "MONTHLY",
           salary,
+          profitShare,
+          profitSharePercent: userProfitSharePercent,
           reimbursements,
           paidSoFar,
           remaining: Math.max(0, remaining),
@@ -1102,25 +1111,22 @@ export async function processSalaryPayment(
 
     const recipientUser = await db.user.findUnique({
       where: { id: validatedData.recipientUserId },
-      select: { id: true, name: true, salaryType: true },
+      select: { id: true, name: true },
     });
 
     if (!recipientUser) {
       return { success: false, error: "Usuario receptor no encontrado" };
     }
 
-    const transactionType =
-      recipientUser.salaryType === "PROFIT_SHARE" ? "HONORARIOS" : "EXPENSE";
-
     const transaction = await db.transaction.create({
       data: {
         amount: validatedData.amount,
-        type: transactionType,
+        type: "EXPENSE",
         status: "PAID",
         description:
           validatedData.description ||
-          `Pago de ${transactionType === "HONORARIOS" ? "honorarios" : "salario"} - ${validatedData.month}/${validatedData.year}`,
-        category: transactionType === "EXPENSE" ? "SALARY" : undefined,
+          `Pago de salario - ${validatedData.month}/${validatedData.year}`,
+        category: "SALARY",
         userId: validatedData.recipientUserId,
       },
     });

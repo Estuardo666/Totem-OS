@@ -163,7 +163,7 @@ export function SalaryConfigDialog({
                     <FormControl>
                       <Input
                         type="number"
-                        step="0.01"
+                        step="any"
                         placeholder="0.00"
                         {...field}
                         value={field.value ?? ""}
@@ -187,7 +187,7 @@ export function SalaryConfigDialog({
                     <FormControl>
                       <Input
                         type="number"
-                        step="0.01"
+                        step="any"
                         placeholder="0.00"
                         {...field}
                         value={field.value ?? ""}
@@ -201,29 +201,32 @@ export function SalaryConfigDialog({
               />
             )}
 
-            {salaryType === "PROFIT_SHARE" && (
-              <FormField
-                control={form.control}
-                name="profitSharePercent"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Porcentaje de Participación (%)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        placeholder="50.0"
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <div className="border-t pt-4 space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Participación en utilidades</p>
+              <p className="text-xs text-muted-foreground">Adicional al salario base. Si tiene un %, recibe esa parte de las ganancias además de su sueldo.</p>
+            </div>
+
+            <FormField
+              control={form.control}
+              name="profitSharePercent"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Porcentaje de Participación (%)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="any"
+                      placeholder="0 = sin participación"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

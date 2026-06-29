@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookCheck, Plus, Receipt, Scale, TrendingDown } from "lucide-react";
+import { BarChart3, BookCheck, Plus, Receipt, Scale, TrendingDown, PiggyBank, Shield } from "lucide-react";
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,18 @@ const NAV_ITEMS: NavItem[] = [
     href: "/finance/settlement",
     label: "Liquidación Interna",
     icon: Scale,
+    adminOnly: true,
+  },
+  {
+    href: "/finance/profits",
+    label: "Utilidades",
+    icon: PiggyBank,
+    adminOnly: true,
+  },
+  {
+    href: "/finance/emergency-fund",
+    label: "Fondo de Emergencia",
+    icon: Shield,
     adminOnly: true,
   },
 ];

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle, Loader2, Save, Settings2 } from "lucide-react";
+import { AlertTriangle, Loader2, Save, Settings2, PiggyBank, Shield } from "lucide-react";
 import { updateFinanceSettings } from "@/actions/finance-settings-actions";
 import {
   updateFinanceSettingsSchema,
@@ -66,6 +66,7 @@ export function FinanceSettingsForm({ initialSettings, adminUsers }: FinanceSett
   const approverMode = form.watch("approverMode");
   const adminBudgetMode = form.watch("adminBudgetMode");
   const selectedCategories = form.watch("trackedCategories") ?? [];
+  const efApproverMode = form.watch("emergencyFund.approverMode");
 
   const onSubmit = async (data: UpdateFinanceSettingsInput) => {
     setIsSaving(true);
@@ -423,6 +424,224 @@ export function FinanceSettingsForm({ initialSettings, adminUsers }: FinanceSett
                 <AlertTriangle className="mt-0.5 h-4 w-4" />
                 <p>Esta capa es solo analítica interna para orientar conversaciones personales. No impacta reembolsos oficiales de la empresa.</p>
               </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-semibold flex items-center gap-2">
+                  <PiggyBank className="h-5 w-5" />
+                  Distribución de utilidades
+                </h3>
+                <p className="text-sm text-muted-foreground">Configura cómo se reparten las ganancias netas entre los socios.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="profitDistributionEnabled"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                      <div>
+                        <FormLabel>Activar distribución de utilidades</FormLabel>
+                        <p className="text-sm text-muted-foreground">Habilita el flujo formal de reparto de ganancias.</p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="reserveBeforeDistribution"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                      <div>
+                        <FormLabel>Reservar antes de repartir</FormLabel>
+                        <p className="text-sm text-muted-foreground">El aporte al fondo se descuenta antes del reparto.</p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="profitDistributionBase"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Base de cálculo</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona base" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="COLLECTED_CASH">Caja cobrada</SelectItem>
+                          <SelectItem value="NET_INCOME">Ingreso neto (devengo)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="autoGenerateOnClose"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                      <div>
+                        <FormLabel>Generar automáticamente al cerrar mes</FormLabel>
+                        <p className="text-sm text-muted-foreground">Crea el borrador de distribución al cerrar el mes.</p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-semibold flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Fondo de emergencia
+                </h3>
+                <p className="text-sm text-muted-foreground">Reserva acumulada con reglas de aporte y retiro reguladas.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="emergencyFund.enabled"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                      <div>
+                        <FormLabel>Activar fondo de emergencia</FormLabel>
+                        <p className="text-sm text-muted-foreground">Habilita la reserva automática mensual.</p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="emergencyFund.autoContributeOnClose"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                      <div>
+                        <FormLabel>Aporte automático al cerrar mes</FormLabel>
+                        <p className="text-sm text-muted-foreground">Contribuye al fondo automáticamente.</p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="emergencyFund.monthlyContributionPct"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>% de aporte mensual (sobre utilidad neta)</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="0" max="100" step="0.5" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="emergencyFund.minBalance"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Saldo mínimo objetivo ($)</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="0" step="any" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">Cuando el fondo alcance este monto, el aporte se detiene. 0 = sin límite.</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="emergencyFund.approvalRequired"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <div>
+                      <FormLabel>Requerir aprobación para retiros</FormLabel>
+                      <p className="text-sm text-muted-foreground">Los retiros deben ser aprobados por un administrador.</p>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="emergencyFund.approverMode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quién aprueba retiros</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona aprobador" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="ANY_ADMIN">Cualquier ADMIN</SelectItem>
+                        <SelectItem value="PRIMARY_ADMIN">Solo ADMIN principal</SelectItem>
+                        <SelectItem value="SELECTED_USERS">Usuarios seleccionados</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {efApproverMode === "SELECTED_USERS" ? (
+                <FormField
+                  control={form.control}
+                  name="emergencyFund.approverUserIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Aprobadores del fondo</FormLabel>
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {adminUsers.map((user) => (
+                          <Label key={user.id} className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer">
+                            <Checkbox
+                              checked={(field.value ?? []).includes(user.id)}
+                              onCheckedChange={(checked) => {
+                                const current = field.value ?? [];
+                                if (checked) {
+                                  field.onChange([...current, user.id]);
+                                  return;
+                                }
+                                field.onChange(current.filter((v) => v !== user.id));
+                              }}
+                            />
+                            <span className="text-sm">{user.name}</span>
+                          </Label>
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
             </div>
 
             <div className="flex justify-end">

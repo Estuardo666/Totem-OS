@@ -41,22 +41,34 @@ export function SettlementCard({
     }).format(amount);
   };
 
-  const getSalaryTypeBadge = (salaryType: string, role: string) => {
-    // Si es ADMIN con PROFIT_SHARE, no mostrar badge de tipo de salario (ya se muestra el de rol)
-    if (role === "ADMIN" && salaryType === "PROFIT_SHARE") {
-      return null;
+  const getSalaryTypeBadge = (salaryType: string, _role: string, hasProfitShare: boolean) => {
+    const badges = [];
+
+    // Profit share badge (if user has any profitSharePercent)
+    if (hasProfitShare) {
+      badges.push(
+        <Badge key="profit" variant="default" className="bg-purple-600">Participación</Badge>
+      );
     }
-    
+
+    // Salary type badge
     switch (salaryType) {
       case "MONTHLY":
-        return <Badge variant="outline">Mensual</Badge>;
+        badges.push(<Badge key="type" variant="outline">Mensual</Badge>);
+        break;
       case "HOURLY":
-        return <Badge variant="outline">Por Hora</Badge>;
+        badges.push(<Badge key="type" variant="outline">Por Hora</Badge>);
+        break;
       case "PROFIT_SHARE":
-        return <Badge variant="default" className="bg-purple-600">Socio</Badge>;
+        if (!hasProfitShare) {
+          badges.push(<Badge key="type" variant="default" className="bg-purple-600">Socio</Badge>);
+        }
+        break;
       default:
-        return <Badge variant="outline">{salaryType}</Badge>;
+        badges.push(<Badge key="type" variant="outline">{salaryType}</Badge>);
     }
+
+    return badges.length > 0 ? <div className="flex gap-1">{badges}</div> : null;
   };
 
   const getRoleBadge = (role: string) => {
@@ -98,7 +110,7 @@ export function SettlementCard({
                 <CardTitle className="text-xl truncate">{userReport.userName}</CardTitle>
                 <div className="flex items-center gap-2 flex-wrap">
                   {getRoleBadge(userReport.userRole)}
-                  {getSalaryTypeBadge(userReport.salaryType, userReport.userRole)}
+                  {getSalaryTypeBadge(userReport.salaryType, userReport.userRole, (userReport.profitSharePercent ?? 0) > 0)}
                 </div>
               </div>
             </div>
@@ -130,26 +142,21 @@ export function SettlementCard({
         <CardContent className="space-y-4">
           {/* Desglose Financiero */}
           <div className="space-y-3">
-            {/* Salario Base / Participación */}
-            {userReport.salaryType === "PROFIT_SHARE" && userReport.netIncome !== undefined ? (
-              <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
-                <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center text-sm">
-                  <span className="text-muted-foreground">Ingresos Netos Globales:</span>
-                  <span className="font-medium">{formatCurrency(userReport.netIncome)}</span>
-                </div>
-                <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center text-sm">
-                  <span className="text-muted-foreground">
-                    Tu Participación ({user.profitSharePercent ?? 0}%):
-                  </span>
-                  <span className="font-semibold">{formatCurrency(userReport.share ?? 0)}</span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center p-3 bg-muted/50 rounded-lg">
+            {/* Salario Base */}
+            <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center p-3 bg-muted/50 rounded-lg">
+              <span className="text-muted-foreground">
+                {userReport.salaryType === "HOURLY" ? "Salario (Horas × Tarifa):" : "Salario Base:"}
+              </span>
+              <span className="font-semibold">{formatCurrency(userReport.salary)}</span>
+            </div>
+
+            {/* Participación en Utilidades */}
+            {userReport.profitShare > 0 && (
+              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
                 <span className="text-muted-foreground">
-                  {userReport.salaryType === "HOURLY" ? "Salario (Horas × Tarifa):" : "Salario Base:"}
+                  (+) Participación en Utilidades ({userReport.profitSharePercent}%):
                 </span>
-                <span className="font-semibold">{formatCurrency(userReport.salary)}</span>
+                <span className="font-semibold text-purple-600">{formatCurrency(userReport.profitShare)}</span>
               </div>
             )}
 

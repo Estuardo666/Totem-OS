@@ -31,6 +31,19 @@ const DEFAULT_FINANCE_SETTINGS: FinanceSettings = financeSettingsSchema.parse({
   personalAnalyticsEnabled: false,
   showPersonalAnalyticsInDashboard: false,
   personalAnalyticsAdminsOnly: true,
+  profitDistributionEnabled: false,
+  profitDistributionBase: "COLLECTED_CASH",
+  reserveBeforeDistribution: true,
+  autoGenerateOnClose: false,
+  emergencyFund: {
+    enabled: false,
+    monthlyContributionPct: 10,
+    minBalance: 0,
+    approvalRequired: true,
+    approverMode: "ANY_ADMIN",
+    approverUserIds: [],
+    autoContributeOnClose: true,
+  },
 });
 
 function ensureAdmin(session: { user?: { role?: string } } | null) {

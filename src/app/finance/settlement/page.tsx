@@ -26,10 +26,10 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
     try {
       const dbUser = await db.user.findUnique({
         where: { id: session.user.id },
-        select: { role: true },
+        select: { roleLegacy: true },
       });
       if (dbUser) {
-        userRole = dbUser.role;
+        userRole = dbUser.roleLegacy;
       }
     } catch (error) {
       console.error("Error al obtener rol desde DB:", error);

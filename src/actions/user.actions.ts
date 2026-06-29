@@ -30,6 +30,7 @@ function buildCurrentUserFallback(session: Awaited<ReturnType<typeof import("@/a
     salaryType: "MONTHLY",
     baseSalary: null,
     profitSharePercent: null,
+    emergencyFundEligible: true,
     bankAccountInfo: null,
     hourlyRate: 0,
     currency: "USD",
