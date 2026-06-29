@@ -7,8 +7,8 @@ import { getUsers } from "@/actions/user.actions";
 import { getClients } from "@/actions/client-actions";
 import { ExpensesSummary } from "@/components/features/finance/expenses-summary";
 import { ExpensesTable } from "@/components/features/finance/expenses-table";
-import { ExpensesPieChart } from "@/components/features/finance/expenses-pie-chart";
-import { ExpensesBarChart } from "@/components/features/finance/expenses-bar-chart";
+import { ExpensesCategoryTable } from "@/components/features/finance/expenses-category-table";
+import { ExpensesClientTable } from "@/components/features/finance/expenses-client-table";
 import { ExpensesFilters } from "@/components/features/finance/expenses-filters";
 import { ExpensesBusinessPanel } from "@/components/features/finance/expenses-business-panel";
 import { ExpensesPersonalAnalyticsPanel } from "@/components/features/finance/expenses-personal-analytics-panel";
@@ -252,6 +252,10 @@ export function ExpensesWrapper() {
         <ExpensesSummary
           totalExpensesThisMonth={projectedExpensesData.totalExpensesThisMonth}
           pendingReimbursement={projectedExpensesData.pendingReimbursement}
+          expenseCount={projectedExpensesData.expenses.length}
+          previousMonthTotal={projectedExpensesData.previousMonthTotal ?? 0}
+          reimbursedAmount={projectedExpensesData.reimbursedAmount ?? 0}
+          expensesWithoutClient={projectedExpensesData.expensesWithoutClient ?? { count: 0, amount: 0 }}
         />
       </div>
 
@@ -265,7 +269,7 @@ export function ExpensesWrapper() {
                 <CardTitle>Distribución por categoría</CardTitle>
               </CardHeader>
               <CardContent>
-                <ExpensesPieChart data={projectedExpensesData.categoryDistribution} />
+                <ExpensesCategoryTable data={projectedExpensesData.categoryDistribution} />
               </CardContent>
             </Card>
 
@@ -274,7 +278,10 @@ export function ExpensesWrapper() {
                 <CardTitle>Gastos por cliente</CardTitle>
               </CardHeader>
               <CardContent>
-                <ExpensesBarChart data={projectedExpensesData.clientDistribution} />
+                <ExpensesClientTable
+                  data={projectedExpensesData.clientDistribution}
+                  expenses={projectedExpensesData.expenses}
+                />
               </CardContent>
             </Card>
           </div>

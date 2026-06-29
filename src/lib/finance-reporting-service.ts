@@ -86,6 +86,7 @@ type ClosureClientRow = {
 export interface ExpensesStatsData {
   totalExpensesThisMonth: number;
   pendingReimbursement: number;
+  previousMonthTotal: number;
   expenses: Array<{
     id: string;
     description: string;
@@ -861,6 +862,33 @@ export async function getExpensesStatsFromDb(filters?: {
       .filter((exp) => exp.paidByUserId && !exp.reimbursed)
       .reduce((sum, exp) => sum + exp.amount, 0);
 
+    const prevMonthStart = new Date(monthStart);
+    prevMonthStart.setMonth(prevMonthStart.getMonth() - 1);
+    const prevMonthEnd = new Date(monthStart);
+    prevMonthEnd.setDate(prevMonthEnd.getDate() - 1);
+    prevMonthEnd.setHours(23, 59, 59, 999);
+
+    const prevMonthWhere: any = {
+      date: { gte: prevMonthStart, lte: prevMonthEnd },
+    };
+    if (filters?.userId && filters.userId !== "all") {
+      prevMonthWhere.paidByUserId = filters.userId;
+    } else if (!isAdmin) {
+      prevMonthWhere.paidByUserId = userId;
+    }
+    if (filters?.clientId && filters.clientId !== "all") {
+      prevMonthWhere.clientId = filters.clientId;
+    }
+    if (filters?.category && filters.category !== "all") {
+      prevMonthWhere.category = filters.category;
+    }
+
+    const expensesPrevMonth = await db.expense.findMany({
+      where: prevMonthWhere,
+      select: { amount: true },
+    });
+    const previousMonthTotal = expensesPrevMonth.reduce((sum, exp) => sum + exp.amount, 0);
+
     const expensesList = expensesThisMonth
       .map((exp) => ({
         id: exp.id,
@@ -908,6 +936,7 @@ export async function getExpensesStatsFromDb(filters?: {
       data: {
         totalExpensesThisMonth,
         pendingReimbursement,
+        previousMonthTotal,
         expenses: expensesList,
         categoryDistribution,
         clientDistribution,

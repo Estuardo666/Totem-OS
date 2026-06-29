@@ -386,6 +386,10 @@ export function projectExpensesSnapshot(
   const categoryMap = new Map<string, number>();
   const clientMap = new Map<string, number>();
 
+  let reimbursedAmount = 0;
+  let expensesWithoutClientCount = 0;
+  let expensesWithoutClientAmount = 0;
+
   projectedExpenses.forEach((expense) => {
     categoryMap.set(
       expense.category,
@@ -402,6 +406,18 @@ export function projectExpensesSnapshot(
         "Sin cliente",
         (clientMap.get("Sin cliente") || 0) + expense.amount
       );
+    }
+
+    if (
+      expense.assignedToId &&
+      (expense.reimbursed || expense.status === "PAID" || expense.status === "REIMBURSED")
+    ) {
+      reimbursedAmount += expense.amount;
+    }
+
+    if (!expense.clientId && !expense.clientName) {
+      expensesWithoutClientCount++;
+      expensesWithoutClientAmount += expense.amount;
     }
   });
 
@@ -428,5 +444,10 @@ export function projectExpensesSnapshot(
       clientName,
       amount,
     })),
+    reimbursedAmount,
+    expensesWithoutClient: {
+      count: expensesWithoutClientCount,
+      amount: expensesWithoutClientAmount,
+    },
   };
 }

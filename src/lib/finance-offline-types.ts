@@ -55,6 +55,8 @@ export interface ExpensesSnapshot
   extends Omit<ExpensesStatsData, "expenses"> {
   expenses: ExpenseSnapshotItem[];
   financeSettingsMetrics?: FinanceSettingsMetrics;
+  reimbursedAmount?: number;
+  expensesWithoutClient?: { count: number; amount: number };
 }
 
 interface FinanceOfflineQueueBase {

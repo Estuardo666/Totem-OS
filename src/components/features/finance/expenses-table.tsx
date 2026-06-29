@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Check, Loader2, Edit } from "lucide-react";
+import { Check, Loader2, Edit, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { markExpenseAsReimbursed, markTransactionAsPaid } from "@/actions/finance-actions";
 import {
   buildFinanceOfflineQueueId,
@@ -22,6 +22,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  type SortConfig,
+  nextSortDirection,
+  compareStrings,
+  compareNumbers,
+  compareDates,
+  formatCurrency,
+  getCategoryLabel,
+  getStatusLabel,
+  getStatusOrder,
+} from "./sortable-utils";
 
 interface ExpensesTableProps {
   expenses: Array<{
@@ -34,57 +45,60 @@ interface ExpensesTableProps {
     assignedToName?: string;
     assignedToId?: string;
     reimbursed: boolean;
-    sourceType?: "EXPENSE" | "TRANSACTION"; // Para identificar el origen
+    sourceType?: "EXPENSE" | "TRANSACTION";
     clientName?: string;
     clientId?: string;
   }>;
-  onUpdate?: () => void; // Callback para recargar datos
+  onUpdate?: () => void;
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
-// Función para obtener el label de la categoría
-function getCategoryLabel(category: string): string {
-  switch (category) {
-    case "COMIDA":
-      return "Comida";
-    case "TRANSPORTE":
-      return "Transporte";
-    case "INVITACIONES":
-      return "Invitaciones";
-    case "SOFTWARE":
-      return "Software";
-    case "OFICINA":
-      return "Oficina";
-    case "EQUIPOS":
-      return "Equipos";
-    case "OTROS":
-      return "Otros";
-    default:
-      return category;
-  }
-}
-
-// Función para obtener el label del estado
-function getStatusLabel(status: string, reimbursed: boolean): string {
-  if (reimbursed || status === "PAID" || status === "REIMBURSED") {
-    return "Reembolsado";
-  }
-  return "Pendiente";
-}
+type SortKey = "description" | "category" | "date" | "clientName" | "assignedToName" | "status" | "amount";
 
 export function ExpensesTable({ expenses, onUpdate }: ExpensesTableProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: null });
+
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => {
+      if (prev.key !== key) return { key, direction: "asc" };
+      return { key, direction: nextSortDirection(prev.direction) };
+    });
+  };
+
+  const sortedExpenses = useMemo(() => {
+    if (!sortConfig.key || !sortConfig.direction) return expenses;
+    const dir = sortConfig.direction;
+    return [...expenses].sort((a, b) => {
+      switch (sortConfig.key) {
+        case "description":
+          return compareStrings(a.description ?? "", b.description ?? "", dir);
+        case "category":
+          return compareStrings(
+            getCategoryLabel(a.category),
+            getCategoryLabel(b.category),
+            dir
+          );
+        case "date":
+          return compareDates(new Date(a.date), new Date(b.date), dir);
+        case "clientName":
+          return compareStrings(a.clientName ?? "", b.clientName ?? "", dir);
+        case "assignedToName":
+          return compareStrings(a.assignedToName ?? "", b.assignedToName ?? "", dir);
+        case "status": {
+          const oa = getStatusOrder(a.status, a.reimbursed);
+          const ob = getStatusOrder(b.status, b.reimbursed);
+          return dir === "asc" ? oa - ob : ob - oa;
+        }
+        case "amount":
+          return compareNumbers(a.amount, b.amount, dir);
+        default:
+          return 0;
+      }
+    });
+  }, [expenses, sortConfig]);
 
   const handleMarkAsReimbursed = async (expenseId: string, isTransaction: boolean) => {
     setProcessingId(expenseId);
@@ -92,20 +106,27 @@ export function ExpensesTable({ expenses, onUpdate }: ExpensesTableProps) {
       const currentExpense = expenses.find((expense) => expense.id === expenseId);
 
       if (typeof navigator !== "undefined" && !navigator.onLine) {
-        enqueueFinanceAction({
-          id: buildFinanceOfflineQueueId("expense-status"),
-          kind: isTransaction ? "MARK_TRANSACTION_PAID" : "MARK_EXPENSE_REIMBURSED",
-          createdAt: new Date().toISOString(),
-          payload: isTransaction
-            ? {
-                transactionId: expenseId,
-                amount: currentExpense?.amount,
-              }
-            : {
-                expenseId,
-                amount: currentExpense?.amount,
-              },
-        });
+        if (isTransaction) {
+          enqueueFinanceAction({
+            id: buildFinanceOfflineQueueId("expense-status"),
+            kind: "MARK_TRANSACTION_PAID",
+            createdAt: new Date().toISOString(),
+            payload: {
+              transactionId: expenseId,
+              amount: currentExpense?.amount,
+            },
+          });
+        } else {
+          enqueueFinanceAction({
+            id: buildFinanceOfflineQueueId("expense-status"),
+            kind: "MARK_EXPENSE_REIMBURSED",
+            createdAt: new Date().toISOString(),
+            payload: {
+              expenseId,
+              amount: currentExpense?.amount,
+            },
+          });
+        }
 
         toast({
           title: "Estado guardado offline",
@@ -115,21 +136,14 @@ export function ExpensesTable({ expenses, onUpdate }: ExpensesTableProps) {
       }
 
       let result;
-      
-      // Intentar primero con el tipo detectado, si falla, intentar con el otro
+
       if (isTransaction) {
-        // Si es una transacción, usar markTransactionAsPaid
         result = await markTransactionAsPaid(expenseId);
-        
-        // Si falla y el error indica que no es una transacción, intentar como Expense
         if (!result.success && result.error?.includes("no encontrado")) {
           result = await markExpenseAsReimbursed(expenseId);
         }
       } else {
-        // Si es un gasto del modelo Expense, usar markExpenseAsReimbursed
         result = await markExpenseAsReimbursed(expenseId);
-        
-        // Si falla y el error indica que no es un Expense, intentar como Transaction
         if (!result.success && result.error?.includes("no encontrado")) {
           result = await markTransactionAsPaid(expenseId);
         }
@@ -140,7 +154,6 @@ export function ExpensesTable({ expenses, onUpdate }: ExpensesTableProps) {
           title: "Gasto actualizado",
           description: "El gasto ha sido marcado como reembolsado.",
         });
-        // Recargar datos si hay callback, sino usar router.refresh
         if (onUpdate) {
           onUpdate();
         } else {
@@ -164,6 +177,20 @@ export function ExpensesTable({ expenses, onUpdate }: ExpensesTableProps) {
     }
   };
 
+  const renderSortIcon = (key: SortKey) => {
+    if (sortConfig.key !== key || !sortConfig.direction) {
+      return <ArrowUpDown className="h-3 w-3 opacity-30" />;
+    }
+    return sortConfig.direction === "asc" ? (
+      <ArrowUp className="h-3 w-3" />
+    ) : (
+      <ArrowDown className="h-3 w-3" />
+    );
+  };
+
+  const thClass = (align: "left" | "right" = "left") =>
+    `cursor-pointer select-none${align === "right" ? " text-right" : ""}`;
+
   if (expenses.length === 0) {
     return (
       <Card>
@@ -181,23 +208,36 @@ export function ExpensesTable({ expenses, onUpdate }: ExpensesTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Descripción</TableHead>
-            <TableHead>Categoría</TableHead>
-            <TableHead>Fecha</TableHead>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Asignado a</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="text-right">Monto</TableHead>
+            <TableHead className={thClass()} onClick={() => handleSort("description")}>
+              <span className="inline-flex items-center gap-1">Descripción {renderSortIcon("description")}</span>
+            </TableHead>
+            <TableHead className={thClass()} onClick={() => handleSort("category")}>
+              <span className="inline-flex items-center gap-1">Categoría {renderSortIcon("category")}</span>
+            </TableHead>
+            <TableHead className={thClass()} onClick={() => handleSort("date")}>
+              <span className="inline-flex items-center gap-1">Fecha {renderSortIcon("date")}</span>
+            </TableHead>
+            <TableHead className={thClass()} onClick={() => handleSort("clientName")}>
+              <span className="inline-flex items-center gap-1">Cliente {renderSortIcon("clientName")}</span>
+            </TableHead>
+            <TableHead className={thClass()} onClick={() => handleSort("assignedToName")}>
+              <span className="inline-flex items-center gap-1">Asignado a {renderSortIcon("assignedToName")}</span>
+            </TableHead>
+            <TableHead className={thClass()} onClick={() => handleSort("status")}>
+              <span className="inline-flex items-center gap-1">Estado {renderSortIcon("status")}</span>
+            </TableHead>
+            <TableHead className={thClass("right")} onClick={() => handleSort("amount")}>
+              <span className="inline-flex items-center gap-1 justify-end w-full">Monto {renderSortIcon("amount")}</span>
+            </TableHead>
             <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {expenses.map((expense) => {
+          {sortedExpenses.map((expense) => {
             const isProcessing = processingId === expense.id;
             const isReimbursed = expense.reimbursed || expense.status === "PAID" || expense.status === "REIMBURSED";
             const canReimburse = expense.assignedToId && !isReimbursed;
-            // Determinar si es una transacción usando sourceType o fallback a lógica anterior
-            const isTransaction = expense.sourceType === "TRANSACTION" || 
+            const isTransaction = expense.sourceType === "TRANSACTION" ||
               (expense.sourceType === undefined && (expense.category === "OTROS" || !expense.category));
 
             return (
@@ -295,4 +335,3 @@ export function ExpensesTable({ expenses, onUpdate }: ExpensesTableProps) {
     </div>
   );
 }
-

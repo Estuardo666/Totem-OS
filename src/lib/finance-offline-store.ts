@@ -211,6 +211,7 @@ export function getCachedExpensesSnapshot() {
   >(EXPENSES_KEY, {
     totalExpensesThisMonth: 0,
     pendingReimbursement: 0,
+    previousMonthTotal: 0,
     expenses: [],
     categoryDistribution: [],
     clientDistribution: [],
