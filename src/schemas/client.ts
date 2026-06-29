@@ -97,6 +97,15 @@ export const clientSchema = z.object({
   editorId: z.string().cuid().optional().nullable(),
   communityId: z.string().cuid().optional().nullable(),
   contactEmails: contactEmailsSchema,
+  // Datos fiscales para facturación electrónica
+  tipoIdentificacion: z.enum(["RUC", "CEDULA", "PASAPORTE", "CONSUMIDOR_FINAL"]).optional().nullable(),
+  numeroIdentificacion: z.string().max(13).optional().nullable(),
+  razonSocial: z.string().max(300).optional().nullable(),
+  direccionFiscal: z.string().max(500).optional().nullable(),
+  emailFacturacion: z.string().email("Email de facturación inválido").optional().nullable(),
+  aplicaRetencion: z.boolean().default(false),
+  porcentajeRetIva: z.number().min(0).max(100).optional().nullable(),
+  porcentajeRetRenta: z.number().min(0).max(100).optional().nullable(),
 });
 
 export const createClientSchema = clientSchema.omit({ id: true });

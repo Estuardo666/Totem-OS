@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { format } from "date-fns";
-import { Check, X, Edit, Loader2, Minus, Plus, Trash2 } from "lucide-react";
+import { Check, X, Edit, Loader2, Minus, Plus, Trash2, Receipt } from "lucide-react";
 import type { FinancialStats } from "@/actions/finance-actions";
 import {
   markTransactionAsPaid,
@@ -990,12 +991,16 @@ export function TransactionList({ transactions }: TransactionListProps) {
                     </TableCell>
                     <TableCell>
                       {transaction.status ? (
-                        <Badge
-                          variant={getStatusBadgeVariant(transaction.status)}
-                          className={getStatusBadgeClasses(transaction.status)}
-                        >
-                          {getStatusLabel(transaction.status)}
-                        </Badge>
+                        transaction.status === "PAID" ? (
+                          <Check className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Badge
+                            variant={getStatusBadgeVariant(transaction.status)}
+                            className={getStatusBadgeClasses(transaction.status)}
+                          >
+                            {getStatusLabel(transaction.status)}
+                          </Badge>
+                        )
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
@@ -1121,6 +1126,18 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                   <Check className="h-3 w-3 mr-1" />
                                   Pagada
                                 </Badge>
+                                {transaction.type === "INCOME" && transaction.clientName && (
+                                  <Link href={`/admin/facturacion/facturas/nueva?clientName=${encodeURIComponent(transaction.clientName)}&amount=${transaction.amount}`}>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 gap-1 text-xs"
+                                    >
+                                      <Receipt className="h-3 w-3" />
+                                      <span className="hidden sm:inline">Emitir factura</span>
+                                    </Button>
+                                  </Link>
+                                )}
                                 <Button
                                   variant="outline"
                                   size="sm"

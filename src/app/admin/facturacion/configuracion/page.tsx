@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Upload, Trash2, Save, Cloud, HardDrive, Shield, Mail, TestTube, Server } from "lucide-react";
+import { Upload, Trash2, Save, Cloud, HardDrive, Shield, Mail, TestTube, Server, Users, ExternalLink, Loader2 } from "lucide-react";
+import Link from "next/link";
 import {
   getConfiguracionAction,
   actualizarEmisorAction,
@@ -20,7 +21,11 @@ import {
   subirP12Action,
   eliminarP12Action,
   actualizarEmailAction,
+  getClientesConDatosFiscales,
+  actualizarDatosFiscalesCliente,
 } from "@/actions/admin/facturacion/configuracion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ConfigData {
   config: {
@@ -67,6 +72,17 @@ export default function ConfiguracionFacturacionPage() {
   const [saving, setSaving] = useState(false);
   const [p12File, setP12File] = useState<File | null>(null);
   const [p12Password, setP12Password] = useState("");
+  const [clientes, setClientes] = useState<Awaited<ReturnType<typeof getClientesConDatosFiscales>>>([]);
+  const [loadingClientes, setLoadingClientes] = useState(true);
+  const [editingClient, setEditingClient] = useState<typeof clientes[0] | null>(null);
+  const [editForm, setEditForm] = useState({
+    tipoIdentificacion: "",
+    numeroIdentificacion: "",
+    razonSocial: "",
+    direccionFiscal: "",
+    emailFacturacion: "",
+  });
+  const [savingFiscal, setSavingFiscal] = useState(false);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -81,6 +97,11 @@ export default function ConfiguracionFacturacionPage() {
 
   useEffect(() => {
     loadConfig();
+    // Cargar clientes
+    getClientesConDatosFiscales()
+      .then(setClientes)
+      .catch(() => toast.error("Error al cargar clientes"))
+      .finally(() => setLoadingClientes(false));
   }, [loadConfig]);
 
   const handleGuardarEmisor = async (formData: FormData) => {
@@ -491,6 +512,177 @@ export default function ConfiguracionFacturacionPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Datos Fiscales de Clientes */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Datos Fiscales de Clientes
+          </CardTitle>
+          <CardDescription>
+            Gestiona la información fiscal de cada cliente para facturación electrónica
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingClientes ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : clientes.length === 0 ? (
+            <p className="text-center text-muted-foreground p-8">No hay clientes registrados</p>
+          ) : (
+            <div className="space-y-2">
+              {clientes.map((c) => {
+                const tieneDatos = c.tipoIdentificacion && (c.tipoIdentificacion === "CONSUMIDOR_FINAL" || c.numeroIdentificacion) && c.razonSocial;
+                return (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+                        {c.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{c.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {c.numeroIdentificacion ?? "Sin identificación"} · {c.razonSocial ?? "Sin razón social"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {tieneDatos ? (
+                        <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
+                          Completo
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="text-xs">
+                          Incompleto
+                        </Badge>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingClient(c);
+                          setEditForm({
+                            tipoIdentificacion: c.tipoIdentificacion ?? "",
+                            numeroIdentificacion: c.numeroIdentificacion ?? "",
+                            razonSocial: c.razonSocial ?? "",
+                            direccionFiscal: c.direccionFiscal ?? "",
+                            emailFacturacion: c.emailFacturacion ?? "",
+                          });
+                        }}
+                      >
+                        Editar
+                      </Button>
+                      <Link href={`/clients/${c.id}`}>
+                        <Button variant="ghost" size="sm">
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dialog para editar datos fiscales */}
+      <Dialog open={!!editingClient} onOpenChange={(open) => !open && setEditingClient(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Datos Fiscales - {editingClient?.name}</DialogTitle>
+            <DialogDescription>
+              Información para facturación electrónica ante el SRI
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Tipo de Identificación</Label>
+              <Select
+                value={editForm.tipoIdentificacion}
+                onValueChange={(v) => setEditForm({ ...editForm, tipoIdentificacion: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="RUC">RUC (13 dígitos)</SelectItem>
+                  <SelectItem value="CEDULA">Cédula (10 dígitos)</SelectItem>
+                  <SelectItem value="PASAPORTE">Pasaporte</SelectItem>
+                  <SelectItem value="CONSUMIDOR_FINAL">Consumidor Final</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Número de Identificación</Label>
+              <Input
+                value={editForm.numeroIdentificacion}
+                onChange={(e) => setEditForm({ ...editForm, numeroIdentificacion: e.target.value })}
+                placeholder="1791234567001"
+                maxLength={13}
+                disabled={editForm.tipoIdentificacion === "CONSUMIDOR_FINAL"}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Razón Social</Label>
+              <Input
+                value={editForm.razonSocial}
+                onChange={(e) => setEditForm({ ...editForm, razonSocial: e.target.value })}
+                placeholder="Nombre completo o razón social"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Dirección Fiscal</Label>
+              <Input
+                value={editForm.direccionFiscal}
+                onChange={(e) => setEditForm({ ...editForm, direccionFiscal: e.target.value })}
+                placeholder="Av. Principal 123, Ciudad"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email de Facturación</Label>
+              <Input
+                type="email"
+                value={editForm.emailFacturacion}
+                onChange={(e) => setEditForm({ ...editForm, emailFacturacion: e.target.value })}
+                placeholder="facturas@cliente.com"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingClient(null)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!editingClient) return;
+                  setSavingFiscal(true);
+                  try {
+                    await actualizarDatosFiscalesCliente(editingClient.id, editForm);
+                    toast.success("Datos fiscales actualizados");
+                    // Recargar lista
+                    const updated = await getClientesConDatosFiscales();
+                    setClientes(updated);
+                    setEditingClient(null);
+                  } catch {
+                    toast.error("Error al guardar");
+                  } finally {
+                    setSavingFiscal(false);
+                  }
+                }}
+                disabled={savingFiscal}
+              >
+                {savingFiscal ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

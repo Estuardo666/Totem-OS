@@ -33,7 +33,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { TaskMetrics } from "@prisma/client";
 import { calculateMonthlyEngagement, calculateMonthlyEfficiency, formatCurrency } from "@/lib/metrics-calculations";
-import { TrendingUp, Brain, BarChart3, ArrowLeft } from "lucide-react";
+import { TrendingUp, Brain, BarChart3, ArrowLeft, Receipt } from "lucide-react";
+import { ClientBillingForm } from "@/components/features/facturacion/ClientBillingForm";
 
 interface TaskWithMetrics {
   id: string;
@@ -263,6 +264,13 @@ export default async function ClientDetailPage({
                   >
                     Estado de Cuenta
                   </TabsTrigger>
+                  <TabsTrigger 
+                    value="billing" 
+                    className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                  >
+                    <Receipt className="h-3.5 w-3.5 mr-1.5" />
+                    Facturación
+                  </TabsTrigger>
                 </>
               )}
             </TabsList>
@@ -466,6 +474,12 @@ export default async function ClientDetailPage({
                 />
               ) : null}
               <AccountStatus clientId={client.id} />
+            </TabsContent>
+          )}
+
+          {isAdmin && (
+            <TabsContent value="billing" className="mt-6">
+              <ClientBillingForm client={client} />
             </TabsContent>
           )}
         </Tabs>

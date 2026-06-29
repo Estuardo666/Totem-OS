@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { getOrCreateConfig, updateConfig, guardarP12Local, eliminarP12Local, getWorkerStatus } from "@/services/facturacion/configuracion-service";
 import { obtenerHuellaCertificado } from "@/lib/sri/xml-signer";
 import { cifrarP12 } from "@/lib/sri/p12-cipher";
+import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -167,4 +168,72 @@ export async function actualizarEmailAction(data: {
   revalidatePath("/admin/facturacion/configuracion");
 
   return { success: true };
+}
+
+/**
+ * Actualiza los datos fiscales de un cliente.
+ */
+export async function actualizarDatosFiscalesCliente(
+  clientId: string,
+  data: {
+    tipoIdentificacion?: string | null;
+    numeroIdentificacion?: string | null;
+    razonSocial?: string | null;
+    direccionFiscal?: string | null;
+    emailFacturacion?: string | null;
+    aplicaRetencion?: boolean;
+    porcentajeRetIva?: number | null;
+    porcentajeRetRenta?: number | null;
+  }
+) {
+  const session = await auth();
+  if (!session?.user) throw new Error("No autenticado");
+
+  await db.client.update({
+    where: { id: clientId },
+    data: {
+      tipoIdentificacion: data.tipoIdentificacion,
+      numeroIdentificacion: data.numeroIdentificacion,
+      razonSocial: data.razonSocial,
+      direccionFiscal: data.direccionFiscal,
+      emailFacturacion: data.emailFacturacion,
+      aplicaRetencion: data.aplicaRetencion ?? false,
+      porcentajeRetIva: data.porcentajeRetIva,
+      porcentajeRetRenta: data.porcentajeRetRenta,
+    },
+  });
+
+  revalidatePath(`/clients/${clientId}`);
+  revalidatePath("/admin/facturacion/configuracion");
+  revalidatePath("/admin/facturacion/facturas/nueva");
+
+  return { success: true };
+}
+
+/**
+ * Obtiene todos los clientes con sus datos fiscales.
+ */
+export async function getClientesConDatosFiscales() {
+  const session = await auth();
+  if (!session?.user) throw new Error("No autenticado");
+
+  const clientes = await db.client.findMany({
+    where: { status: { not: "INACTIVE" } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      tipoIdentificacion: true,
+      numeroIdentificacion: true,
+      razonSocial: true,
+      direccionFiscal: true,
+      emailFacturacion: true,
+      aplicaRetencion: true,
+      porcentajeRetIva: true,
+      porcentajeRetRenta: true,
+    },
+    orderBy: { name: "asc" },
+  });
+
+  return clientes;
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, FileText, Moon, Sun } from "lucide-react";
+import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, FileText, Moon, Sun, Receipt } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getBrandSettings } from "@/actions/admin-actions";
@@ -98,6 +98,11 @@ const navItems: (NavItem | NavItemWithChildren)[] = [
         label: "Liquidación Interna",
         icon: Wallet,
       },
+      {
+        href: "/admin/facturacion",
+        label: "Facturación Electrónica",
+        icon: Receipt,
+      },
     ],
   },
   {
@@ -148,6 +153,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
       "/finance/transactions",
       "/finance/alerts",
       "/finance/settlement",
+      "/admin/facturacion",
     ];
     const isFinanceActive = financePaths.some(
       (path) => pathname === path || pathname?.startsWith(`${path}/`)
@@ -453,6 +459,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                           child.href === "/finance/monthly-summary" ? isAdmin :
                           child.href === "/finance/alerts" ? isAdmin :
                           child.href === "/finance/settlement" ? isAdmin :
+                          child.href === "/admin/facturacion" ? isAdmin :
                           true
                         )
                       : item.children

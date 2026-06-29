@@ -3,7 +3,7 @@ import { getFinancialStats } from "@/actions/finance-actions";
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
 import { TransactionsOfflineView } from "@/components/features/finance/transactions-offline-view";
 import { Button } from "@/components/ui/button";
-import { Plus, DollarSign, FileText } from "lucide-react";
+import { Plus, DollarSign, Receipt } from "lucide-react";
 import Link from "next/link";
 
 export default async function TransactionsPage() {
@@ -75,10 +75,10 @@ export default async function TransactionsPage() {
                   </Button>
 
                   <Button variant="outline" asChild className="gap-2 rounded-full border-2">
-                    <Link href="/finance/invoices">
-                      <FileText className="h-4 w-4" />
-                      <span className="hidden sm:inline">Facturas</span>
-                      <span className="sm:hidden">Facturas</span>
+                    <Link href="/admin/facturacion">
+                      <Receipt className="h-4 w-4" />
+                      <span className="hidden sm:inline">Facturación Electrónica</span>
+                      <span className="sm:hidden">Facturación</span>
                     </Link>
                   </Button>
                 </>

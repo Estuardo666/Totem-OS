@@ -4,7 +4,7 @@
 // /admin/facturacion/facturas/nueva
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,19 +45,32 @@ const TIPOS_IVA = [
 
 export default function NuevaFacturaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedClientId = searchParams.get("clientId");
+  const preselectedClientName = searchParams.get("clientName");
+  const preselectedAmount = searchParams.get("amount");
+
   const [step, setStep] = useState(1);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
   const [busquedaCliente, setBusquedaCliente] = useState("");
   const [items, setItems] = useState<ItemFactura[]>([
-    { id: "1", codigo: "SERV-001", descripcion: "", cantidad: 1, precioUnitario: 0, descuento: 0, tipoIva: "4" },
+    {
+      id: "1",
+      codigo: "SERV-001",
+      descripcion: "Servicio de marketing digital",
+      cantidad: 1,
+      precioUnitario: preselectedAmount ? parseFloat(preselectedAmount) : 0,
+      descuento: 0,
+      tipoIva: "4",
+    },
   ]);
   const [formaPagoCodigo, setFormaPagoCodigo] = useState("20");
   const [formaPagoPlazo, setFormaPagoPlazo] = useState("");
   const [enviarEmail, setEnviarEmail] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Cargar clientes
+  // Cargar clientes y auto-seleccionar si hay clientId o clientName
   useEffect(() => {
     async function loadClientes() {
       try {
@@ -65,13 +78,30 @@ export default function NuevaFacturaPage() {
         if (res.ok) {
           const data = await res.json();
           setClientes(data);
+          // Auto-seleccionar cliente si viene por URL
+          if (preselectedClientId) {
+            const found = data.find((c: Cliente) => c.id === preselectedClientId);
+            if (found) {
+              setClienteSeleccionado(found);
+              setStep(2);
+            }
+          } else if (preselectedClientName) {
+            const found = data.find((c: Cliente) =>
+              c.name.toLowerCase().includes(preselectedClientName.toLowerCase()) ||
+              c.razonSocial?.toLowerCase().includes(preselectedClientName.toLowerCase())
+            );
+            if (found) {
+              setClienteSeleccionado(found);
+              setStep(2);
+            }
+          }
         }
       } catch {
         toast.error("Error al cargar clientes");
       }
     }
     loadClientes();
-  }, []);
+  }, [preselectedClientId, preselectedClientName]);
 
   // Calcular totales
   const calcularItem = (item: ItemFactura) => {
@@ -208,30 +238,54 @@ export default function NuevaFacturaPage() {
                 onChange={(e) => setBusquedaCliente(e.target.value)}
               />
             </div>
-            <div className="max-h-60 overflow-y-auto space-y-2">
-              {clientesFiltrados.map((c) => (
-                <div
-                  key={c.id}
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                    clienteSeleccionado?.id === c.id
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-muted"
-                  }`}
-                  onClick={() => setClienteSeleccionado(c)}
-                >
-                  <p className="font-medium">{c.razonSocial ?? c.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {c.numeroIdentificacion ?? "Sin identificación"} · {c.email ?? "Sin email"}
-                  </p>
-                  {!c.numeroIdentificacion && (
-                    <Badge variant="destructive" className="mt-1 text-xs">
-                      Sin datos fiscales
-                    </Badge>
-                  )}
-                </div>
-              ))}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-80 overflow-y-auto">
+              {clientesFiltrados.map((c) => {
+                const isSelected = clienteSeleccionado?.id === c.id;
+                const iniciales = c.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2);
+                return (
+                  <div
+                    key={c.id}
+                    className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                      isSelected
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-muted hover:border-muted-foreground/30 hover:bg-muted/50"
+                    }`}
+                    onClick={() => setClienteSeleccionado(c)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold">
+                        {iniciales}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{c.razonSocial ?? c.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {c.numeroIdentificacion ?? "Sin identificación"}
+                        </p>
+                        {c.email && (
+                          <p className="text-xs text-muted-foreground truncate">{c.email}</p>
+                        )}
+                        {!c.numeroIdentificacion && (
+                          <Badge variant="destructive" className="mt-1 text-xs">
+                            Sin datos fiscales
+                          </Badge>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="h-5 w-5 text-primary shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
               {clientesFiltrados.length === 0 && (
-                <p className="text-center text-muted-foreground p-4">No se encontraron clientes</p>
+                <p className="text-center text-muted-foreground p-4 col-span-full">
+                  No se encontraron clientes
+                </p>
               )}
             </div>
             <div className="flex justify-end">
