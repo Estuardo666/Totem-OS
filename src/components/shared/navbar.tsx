@@ -109,7 +109,7 @@ export function Navbar() {
   }, [session?.user?.name]);
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b bg-background/90 backdrop-blur md:hidden px-4">
+    <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between border-b bg-background/90 backdrop-blur md:hidden px-4 h-[calc(4rem+var(--sat,0px))] pt-[var(--sat,0px)]">
       <div className="flex items-center">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>

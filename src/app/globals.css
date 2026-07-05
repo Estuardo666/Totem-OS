@@ -230,6 +230,13 @@ html {
   touch-action: manipulation;
 }
 
+/* Safe area inset for iOS PWA (Dynamic Island / notch) */
+@supports (padding-top: env(safe-area-inset-top)) {
+  :root {
+    --sat: env(safe-area-inset-top);
+  }
+}
+
 /* Forzar body sin padding/margin derecho - anula estilos inline de Radix */
 body {
   width: 100%;
