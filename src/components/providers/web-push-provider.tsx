@@ -13,6 +13,7 @@
 import { useEffect, useCallback, useState } from "react";
 import { useSession } from "next-auth/react";
 import { PushPermissionBanner } from "./PushPermissionBanner";
+import { Button } from "@/components/ui/button";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
@@ -215,6 +216,7 @@ async function subscribeAndRegister(): Promise<boolean> {
 export function WebPushProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const [showBanner, setShowBanner] = useState(false);
+  const [showInstallHint, setShowInstallHint] = useState(false);
 
   // On mount: check permission state, show banner or re-subscribe
   useEffect(() => {
@@ -227,9 +229,10 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     async function init() {
-      // On iOS, only proceed if installed as PWA
+      // On iOS non-standalone: show "Add to Home Screen" hint
       if (isIOSSafari() && !isStandalone()) {
-        console.log("[WebPush] iOS detected but not in standalone mode — push disabled");
+        console.log("[WebPush] iOS non-standalone — showing install hint");
+        if (mounted) setShowInstallHint(true);
         return;
       }
 
@@ -238,19 +241,24 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
 
       if (!mounted) return;
 
-      // Check current permission state
-      const permission = typeof Notification !== "undefined" ? Notification.permission : "denied";
+      // On iOS, Notification might not be available immediately — retry
+      let permission: string = "denied";
+      if (typeof Notification !== "undefined") {
+        permission = Notification.permission;
+      } else if (isIOSSafari()) {
+        // Retry after 1s — iOS PWA sometimes delays Notification availability
+        await new Promise((r) => setTimeout(r, 1000));
+        if (!mounted) return;
+        permission = "Notification" in window ? window.Notification.permission : "denied";
+      }
 
       if (permission === "granted") {
-        // Already granted — re-subscribe (updates lastSeenAt, re-links userId)
         await subscribeAndRegister();
       } else if (permission === "default") {
-        // Not yet asked — show banner (user must click to trigger requestPermission)
         if (!localStorage.getItem("webpush-permission-dismissed-v1")) {
           setShowBanner(true);
         }
       }
-      // "denied" — nothing we can do, user blocked notifications
     }
 
     init();
@@ -320,6 +328,31 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
       {children}
       {showBanner && session?.user?.id && (
         <PushPermissionBanner onEnable={handleEnableNotifications} />
+      )}
+      {showInstallHint && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 p-3 md:p-4 pointer-events-none">
+          <div className="mx-auto max-w-lg pointer-events-auto">
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-background/95 px-4 py-3 shadow-lg backdrop-blur-sm">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                📲
+              </div>
+              <p className="flex-1 text-sm text-foreground">
+                Para recibir notificaciones, añade esta app a tu pantalla de inicio: <strong>Compartir → Añadir a pantalla de inicio</strong>.
+              </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  localStorage.setItem("webpush-install-dismissed", "1");
+                  setShowInstallHint(false);
+                }}
+                className="h-8 text-xs shrink-0"
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

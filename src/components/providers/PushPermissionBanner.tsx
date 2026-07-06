@@ -11,20 +11,35 @@ interface PushPermissionBannerProps {
 }
 
 export function PushPermissionBanner({ onEnable }: PushPermissionBannerProps) {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [isDenied, setIsDenied] = useState(false);
 
   useEffect(() => {
-    // No mostrar si el browser no soporta notificaciones
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    // No mostrar si ya concedió o denegó permiso
-    if (Notification.permission !== "default") return;
-    // No mostrar si ya lo cerró antes
-    if (localStorage.getItem(DISMISSED_KEY)) return;
-    setVisible(true);
+    // Check if already denied
+    if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+      setIsDenied(true);
+    }
   }, []);
 
   if (!visible) return null;
+
+  if (isDenied) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 z-50 p-3 md:p-4 pointer-events-none">
+        <div className="mx-auto max-w-lg pointer-events-auto">
+          <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3">
+            <p className="flex-1 text-sm text-muted-foreground">
+              Notificaciones bloqueadas. Actívalas en Ajustes del navegador.
+            </p>
+            <Button size="sm" variant="ghost" onClick={handleDismiss} className="h-8 text-xs">
+              Cerrar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   async function handleEnable() {
     setLoading(true);
