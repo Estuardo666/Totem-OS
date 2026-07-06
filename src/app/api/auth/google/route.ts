@@ -33,6 +33,17 @@ export async function GET(request: NextRequest) {
     // Guardar tokens en la base de datos
     await GoogleCalendarService.saveTokens(session.user.id, tokens);
 
+    // Registrar webhook channel para sync bidireccional
+    try {
+      const webhookBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || request.nextUrl.origin;
+      const webhookUrl = `${webhookBaseUrl}/api/google-calendar/webhook`;
+      const secretToken = process.env.GOOGLE_CALENDAR_WEBHOOK_SECRET || "";
+      await GoogleCalendarService.registerWebhookChannel(session.user.id, webhookUrl, secretToken);
+    } catch (webhookError) {
+      // Don't fail the connection if webhook registration fails
+      console.error('Error registrando webhook channel:', webhookError);
+    }
+
     // Redirigir a settings con éxito
     return NextResponse.redirect(
       new URL('/admin/settings?success=google_calendar_connected', request.url)

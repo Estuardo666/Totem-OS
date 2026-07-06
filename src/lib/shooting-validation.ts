@@ -99,7 +99,7 @@ export async function validateNoConflicts(
  */
 export async function validateShootingExists(
   shootingId: string
-): Promise<ValidationResult & { shooting?: { id: string; googleEventId?: string | null } }> {
+): Promise<ValidationResult & { shooting?: { id: string; googleEventId?: string | null; syncedFromCalendar?: boolean; status?: string; title?: string } }> {
   const shooting = await db.shoot.findUnique({
     where: { id: shootingId },
   });
@@ -113,6 +113,9 @@ export async function validateShootingExists(
     shooting: {
       id: shooting.id,
       googleEventId: (shooting as any)?.googleEventId ?? null,
+      syncedFromCalendar: (shooting as any)?.syncedFromCalendar ?? false,
+      status: shooting.status,
+      title: shooting.title,
     }
   };
 }

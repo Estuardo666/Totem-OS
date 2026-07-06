@@ -318,6 +318,11 @@ model Shoot {
   notes         String? // Notas adicionales del rodaje
   status        String        @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELED
   
+  // Google Calendar bidirectional sync
+  syncedFromCalendar Boolean   @default(false) // true = creado desde Calendar, no re-syncear
+  reminderSentMorning Boolean @default(false) // dedup cron 7am
+  reminderSent1h      Boolean @default(false) // dedup cron 1h antes
+  
   clientId      String
   client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   
@@ -833,6 +838,16 @@ model GoogleCalendarToken {
   refreshToken String
   expiresAt    DateTime
   scope        String   // Scopes autorizados
+  
+  // Incremental sync
+  lastSyncToken String?  // syncToken de Google Calendar para sync incremental
+  lastSyncAt    DateTime? // última vez que se hizo sync
+  
+  // Webhook channel
+  channelId         String?  // ID del canal de push notification
+  channelResourceId String?  // Resource ID del canal
+  channelExpiration DateTime? // Cuándo expira el canal
+  
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   

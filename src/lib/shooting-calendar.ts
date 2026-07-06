@@ -161,14 +161,67 @@ export async function deleteCalendarEvent(
 
 /**
  * Sincroniza un rodaje con Google Calendar (crea o actualiza según corresponda)
+ * @param skipIfSyncedFromCalendar - Si es true, no sincroniza si el shoot fue importado de Calendar (anti-loop)
  */
 export async function syncShootingToCalendar(
   userId: string,
   data: CalendarEventData,
-  existingEventId?: string | null
+  existingEventId?: string | null,
+  skipIfSyncedFromCalendar?: boolean
 ): Promise<CalendarSyncResult> {
+  // Anti-loop: don't re-sync events that were imported from Calendar
+  if (skipIfSyncedFromCalendar) {
+    return { success: true }; // Skip silently
+  }
+
   if (existingEventId) {
     return updateCalendarEvent(userId, existingEventId, data);
   }
   return createCalendarEvent(userId, data);
+}
+
+/**
+ * Actualiza el status de un evento en Google Calendar según el status del shoot.
+ * - COMPLETED → prefix "✅ COMPLETADO: " en el summary
+ * - CANCELED → elimina el evento
+ */
+export async function markCalendarEventStatus(
+  userId: string,
+  eventId: string,
+  status: "SCHEDULED" | "COMPLETED" | "CANCELED",
+  currentTitle?: string
+): Promise<CalendarSyncResult> {
+  if (status === "CANCELED") {
+    return deleteCalendarEvent(userId, eventId);
+  }
+
+  if (status === "COMPLETED") {
+    try {
+      const auth = await (await import("@/lib/google-calendar")).GoogleCalendarService.getAuthenticatedClient(userId);
+      const { google } = await import("googleapis");
+      const calendar = google.calendar({ version: "v3", auth });
+
+      const titlePrefix = "✅ ";
+      const summary = currentTitle
+        ? `${titlePrefix}${currentTitle}`
+        : titlePrefix;
+
+      await calendar.events.patch({
+        calendarId: "primary",
+        eventId,
+        requestBody: { summary },
+      });
+
+      return { success: true, eventId };
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Error al marcar evento como completado";
+      return { success: false, error: message };
+    }
+  }
+
+  // SCHEDULED — no-op (could strip prefix if needed)
+  return { success: true };
 }

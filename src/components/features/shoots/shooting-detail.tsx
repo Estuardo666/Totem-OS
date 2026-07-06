@@ -108,6 +108,17 @@ export function ShootingDetail({
             <div className="flex-1">
               <DialogTitle className="text-xl sm:text-2xl mb-1 sm:mb-2 leading-snug">
                 {shooting.title}
+                {shooting.googleEventId && (
+                  <a
+                    href={`https://calendar.google.com/calendar/event?eid=${btoa(shooting.googleEventId).replace(/=/g, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Sincronizado con Google Calendar"
+                    className="inline-flex items-center ml-2 align-middle"
+                  >
+                    <Calendar className="h-4 w-4 text-green-600 hover:text-green-700 transition-colors" />
+                  </a>
+                )}
               </DialogTitle>
               <div className="mt-1 sm:mt-2">
                 <Badge

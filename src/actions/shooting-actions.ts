@@ -36,6 +36,7 @@ import {
 import {
   syncShootingToCalendar,
   deleteCalendarEvent,
+  markCalendarEventStatus,
 } from "@/lib/shooting-calendar";
 import {
   notifyCrewNewShooting,
@@ -49,15 +50,13 @@ import {
 export interface CreateShootingInput {
   title: string;
   startTime: Date;
-  endTime: Date;
+  endTime?: Date; // default: startTime + 1h
   address?: string;
   mapLink?: string;
-  scriptUrl?: string;
-  audioBriefUrl?: string;
   notes?: string;
   clientId: string;
-  crewIds: string[];
-  taskIds: string[];
+  crewIds?: string[]; // default: []
+  taskIds?: string[]; // default: []
   createCalendarEvent?: boolean;
 }
 
@@ -68,8 +67,6 @@ export interface UpdateShootingInput {
   endTime?: Date;
   address?: string;
   mapLink?: string;
-  scriptUrl?: string;
-  audioBriefUrl?: string;
   notes?: string;
   clientId?: string;
   crewIds?: string[];
@@ -107,9 +104,10 @@ export async function createShooting(
     }
 
     // 1. Validar
+    const resolvedEndTime = input.endTime ?? new Date(input.startTime.getTime() + 60 * 60 * 1000); // +1h
     const validation = await validateCreateShooting({
       startTime: input.startTime,
-      endTime: input.endTime,
+      endTime: resolvedEndTime,
       clientId: input.clientId,
     });
     if (!validation.valid) {
@@ -120,15 +118,15 @@ export async function createShooting(
     const createData: CreateShootingData = {
       title: input.title,
       startTime: input.startTime,
-      endTime: input.endTime,
+      endTime: resolvedEndTime,
       address: input.address ?? null,
       mapLink: input.mapLink ?? null,
-      scriptUrl: input.scriptUrl ?? null,
-      audioBriefUrl: input.audioBriefUrl ?? null,
+      scriptUrl: null,
+      audioBriefUrl: null,
       notes: input.notes ?? null,
       clientId: input.clientId,
-      crewIds: input.crewIds,
-      taskIds: input.taskIds,
+      crewIds: input.crewIds ?? [],
+      taskIds: input.taskIds ?? [],
     };
     let shooting = await createShootingInDb(createData);
 
@@ -227,8 +225,6 @@ export async function updateShooting(
       endTime: input.endTime,
       address: input.address !== undefined ? (input.address || null) : undefined,
       mapLink: input.mapLink !== undefined ? (input.mapLink || null) : undefined,
-      scriptUrl: input.scriptUrl !== undefined ? (input.scriptUrl || null) : undefined,
-      audioBriefUrl: input.audioBriefUrl !== undefined ? (input.audioBriefUrl || null) : undefined,
       notes: input.notes !== undefined ? (input.notes || null) : undefined,
       clientId: input.clientId,
       status: input.status,
@@ -240,6 +236,7 @@ export async function updateShooting(
     // 4. Sincronizar con Google Calendar
     let calendarError: string | null = null;
     const existingEventId = (existing as any)?.googleEventId as string | undefined;
+    const syncedFromCalendar = (existing as any)?.syncedFromCalendar as boolean | undefined;
     if (input.createCalendarEvent !== false || existingEventId) {
       const calResult = await syncShootingToCalendar(
         sessionUserId,
@@ -253,7 +250,8 @@ export async function updateShooting(
           clientId: shooting.clientId,
           crewIds: input.crewIds ?? shooting.crew.map((c) => c.id),
         },
-        existingEventId
+        existingEventId,
+        syncedFromCalendar // anti-loop: skip re-sync if imported from Calendar
       );
 
       if (calResult.success && calResult.eventId) {
@@ -352,7 +350,14 @@ export async function cancelShooting(
     // 2. Cancelar
     const shooting = await cancelShootingInDb(id);
 
-    // 3. Revalidar
+    // 3. Sync con Google Calendar: eliminar evento si existe y no fue importado
+    const googleEventId = existingResult.shooting?.googleEventId;
+    const syncedFromCalendar = existingResult.shooting?.syncedFromCalendar;
+    if (googleEventId && !syncedFromCalendar) {
+      await deleteCalendarEvent(sessionUserId, googleEventId);
+    }
+
+    // 4. Revalidar
     revalidatePath("/content/shoots");
     revalidatePath("/content");
 
@@ -454,13 +459,11 @@ export async function duplicateShooting(
       endTime: duplicateEndTime,
       address: original.address ?? undefined,
       mapLink: original.mapLink ?? undefined,
-      scriptUrl: original.scriptUrl ?? undefined,
-      audioBriefUrl: original.audioBriefUrl ?? undefined,
       notes: original.notes ?? undefined,
       clientId: original.clientId,
       crewIds: original.crew.map((c) => c.id),
       taskIds: original.tasks.map((t) => t.id),
-      createCalendarEvent: false, // No crear evento automáticamente en la duplicación
+      createCalendarEvent: true,
     };
 
     return await createShooting(createInput);
@@ -494,7 +497,19 @@ export async function changeShootingStatus(
     // 2. Actualizar estado
     const shooting = await updateShootingInDb(id, { status });
 
-    // 3. Revalidar
+    // 3. Sync con Google Calendar: marcar status si tiene evento
+    const googleEventId = existingResult.shooting?.googleEventId;
+    const syncedFromCalendar = existingResult.shooting?.syncedFromCalendar;
+    if (googleEventId && !syncedFromCalendar) {
+      await markCalendarEventStatus(
+        sessionUserId,
+        googleEventId,
+        status,
+        existingResult.shooting?.title
+      );
+    }
+
+    // 4. Revalidar
     revalidateShootingPaths();
 
     return { success: true, data: shooting };

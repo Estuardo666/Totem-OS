@@ -433,6 +433,9 @@ function MonthView({
                                     {format(new Date(shooting.startTime), "HH:mm")}
                                   </span>{" "}
                                   {shooting.title}
+                                  {shooting.googleEventId && (
+                                    <CalendarIcon className="inline h-3 w-3 ml-1 opacity-60" />
+                                  )}
                                 </div>
                               </ContextMenuTrigger>
                               <ContextMenuContent>
@@ -692,7 +695,12 @@ function WeekView({
                       height: `${style.height}px`,
                     }}
                   >
-                    <div className="font-medium truncate">{shooting.title}</div>
+                    <div className="font-medium truncate">
+                      {shooting.title}
+                      {shooting.googleEventId && (
+                        <CalendarIcon className="inline h-3 w-3 ml-1 opacity-60" />
+                      )}
+                    </div>
                     <div className="text-[10px] opacity-80 truncate">
                       {format(new Date(shooting.startTime), "HH:mm")} -{" "}
                       {format(new Date(shooting.endTime), "HH:mm")}
@@ -813,7 +821,12 @@ function DayView({
                   height: `${style.height}px`,
                 }}
               >
-                <div className="font-bold">{shooting.title}</div>
+                <div className="font-bold">
+                  {shooting.title}
+                  {shooting.googleEventId && (
+                    <CalendarIcon className="inline h-3 w-3 ml-1 opacity-60" />
+                  )}
+                </div>
                 <div className="text-xs opacity-90 flex items-center gap-1">
                   <Clock className="h-3 w-3 flex-shrink-0" />
                   <span className="font-semibold">{format(new Date(shooting.startTime), "HH:mm")}</span>

@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Calendar, Link2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -46,6 +47,18 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
   const [prefilledDate, setPrefilledDate] = useState<Date | undefined>();
   const [prefilledStartTime, setPrefilledStartTime] = useState<string | undefined>();
   const [prefilledEndTime, setPrefilledEndTime] = useState<string | undefined>();
+
+  // Google Calendar connection status
+  const [isCalendarConnected, setIsCalendarConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/google-calendar/status", { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data) => setIsCalendarConnected(data.connected))
+      .catch(() => setIsCalendarConnected(false));
+    return () => controller.abort();
+  }, []);
 
   // Paginación: 25 rodajes por página
   const ITEMS_PER_PAGE = 25;
@@ -235,6 +248,30 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
           </SelectContent>
         </Select>
       </div>
+
+      {/* Google Calendar connection banner */}
+      {isCalendarConnected === false && (
+        <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span>Conecta Google Calendar para sincronizar rodajes automáticamente</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/api/google-calendar/connect")}
+          >
+            <Link2 className="h-4 w-4 mr-1" />
+            Conectar
+          </Button>
+        </div>
+      )}
+      {isCalendarConnected === true && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground px-1">
+          <Calendar className="h-4 w-4 text-green-600" />
+          <span>Google Calendar conectado — los rodajes se sincronizan automáticamente</span>
+        </div>
+      )}
 
       {/* Información de paginación */}
       {filteredShootings.length > 0 && (

@@ -128,7 +128,14 @@ export class GoogleCalendarService {
 
     // Verificar si el token ha expirado y refresh si es necesario
     if (token.expiresAt < new Date()) {
-      await this.refreshToken(userId);
+      try {
+        await this.refreshToken(userId);
+      } catch (refreshError) {
+        // Refresh token inválido/revocado → auto-disconnect
+        console.error('Error refrescando token, desconectando:', refreshError);
+        await this.disconnect(userId);
+        throw new Error('Sesión de Google Calendar expirada. Por favor reconecta desde Configuración.');
+      }
       const refreshedToken = await googleCalendarToken.findUnique({
         where: { userId },
       });
@@ -392,8 +399,258 @@ export class GoogleCalendarService {
    * Desconecta Google Calendar para un usuario
    */
   static async disconnect(userId: string): Promise<void> {
+    // Stop webhook channel if exists
+    try {
+      await this.stopWebhookChannel(userId);
+    } catch {
+      // Ignore errors on disconnect cleanup
+    }
     await googleCalendarToken.delete({
       where: { userId },
+    });
+  }
+
+  /**
+   * Lista eventos con syncToken para sync incremental
+   */
+  static async listEvents(
+    userId: string,
+    syncToken?: string | null,
+    pageToken?: string
+  ): Promise<{
+    events: Array<{
+      id: string;
+      summary: string;
+      description?: string;
+      location?: string;
+      start: { dateTime?: string; date?: string; timeZone?: string };
+      end: { dateTime?: string; date?: string; timeZone?: string };
+      status: string;
+      htmlLink: string;
+      attendees?: Array<{ email: string; displayName?: string }>;
+    }>;
+    nextSyncToken?: string;
+    nextPageToken?: string;
+  }> {
+    try {
+      const auth = await this.getAuthenticatedClient(userId);
+      const calendar = google.calendar({ version: 'v3', auth });
+
+      const params: Record<string, unknown> = {
+        calendarId: 'primary',
+        maxResults: 250,
+        singleEvents: true,
+      };
+
+      if (syncToken) {
+        params.syncToken = syncToken;
+      } else {
+        // Initial sync: get events from 30 days ago to 90 days ahead
+        const now = new Date();
+        const pastDate = new Date(now);
+        pastDate.setDate(pastDate.getDate() - 30);
+        const futureDate = new Date(now);
+        futureDate.setDate(futureDate.getDate() + 90);
+        params.timeMin = pastDate.toISOString();
+        params.timeMax = futureDate.toISOString();
+      }
+
+      if (pageToken) {
+        params.pageToken = pageToken;
+      }
+
+      const response = await calendar.events.list(params as any);
+      const items = response.data.items || [];
+
+      return {
+        events: items.map((item) => ({
+          id: item.id || '',
+          summary: item.summary || '(Sin título)',
+          description: item.description || undefined,
+          location: item.location || undefined,
+          start: {
+            dateTime: item.start?.dateTime || undefined,
+            date: item.start?.date || undefined,
+            timeZone: item.start?.timeZone || undefined,
+          },
+          end: {
+            dateTime: item.end?.dateTime || undefined,
+            date: item.end?.date || undefined,
+            timeZone: item.end?.timeZone || undefined,
+          },
+          status: item.status || 'confirmed',
+          htmlLink: item.htmlLink || '',
+          attendees: item.attendees?.map((a) => ({
+            email: a.email || '',
+            displayName: a.displayName || undefined,
+          })),
+        })),
+        nextSyncToken: response.data.nextSyncToken || undefined,
+        nextPageToken: response.data.nextPageToken || undefined,
+      };
+    } catch (error) {
+      // 410 Gone = syncToken invalid, need full resync
+      if ((error as any)?.code === 410) {
+        return this.listEvents(userId, null, undefined);
+      }
+      const message = getGoogleApiErrorMessage(error, 'Error al listar eventos de Calendar');
+      throw new Error(message);
+    }
+  }
+
+  /**
+   * Obtiene un evento individual por ID
+   */
+  static async getEvent(
+    userId: string,
+    eventId: string
+  ): Promise<{
+    id: string;
+    summary: string;
+    description?: string;
+    location?: string;
+    start: { dateTime?: string; date?: string };
+    end: { dateTime?: string; date?: string };
+    status: string;
+    htmlLink: string;
+  } | null> {
+    try {
+      const auth = await this.getAuthenticatedClient(userId);
+      const calendar = google.calendar({ version: 'v3', auth });
+
+      const response = await calendar.events.get({
+        calendarId: 'primary',
+        eventId,
+      });
+
+      const item = response.data;
+      return {
+        id: item.id || '',
+        summary: item.summary || '(Sin título)',
+        description: item.description || undefined,
+        location: item.location || undefined,
+        start: {
+          dateTime: item.start?.dateTime || undefined,
+          date: item.start?.date || undefined,
+        },
+        end: {
+          dateTime: item.end?.dateTime || undefined,
+          date: item.end?.date || undefined,
+        },
+        status: item.status || 'confirmed',
+        htmlLink: item.htmlLink || '',
+      };
+    } catch (error) {
+      if ((error as any)?.code === 404) return null;
+      throw error;
+    }
+  }
+
+  /**
+   * Registra un webhook channel para push notifications de Calendar
+   */
+  static async registerWebhookChannel(
+    userId: string,
+    webhookUrl: string,
+    secretToken: string
+  ): Promise<{ channelId: string; resourceId: string; expiration: Date }> {
+    const auth = await this.getAuthenticatedClient(userId);
+    const calendar = google.calendar({ version: 'v3', auth });
+
+    const channelId = crypto.randomUUID();
+    const expirationMs = Date.now() + 6 * 24 * 60 * 60 * 1000; // 6 days
+
+    const response = await calendar.events.watch({
+      calendarId: 'primary',
+      requestBody: {
+        id: channelId,
+        type: 'web_hook',
+        address: webhookUrl,
+        token: secretToken,
+        expiration: expirationMs,
+      },
+    });
+
+    if (!response.data.id || !response.data.resourceId) {
+      throw new Error('No se pudo registrar el webhook channel');
+    }
+
+    const expiration = new Date(expirationMs);
+
+    // Save channel info to DB
+    await googleCalendarToken.update({
+      where: { userId },
+      data: {
+        channelId: response.data.id,
+        channelResourceId: response.data.resourceId,
+        channelExpiration: expiration,
+      },
+    });
+
+    return {
+      channelId: response.data.id,
+      resourceId: response.data.resourceId,
+      expiration,
+    };
+  }
+
+  /**
+   * Detiene un webhook channel activo
+   */
+  static async stopWebhookChannel(userId: string): Promise<void> {
+    const token = await googleCalendarToken.findUnique({
+      where: { userId },
+    });
+
+    if (!token?.channelId || !token?.channelResourceId) return;
+
+    try {
+      const auth = await this.getAuthenticatedClient(userId);
+      const calendar = google.calendar({ version: 'v3', auth });
+
+      await calendar.channels.stop({
+        requestBody: {
+          id: token.channelId,
+          resourceId: token.channelResourceId,
+        },
+      });
+    } catch {
+      // Channel may already be expired/stopped
+    }
+
+    // Clear channel info from DB
+    await googleCalendarToken.update({
+      where: { userId },
+      data: {
+        channelId: null,
+        channelResourceId: null,
+        channelExpiration: null,
+      },
+    });
+  }
+
+  /**
+   * Renueva un webhook channel (stop + register)
+   */
+  static async renewWebhookChannel(
+    userId: string,
+    webhookUrl: string,
+    secretToken: string
+  ): Promise<{ channelId: string; resourceId: string; expiration: Date }> {
+    await this.stopWebhookChannel(userId);
+    return this.registerWebhookChannel(userId, webhookUrl, secretToken);
+  }
+
+  /**
+   * Guarda el syncToken para sync incremental
+   */
+  static async saveSyncToken(userId: string, syncToken: string): Promise<void> {
+    await googleCalendarToken.update({
+      where: { userId },
+      data: {
+        lastSyncToken: syncToken,
+        lastSyncAt: new Date(),
+      },
     });
   }
 }

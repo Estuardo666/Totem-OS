@@ -3,11 +3,11 @@
 import { useState, useEffect, useTransition, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Loader2, X, Calendar, MapPin, Users, FileText, ChevronDown, ChevronUp, User as UserIcon } from "lucide-react";
+import { Loader2, Calendar, MapPin, Users, ChevronDown, ChevronUp, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+
 import {
   Select,
   SelectContent,
@@ -24,7 +24,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { UploadButton } from "@/utils/uploadthing";
+
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { useToast } from "@/components/ui/use-toast";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -231,8 +231,6 @@ export function ShootingForm({
             endTime: endDateTime,
             address: address || undefined,
             mapLink: mapLink || undefined,
-            scriptUrl: scriptUrl || undefined,
-            audioBriefUrl: audioBriefUrl || undefined,
             notes: notes || undefined,
             clientId,
             crewIds: selectedCrewIds,
@@ -271,8 +269,6 @@ export function ShootingForm({
             endTime: endDateTime,
             address: address || undefined,
             mapLink: mapLink || undefined,
-            scriptUrl: scriptUrl || undefined,
-            audioBriefUrl: audioBriefUrl || undefined,
             notes: notes || undefined,
             clientId,
             crewIds: selectedCrewIds,
@@ -546,18 +542,7 @@ export function ShootingForm({
                   />
                 </div>
 
-                {/* Notas */}
-                <div className="space-y-4">
-                  <Label htmlFor="notes">Notas</Label>
-                  <Textarea
-                    id="notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Notas adicionales sobre el rodaje..."
-                    disabled={isPending}
-                    rows={3}
-                  />
-                </div>
+                {/* Notes kept in state for voice prefill, hidden from UI */}
 
                 {/* Google Calendar */}
                 <div className="space-y-4">
@@ -678,60 +663,7 @@ export function ShootingForm({
                   )}
                 </div>
 
-                {/* Archivos */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <Label>Guiones</Label>
-                  </div>
-                  {scriptUrl ? (
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        <a
-                          href={scriptUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-primary hover:underline"
-                        >
-                          Ver guión
-                        </a>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setScriptUrl("")}
-                        disabled={isPending}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <UploadButton
-                      endpoint="brandAsset"
-                      onClientUploadComplete={(res: Array<{ url?: string; ufsUrl?: string }>) => {
-                        if (res && res[0]) {
-                          const url = res[0].ufsUrl || res[0].url;
-                          if (url) {
-                            setScriptUrl(url);
-                            toast({
-                              title: "Guión subido",
-                              description: "El archivo se ha subido correctamente",
-                            });
-                          }
-                        }
-                      }}
-                      onUploadError={(error: Error) => {
-                        toast({
-                          variant: "destructive",
-                          title: "Error al subir",
-                          description: error.message,
-                        });
-                      }}
-                    />
-                  )}
-                </div>
+                {/* Script/Audio upload removed — fields kept in schema for future use */}
               </div>
             </CollapsibleContent>
           </Collapsible>
