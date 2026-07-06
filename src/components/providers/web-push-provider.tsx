@@ -120,7 +120,22 @@ function playNotificationSound() {
 }
 
 // ---------------------------------------------------------------------------
-// Subscribe / Resubscribe logic
+// Service Worker registration (separate from subscription)
+// ---------------------------------------------------------------------------
+
+async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    await navigator.serviceWorker.ready;
+    return reg;
+  } catch (error) {
+    console.error("[WebPush] SW registration failed:", error);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Subscribe logic — ONLY call when Notification.permission === "granted"
 // ---------------------------------------------------------------------------
 
 async function subscribeAndRegister(): Promise<boolean> {
@@ -130,11 +145,10 @@ async function subscribeAndRegister(): Promise<boolean> {
   }
 
   try {
-    // Register service worker
-    const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-    await navigator.serviceWorker.ready;
+    const registration = await registerServiceWorker();
+    if (!registration) return false;
 
-    // Check existing subscription
+    // Check existing subscription first (re-subscribe scenario)
     let subscription = await registration.pushManager.getSubscription();
 
     // If no subscription, create one
@@ -202,7 +216,7 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const [showBanner, setShowBanner] = useState(false);
 
-  // On mount: register SW, re-subscribe (updates lastSeenAt), check permission
+  // On mount: check permission state, show banner or re-subscribe
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
@@ -219,19 +233,24 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Re-subscribe / update lastSeenAt on every app open
-      await subscribeAndRegister();
+      // Register SW early (always safe, no permission needed)
+      await registerServiceWorker();
 
       if (!mounted) return;
 
-      // Show permission banner if permission is "default" (not yet asked)
-      if (
-        typeof Notification !== "undefined" &&
-        Notification.permission === "default" &&
-        !localStorage.getItem("webpush-permission-dismissed-v1")
-      ) {
-        setShowBanner(true);
+      // Check current permission state
+      const permission = typeof Notification !== "undefined" ? Notification.permission : "denied";
+
+      if (permission === "granted") {
+        // Already granted — re-subscribe (updates lastSeenAt, re-links userId)
+        await subscribeAndRegister();
+      } else if (permission === "default") {
+        // Not yet asked — show banner (user must click to trigger requestPermission)
+        if (!localStorage.getItem("webpush-permission-dismissed-v1")) {
+          setShowBanner(true);
+        }
       }
+      // "denied" — nothing we can do, user blocked notifications
     }
 
     init();
@@ -260,9 +279,10 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
     return () => navigator.serviceWorker.removeEventListener("message", handleMessage);
   }, []);
 
-  // When session is available, ensure subscription is linked to user
+  // When session is available and permission granted, ensure subscription is linked to user
   useEffect(() => {
     if (!session?.user?.id) return;
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
 
     // Re-subscribe to update userId association in DB
     subscribeAndRegister().catch((err) =>
@@ -281,9 +301,12 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
         setShowBanner(false);
-        // Now subscribe
+        // Now subscribe (permission is granted, this will work)
         const success = await subscribeAndRegister();
         return success;
+      }
+      if (permission === "denied") {
+        setShowBanner(false);
       }
       return false;
     } catch (error) {

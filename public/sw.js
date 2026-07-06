@@ -85,7 +85,7 @@ self.addEventListener("message", (event) => {
   }
 });
 
-const CACHE_NAME = "totem-os-v7";
+const CACHE_NAME = "totem-os-v8";
 const STATIC_ASSETS = [
   // Mantenemos solo manifest para instalación PWA; evitamos precache de rutas HTML
   "/manifest.json",
@@ -105,7 +105,8 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((cacheNames) =>
       Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
+          // Delete old caches AND any leftover OneSignal caches
+          if (cacheName !== CACHE_NAME || cacheName.startsWith("onesignal")) {
             return caches.delete(cacheName);
           }
           return null;
