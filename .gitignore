@@ -6,8 +6,14 @@
 .pnp.js
 .yarn/install-state.gz
 
-# testing
-/coverage
+# performance tests
+/test-results
+/playwright-report
+/reports
+test-results.xml
+playwright-report/
+tests/performance/.auth/
+
 
 # next.js
 /.next/

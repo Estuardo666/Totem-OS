@@ -1,6 +1,61 @@
-// Register message handler at initial evaluation so the browser can bind it
-// before any async work (required by the SW spec; avoids the "must be added on
-// initial evaluation" warning from OneSignal/WorkBox).
+// Totem OS Service Worker
+// Handles: push notifications (Web Push/VAPID), offline caching, route warmup
+
+// ---------------------------------------------------------------------------
+// PUSH NOTIFICATION HANDLERS
+// ---------------------------------------------------------------------------
+
+// CRITICAL: iOS revokes subscription if push event doesn't call showNotification().
+// Always show a notification — never use silent push on iOS.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "Totem OS", body: event.data?.text() || "" };
+  }
+
+  const title = data.title || "Totem OS";
+  const options = {
+    body: data.body || "",
+    icon: "/icons/icon-v2-192x192.png",
+    badge: "/icons/icon-v2-72x72.png",
+    // image omitted — Safari/iOS doesn't support it in showNotification()
+    data: { url: data.url || "/" },
+    vibrate: [200, 100, 200],
+    tag: data.tag || "totem-push",
+    renotify: true,
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Click handler: open/focus the PWA at the notification's URL
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windowClients) => {
+        // Focus existing window if open
+        for (const client of windowClients) {
+          if (client.url.includes(self.location.origin) && "focus" in client) {
+            client.navigate(url);
+            return client.focus();
+          }
+        }
+        // Otherwise open new window
+        return clients.openWindow(url);
+      })
+  );
+});
+
+// ---------------------------------------------------------------------------
+// CACHE / OFFLINE LOGIC (preserved from original)
+// ---------------------------------------------------------------------------
+
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
@@ -30,10 +85,7 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// Import OneSignal SDK for push notifications (must be at the top)
-importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
-
-const CACHE_NAME = "totem-os-v6";
+const CACHE_NAME = "totem-os-v7";
 const STATIC_ASSETS = [
   // Mantenemos solo manifest para instalación PWA; evitamos precache de rutas HTML
   "/manifest.json",

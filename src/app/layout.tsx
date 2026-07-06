@@ -13,7 +13,7 @@ import { ourFileRouter } from "@/app/api/uploadthing/core";
 import { ConditionalLayout } from "@/components/layouts/conditional-layout";
 import { GoogleMapsScript } from "@/components/providers/google-maps-script";
 import { PwaServiceWorker } from "@/components/providers/pwa-service-worker";
-import { OneSignalProvider } from "@/components/providers/onesignal-provider";
+import { WebPushProvider } from "@/components/providers/web-push-provider";
 import { SplashProvider } from "@/components/providers/splash-provider";
 import { AppBadgeProvider } from "@/components/providers/app-badge-provider";
 import { OfflineFinanceSyncProvider } from "@/components/providers/offline-finance-sync-provider";
@@ -167,7 +167,7 @@ export default async function RootLayout({
         <NextAuthSessionProvider>
           <OfflineFinanceSyncProvider />
           <RemoteLogoutProvider>
-            <OneSignalProvider>
+            <WebPushProvider>
               <SplashProvider>
                 <AppBadgeProvider />
                 <ThemeProvider>
@@ -178,7 +178,7 @@ export default async function RootLayout({
                   </UploadThingProviderWrapper>
                 </ThemeProvider>
               </SplashProvider>
-            </OneSignalProvider>
+            </WebPushProvider>
           </RemoteLogoutProvider>
         </NextAuthSessionProvider>
         <Toaster />

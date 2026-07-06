@@ -305,7 +305,6 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   width={180}
                   height={56}
                   className="h-14 w-auto block dark:hidden"
-                  priority
                 />
               )}
               {/* Logo Modo Oscuro */}
@@ -316,7 +315,6 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   width={180}
                   height={56}
                   className="h-14 w-auto hidden dark:block"
-                  priority
                 />
               )}
             </>

@@ -11,6 +11,7 @@ import { SettingsSkeleton } from "@/components/features/settings/settings-skelet
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { Settings, Palette, Bell, Link2, Sparkles, Shield } from "lucide-react";
+import { PushTestPanel } from "@/components/features/admin/push-test-panel";
 
 async function SettingsContent() {
   const session = await auth();
@@ -115,6 +116,19 @@ async function SettingsContent() {
               </h2>
             </div>
             <AiConfigForm />
+          </section>
+        )}
+
+        {/* SECCIÓN: Notificaciones Push (Solo Admin) */}
+        {isAdmin && (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Bell className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Notificaciones Push
+              </h2>
+            </div>
+            <PushTestPanel />
           </section>
         )}
 

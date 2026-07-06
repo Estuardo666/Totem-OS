@@ -104,7 +104,7 @@ export async function notifyAdmins(
 
 /**
  * Notifica a todos los administradores con notificación PUSH (PWA)
- * Combina notificaciones in-app (Pusher) + notificaciones PUSH (OneSignal)
+ * Combina notificaciones in-app (Pusher) + notificaciones PUSH (Web Push)
  */
 export async function notifyAdminsWithPush(
   title: string,
@@ -120,7 +120,7 @@ export async function notifyAdminsWithPush(
     const inAppCount = inAppResult.success ? inAppResult.data?.count ?? 0 : 0;
 
     // 2. Enviar notificación PUSH a todos los admins
-    const { sendPushNotification } = await import("@/actions/onesignal-actions");
+    const { sendPushNotification } = await import("@/actions/push-actions");
     
     const admins = await db.user.findMany({
       where: { roleLegacy: "ADMIN" },
@@ -132,7 +132,7 @@ export async function notifyAdminsWithPush(
       message,
       userIds: admins.map((admin) => admin.id),
       url,
-      imageUrl, // Pasar rich media a OneSignal
+      imageUrl,
     });
 
     console.log(`✅ Notificaciones enviadas: ${inAppCount} in-app, PUSH: ${pushResult.success ? "✅" : "❌"}${imageUrl ? " (con imagen)" : ""}`);
@@ -578,7 +578,7 @@ export async function sendDailyTaskDigest(): Promise<ApiResponse<{ sentCount: nu
       });
 
       // Enviar notificación PUSH con logo del primer cliente
-      const { sendPushNotification } = await import("@/actions/onesignal-actions");
+      const { sendPushNotification } = await import("@/actions/push-actions");
       const firstClientLogo = userTasks[0]?.client?.logo || undefined;
 
       await sendPushNotification({

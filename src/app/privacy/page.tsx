@@ -116,7 +116,7 @@ export default function PrivacyPage() {
               <li>Google Cloud (TTS, análisis de inteligencia artificial)</li>
               <li>Groq (procesamiento de IA)</li>
               <li>Pusher (comunicaciones en tiempo real)</li>
-              <li>OneSignal (notificaciones push)</li>
+              <li>Web Push (notificaciones push propias con VAPID)</li>
               <li>Vercel (hosting y deployment)</li>
             </ul>
 

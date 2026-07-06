@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Bell, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const DISMISSED_KEY = "onesignal-permission-dismissed-v1";
+const DISMISSED_KEY = "webpush-permission-dismissed-v1";
 
 interface PushPermissionBannerProps {
   onEnable: () => Promise<boolean>;

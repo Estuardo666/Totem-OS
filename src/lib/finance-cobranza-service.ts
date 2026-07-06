@@ -81,7 +81,7 @@ export async function checkAndMarkOverdueInvoices(): Promise<CobranzaResult> {
         }
 
         // Notificación PUSH
-        const { sendPushNotification } = await import("@/actions/onesignal-actions");
+        const { sendPushNotification } = await import("@/actions/push-actions");
         await sendPushNotification({
           title: "Factura Vencida",
           message: `${invoice.client.name} • $${invoice.amount} (${daysOverdue}d vencida)`,
@@ -151,7 +151,7 @@ export async function checkPaymentAlerts72Hours(): Promise<CobranzaResult> {
           : 0;
 
         const { sendNotification } = await import("@/actions/notification-actions");
-        const { sendPushNotification } = await import("@/actions/onesignal-actions");
+        const { sendPushNotification } = await import("@/actions/push-actions");
 
         const admins = await db.user.findMany({
           where: { roleLegacy: "ADMIN" },

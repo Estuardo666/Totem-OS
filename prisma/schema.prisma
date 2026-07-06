@@ -89,6 +89,7 @@ model User {
   profitDistributions  ProfitDistributionItem[] @relation("ProfitDistributionItemUser")
   emergencyFundMovements EmergencyFundMovement[] @relation("EmergencyFundAuthorizedBy")
   electronicRetentions   ElectronicRetention[]   @relation("ElectronicRetentionUser")
+  pushSubscriptions      PushSubscription[]      // Web Push suscripciones propias
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -858,6 +859,22 @@ model OneSignalPlayer {
   
   @@index([userId])
   @@index([playerId])
+}
+
+// WEB PUSH SUBSCRIPTIONS (propia, sin OneSignal)
+model PushSubscription {
+  id         String   @id @default(cuid())
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  role       String?  // "ADMIN" o "EDITOR"
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([role])
 }
 
 // ============================================================================
