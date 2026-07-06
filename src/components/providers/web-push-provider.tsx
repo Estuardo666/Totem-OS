@@ -221,10 +221,6 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
   // On mount: check permission state, show banner or re-subscribe
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      console.log("[WebPush] Push not supported in this browser");
-      return;
-    }
 
     let mounted = true;
 
@@ -236,29 +232,33 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Check if push is supported
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+        console.log("[WebPush] Push not supported");
+        return;
+      }
+
       // Register SW early (always safe, no permission needed)
       await registerServiceWorker();
-
       if (!mounted) return;
 
-      // On iOS, Notification might not be available immediately — retry
-      let permission: string = "denied";
-      if (typeof Notification !== "undefined") {
-        permission = Notification.permission;
-      } else if (isIOSSafari()) {
-        // Retry after 1s — iOS PWA sometimes delays Notification availability
-        await new Promise((r) => setTimeout(r, 1000));
-        if (!mounted) return;
-        permission = "Notification" in window ? window.Notification.permission : "denied";
-      }
+      // Determine permission state
+      const hasNotification = typeof Notification !== "undefined";
+      const permission = hasNotification ? Notification.permission : "unknown";
+
+      console.log("[WebPush] Permission state:", permission);
 
       if (permission === "granted") {
+        // Already granted — re-subscribe
         await subscribeAndRegister();
-      } else if (permission === "default") {
+      } else if (permission === "default" || permission === "unknown") {
+        // "default" = not yet asked. "unknown" = Notification API not available yet (some mobile WebViews).
+        // Always show banner — the click handler will check again before requesting permission.
         if (!localStorage.getItem("webpush-permission-dismissed-v1")) {
-          setShowBanner(true);
+          if (mounted) setShowBanner(true);
         }
       }
+      // "denied" — nothing we can do
     }
 
     init();
@@ -301,15 +301,18 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
   // CRITICAL for Safari: requestPermission() must be called synchronously
   // inside a click handler — no await before it.
   const handleEnableNotifications = useCallback(async (): Promise<boolean> => {
-    if (typeof Notification === "undefined") return false;
-
     try {
-      // requestPermission() is synchronous in spec but returns a promise.
-      // Safari requires it to be the FIRST call in the click handler.
+      // On some mobile WebViews, Notification might not be available at mount
+      // but becomes available by the time the user clicks.
+      if (typeof Notification === "undefined") {
+        console.warn("[WebPush] Notification API not available on click");
+        return false;
+      }
+
+      // Safari requires requestPermission() as the FIRST call in the click handler.
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
         setShowBanner(false);
-        // Now subscribe (permission is granted, this will work)
         const success = await subscribeAndRegister();
         return success;
       }
