@@ -11,9 +11,9 @@
  */
 
 import { useEffect, useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { PushPermissionBanner } from "./PushPermissionBanner";
-import { Button } from "@/components/ui/button";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
@@ -326,37 +326,76 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Render banners via portal into document.body to bypass any parent CSS clipping
+  const bannerPortal =
+    showBanner && session?.user?.id && typeof document !== "undefined"
+      ? createPortal(
+          <PushPermissionBanner onEnable={handleEnableNotifications} />,
+          document.body
+        )
+      : null;
+
+  const installPortal =
+    showInstallHint && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            style={{
+              position: "fixed",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 2147483647, // max z-index
+              padding: "12px",
+              pointerEvents: "none",
+            }}
+          >
+            <div style={{ maxWidth: "32rem", margin: "0 auto", pointerEvents: "auto" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  borderRadius: "12px",
+                  border: "1px solid hsl(var(--border))",
+                  background: "hsl(var(--background) / 0.95)",
+                  padding: "12px 16px",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                }}
+              >
+                <span style={{ fontSize: "24px" }}>📲</span>
+                <p style={{ flex: 1, fontSize: "14px", color: "hsl(var(--foreground))" }}>
+                  Para recibir notificaciones, añade esta app a tu pantalla de inicio:{" "}
+                  <strong>Compartir → Añadir a pantalla de inicio</strong>.
+                </p>
+                <button
+                  onClick={() => {
+                    localStorage.setItem("webpush-install-dismissed", "1");
+                    setShowInstallHint(false);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "18px",
+                    padding: "4px 8px",
+                    color: "hsl(var(--muted-foreground))",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
     <>
       {children}
-      {showBanner && session?.user?.id && (
-        <PushPermissionBanner onEnable={handleEnableNotifications} />
-      )}
-      {showInstallHint && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 p-3 md:p-4 pointer-events-none">
-          <div className="mx-auto max-w-lg pointer-events-auto">
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-background/95 px-4 py-3 shadow-lg backdrop-blur-sm">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                📲
-              </div>
-              <p className="flex-1 text-sm text-foreground">
-                Para recibir notificaciones, añade esta app a tu pantalla de inicio: <strong>Compartir → Añadir a pantalla de inicio</strong>.
-              </p>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  localStorage.setItem("webpush-install-dismissed", "1");
-                  setShowInstallHint(false);
-                }}
-                className="h-8 text-xs shrink-0"
-              >
-                Cerrar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {bannerPortal}
+      {installPortal}
     </>
   );
 }

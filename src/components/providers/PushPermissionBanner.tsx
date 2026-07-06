@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const DISMISSED_KEY = "webpush-permission-dismissed-v1";
 
@@ -10,13 +8,14 @@ interface PushPermissionBannerProps {
   onEnable: () => Promise<boolean>;
 }
 
+// All critical positioning uses inline styles to guarantee visibility on mobile.
+// Tailwind classes + body overflow rules were clipping the banner on mobile browsers.
 export function PushPermissionBanner({ onEnable }: PushPermissionBannerProps) {
   const [visible, setVisible] = useState(true);
   const [loading, setLoading] = useState(false);
   const [isDenied, setIsDenied] = useState(false);
 
   useEffect(() => {
-    // Check if already denied
     if (typeof Notification !== "undefined" && Notification.permission === "denied") {
       setIsDenied(true);
     }
@@ -24,34 +23,16 @@ export function PushPermissionBanner({ onEnable }: PushPermissionBannerProps) {
 
   if (!visible) return null;
 
-  if (isDenied) {
-    return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 p-3 md:p-4 pointer-events-none">
-        <div className="mx-auto max-w-lg pointer-events-auto">
-          <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3">
-            <p className="flex-1 text-sm text-muted-foreground">
-              Notificaciones bloqueadas. Actívalas en Ajustes del navegador.
-            </p>
-            <Button size="sm" variant="ghost" onClick={handleDismiss} className="h-8 text-xs">
-              Cerrar
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   async function handleEnable() {
     setLoading(true);
     const success = await onEnable();
     setLoading(false);
-    if (success || Notification.permission === "granted") {
+    if (success || (typeof Notification !== "undefined" && Notification.permission === "granted")) {
       setVisible(false);
-    } else if (Notification.permission === "denied") {
+    } else if (typeof Notification !== "undefined" && Notification.permission === "denied") {
       setVisible(false);
       localStorage.setItem(DISMISSED_KEY, "1");
     }
-    // Si sigue en default (cerró el prompt sin decidir), dejar el banner visible
   }
 
   function handleDismiss() {
@@ -59,34 +40,73 @@ export function PushPermissionBanner({ onEnable }: PushPermissionBannerProps) {
     setVisible(false);
   }
 
-  return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-3 md:p-4 pointer-events-none">
-      <div className="mx-auto max-w-lg pointer-events-auto">
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-background/95 px-4 py-3 shadow-lg backdrop-blur-sm">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Bell className="h-4 w-4" />
-          </div>
-          <p className="flex-1 text-sm text-foreground">
-            Activa las notificaciones para recibir avisos de tareas y contenido.
+  const wrapperStyle: React.CSSProperties = {
+    position: "fixed",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 2147483647,
+    padding: "12px",
+    pointerEvents: "none",
+  };
+
+  const cardStyle: React.CSSProperties = {
+    maxWidth: "32rem",
+    margin: "0 auto",
+    pointerEvents: "auto",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    borderRadius: "12px",
+    border: "1px solid hsl(var(--border))",
+    background: "hsl(var(--background) / 0.95)",
+    padding: "12px 16px",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+    touchAction: "auto",
+  };
+
+  if (isDenied) {
+    return (
+      <div style={wrapperStyle}>
+        <div style={{ ...cardStyle, borderColor: "hsl(var(--destructive) / 0.3)" }}>
+          <p style={{ flex: 1, fontSize: "14px", color: "hsl(var(--muted-foreground))" }}>
+            Notificaciones bloqueadas. Actívalas en Ajustes del navegador.
           </p>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              size="sm"
-              variant="default"
-              disabled={loading}
-              onClick={handleEnable}
-              className="h-8 text-xs"
-            >
-              {loading ? "Activando…" : "Activar"}
-            </Button>
-            <button
-              onClick={handleDismiss}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Cerrar"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+          <button
+            onClick={handleDismiss}
+            style={{ background: "none", border: "1px solid hsl(var(--border))", borderRadius: "6px", padding: "4px 12px", cursor: "pointer", fontSize: "12px", color: "hsl(var(--foreground))", touchAction: "auto" }}
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={wrapperStyle}>
+      <div style={cardStyle}>
+        <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "hsl(var(--primary) / 0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "18px" }}>
+          🔔
+        </div>
+        <p style={{ flex: 1, fontSize: "14px", color: "hsl(var(--foreground))", lineHeight: 1.4 }}>
+          Activa las notificaciones para recibir avisos de tareas y contenido.
+        </p>
+        <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+          <button
+            onClick={handleEnable}
+            disabled={loading}
+            style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: loading ? "wait" : "pointer", fontSize: "13px", fontWeight: 500, touchAction: "auto", whiteSpace: "nowrap" }}
+          >
+            {loading ? "Activando…" : "Activar"}
+          </button>
+          <button
+            onClick={handleDismiss}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", padding: "4px 6px", color: "hsl(var(--muted-foreground))", touchAction: "auto" }}
+          >
+            ✕
+          </button>
         </div>
       </div>
     </div>
