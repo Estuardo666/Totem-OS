@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/favicon.ico",
-        destination: "/icons/icon-v2-192x192.png"
+        destination: "/icons/icon-v2-72x72.png"
       }
     ];
   },

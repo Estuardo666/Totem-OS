@@ -3,7 +3,7 @@ import { getClientReportData } from "@/actions/client-actions";
 import { ClientReportHeader } from "@/components/features/clients/client-report-header";
 import { DeliverablesSummary } from "@/components/features/clients/deliverables-summary";
 import { FinancialSummary } from "@/components/features/clients/financial-summary";
-import { WeeklyEffortChart } from "@/components/features/clients/weekly-effort-chart";
+import { WeeklyEffortChartClient } from "@/components/features/clients/weekly-effort-chart-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ClientReportPageProps {
@@ -60,7 +60,7 @@ export default async function ClientReportPage({
 
         {/* Gráfico de Esfuerzo Semanal */}
         <div className="mt-8">
-          <WeeklyEffortChart
+          <WeeklyEffortChartClient
             weeklyEffort={reportData.weeklyEffort}
             month={reportData.month}
             year={reportData.year}

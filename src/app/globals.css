@@ -258,34 +258,7 @@ body[data-scroll-locked] {
   touch-action: manipulation;
 }
 
-/* Google Sans Fonts */
-@font-face {
-  font-family: 'Google Sans';
-  src: url('/fonts/GoogleSans-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Google Sans';
-  src: url('/fonts/GoogleSans-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Google Sans';
-  src: url('/fonts/GoogleSans-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Google Sans';
-  src: url('/fonts/GoogleSans-Italic.woff2') format('woff2');
-  font-weight: 400;
-  font-style: italic;
-}
+/* Google Sans is loaded via next/font/local in layout.tsx (see --font-google-sans) */
 
 @layer base {
   :root {
@@ -367,7 +340,7 @@ body[data-scroll-locked] {
   
   body {
     @apply bg-background text-foreground;
-    font-family: "Google Sans", sans-serif;
+    font-family: var(--font-google-sans), sans-serif;
     transition: color 300ms ease, background-color 300ms ease;
   }
 
@@ -477,7 +450,7 @@ body[data-scroll-locked] {
 
   /* Google Sans Font */
   .font-google-sans {
-    font-family: "Google Sans", sans-serif;
+    font-family: var(--font-google-sans), sans-serif;
     font-weight: 400;
     font-style: normal;
   }

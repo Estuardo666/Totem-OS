@@ -7,7 +7,7 @@ import { ProductionSummary } from "@/components/features/clients/production-summ
 import { AccountStatusCard } from "@/components/features/clients/account-status-card";
 import { LinkedExpensesSection } from "@/components/features/clients/linked-expenses-section";
 import { PublishedContentList } from "@/components/features/clients/published-content-list";
-import { DeliverablesProgressChart } from "@/components/features/clients/deliverables-progress-chart";
+import { DeliverablesProgressChartClient } from "@/components/features/clients/deliverables-progress-chart-client";
 import { ReportApprovalSection } from "@/components/features/clients/report-approval-section";
 import { format } from "date-fns";
 
@@ -101,7 +101,7 @@ export default async function SharedReportPage({
 
         {/* Gráfico de Progreso */}
         <div className="mt-6">
-          <DeliverablesProgressChart
+          <DeliverablesProgressChartClient
             deliverables={reportData.deliverables}
             month={reportData.month}
             year={reportData.year}

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { SmartTimer } from "@/components/features/chronos/smart-timer";
-import { TimeStats } from "@/components/features/chronos/time-stats";
+import { TimeStatsClient } from "@/components/features/chronos/time-stats-client";
 import { PageHeader } from "@/components/shared";
 
 export default async function ChronosPage() {
@@ -22,7 +22,7 @@ export default async function ChronosPage() {
       <SmartTimer />
 
       {/* Estadísticas */}
-      <TimeStats userId={session.user.id} />
+      <TimeStatsClient userId={session.user.id} />
     </div>
   );
 }

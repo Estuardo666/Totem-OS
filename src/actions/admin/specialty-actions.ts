@@ -2,10 +2,17 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import type { ApiResponse } from "@/types";
 import { specialtySchema } from "@/schemas/admin-schemas";
 import type { Specialty } from "@prisma/client";
+
+// Cached separately from the auth check so a cache hit never bypasses authorization
+const getCachedSpecialties = unstable_cache(
+  async () => db.specialty.findMany({ orderBy: { createdAt: "desc" } }),
+  ["specialties"],
+  { tags: ["specialties"], revalidate: 3600 }
+);
 
 export async function getSpecialties(): Promise<ApiResponse<Specialty[]>> {
   try {
@@ -14,7 +21,7 @@ export async function getSpecialties(): Promise<ApiResponse<Specialty[]>> {
       return { success: false, error: "No autorizado." };
     }
 
-    const specialties = await db.specialty.findMany({ orderBy: { createdAt: "desc" } });
+    const specialties = await getCachedSpecialties();
     return { success: true, data: specialties };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Error" };
@@ -43,6 +50,7 @@ export async function createSpecialty(input: unknown): Promise<ApiResponse<Speci
     });
 
     revalidatePath("/admin/users");
+    revalidateTag("specialties");
     return { success: true, data: specialty };
   } catch (error) {
     if (error instanceof Error && error.message.includes("Unique constraint")) {
@@ -68,6 +76,7 @@ export async function deleteSpecialty(specialtyId: string): Promise<ApiResponse<
 
     await db.specialty.delete({ where: { id: specialtyId } });
     revalidatePath("/admin/users");
+    revalidateTag("specialties");
 
     return { success: true, data: { success: true } };
   } catch (error) {
@@ -124,6 +133,7 @@ export async function syncLegacySpecialties(): Promise<ApiResponse<{ count: numb
     }
 
     revalidatePath("/admin/users");
+    revalidateTag("specialties");
     return { success: true, data: { count: createdCount } };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Error" };

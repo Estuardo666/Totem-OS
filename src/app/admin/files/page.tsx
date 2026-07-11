@@ -284,20 +284,26 @@ export default function UploadThingFilesPage() {
                       </TableCell>
                       <TableCell>
                         {isImageFile(file.url) && file.url ? (
-                          <button
+                          <div
+                            role="button"
+                            tabIndex={0}
                             onClick={() => setPreviewFile(file)}
-                            className="relative w-16 h-16 rounded-md overflow-hidden border hover:opacity-80 transition-opacity"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") setPreviewFile(file);
+                            }}
+                            className="relative w-16 h-16 rounded-md overflow-hidden border hover:opacity-80 transition-opacity cursor-pointer"
                           >
                             <Image
                               src={file.url}
                               alt={file.name || "Imagen"}
                               fill
+                              draggable
                               className="object-cover"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = "none";
                               }}
                             />
-                          </button>
+                          </div>
                         ) : (
                           <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center text-xs font-medium">
                             {file.name?.split(".").pop()?.toUpperCase() || "FILE"}

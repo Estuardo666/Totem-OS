@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import { cookies } from "next/headers";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "@/components/ui/toaster";
@@ -22,6 +23,17 @@ import { getBrandSettings } from "@/actions/admin-actions";
 import { unstable_cache } from "next/cache";
 import { PRIMARY_COLOR_COOKIE, resolvePrimaryColor } from "@/lib/theme";
 import "./globals.css";
+
+const googleSans = localFont({
+  src: [
+    { path: "../../public/fonts/GoogleSans-Regular.woff2", weight: "400", style: "normal" },
+    { path: "../../public/fonts/GoogleSans-Medium.woff2", weight: "500", style: "normal" },
+    { path: "../../public/fonts/GoogleSans-Bold.woff2", weight: "700", style: "normal" },
+    { path: "../../public/fonts/GoogleSans-Italic.woff2", weight: "400", style: "italic" },
+  ],
+  variable: "--font-google-sans",
+  display: "swap",
+});
 
 // Cache brand settings for 1 hour — avoids a DB hit on every route render
 const getCachedBrandSettings = unstable_cache(
@@ -96,14 +108,6 @@ export default async function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning style={htmlStyle}>
       <head>
-        {/* Preload primary font — tells the browser to fetch it before CSS is parsed */}
-        <link
-          rel="preload"
-          href="/fonts/GoogleSans-Regular.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
         {/* Script para bloquear pinch zoom activamente */}
         <script
           dangerouslySetInnerHTML={{
@@ -159,7 +163,7 @@ export default async function RootLayout({
         {/* iPad Pro 12.9" */}
         <link rel="apple-touch-startup-image" href="/apple-splash/apple-splash-2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
       </head>
-      <body className="font-google-sans overflow-x-hidden">
+      <body className={`${googleSans.variable} font-google-sans overflow-x-hidden`}>
         <ThemeScript />
         <GoogleMapsScript />
         <PwaServiceWorker />

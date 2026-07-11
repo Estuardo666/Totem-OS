@@ -52,7 +52,6 @@ export type ContentTaskWithClient = Prisma.ContentTaskGetPayload<{
         status: true;
         editorId: true;
         communityId: true;
-        brandDNA: true;
         brandAssets: {
           select: {
             id: true;
@@ -375,7 +374,6 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
             status: true,
             editorId: true,
             communityId: true,
-            brandDNA: true,  // Éste si es necesario incluso si es grande
             brandAssets: {
               select: {
                 id: true,
@@ -405,17 +403,6 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
         dueDate: "asc", // Ordena por fecha ascendente (nulls al final por defecto)
       },
     }) as ContentTaskWithClient[];
-
-    // Debug: Verificar que brandDNA esté presente en las tareas
-    if (tasks.length > 0) {
-      console.log("[getTasks] Sample task client brandDNA:", {
-        taskId: tasks[0].id,
-        clientId: tasks[0].client.id,
-        clientName: tasks[0].client.name,
-        hasBrandDNA: !!tasks[0].client.brandDNA,
-        brandDNAValue: tasks[0].client.brandDNA ? tasks[0].client.brandDNA.substring(0, 100) : null,
-      });
-    }
 
     return { success: true, data: tasks };
   } catch (error) {

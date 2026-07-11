@@ -15,10 +15,10 @@ import { BrandKit } from "@/components/features/clients/brand-kit";
 import { ContractFulfillment } from "@/components/features/clients/contract-fulfillment";
 import { AccountStatus } from "@/components/features/clients/account-status";
 import { ClientProfitability } from "@/components/features/clients/client-profitability";
-import { MetaPanel } from "@/components/features/clients/meta-panel";
-import { TikTokPanel } from "@/components/features/clients/tiktok-panel";
+import { MetaPanelClient } from "@/components/features/clients/meta-panel-client";
+import { TikTokPanelClient } from "@/components/features/clients/tiktok-panel-client";
 import { StrategyCorePanel } from "@/components/features/clients/strategy-core-panel";
-import { RevenueROIPanel } from "@/components/features/clients/revenue-roi-panel";
+import { RevenueROIPanelClient } from "@/components/features/clients/revenue-roi-panel-client";
 import { MetricsBulkEditor } from "@/components/features/clients/metrics-bulk-editor";
 import { MonthlyBillingExceptionCard } from "@/components/features/clients/monthly-billing-exception-card";
 import { ClientStrategyForm } from "@/components/features/clients/client-strategy-form";
@@ -26,7 +26,7 @@ import { AiOverviewCard } from "@/components/features/metrics/ai-overview-card";
 import { KanbanBoard } from "@/components/features/content/kanban-board";
 import { SyncMetricsButton } from "@/components/features/metrics/sync-metrics-button";
 import { MetricsOverview } from "@/components/features/metrics/metrics-overview";
-import { MetricsChart } from "@/components/features/metrics/metrics-chart";
+import { MetricsChartClient } from "@/components/features/metrics/metrics-chart-client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -381,10 +381,10 @@ export default async function ClientDetailPage({
                     tiktokMetrics={globalMetricsResult.data.tiktokMetrics}
                   />
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <MetaPanel tasks={recentTasks} />
-                    <TikTokPanel tasks={recentTasks} />
+                    <MetaPanelClient tasks={recentTasks} />
+                    <TikTokPanelClient tasks={recentTasks} />
                   </div>
-                  <RevenueROIPanel
+                  <RevenueROIPanelClient
                     tasks={recentTasks}
                     totalRevenue={globalMetricsResult.data.businessMetrics.totalRevenue}
                     totalConversions={globalMetricsResult.data.businessMetrics.totalConversions}
@@ -432,7 +432,7 @@ export default async function ClientDetailPage({
                     fans={facebookMetricsResult.data.overview.fans}
                   />
 
-                  <MetricsChart data={facebookMetricsResult.data.chartData} />
+                  <MetricsChartClient data={facebookMetricsResult.data.chartData} />
                 </>
               ) : (
                 <Card>
