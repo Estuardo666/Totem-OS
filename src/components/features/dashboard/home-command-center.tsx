@@ -14,7 +14,6 @@ import {
   Gauge,
   Layers3,
   PanelTop,
-  Plus,
   UsersRound,
   WalletCards,
 } from "lucide-react";
@@ -193,7 +192,7 @@ function Metric({ label, value, delta, tone, points, icon: Icon, href }: {
       <p className="mt-1 truncate text-[11px] text-muted-foreground">{delta}</p>
     </div>
   );
-  return href ? <Link href={href} className="block h-full">{content}</Link> : content;
+  return href ? <Link href={href} className="block h-full last:col-span-2 xl:last:col-span-1">{content}</Link> : <div className="last:col-span-2 xl:last:col-span-1">{content}</div>;
 }
 
 function getTaskOwner(task: ContentTaskWithClient) {
@@ -258,16 +257,11 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
           </div>
           <div className="flex items-center gap-2">
             <DashboardRefresh />
-            {isAdmin && (
-              <Link href="/content/new" className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3.5 text-xs font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90">
-                <Plus className="size-3.5" /> Nueva tarea
-              </Link>
-            )}
           </div>
         </header>
 
         <section aria-label="Resumen ejecutivo" className="mb-5">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
             {isAdmin && finance && <Metric label="Ingresos del mes" value={formatCurrency(finance.totalIncome)} delta={`${finance.incomeDeltaPct && finance.incomeDeltaPct >= 0 ? "+" : ""}${Math.round(finance.incomeDeltaPct || 0)}%`} tone="success" points={[4, 5, 4, 7, 8, 9, 11]} icon={WalletCards} href="/finance" />}
             {isAdmin && finance && <Metric label="Pendiente por facturar" value={formatCurrency(finance.closureControl?.pendingAmount || 0)} delta={`${finance.closureControl?.pendingCount || 0} clientes`} tone="warning" points={[8, 7, 8, 6, 5, 5, 4]} icon={FileText} href="/finance/receivables" />}
             <Metric label="Tareas vencidas" value={overdueTasks.length} delta={overdueTasks.length ? "requieren acción" : "todo al día"} tone={overdueTasks.length ? "error" : "success"} points={[7, 6, 6, 5, 4, 4, overdueTasks.length]} icon={CircleAlert} href="/content" />
@@ -314,8 +308,10 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                       <p className="mt-1 flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground"><ClientMark name={task.client.name} logo={task.client.logo} color={task.client.color} /><span className="truncate">{task.client.name}</span></p>
                     </div>
                     <span className="hidden min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground sm:flex"><UserMark name={owner?.name || "Sin asignar"} image={owner?.image} /><span className="truncate">{getTaskOwner(task)}</span></span>
-                    <span className={`text-xs font-medium ${overdue ? "text-[hsl(var(--theme-error))]" : priority ? "text-[hsl(var(--theme-warning))]" : "text-muted-foreground"}`}>{overdue ? "Vencida" : priority ? "Alta" : "Normal"}</span>
-                    <span className={`text-right text-xs ${overdue ? "font-semibold text-[hsl(var(--theme-error))]" : "text-muted-foreground"}`}>{relativeDate(dueDate)}</span>
+                    <div className="flex items-center justify-end gap-2 whitespace-nowrap sm:contents">
+                      <span className={`text-xs font-medium ${overdue ? "text-[hsl(var(--theme-error))]" : priority ? "text-[hsl(var(--theme-warning))]" : "text-muted-foreground"}`}>{overdue ? "Vencida" : priority ? "Alta" : "Normal"}</span>
+                      <span className={`text-right text-xs ${overdue ? "font-semibold text-[hsl(var(--theme-error))]" : "text-muted-foreground"}`}>{relativeDate(dueDate)}</span>
+                    </div>
                   </div>
                 );
               }) : <EmptyState icon={CheckCircle2} title="Sin pendientes críticos" description="Las tareas prioritarias están bajo control." />}
@@ -334,7 +330,7 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                       <Link href={`/content?status=${stage.key}`} key={stage.key} className="group flex min-w-0 items-center gap-2.5 rounded-lg py-0.5">
                         <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: stage.color }} />
                         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground group-hover:text-foreground">{stage.label}</span>
-                        <span className="text-xs font-medium tabular-nums text-foreground">{stage.count} <span className="font-normal text-muted-foreground">({percent}%)</span></span>
+                        <span className="text-xs font-semibold tabular-nums" style={{ color: stage.color }}>{stage.count} <span className="font-normal text-muted-foreground">({percent}%)</span></span>
                       </Link>
                     );
                   })}
@@ -450,7 +446,16 @@ function PipelineDonut({ stages, total }: { stages: Array<{ key: string; label: 
 }
 
 function MetricHelper({ text }: { text: string }) {
-  return <span title={text} aria-label={text} className="inline-flex cursor-help text-muted-foreground"><CircleHelp className="size-3" /></span>;
+  return (
+    <span className="group relative inline-flex">
+      <button type="button" aria-label={`Más información: ${text}`} className="inline-flex size-4 cursor-help items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+        <CircleHelp className="size-3" />
+      </button>
+      <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-52 -translate-x-1/2 rounded-lg border border-border bg-popover px-2.5 py-2 text-left text-[11px] font-normal leading-snug text-popover-foreground opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        {text}
+      </span>
+    </span>
+  );
 }
 
 function FinanceMetric({ label, value, tone }: { label: string; value: number; tone: "positive" | "pending" | "neutral" }) {
