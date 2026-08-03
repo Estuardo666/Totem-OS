@@ -359,7 +359,7 @@ export function BulkTaskCreator({ clients, variant = "card", showHeader = true, 
               type="button" 
               onClick={handleCreate} 
               disabled={!hasRows || isPending} 
-              className="w-full rounded-full h-11 font-medium bg-[#27221F] hover:bg-[#3d3530] text-white shadow-md hover:shadow-lg transition-all dark:bg-white dark:text-[#27221F] dark:hover:bg-[#A8E635] dark:hover:text-[#27221F]"
+              className="w-full rounded-full h-11 font-medium bg-primary text-primary-foreground hover:bg-primary/85 shadow-md hover:shadow-lg transition-all"
             >
               {isPending ? "Creando..." : `Crear ${validRows.length}`}
             </Button>

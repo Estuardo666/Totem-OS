@@ -37,6 +37,8 @@ function buildCurrentUserFallback(session: Awaited<ReturnType<typeof import("@/a
     soundNotifications: true,
     primaryColor: sessionUser?.primaryColor || "#27221F",
     darkMode: false,
+    themeId: sessionUser?.themeId || "default",
+    catppuccinAccent: sessionUser?.catppuccinAccent || "mauve",
     createdAt: now,
     updatedAt: now,
   } satisfies User;
@@ -400,6 +402,12 @@ export async function updateUserSettings(
         }),
         ...(validatedData.darkMode !== undefined && {
           darkMode: validatedData.darkMode,
+        }),
+        ...(validatedData.themeId !== undefined && {
+          themeId: validatedData.themeId,
+        }),
+        ...(validatedData.catppuccinAccent !== undefined && {
+          catppuccinAccent: validatedData.catppuccinAccent,
         }),
       },
     });

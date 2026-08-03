@@ -26,6 +26,7 @@ import { TaskBell } from "./task-bell";
 import { Sidebar } from "./sidebar";
 import { getPublicBrandSettings } from "@/actions/admin-actions";
 import { updateUserSettings } from "@/actions/user.actions";
+import { toggleThemeVariantClient } from "@/lib/theme";
 
 export function Navbar() {
   const { data: session } = useSession();
@@ -77,21 +78,11 @@ export function Navbar() {
   }, []);
 
   const toggleTheme = async () => {
-    const newDarkMode = !isDarkMode;
-    
-    const htmlElement = document.documentElement;
-    if (newDarkMode) {
-      htmlElement.classList.add("dark");
-      localStorage.setItem('theme', 'dark');
-    } else {
-      htmlElement.classList.remove("dark");
-      localStorage.setItem('theme', 'light');
-    }
-    
-    setIsDarkMode(newDarkMode);
+    const next = toggleThemeVariantClient();
+    setIsDarkMode(next.variant === "dark");
     
     try {
-      await updateUserSettings({ darkMode: newDarkMode });
+      await updateUserSettings({ darkMode: next.variant === "dark" });
     } catch (error) {
       console.error("Error al actualizar tema:", error);
     }

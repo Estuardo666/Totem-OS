@@ -143,12 +143,12 @@ export function TodayScheduledTasks({ tasks: initialTasks }: TodayScheduledTasks
 
   return (
     <>
-      <Card className="border-orange-200 bg-orange-50/30">
+      <Card className="border-[hsl(var(--theme-warning)/0.35)] bg-[hsl(var(--theme-warning)/0.08)]">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-orange-600" />
-            <CardTitle className="text-orange-900">Hoy en Redes</CardTitle>
-            <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300">
+            <Calendar className="h-5 w-5 text-[hsl(var(--theme-warning))]" />
+            <CardTitle className="text-card-foreground">Hoy en Redes</CardTitle>
+            <Badge variant="outline" className="border-[hsl(var(--theme-warning)/0.4)] bg-[hsl(var(--theme-warning)/0.14)] text-card-foreground">
               {scheduledToday.length}
             </Badge>
           </div>
@@ -169,7 +169,7 @@ export function TodayScheduledTasks({ tasks: initialTasks }: TodayScheduledTasks
                 return (
                   <div
                     key={task.id}
-                    className="flex items-center justify-between gap-3 p-3 rounded-lg border border-orange-200 bg-white hover:bg-orange-50/50 transition-colors"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-[hsl(var(--theme-warning)/0.28)] bg-card p-3 text-card-foreground transition-colors hover:bg-[hsl(var(--theme-warning)/0.1)]"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <Checkbox
@@ -188,7 +188,7 @@ export function TodayScheduledTasks({ tasks: initialTasks }: TodayScheduledTasks
                             {task.title}
                           </h4>
                           {task.status === "PUBLISHED" && (
-                            <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+                            <CheckCircle2 className="h-4 w-4 text-[hsl(var(--theme-success))] flex-shrink-0" />
                           )}
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -196,7 +196,7 @@ export function TodayScheduledTasks({ tasks: initialTasks }: TodayScheduledTasks
                             {task.client.name}
                           </Badge>
                           {scheduledTime && (
-                            <span className="text-xs text-orange-600 font-semibold">
+                            <span className="text-xs text-[hsl(var(--theme-warning))] font-semibold">
                               {scheduledTime}
                             </span>
                           )}

@@ -56,6 +56,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.roleLegacy, // Incluir el rol legacy en el objeto de usuario
           specialty: user.specialty, // Incluir especialidad
           primaryColor: user.primaryColor,
+          themeId: user.themeId === "catppuccin" ? "catppuccin" : "default",
+          catppuccinAccent: user.catppuccinAccent,
         };
       },
     }),
@@ -141,6 +143,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           user.role = dbUser.roleLegacy || "EDITOR";
           user.specialty = dbUser.specialty || null;
           user.primaryColor = dbUser.primaryColor || "#2563eb";
+          user.themeId = dbUser.themeId === "catppuccin" ? "catppuccin" : "default";
+          user.catppuccinAccent = dbUser.catppuccinAccent;
         } catch (error) {
           console.error("❌ Error al crear/actualizar usuario:", error);
           // Continuar con el login aunque haya error
@@ -152,12 +156,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const dbUser = await prisma.user.findUnique({
             where: { email: user.email },
-            select: { roleLegacy: true, specialty: true, primaryColor: true },
+            select: { roleLegacy: true, specialty: true, primaryColor: true, themeId: true, catppuccinAccent: true },
           });
           // Asegurar que el rol esté en el objeto user para el callback jwt
           user.role = dbUser?.roleLegacy || "EDITOR";
           user.specialty = dbUser?.specialty || null;
           user.primaryColor = dbUser?.primaryColor || "#2563eb";
+          user.themeId = dbUser?.themeId === "catppuccin" ? "catppuccin" : "default";
+          user.catppuccinAccent = dbUser?.catppuccinAccent || "mauve";
         } catch (error) {
           console.error("❌ Error al obtener rol para credentials:", error);
           user.role = "EDITOR";
@@ -183,6 +189,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (user.primaryColor !== undefined) {
           token.primaryColor = user.primaryColor as string | null;
         }
+        if (user.themeId !== undefined) token.themeId = user.themeId;
+        if (user.catppuccinAccent !== undefined) token.catppuccinAccent = user.catppuccinAccent;
       }
       
       // Sincronizar rol desde BD solo si es posible
@@ -192,7 +200,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { roleLegacy: true, image: true, specialty: true, primaryColor: true },
+            select: { roleLegacy: true, image: true, specialty: true, primaryColor: true, themeId: true, catppuccinAccent: true },
           });
           clearPrismaConnectionBackoff();
           
@@ -211,6 +219,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (dbUser) {
             token.specialty = dbUser.specialty;
             token.primaryColor = dbUser.primaryColor;
+            token.themeId = dbUser.themeId === "catppuccin" ? "catppuccin" : "default";
+            token.catppuccinAccent = dbUser.catppuccinAccent;
           }
         } catch (error) {
           if (!registerPrismaConnectionIssue(error)) {
@@ -234,6 +244,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.name = token.name as string;
         session.user.image = token.image as string;
         session.user.primaryColor = token.primaryColor as string | null;
+        session.user.themeId = token.themeId === "catppuccin" ? "catppuccin" : "default";
+        session.user.catppuccinAccent = token.catppuccinAccent as string | null;
       }
       return session;
     },

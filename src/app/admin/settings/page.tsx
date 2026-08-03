@@ -29,6 +29,8 @@ async function SettingsContent() {
       roleLegacy: true,
       primaryColor: true,
       darkMode: true,
+      themeId: true,
+      catppuccinAccent: true,
       soundNotifications: true,
     },
   });
@@ -75,6 +77,8 @@ async function SettingsContent() {
             <AppearanceForm
               primaryColor={user.primaryColor || "#2563eb"}
               darkMode={user.darkMode ?? false}
+              themeId={user.themeId === "catppuccin" ? "catppuccin" : "default"}
+              catppuccinAccent={user.catppuccinAccent || "mauve"}
             />
             <NotificationSettings
               soundNotifications={user.soundNotifications ?? true}

@@ -270,11 +270,12 @@ body[data-scroll-locked] {
     --popover-foreground: 22 11% 14%;
     --primary: 22 11% 14%;
     --primary-foreground: 0 0% 100%;
+    --gradient-accent: 239 84% 67%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 81 78% 55%;
+    --accent: 220 20% 96%;
     --accent-foreground: 22 11% 14%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -287,6 +288,15 @@ body[data-scroll-locked] {
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    --theme-success: 142 71% 45%;
+    --theme-success-foreground: 0 0% 100%;
+    --theme-warning: 38 92% 50%;
+    --theme-warning-foreground: 22 11% 14%;
+    --theme-error: 0 84% 60%;
+    --theme-error-foreground: 0 0% 100%;
+    --theme-info: 217 91% 60%;
+    --theme-info-foreground: 0 0% 100%;
+    --theme-peach: 25 95% 53%;
 
     /* Scrollbar (light) */
     --scroll-track: 220 23% 96%;
@@ -308,8 +318,8 @@ body[data-scroll-locked] {
     --secondary-foreground: 0 0% 96%;
     --muted: 23 1% 10%;
     --muted-foreground: 23 1% 56%;
-    --accent: 81 78% 55%;
-    --accent-foreground: 22 11% 14%;
+    --accent: 23 1% 16%;
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 23 1% 13%;
@@ -329,6 +339,104 @@ body[data-scroll-locked] {
   }
 }
 
+/* Preserve semantic chip meaning while matching the active Catppuccin flavor. */
+html[data-theme="catppuccin"] [class~="text-green-500"],
+html[data-theme="catppuccin"] [class~="text-green-600"],
+html[data-theme="catppuccin"] [class~="text-green-700"],
+html[data-theme="catppuccin"] [class~="text-emerald-500"],
+html[data-theme="catppuccin"] [class~="text-emerald-600"],
+html[data-theme="catppuccin"] [class~="text-emerald-700"] { color: hsl(var(--theme-success)) !important; }
+
+html[data-theme="catppuccin"] [class~="bg-green-500"],
+html[data-theme="catppuccin"] [class~="bg-green-600"],
+html[data-theme="catppuccin"] [class~="bg-emerald-500"],
+html[data-theme="catppuccin"] [class~="bg-emerald-600"] { background-color: hsl(var(--theme-success)) !important; color: hsl(var(--theme-success-foreground)) !important; }
+
+html[data-theme="catppuccin"] [class~="bg-green-50"],
+html[data-theme="catppuccin"] [class~="bg-green-100"],
+html[data-theme="catppuccin"] [class~="bg-emerald-50"],
+html[data-theme="catppuccin"] [class~="bg-emerald-100"] { background-color: hsl(var(--theme-success) / 0.14) !important; }
+
+html[data-theme="catppuccin"] [class~="text-red-500"],
+html[data-theme="catppuccin"] [class~="text-red-600"],
+html[data-theme="catppuccin"] [class~="text-red-700"],
+html[data-theme="catppuccin"] [class~="text-rose-500"],
+html[data-theme="catppuccin"] [class~="text-rose-600"],
+html[data-theme="catppuccin"] [class~="text-rose-700"] { color: hsl(var(--theme-error)) !important; }
+
+html[data-theme="catppuccin"] [class~="bg-red-500"],
+html[data-theme="catppuccin"] [class~="bg-red-600"],
+html[data-theme="catppuccin"] [class~="bg-rose-500"],
+html[data-theme="catppuccin"] [class~="bg-rose-600"] { background-color: hsl(var(--theme-error)) !important; color: hsl(var(--theme-error-foreground)) !important; }
+
+html[data-theme="catppuccin"] [class~="bg-red-50"],
+html[data-theme="catppuccin"] [class~="bg-red-100"],
+html[data-theme="catppuccin"] [class~="bg-rose-50"],
+html[data-theme="catppuccin"] [class~="bg-rose-100"] { background-color: hsl(var(--theme-error) / 0.14) !important; }
+
+html[data-theme="catppuccin"] [class~="text-orange-600"],
+html[data-theme="catppuccin"] [class~="text-orange-700"],
+html[data-theme="catppuccin"] [class~="text-amber-600"],
+html[data-theme="catppuccin"] [class~="text-amber-700"],
+html[data-theme="catppuccin"] [class~="text-yellow-600"] { color: hsl(var(--theme-warning)) !important; }
+
+html[data-theme="catppuccin"] [class~="bg-orange-500"],
+html[data-theme="catppuccin"] [class~="bg-amber-500"],
+html[data-theme="catppuccin"] [class~="bg-yellow-500"] { background-color: hsl(var(--theme-warning)) !important; color: hsl(var(--theme-warning-foreground)) !important; }
+
+html[data-theme="catppuccin"] [class~="bg-orange-50"],
+html[data-theme="catppuccin"] [class~="bg-orange-100"],
+html[data-theme="catppuccin"] [class~="bg-amber-50"],
+html[data-theme="catppuccin"] [class~="bg-amber-100"],
+html[data-theme="catppuccin"] [class~="bg-yellow-100"] { background-color: hsl(var(--theme-warning) / 0.14) !important; }
+
+html[data-theme="catppuccin"] [class~="text-blue-500"],
+html[data-theme="catppuccin"] [class~="text-blue-600"],
+html[data-theme="catppuccin"] [class~="text-blue-700"] { color: hsl(var(--theme-info)) !important; }
+
+html[data-theme="catppuccin"] [class~="bg-blue-500"],
+html[data-theme="catppuccin"] [class~="bg-blue-600"] { background-color: hsl(var(--theme-info)) !important; color: hsl(var(--theme-info-foreground)) !important; }
+
+html[data-theme="catppuccin"] [class~="bg-blue-50"],
+html[data-theme="catppuccin"] [class~="bg-blue-100"] { background-color: hsl(var(--theme-info) / 0.14) !important; }
+
+/* Legacy utility colors keep their meaning in every theme instead of reviving Totem lime. */
+[class~="bg-green-500"], [class~="bg-green-600"],
+[class~="bg-emerald-500"], [class~="bg-emerald-600"] {
+  background-color: hsl(var(--theme-success)) !important;
+  color: hsl(var(--theme-success-foreground)) !important;
+}
+[class~="hover:bg-green-600"]:hover, [class~="hover:bg-green-700"]:hover,
+[class~="hover:bg-emerald-600"]:hover, [class~="hover:bg-emerald-700"]:hover {
+  background-color: hsl(var(--theme-success) / 0.88) !important;
+}
+[class~="text-green-500"], [class~="text-green-600"], [class~="text-green-700"],
+[class~="text-emerald-500"], [class~="text-emerald-600"], [class~="text-emerald-700"] {
+  color: hsl(var(--theme-success)) !important;
+}
+
+html[data-theme="catppuccin"] [class~="text-green-800"],
+html[data-theme="catppuccin"] [class~="text-green-900"],
+html[data-theme="catppuccin"] [class~="text-emerald-800"],
+html[data-theme="catppuccin"] [class~="text-emerald-900"] { color: hsl(var(--theme-success)) !important; }
+html[data-theme="catppuccin"] [class~="text-red-800"],
+html[data-theme="catppuccin"] [class~="text-red-900"],
+html[data-theme="catppuccin"] [class~="text-rose-800"],
+html[data-theme="catppuccin"] [class~="text-rose-900"] { color: hsl(var(--theme-error)) !important; }
+html[data-theme="catppuccin"] [class~="text-orange-800"],
+html[data-theme="catppuccin"] [class~="text-orange-900"],
+html[data-theme="catppuccin"] [class~="text-amber-800"],
+html[data-theme="catppuccin"] [class~="text-amber-900"],
+html[data-theme="catppuccin"] [class~="text-yellow-800"] { color: hsl(var(--theme-warning)) !important; }
+html[data-theme="catppuccin"] [class~="text-blue-800"],
+html[data-theme="catppuccin"] [class~="text-blue-900"] { color: hsl(var(--theme-info)) !important; }
+html[data-theme="catppuccin"] [class~="bg-gray-50"],
+html[data-theme="catppuccin"] [class~="bg-slate-50"],
+html[data-theme="catppuccin"] [class~="bg-white"] { background-color: hsl(var(--card)) !important; color: hsl(var(--card-foreground)) !important; }
+[class~="min-h-screen"][class~="bg-muted/30"] { background-color: transparent !important; }
+[class~="bg-background/80"],
+[class~="bg-background/90"] { background-color: transparent !important; }
+
 @layer base {
   * {
     @apply border-border;
@@ -336,12 +444,38 @@ body[data-scroll-locked] {
   
   html {
     overflow-y: scroll;
+    background-color: hsl(var(--background));
+    background-image: radial-gradient(ellipse 85% 46% at 50% 0%, hsl(var(--gradient-accent) / 0.2), transparent 70%);
+    background-attachment: fixed;
+  }
+
+  html:not(.dark) {
+    background-color: #fff;
   }
   
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-color: transparent !important;
     font-family: var(--font-google-sans), sans-serif;
     transition: color 300ms ease, background-color 300ms ease;
+  }
+
+  /* Fine film grain softens flat digital gradients without affecting interaction. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='.7'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 180px 180px;
+    mix-blend-mode: soft-light;
+  }
+
+  .dark body::before {
+    opacity: 0.045;
   }
 
   /* Scrollbar Totem OS style */

@@ -64,6 +64,8 @@ model User {
   soundNotifications Boolean @default(true)
   primaryColor       String  @default("#27221F")
   darkMode           Boolean @default(false)
+  themeId            String  @default("default")
+  catppuccinAccent   String  @default("mauve")
 
   // Relaciones de Auth.js
   accounts Account[]

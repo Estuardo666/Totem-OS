@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "./notification-bell";
 import { cn } from "@/lib/utils";
+import { toggleThemeVariantClient } from "@/lib/theme";
 
 interface NavItem {
   href: string;
@@ -239,23 +240,12 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
   }, []);
 
   const toggleTheme = async () => {
-    const newDarkMode = !isDarkMode;
-    
-    // Actualizar inmediatamente en el DOM para feedback instantáneo
-    const htmlElement = document.documentElement;
-    if (newDarkMode) {
-      htmlElement.classList.add("dark");
-      localStorage.setItem('theme', 'dark');
-    } else {
-      htmlElement.classList.remove("dark");
-      localStorage.setItem('theme', 'light');
-    }
-    
-    setIsDarkMode(newDarkMode);
+    const next = toggleThemeVariantClient();
+    setIsDarkMode(next.variant === "dark");
     
     // Guardar en la base de datos
     try {
-      await updateUserSettings({ darkMode: newDarkMode });
+      await updateUserSettings({ darkMode: next.variant === "dark" });
     } catch (error) {
       console.error("Error al actualizar tema:", error);
     }
@@ -287,14 +277,14 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
   return (
     <div 
       className={cn(
-        "flex h-[calc(100vh-2rem)] w-56 flex-col bg-white/70 dark:bg-background/60 backdrop-blur-md dark:backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl rounded-3xl m-4 transition-all duration-500 ease-standard",
+        "flex h-[calc(100vh-2rem)] w-56 flex-col bg-transparent backdrop-blur-[100px] backdrop-saturate-150 border border-border/45 shadow-2xl rounded-3xl m-4 transition-all duration-500 ease-standard",
         className
       )}
       {...props}
     >
       {/* Logo */}
-      <div className="flex h-14 items-center border-b px-4 mb-4">
-        <Link href="/" className="flex items-center gap-2" onClick={() => onNavigate?.()}>
+      <div className="mb-3 flex h-20 items-center border-b px-5 py-3">
+        <Link href="/" className="flex h-full w-full items-center" onClick={() => onNavigate?.()}>
           {mounted && (brandSettings?.logoLight || brandSettings?.logoDark) ? (
             <>
               {/* Logo Modo Claro */}
@@ -304,7 +294,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   alt="Totem OS"
                   width={180}
                   height={56}
-                  className="h-14 w-auto block dark:hidden"
+                  className="block max-h-12 w-auto max-w-full object-contain dark:hidden"
                 />
               )}
               {/* Logo Modo Oscuro */}
@@ -314,7 +304,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   alt="Totem OS"
                   width={180}
                   height={56}
-                  className="h-14 w-auto hidden dark:block"
+                  className="hidden max-h-12 w-auto max-w-full object-contain dark:block"
                 />
               )}
             </>
@@ -323,75 +313,6 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
           )}
         </Link>
       </div>
-
-      {/* Sección de Usuario */}
-      {user && (
-        <div className="px-3 mb-4">
-          <div className="flex items-center gap-2">
-            {/* Avatar */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="cursor-pointer">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={user.image || undefined} alt={user.name || ""} />
-                    <AvatarFallback>{userInitials}</AvatarFallback>
-                  </Avatar>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/admin/settings" className="cursor-pointer" onClick={() => onNavigate?.()}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Configuración</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/admin/settings/integrations" className="cursor-pointer" onClick={() => onNavigate?.()}>
-                    <Plug className="mr-2 h-4 w-4" />
-                    <span>Integraciones</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => signOut({ callbackUrl: "/sign-in" })}
-                  className="cursor-pointer"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Cerrar Sesión</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Información del usuario */}
-            <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-base font-medium leading-snug break-words">
-                {user.name || "Usuario"}
-              </span>
-              <span className="text-sm text-muted-foreground truncate">
-                {userRole === "ADMIN" ? "Administrador" : userRole === "USER" ? "Usuario" : "EDITOR"}
-              </span>
-            </div>
-
-            {/* Notificaciones y Theme Toggle */}
-            <div className="flex items-center gap-1 flex-shrink-0 hidden md:flex">
-              <button
-                onClick={toggleTheme}
-                className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent/25 transition-colors"
-                title={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-              >
-                {isDarkMode ? (
-                  <Sun className="h-4 w-4 text-yellow-500" />
-                ) : (
-                  <Moon className="h-4 w-4 text-slate-700" />
-                )}
-              </button>
-              <NotificationBell side="right" align="start" />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Navegación */}
       <nav className="flex-1 space-y-0.5 px-2 py-2 overflow-y-auto">
@@ -408,14 +329,14 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
             return (
               <div key={item.href} className="space-y-1">
                 {/* Botón principal del menú desplegable */}
-                <div className="flex items-stretch h-10">
+                <div className="flex h-10 items-stretch border-b border-border/60">
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-2 rounded-l-lg px-2 py-1.5 text-base font-medium transition-all duration-300 ease-standard flex-1 h-full",
+                      "flex h-full flex-1 items-center gap-2 px-2 text-sm font-medium transition-colors duration-200",
                       isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent/25 hover:text-accent-foreground dark:hover:text-foreground"
+                        ? "text-primary"
+                        : "text-foreground/85 hover:text-primary dark:text-foreground/80 dark:hover:text-white"
                     )}
                     onClick={() => onNavigate?.()}
                   >
@@ -428,10 +349,10 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                       toggleExpanded(item.href);
                     }}
                     className={cn(
-                      "flex items-center justify-center h-full aspect-square rounded-r-lg transition-all duration-300 ease-standard shrink-0",
+                      "flex h-full aspect-square shrink-0 items-center justify-center transition-colors duration-200",
                       isActive
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                        : "text-muted-foreground hover:bg-accent/25 hover:text-accent-foreground dark:hover:text-foreground"
+                        ? "text-primary"
+                        : "text-foreground/85 hover:text-primary dark:text-foreground/80 dark:hover:text-white"
                     )}
                   >
                     <ChevronRight
@@ -450,7 +371,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                     isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
                   )}
                 >
-                  <div className="ml-2 space-y-0.5 border-l-2 border-muted pl-2 pt-0.5">
+                  <div className="ml-2 space-y-0.5 pl-2 pt-0.5">
                     {(item.href === "/finance"
                       ? item.children.filter((child) =>
                           child.href === "/finance" ? isAdmin :
@@ -462,7 +383,6 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                         )
                       : item.children
                     ).map((child) => {
-                      const ChildIcon = child.icon;
                       const childIsActive = isChildActive(child);
 
                       return (
@@ -470,14 +390,11 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                           key={child.href}
                           href={child.href}
                           className={cn(
-                            "flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium transition-all duration-300 ease-standard",
-                            childIsActive
-                              ? "bg-primary/10 text-primary font-semibold"
-                              : "text-muted-foreground hover:bg-accent/25 hover:text-accent-foreground dark:hover:text-foreground"
+                            "flex items-center rounded-lg px-3 py-1 text-sm font-normal transition-all duration-300 ease-standard",
+                            childIsActive ? "text-primary" : "text-foreground/75 hover:text-primary dark:text-foreground/65 dark:hover:text-white"
                           )}
                           onClick={() => onNavigate?.()}
                         >
-                          <ChildIcon className="h-3.5 w-3.5" />
                           <span>{child.label}</span>
                         </Link>
                       );
@@ -494,10 +411,10 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-2 py-1.5 text-base font-medium transition-all duration-300 ease-standard",
+                "flex h-10 items-center gap-2 border-b border-border/60 px-2 text-sm font-medium transition-colors duration-200",
                 isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent/25 hover:text-accent-foreground dark:hover:text-foreground"
+                  ? "text-primary"
+                  : "text-foreground/85 hover:text-primary dark:text-foreground/80 dark:hover:text-white"
               )}
               onClick={() => onNavigate?.()}
             >
@@ -520,10 +437,10 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-300 ease-standard",
+                    "flex h-10 items-center gap-2 border-b border-border/60 px-2 text-sm font-medium transition-colors duration-200",
                     isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent/25 hover:text-accent-foreground dark:hover:text-foreground"
+                      ? "text-primary"
+                      : "text-foreground/85 hover:text-primary dark:text-foreground/80 dark:hover:text-white"
                   )}
                   onClick={() => onNavigate?.()}
                 >
@@ -535,6 +452,31 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
           </>
         )}
       </nav>
+
+      {user && (
+        <div className="mt-auto border-t border-border/45 px-3 py-3">
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Avatar className="h-10 w-10"><AvatarImage src={user.image || undefined} alt={user.name || ""} /><AvatarFallback>{userInitials}</AvatarFallback></Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="top" className="w-56">
+                <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel><DropdownMenuSeparator />
+                <DropdownMenuItem asChild><Link href="/admin/settings" className="cursor-pointer" onClick={() => onNavigate?.()}><Settings className="mr-2 h-4 w-4" /><span>Configuración</span></Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/admin/settings/integrations" className="cursor-pointer" onClick={() => onNavigate?.()}><Plug className="mr-2 h-4 w-4" /><span>Integraciones</span></Link></DropdownMenuItem>
+                <DropdownMenuSeparator /><DropdownMenuItem onClick={() => signOut({ callbackUrl: "/sign-in" })} className="cursor-pointer"><LogOut className="mr-2 h-4 w-4" /><span>Cerrar Sesión</span></DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{user.name || "Usuario"}</span><span className="block truncate text-xs text-muted-foreground">{userRole === "ADMIN" ? "Administrador" : userRole === "USER" ? "Usuario" : "EDITOR"}</span></div>
+            <div className="hidden shrink-0 items-center md:flex">
+              <button onClick={toggleTheme} className="flex h-8 w-8 items-center justify-center text-muted-foreground transition-colors hover:text-primary" title={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}>{isDarkMode ? <Sun className="h-4 w-4 text-[hsl(var(--theme-warning))]" /> : <Moon className="h-4 w-4" />}</button>
+              <NotificationBell side="right" align="end" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

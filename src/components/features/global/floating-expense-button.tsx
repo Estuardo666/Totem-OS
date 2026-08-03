@@ -21,7 +21,7 @@ export function FloatingExpenseButton() {
       {/* Botón flotante */}
       <TransactionDialog>
         <button
-          className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#27221F] text-[#A8E635] shadow-xl shadow-[#27221F]/30 transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:shadow-[#27221F]/40 active:scale-95 border border-[#3d3530]"
+          className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-primary/30 bg-primary text-primary-foreground shadow-xl shadow-primary/20 transition-all duration-300 hover:scale-110 hover:bg-primary/85 hover:shadow-2xl hover:shadow-primary/30 active:scale-95"
           aria-label="Registrar transacción"
           title="Registrar Ingreso, Gasto o Matrícula"
         >

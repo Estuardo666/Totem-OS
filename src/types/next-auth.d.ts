@@ -12,6 +12,8 @@ declare module "next-auth" {
       roleLegacy: string; // Explícito: Valor real guardado en DB
       specialty?: string | null;
       primaryColor?: string | null;
+      themeId?: "default" | "catppuccin" | null;
+      catppuccinAccent?: string | null;
     };
   }
 
@@ -23,6 +25,8 @@ declare module "next-auth" {
     role?: string; // Usado durante el signIn, mapeado a roleLegacy
     specialty?: string | null;
     primaryColor?: string | null;
+    themeId?: "default" | "catppuccin" | null;
+    catppuccinAccent?: string | null;
   }
 }
 
@@ -35,5 +39,7 @@ declare module "next-auth/jwt" {
     role: string; // Almacena el valor de roleLegacy
     specialty?: string | null;
     primaryColor?: string | null;
+    themeId?: "default" | "catppuccin" | null;
+    catppuccinAccent?: string | null;
   }
 }

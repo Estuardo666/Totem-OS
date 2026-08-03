@@ -465,23 +465,23 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
     <div className="space-y-8">
       {stats.closureControl && stats.closureControl.pendingCount > 0 ? (
         <Collapsible open={isClosureExpanded} onOpenChange={setIsClosureExpanded}>
-          <Card className="border-rose-300 bg-rose-50 shadow-sm">
+          <Card className="border-[hsl(var(--theme-error)/0.5)] bg-[hsl(var(--theme-error)/0.08)] text-card-foreground shadow-sm">
             <CardContent className="space-y-4 p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-rose-700">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--theme-error)/0.25)] bg-[hsl(var(--theme-error)/0.14)] px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[hsl(var(--theme-error))]">
                   <AlertTriangle className="h-4 w-4" />
                   Cierre contable pendiente
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button asChild className="rounded-full bg-rose-600 hover:bg-rose-700">
+                  <Button asChild className="rounded-full bg-[hsl(var(--theme-error))] text-[hsl(var(--theme-error-foreground))] hover:bg-[hsl(var(--theme-error)/0.85)]">
                     <Link href="/finance/monthly-close">
                       Ir al cierre mensual
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
                   <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-rose-700">
+                    <Button variant="ghost" size="sm" className="text-[hsl(var(--theme-error))]">
                       {isClosureExpanded ? "Ver menos" : "Ver más"}
                       {isClosureExpanded ? (
                         <ChevronUp className="ml-1 h-4 w-4" />
@@ -494,21 +494,21 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, u
               </div>
 
               <CollapsibleContent>
-                <div className="space-y-3 border-t border-rose-200 pt-3">
-                  <p className="max-w-3xl text-sm text-rose-800">
+                <div className="space-y-3 border-t border-[hsl(var(--theme-error)/0.3)] pt-3">
+                  <p className="max-w-3xl text-sm text-card-foreground">
                     {stats.closureControl.pendingCount} cliente(s) recurrente(s) siguen sin cierre de {stats.closureControl.currentMonthLabel}. El monto potencial pendiente es {formatCurrency(stats.closureControl.pendingAmount)}.
                   </p>
                   <div className="flex flex-wrap gap-2">
                   {stats.closureControl.pendingClients.slice(0, 8).map((client) => (
                     <span
                       key={client.id}
-                      className="rounded-full border border-rose-200 bg-white px-3 py-1 text-sm font-medium text-rose-900"
+                      className="rounded-full border border-[hsl(var(--theme-error)/0.28)] bg-card px-3 py-1 text-sm font-medium text-card-foreground"
                     >
                       {client.name}
                     </span>
                   ))}
                   {stats.closureControl.pendingClients.length > 8 ? (
-                    <span className="rounded-full border border-rose-200 bg-white px-3 py-1 text-sm font-medium text-rose-900">
+                    <span className="rounded-full border border-[hsl(var(--theme-error)/0.28)] bg-card px-3 py-1 text-sm font-medium text-card-foreground">
                       +{stats.closureControl.pendingClients.length - 8} más
                     </span>
                   ) : null}

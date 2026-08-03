@@ -28,9 +28,9 @@ const ContextMenuSubTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       "flex cursor-default select-none items-center rounded-lg px-2.5 py-1.5 text-sm outline-none",
-      "hover:bg-accent/25 hover:text-accent-foreground",
-      "focus:bg-accent/20 data-[state=open]:bg-accent/25",
-      "focus:text-accent-foreground data-[state=open]:text-accent-foreground",
+      "hover:bg-primary/12 hover:text-primary",
+      "focus:bg-primary/12 data-[state=open]:bg-primary/15",
+      "focus:text-primary data-[state=open]:text-primary",
       "transition-all duration-150 ease-out",
       inset && "pl-8",
       className
@@ -51,11 +51,10 @@ const ContextMenuSubContent = React.forwardRef<
     <ContextMenuPrimitive.SubContent
       ref={ref}
       className={cn(
-        // iOS 26 Liquid Glass Effect
         "relative z-[100] min-w-[11rem] overflow-visible rounded-xl border p-1",
-        "bg-white/75 dark:bg-background/60",
+        "bg-popover/95 text-popover-foreground",
         "backdrop-blur-3xl backdrop-saturate-150",
-        "border-white/40 dark:border-white/10",
+        "border-border/70",
         "shadow-[0_8px_30px_rgb(0,0,0,0.12),0_0_1px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.4),inset_0_-1px_0_rgba(0,0,0,0.1)]",
         "dark:shadow-[0_8px_30px_rgb(0,0,0,0.4),0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.3)]",
         "data-[state=open]:animate-scaleIn",
@@ -76,11 +75,10 @@ const ContextMenuContent = React.forwardRef<
     <ContextMenuPrimitive.Content
       ref={ref}
       className={cn(
-        // iOS 26 Liquid Glass Effect - Main Menu
         "relative z-50 min-w-[13rem] overflow-visible rounded-xl border p-1",
-        "bg-white/75 dark:bg-background/60",
+        "bg-popover/95 text-popover-foreground",
         "backdrop-blur-3xl backdrop-saturate-200",
-        "border-white/50 dark:border-white/10",
+        "border-border/70",
         "shadow-[0_12px_40px_rgb(0,0,0,0.15),0_0_1px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(0,0,0,0.1)]",
         "dark:shadow-[0_12px_40px_rgb(0,0,0,0.5),0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.3)]",
         // Before pseudo for extra glass effect
@@ -108,13 +106,13 @@ const ContextMenuItem = React.forwardRef<
     className={cn(
       "relative flex cursor-default select-none items-center rounded-lg px-2.5 py-1.5 text-sm outline-none",
       "transition-all duration-150 ease-out",
-      "hover:bg-accent/25 hover:text-accent-foreground dark:hover:text-foreground",
-      "focus:bg-accent/20 focus:text-accent-foreground dark:focus:text-foreground",
+      "hover:bg-primary/12 hover:text-primary",
+      "focus:bg-primary/12 focus:text-primary",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       variant === "destructive" && [
-        "text-red-600 dark:text-red-400",
-        "hover:bg-red-500/20 dark:hover:bg-red-500/25 hover:text-red-700 dark:hover:text-red-300",
-        "focus:bg-red-500/15 dark:focus:bg-red-500/20 focus:text-red-700 dark:focus:text-red-300"
+        "text-[hsl(var(--theme-error))]",
+        "hover:bg-[hsl(var(--theme-error)/0.16)] hover:text-[hsl(var(--theme-error))]",
+        "focus:bg-[hsl(var(--theme-error)/0.16)] focus:text-[hsl(var(--theme-error))]"
       ],
       inset && "pl-8",
       className
@@ -132,10 +130,10 @@ const ContextMenuCheckboxItem = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex cursor-default select-none items-center rounded-lg py-1.5 pl-8 pr-2.5 text-sm outline-none",
-      "focus:bg-primary/10 dark:focus:bg-white/15 focus:text-primary dark:focus:text-slate-100",
+      "focus:bg-primary/15 focus:text-foreground",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       "transition-all duration-150 ease-out",
-      "context-menu-item-hover hover:text-primary dark:hover:text-slate-100",
+      "context-menu-item-hover hover:bg-accent/40 hover:text-foreground",
       className
     )}
     checked={checked}
@@ -160,10 +158,10 @@ const ContextMenuRadioItem = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex cursor-default select-none items-center rounded-lg py-1.5 pl-8 pr-2.5 text-sm outline-none",
-      "focus:bg-primary/10 dark:focus:bg-white/15 focus:text-primary dark:focus:text-slate-100",
+      "focus:bg-primary/15 focus:text-foreground",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       "transition-all duration-150 ease-out",
-      "context-menu-item-hover hover:text-primary dark:hover:text-slate-100",
+      "context-menu-item-hover hover:bg-accent/40 hover:text-foreground",
       className
     )}
     {...props}
@@ -187,7 +185,7 @@ const ContextMenuLabel = React.forwardRef<
   <ContextMenuPrimitive.Label
     ref={ref}
     className={cn(
-      "px-2.5 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400",
+      "px-2.5 py-1.5 text-xs font-semibold text-muted-foreground",
       inset && "pl-8",
       className
     )}
@@ -203,7 +201,7 @@ const ContextMenuSeparator = React.forwardRef<
   <ContextMenuPrimitive.Separator
     ref={ref}
     className={cn(
-      "my-1 h-px bg-gradient-to-r from-transparent via-slate-300/50 to-transparent dark:via-slate-600/50",
+      "my-1 h-px bg-gradient-to-r from-transparent via-border to-transparent",
       className
     )}
     {...props}
@@ -218,7 +216,7 @@ const ContextMenuShortcut = ({
   return (
     <span
       className={cn(
-        "ml-auto text-xs tracking-widest text-slate-400 dark:text-slate-500 opacity-60",
+        "ml-auto text-xs tracking-widest text-muted-foreground opacity-60",
         className
       )}
       {...props}

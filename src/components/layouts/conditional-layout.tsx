@@ -34,7 +34,7 @@ export function ConditionalLayout({
   
   // Para todas las demás rutas, mostrar dashboard layout con sidebar y footer
   return (
-    <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-transparent overflow-x-hidden">
       <div className="flex flex-1 overflow-x-hidden">
         {/* Sidebar solo visible en desktop - Flotante con margin */}
         <div className="hidden md:block fixed left-0 top-0 h-full z-30">

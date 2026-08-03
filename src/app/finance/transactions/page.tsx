@@ -92,7 +92,7 @@ export default async function TransactionsPage() {
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-            <h2 className="text-lg font-semibold">Historial de Transacciones</h2>
+            <h2 className="text-center text-lg font-semibold">Historial de Transacciones</h2>
           </div>
           <div className="p-4">
             <TransactionsOfflineView transactions={result.data.recentTransactions} />

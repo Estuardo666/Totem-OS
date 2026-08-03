@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CATPPUCCIN_ACCENTS, THEME_IDS } from "@/lib/theme";
 
 export const userSchema = z.object({
   id: z.string().cuid().optional(),
@@ -29,6 +30,8 @@ export const userSettingsSchema = z.object({
   soundNotifications: z.boolean().optional(),
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "El color debe ser un hex válido (ej: #2563eb)").optional(),
   darkMode: z.boolean().optional(),
+  themeId: z.enum(THEME_IDS).optional(),
+  catppuccinAccent: z.enum(CATPPUCCIN_ACCENTS).optional(),
 });
 
 export type User = z.infer<typeof userSchema>;

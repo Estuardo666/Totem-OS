@@ -134,23 +134,23 @@ export async function PriorityTasks() {
                 key={task.id}
                 className={`flex items-start justify-between gap-3 p-4 transition-colors ${
                   isUrgent
-                    ? "bg-rose-50/50 dark:bg-rose-950/20"
+                    ? "bg-[hsl(var(--theme-error)/0.10)]"
                     : "hover:bg-muted/50"
                 }`}
               >
                 <div 
                   className="w-1 h-12 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: isUrgent ? "#f43f5e" : (task.client.color || "#6366f1") }}
+                  style={{ backgroundColor: isUrgent ? "hsl(var(--theme-error))" : (task.client.color || "hsl(var(--theme-info))") }}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className={`font-medium text-sm leading-tight truncate ${
-                      isUrgent ? "text-rose-700 dark:text-rose-400" : ""
+                      isUrgent ? "text-[hsl(var(--theme-error))]" : ""
                     }`}>
                       {task.title}
                     </h4>
                     {isUrgent && (
-                      <AlertCircle className="h-4 w-4 text-rose-500 flex-shrink-0" />
+                      <AlertCircle className="h-4 w-4 text-[hsl(var(--theme-error))] flex-shrink-0" />
                     )}
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -161,7 +161,7 @@ export async function PriorityTasks() {
                       <span
                         className={`text-xs font-medium ${
                           isUrgent
-                            ? "text-rose-600 dark:text-rose-400"
+                            ? "text-[hsl(var(--theme-error))]"
                             : getDateColor(new Date(task.dueDate))
                         }`}
                       >

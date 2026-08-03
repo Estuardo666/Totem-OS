@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Check, X, Edit, Loader2, Minus, Plus, Trash2, Receipt } from "lucide-react";
+import { Check, Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import type { FinancialStats } from "@/actions/finance-actions";
 import {
   markTransactionAsPaid,
@@ -82,7 +82,7 @@ interface TransactionListProps {
 
 // Función para formatear dinero como USD
 function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
@@ -150,11 +150,11 @@ function getStatusBadgeVariant(status?: string): "default" | "secondary" | "dest
 function getStatusBadgeClasses(status?: string): string {
   switch (status) {
     case "PAID":
-      return "bg-green-500 hover:bg-green-600 text-white";
+      return "bg-green-500 text-[10.5px] text-white";
     case "PENDING":
-      return "bg-yellow-500 hover:bg-yellow-600 text-white";
+      return "bg-yellow-500 text-[10.5px] text-gray-950";
     case "CANCELLED":
-      return "bg-red-500 hover:bg-red-600 text-white";
+      return "bg-red-500 text-[10.5px] text-white";
     default:
       return "";
   }
@@ -680,8 +680,8 @@ export function TransactionList({ transactions }: TransactionListProps) {
               className={`
                 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ease-out
                 ${typeFilter === option.value
-                  ? "bg-white dark:bg-gray-800 text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-gray-800/50"
+                  ? "bg-card text-card-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-card/70 hover:text-foreground"
                 }
               `}
             >
@@ -824,7 +824,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
 
       {/* Tabla de transacciones */}
       <div className="rounded-md border">
-        <Table>
+        <Table className="text-[0.761rem]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[50px]">
@@ -840,7 +840,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
               <TableHead>Tipo</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Monto</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead className="w-[150px] text-center">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -877,7 +877,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                         aria-label={`Seleccionar transacción ${transaction.description}`}
                       />
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell>
                       {formatDateNatural(transaction.date)}
                     </TableCell>
                     <TableCell className="font-medium">
@@ -958,7 +958,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                       <div className="flex flex-col">
                         <span className="font-medium">{transaction.description}</span>
                         {transaction.category && (
-                          <Badge variant="outline" className="w-fit mt-1">
+                          <Badge variant="outline" className="mt-1 w-fit text-[10.5px]">
                             {getCategoryLabel(transaction.category)}
                           </Badge>
                         )}
@@ -975,10 +975,10 @@ export function TransactionList({ transactions }: TransactionListProps) {
                         }
                         className={
                           transaction.type === "INCOME"
-                            ? "bg-green-500 hover:bg-green-600 text-white"
+                            ? "bg-green-500 text-[10.5px] font-medium text-white hover:bg-green-600"
                             : transaction.type === "HONORARIOS"
-                            ? "bg-blue-500 hover:bg-blue-600 text-white"
-                            : "bg-red-500 hover:bg-red-600 text-white"
+                            ? "bg-blue-500 text-[10.5px] font-medium text-white hover:bg-blue-600"
+                            : "bg-red-500 text-[10.5px] font-medium text-white hover:bg-red-600"
                         }
                       >
                         {transaction.type === "INCOME" 
@@ -992,7 +992,21 @@ export function TransactionList({ transactions }: TransactionListProps) {
                     <TableCell>
                       {transaction.status ? (
                         transaction.status === "PAID" ? (
-                          <Check className="h-4 w-4 text-green-500" />
+                          <span
+                            className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-white shadow-sm"
+                            aria-label="Pagada"
+                            title="Pagada"
+                          >
+                            <Check className="h-3 w-3 stroke-[2.5]" />
+                          </span>
+                        ) : transaction.status === "PENDING" ? (
+                          <span
+                            className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-yellow-500 text-[8.7px] font-bold text-gray-950 shadow-sm"
+                            aria-label="Pendiente"
+                            title="Pendiente"
+                          >
+                            P
+                          </span>
                         ) : (
                           <Badge
                             variant={getStatusBadgeVariant(transaction.status)}
@@ -1006,7 +1020,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                       )}
                     </TableCell>
                     <TableCell
-                      className={`text-right font-semibold ${
+                      className={`text-right text-[0.94rem] font-medium tabular-nums ${
                         transaction.type === "INCOME"
                           ? "text-green-600"
                           : transaction.type === "HONORARIOS"
@@ -1023,8 +1037,8 @@ export function TransactionList({ transactions }: TransactionListProps) {
                         <span>{formatCurrency(transaction.amount)}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <TableCell className="w-[150px]">
+                      <div className="ml-auto flex w-[132px] flex-col items-stretch gap-1 [&_a]:w-full [&_button]:h-7 [&_button]:w-full [&_button]:px-2 [&_button]:text-xs [&_button]:hover:border-primary/50 [&_button]:hover:bg-primary/10 [&_button]:hover:text-primary">
                         {/* Determinar el tipo de transacción */}
                         {(() => {
                           // Detectar si es un gasto basándose en el tipo de transacción
@@ -1053,15 +1067,12 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                   size="sm"
                                   onClick={() => handleMarkAsPaid(transaction.id, sourceType)}
                                   disabled={isProcessing}
-                                  className="h-8 bg-green-600 hover:bg-green-700 text-white"
+                                  className="border border-green-500/40 bg-green-500/15 text-green-700 hover:!bg-green-500/25 hover:!text-green-800 dark:text-green-300 dark:hover:!text-green-200"
                                 >
                                   {isProcessing ? (
                                     <Loader2 className="h-3 w-3 animate-spin" />
                                   ) : (
-                                    <>
-                                      <Check className="h-3 w-3 mr-1" />
-                                      {isExpense ? "Reembolsado" : isHonorario ? "Marcar como Pagada" : "Marcar como Pagada"}
-                                    </>
+                                    isExpense ? "Reembolsado" : "Marcar pagada"
                                   )}
                                 </Button>
                                 )}
@@ -1070,10 +1081,9 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                   variant="outline"
                                   size="sm"
                                   disabled={isProcessing}
-                                  className="h-8"
+                                  className=""
                                   onClick={() => handleEdit(transaction.id, sourceType)}
                                 >
-                                  <Edit className="h-3 w-3 mr-1" />
                                   Editar
                                 </Button>
                                 {/* Solo mostrar cancelar para transacciones, no para facturas ni gastos del modelo Expense */}
@@ -1084,9 +1094,8 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                         variant="outline"
                                         size="sm"
                                         disabled={isProcessing}
-                                        className="h-8"
+                                        className=""
                                       >
-                                        <X className="h-3 w-3 mr-1" />
                                         Cancelar
                                       </Button>
                                     </AlertDialogTrigger>
@@ -1119,22 +1128,14 @@ export function TransactionList({ transactions }: TransactionListProps) {
                           if (isTransaction && isPaid) {
                             return (
                               <>
-                                <Badge
-                                  variant="default"
-                                  className="bg-green-500 hover:bg-green-600 text-white"
-                                >
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Pagada
-                                </Badge>
                                 {transaction.type === "INCOME" && transaction.clientName && (
-                                  <Link href={`/admin/facturacion/facturas/nueva?clientName=${encodeURIComponent(transaction.clientName)}&amount=${transaction.amount}`}>
+                                  <Link className="block" href={`/admin/facturacion/facturas/nueva?clientName=${encodeURIComponent(transaction.clientName)}&amount=${transaction.amount}`}>
                                     <Button
                                       variant="outline"
                                       size="sm"
-                                      className="h-8 gap-1 text-xs"
+                                      className=""
                                     >
-                                      <Receipt className="h-3 w-3" />
-                                      <span className="hidden sm:inline">Emitir factura</span>
+                                      Emitir factura
                                     </Button>
                                   </Link>
                                 )}
@@ -1142,10 +1143,9 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                   variant="outline"
                                   size="sm"
                                   disabled={isProcessing}
-                                  className="h-8"
+                                  className=""
                                   onClick={() => handleEdit(transaction.id, sourceType)}
                                 >
-                                  <Edit className="h-3 w-3 mr-1" />
                                   Editar
                                 </Button>
                                 <AlertDialog>
@@ -1154,9 +1154,8 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                       variant="outline"
                                       size="sm"
                                       disabled={isProcessing}
-                                      className="h-8"
+                                      className=""
                                     >
-                                      <X className="h-3 w-3 mr-1" />
                                       Cancelar
                                     </Button>
                                   </AlertDialogTrigger>
@@ -1187,21 +1186,13 @@ export function TransactionList({ transactions }: TransactionListProps) {
                           if (isInvoice && !isPending) {
                             return (
                               <>
-                                <Badge
-                                  variant={getStatusBadgeVariant(transaction.status)}
-                                  className={getStatusBadgeClasses(transaction.status)}
-                                >
-                                  {isPaid ? <Check className="h-3 w-3 mr-1" /> : null}
-                                  {getStatusLabel(transaction.status)}
-                                </Badge>
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   disabled={isProcessing}
-                                  className="h-8"
+                                  className=""
                                   onClick={() => handleEdit(transaction.id, sourceType)}
                                 >
-                                  <Edit className="h-3 w-3 mr-1" />
                                   Editar
                                 </Button>
                               </>
@@ -1212,21 +1203,13 @@ export function TransactionList({ transactions }: TransactionListProps) {
                           if (isHonorario && isPaid) {
                             return (
                               <>
-                                <Badge
-                                  variant="default"
-                                  className="bg-green-500 hover:bg-green-600 text-white"
-                                >
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Pagada
-                                </Badge>
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   disabled={isProcessing}
-                                  className="h-8"
+                                  className=""
                                   onClick={() => handleEdit(transaction.id, sourceType)}
                                 >
-                                  <Edit className="h-3 w-3 mr-1" />
                                   Editar
                                 </Button>
                               </>
@@ -1237,21 +1220,13 @@ export function TransactionList({ transactions }: TransactionListProps) {
                           if (isTransaction && isCancelled) {
                             return (
                               <>
-                                <Badge
-                                  variant="destructive"
-                                  className="bg-red-500 hover:bg-red-600 text-white"
-                                >
-                                  <X className="h-3 w-3 mr-1" />
-                                  Cancelada
-                                </Badge>
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   disabled={isProcessing}
-                                  className="h-8"
+                                  className=""
                                   onClick={() => handleEdit(transaction.id, sourceType)}
                                 >
-                                  <Edit className="h-3 w-3 mr-1" />
                                   Editar
                                 </Button>
                               </>
