@@ -2,6 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Home command center motion: one calm entrance sequence, replayed on refresh. */
+@keyframes totemHomeReveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes totemHomeTitle {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes totemHomeLine {
+  from { stroke-dasharray: 120; stroke-dashoffset: 120; opacity: 0.35; }
+  to { stroke-dasharray: 120; stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes totemHomeDonut {
+  from { stroke-dashoffset: var(--totem-donut-start); opacity: 0.35; }
+  to { stroke-dashoffset: var(--totem-donut-end); opacity: 1; }
+}
+
+.totem-home-title {
+  animation: totemHomeTitle 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.totem-home-subtitle {
+  animation: totemHomeTitle 650ms 110ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.totem-kpi {
+  animation: totemHomeReveal 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.totem-kpi:nth-child(1) { animation-delay: 220ms; }
+.totem-kpi:nth-child(2) { animation-delay: 300ms; }
+.totem-kpi:nth-child(3) { animation-delay: 380ms; }
+.totem-kpi:nth-child(4) { animation-delay: 460ms; }
+.totem-kpi:nth-child(5) { animation-delay: 540ms; }
+
+.totem-agenda-enter {
+  animation: totemHomeReveal 720ms 1320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.totem-chart-line {
+  animation: totemHomeLine 900ms 360ms ease-out both;
+}
+
+.totem-donut-segment {
+  animation: totemHomeDonut 950ms 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .totem-home-title,
+  .totem-home-subtitle,
+  .totem-kpi,
+  .totem-agenda-enter,
+  .totem-chart-line,
+  .totem-donut-segment {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
 /* ====== iOS/macOS STYLE ANIMATIONS ====== */
 /* Animaciones fluidas para popups y overlays con soporte data-state */
 

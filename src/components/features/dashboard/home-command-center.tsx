@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -23,6 +24,8 @@ import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { UserWorkload } from "@/actions/workload-actions";
 import type { FinancialStats } from "@/actions/finance-actions";
 import { DashboardRefresh } from "@/components/features/content/dashboard-refresh";
+import { AnimatedNumber } from "@/components/features/dashboard/animated-number";
+import { HomeMotion } from "@/components/features/dashboard/home-motion";
 
 type Feedback = {
   id: string;
@@ -133,7 +136,7 @@ function Sparkline({ points, color = "hsl(var(--primary))" }: { points: number[]
   return (
     <svg aria-hidden="true" className="h-8 w-24 shrink-0 overflow-visible" viewBox="0 0 100 32" fill="none">
       <path d="M2 29H98" stroke="currentColor" className="text-border" strokeWidth="1" />
-      <path d={path} stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={path} stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="totem-chart-line" />
     </svg>
   );
 }
@@ -165,9 +168,11 @@ function SectionHeading({ icon: Icon, title, description, href, action }: {
   );
 }
 
-function Metric({ label, value, delta, tone, points, icon: Icon, href }: {
+function Metric({ label, value, animatedValue, valueKind = "number", delta, tone, points, icon: Icon, href }: {
   label: string;
   value: string | number;
+  animatedValue?: number;
+  valueKind?: "number" | "currency";
   delta: string;
   tone: "success" | "warning" | "error" | "info" | "neutral";
   points: number[];
@@ -190,11 +195,11 @@ function Metric({ label, value, delta, tone, points, icon: Icon, href }: {
         <Sparkline points={points} color={tone === "neutral" ? "hsl(var(--muted-foreground))" : `hsl(var(--theme-${tone}))`} />
       </div>
       <p className="mt-4 truncate text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
-      <p className={`mt-1 truncate text-[22px] font-semibold tracking-[-0.045em] ${toneClass}`}>{value}</p>
+      <p className={`mt-1 truncate text-[22px] font-semibold tracking-[-0.045em] ${toneClass}`}>{animatedValue !== undefined ? <AnimatedNumber value={animatedValue} kind={valueKind} /> : typeof value === "number" ? <AnimatedNumber value={value} kind={valueKind} /> : value}</p>
       <p className="mt-1 truncate text-[11px] text-muted-foreground">{delta}</p>
     </div>
   );
-  return href ? <Link href={href} className="block h-full last:col-span-2 xl:last:col-span-1">{content}</Link> : <div className="last:col-span-2 xl:last:col-span-1">{content}</div>;
+  return href ? <Link href={href} className="totem-kpi block h-full last:col-span-2 xl:last:col-span-1">{content}</Link> : <div className="totem-kpi last:col-span-2 xl:last:col-span-1">{content}</div>;
 }
 
 function getTaskOwner(task: ContentTaskWithClient) {
@@ -248,14 +253,15 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
 
   return (
     <main className="min-h-screen bg-muted/20 pb-10">
+      <HomeMotion>
       <div className="mx-auto max-w-[1480px] px-4 pt-5 sm:px-6 sm:pt-7 lg:px-8">
         <header className="relative z-10 mb-9 flex flex-wrap items-center justify-between gap-4 pb-1">
           <div>
             <div className="flex items-baseline gap-3">
-              <h1 className="text-[25px] font-semibold tracking-[-0.045em] text-foreground sm:text-[29px]">Buenos días, {firstName}</h1>
-              <span className="hidden text-sm text-muted-foreground sm:inline">{format(new Date(), "EEEE, d 'de' MMMM", { locale: es })}</span>
+              <h1 className="totem-home-title text-[25px] font-semibold tracking-[-0.045em] text-foreground sm:text-[29px]">Buenos días, {firstName}</h1>
+              <span className="totem-home-subtitle hidden text-sm text-muted-foreground sm:inline">{format(new Date(), "EEEE, d 'de' MMMM", { locale: es })}</span>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">{scheduledToday.length} actividades y {priorityTasks.length} tareas requieren atención hoy.</p>
+            <p className="totem-home-subtitle mt-1 text-sm text-muted-foreground">{scheduledToday.length} actividades y {priorityTasks.length} tareas requieren atención hoy.</p>
           </div>
           <div className="flex items-center gap-2">
             <DashboardRefresh />
@@ -264,8 +270,8 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
 
         <section aria-label="Resumen ejecutivo" className="mb-5">
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-            {isAdmin && finance && <Metric label="Ingresos del mes" value={formatCurrency(finance.totalIncome)} delta={`${finance.incomeDeltaPct && finance.incomeDeltaPct >= 0 ? "+" : ""}${Math.round(finance.incomeDeltaPct || 0)}%`} tone="success" points={[4, 5, 4, 7, 8, 9, 11]} icon={WalletCards} href="/finance" />}
-            {isAdmin && receivables && <Metric label="Saldo pendiente total" value={formatCurrency(receivables.totalReceivable)} delta={`${receivables.clientsWithDebt} clientes con deuda`} tone="warning" points={[8, 7, 8, 6, 5, 5, receivables.totalReceivable]} icon={FileText} href="/finance/receivables" />}
+            {isAdmin && finance && <Metric label="Ingresos del mes" value={finance.totalIncome} valueKind="currency" delta={`${finance.incomeDeltaPct && finance.incomeDeltaPct >= 0 ? "+" : ""}${Math.round(finance.incomeDeltaPct || 0)}%`} tone="success" points={[4, 5, 4, 7, 8, 9, 11]} icon={WalletCards} href="/finance" />}
+            {isAdmin && receivables && <Metric label="Saldo pendiente total" value={receivables.totalReceivable} valueKind="currency" delta={`${receivables.clientsWithDebt} clientes con deuda`} tone="warning" points={[8, 7, 8, 6, 5, 5, receivables.totalReceivable]} icon={FileText} href="/finance/receivables" />}
             <Metric label="Tareas vencidas" value={overdueTasks.length} delta={overdueTasks.length ? "requieren acción" : "todo al día"} tone={overdueTasks.length ? "error" : "success"} points={[7, 6, 6, 5, 4, 4, overdueTasks.length]} icon={CircleAlert} href="/content" />
             <Metric label="Contenido publicado" value={publishedThisMonth} delta="este mes" tone="info" points={[3, 4, 4, 6, 5, 8, publishedThisMonth]} icon={PanelTop} href="/content" />
             <Metric label={isAdmin ? "Clientes activos" : "Tareas asignadas"} value={isAdmin ? activeClients : tasks.length} delta={isAdmin ? "en el sistema" : activeRoleLabel} tone="neutral" points={[5, 6, 5, 7, 7, 8, 9]} icon={UsersRound} href={isAdmin ? "/clients" : "/content"} />
@@ -273,7 +279,7 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
         </section>
 
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-          <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] xl:col-span-5">
+          <section className="totem-agenda-enter overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] xl:col-span-5">
             <SectionHeading icon={CalendarDays} title="Agenda de hoy" description={`${scheduledToday.length} actividades programadas`} href="/content" action="Ver agenda" />
             <div className="px-5 py-3 sm:px-6">
               {scheduledToday.length > 0 ? scheduledToday.map((task, index) => (
@@ -332,15 +338,15 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                       <Link href={`/content?status=${stage.key}`} key={stage.key} className="group flex min-w-0 items-center gap-2.5 rounded-lg py-0.5">
                         <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: stage.color }} />
                         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground group-hover:text-foreground">{stage.label}</span>
-                        <span className="text-xs font-semibold tabular-nums" style={{ color: stage.color }}>{stage.count} <span className="font-normal text-muted-foreground">({percent}%)</span></span>
+                        <span className="text-xs font-semibold tabular-nums" style={{ color: stage.color }}><AnimatedNumber value={stage.count} /> <span className="font-normal text-muted-foreground">({percent}%)</span></span>
                       </Link>
                     );
                   })}
                 </div>
               </div>
               <div className="mt-5 grid grid-cols-3 divide-x divide-border/70 rounded-xl bg-muted/45 py-3">
-                <div className="px-3 sm:px-4"><p className="text-[11px] text-muted-foreground">Piezas del mes</p><p className="mt-1 text-lg font-semibold tracking-[-0.03em]">{totalPipeline}</p></div>
-                <div className="px-3 sm:px-4"><p className="flex items-center gap-1 text-[11px] text-muted-foreground">Bloqueadas <MetricHelper text="Piezas detenidas en revisión interna o revisión del cliente." /></p><p className={`mt-1 text-lg font-semibold tracking-[-0.03em] ${blockedCount ? "text-[hsl(var(--theme-warning))]" : "text-foreground"}`}>{blockedCount}</p></div>
+                <div className="px-3 sm:px-4"><p className="text-[11px] text-muted-foreground">Piezas del mes</p><p className="mt-1 text-lg font-semibold tracking-[-0.03em]"><AnimatedNumber value={totalPipeline} /></p></div>
+                <div className="px-3 sm:px-4"><p className="flex items-center gap-1 text-[11px] text-muted-foreground">Bloqueadas <MetricHelper text="Piezas detenidas en revisión interna o revisión del cliente." /></p><p className={`mt-1 text-lg font-semibold tracking-[-0.03em] ${blockedCount ? "text-[hsl(var(--theme-warning))]" : "text-foreground"}`}><AnimatedNumber value={blockedCount} /></p></div>
                 <div className="px-3 sm:px-4"><p className="flex items-center gap-1 text-[11px] text-muted-foreground">Producción media <MetricHelper text="Días promedio entre la creación y la publicación de una pieza." /></p><p className="mt-1 text-lg font-semibold tracking-[-0.03em]">6,2 <span className="text-xs font-normal text-muted-foreground">días</span></p></div>
               </div>
             </div>
@@ -418,6 +424,7 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
           </section>
         </div>
       </div>
+      </HomeMotion>
     </main>
   );
 }
@@ -434,7 +441,7 @@ function PipelineDonut({ stages, total }: { stages: Array<{ key: string; label: 
         {stages.map((stage) => {
           const fraction = total ? stage.count / total : 0;
           const dash = fraction * circumference;
-          const segment = <circle key={stage.key} cx="54" cy="54" r={radius} stroke={stage.color} strokeWidth="12" strokeDasharray={`${Math.max(dash - 2, 0)} ${circumference}`} strokeDashoffset={-offset} />;
+          const segment = <circle key={stage.key} cx="54" cy="54" r={radius} stroke={stage.color} strokeWidth="12" strokeDasharray={`${Math.max(dash - 2, 0)} ${circumference}`} strokeDashoffset={-offset} className="totem-donut-segment" style={{ "--totem-donut-start": circumference, "--totem-donut-end": -offset } as CSSProperties} />;
           offset += dash;
           return segment;
         })}

@@ -21,7 +21,11 @@ export function FloatingExpenseButton() {
       {/* Botón flotante */}
       <TransactionDialog>
         <button
-          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-primary/30 bg-primary text-primary-foreground shadow-xl shadow-primary/20 transition-all duration-300 hover:scale-110 hover:bg-primary/85 hover:shadow-2xl hover:shadow-primary/30 active:scale-95 md:bottom-6 md:right-6"
+          onPointerDown={() => {
+            const isPwa = window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+            if (isPwa && "vibrate" in navigator) navigator.vibrate(12);
+          }}
+          className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 select-none touch-manipulation items-center justify-center rounded-full border border-primary/30 bg-primary text-primary-foreground shadow-xl shadow-primary/20 transition-[transform,background-color,box-shadow] duration-300 hover:scale-105 hover:bg-primary/85 hover:shadow-2xl hover:shadow-primary/30 active:scale-90 active:shadow-md md:bottom-3 md:right-6"
           aria-label="Registrar transacción"
           title="Registrar Ingreso, Gasto o Matrícula"
         >

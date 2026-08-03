@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Pusher from "pusher-js";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, RefreshCw } from "lucide-react";
 
 export function DashboardRefresh() {
   const { data: session } = useSession();
@@ -15,6 +15,16 @@ export function DashboardRefresh() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const userId = session?.user?.id;
+
+  const triggerRefresh = () => {
+    setLastUpdated(new Date());
+    setIsRefreshing(true);
+    window.dispatchEvent(new CustomEvent("totem:dashboard-refresh"));
+    setTimeout(() => {
+      router.refresh();
+      setIsRefreshing(false);
+    }, 300);
+  };
 
   useEffect(() => {
     if (!userId || typeof window === "undefined") return;
@@ -45,15 +55,7 @@ export function DashboardRefresh() {
     }) => {
       console.log("🔄 Evento de actualización del dashboard recibido:", data);
       
-      // Actualizar timestamp
-      setLastUpdated(new Date());
-      setIsRefreshing(true);
-
-      // Refrescar la página después de un pequeño delay para evitar parpadeos
-      setTimeout(() => {
-        router.refresh();
-        setIsRefreshing(false);
-      }, 300);
+      triggerRefresh();
     });
 
     // También escuchar eventos de notificaciones que pueden indicar cambios
@@ -61,12 +63,7 @@ export function DashboardRefresh() {
       // Si hay una nueva notificación, puede haber cambios en el dashboard
       // Esperar un momento para que el servidor procese los cambios
       setTimeout(() => {
-        setLastUpdated(new Date());
-        setIsRefreshing(true);
-        setTimeout(() => {
-          router.refresh();
-          setIsRefreshing(false);
-        }, 300);
+        triggerRefresh();
       }, 500);
     });
 
@@ -90,6 +87,15 @@ export function DashboardRefresh() {
 
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <button
+        type="button"
+        onClick={triggerRefresh}
+        aria-label="Actualizar dashboard"
+        title="Actualizar dashboard"
+        className="inline-flex size-8 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground shadow-sm transition-[transform,background-color,color] duration-200 hover:bg-muted hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <RefreshCw className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+      </button>
       {isRefreshing ? (
         <span className="flex items-center gap-1">
           <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
