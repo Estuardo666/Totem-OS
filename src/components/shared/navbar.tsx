@@ -115,6 +115,7 @@ export function Navbar() {
           >
             <SheetTitle className="sr-only">Menú de Navegación</SheetTitle>
             <Sidebar 
+              data-mobile-sidebar
               className="w-full h-full m-0 border-none shadow-none bg-transparent rounded-none"
               onNavigate={() => setOpen(false)}
             />

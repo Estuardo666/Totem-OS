@@ -50,7 +50,7 @@ export function ConditionalLayout({
           </div>
 
           {/* Contenido de la página */}
-          <div className="p-4 pb-24 md:px-4 md:py-4 overflow-x-hidden">
+          <div className="overflow-x-hidden px-[0.34rem] pb-24 pt-0 md:px-4 md:py-4">
             {children}
           </div>
         </main>

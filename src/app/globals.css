@@ -237,10 +237,24 @@ html {
   }
 }
 
-/* Mobile page headers dock below the global header instead of competing with it. */
+/* Mobile page titles remain in flow directly below the fixed global header. */
 @media (max-width: 767px) {
-  main [class~="sticky"][class~="top-0"][class~="z-40"]:not([data-mobile-navbar]) {
-    top: calc(4rem + var(--sat, 0px));
+  main [class~="sticky"][class~="top-0"][class~="z-40"]:not([data-mobile-navbar]),
+  main [class~="min-h-screen"] > [class~="sticky"][class~="top-0"]:not([data-mobile-navbar]) {
+    position: relative;
+    top: auto;
+    z-index: auto;
+    background: transparent !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  [data-mobile-sidebar] nav a {
+    font-size: 1.006rem !important;
+  }
+
+  [data-mobile-sidebar] nav a[class~="font-normal"] {
+    font-size: 0.906rem !important;
   }
 }
 
