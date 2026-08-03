@@ -52,9 +52,11 @@ import type {
   GlobalProfitabilityStatsData,
 } from "@/lib/finance-reporting-service";
 import {
+  getFinanceDashboardPeriodSnapshotsFromDb,
   getMonthlyFinancialSummaryFromDb,
 } from "@/lib/finance-monthly-summary-service";
 export type { MonthlyFinancialSummaryData } from "@/lib/finance-monthly-summary-types";
+export type { FinanceDashboardPeriodSnapshot } from "@/lib/finance-monthly-summary-service";
 import {
   getClientMonthlyClosuresFromDb,
   upsertClientMonthlyClosureFromDb,
@@ -76,6 +78,7 @@ export interface StrategicClientPlan {
   logo: string | null;
   monthlyRate: number;
   monthlyReels: number;
+  monthlyFlyers: number;
   monthlyShoots: number;
   paymentDay: number | null;
   billingStartDate: Date | null;
@@ -125,6 +128,7 @@ export async function getStrategicClientPlans():
         logo: true,
         monthlyRate: true,
         monthlyReels: true,
+        monthlyFlyers: true,
         monthlyShoots: true,
         paymentDay: true,
         billingStartDate: true,
@@ -814,6 +818,10 @@ export async function getGlobalProfitabilityStats(): Promise<ApiResponse<any>> {
 
 export async function getMonthlyFinancialSummary(monthValue?: string): Promise<ApiResponse<any>> {
   return getMonthlyFinancialSummaryFromDb(monthValue);
+}
+
+export async function getFinanceDashboardPeriodSnapshots(monthValues: string[]) {
+  return getFinanceDashboardPeriodSnapshotsFromDb(monthValues);
 }
 
 export async function getClientMonthlyClosures(

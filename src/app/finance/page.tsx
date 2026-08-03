@@ -1,19 +1,25 @@
 import { Suspense } from "react";
-import { TrendingUp } from "lucide-react";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { getFinancialStats, getGlobalProfitabilityStats, getStrategicClientPlans } from "@/actions/finance-actions";
+import { getFinanceDashboardPeriodSnapshots, getFinancialStats, getGlobalProfitabilityStats, getReceivables, getStrategicClientPlans } from "@/actions/finance-actions";
 import { StrategicFinanceDashboardClient } from "@/components/features/finance/strategic-finance-dashboard-client";
-import { FinanceHeaderActions } from "@/components/features/finance/finance-header-actions";
+import { PageHeader } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
 import { CardSkeleton } from "@/components/ui/skeletons-composite";
 
 // Streamed: fetches finance data, then renders the dashboard
 async function FinanceBody({ userRole }: { userRole: string }) {
-  const [result, profitabilityResult, clientPlansResult] = await Promise.all([
+  const now = new Date();
+  const monthValues = Array.from({ length: now.getMonth() + 1 }, (_, index) =>
+    `${now.getFullYear()}-${String(index + 1).padStart(2, "0")}`
+  );
+
+  const [result, profitabilityResult, clientPlansResult, receivablesResult, periodSnapshotsResult] = await Promise.all([
     getFinancialStats(),
     getGlobalProfitabilityStats(),
     getStrategicClientPlans(),
+    getReceivables(),
+    getFinanceDashboardPeriodSnapshots(monthValues),
   ]);
 
   if (!result.success || !result.data) {
@@ -31,24 +37,20 @@ async function FinanceBody({ userRole }: { userRole: string }) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 pt-6 pb-6">
+    <div className="mx-auto max-w-[1440px] px-4 pt-2 pb-6 sm:px-6">
+      <PageHeader
+        title="Finanzas"
+        description="Visibilidad ejecutiva sobre caja, rentabilidad y cartera de clientes"
+      />
       <StrategicFinanceDashboardClient
         stats={result.data}
         profitability={profitabilityResult.success ? profitabilityResult.data : null}
         clientPlans={clientPlansResult.success ? clientPlansResult.data ?? [] : []}
+        receivables={receivablesResult.success ? receivablesResult.data ?? null : null}
+        periodSnapshots={periodSnapshotsResult.success ? periodSnapshotsResult.data ?? [] : []}
         userRole={userRole}
       />
     </div>
-  );
-}
-
-// Streamed: fetches client plans for header actions
-async function HeaderActionsServer() {
-  const clientPlansResult = await getStrategicClientPlans();
-  return (
-    <FinanceHeaderActions
-      clientPlans={clientPlansResult.success ? clientPlansResult.data ?? [] : []}
-    />
   );
 }
 
@@ -60,31 +62,8 @@ export default async function FinancePage() {
   if (userRole !== "ADMIN") redirect("/finance/personal");
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      {/* Header renders immediately — this is the LCP element */}
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <TrendingUp className="h-6 w-6 text-foreground" />
-            <div className="hidden sm:block">
-              <h1 className="text-xl font-bold text-foreground dark:text-white line-clamp-1">
-                Finanzas Totem
-              </h1>
-              <p className="text-xs text-muted-foreground line-clamp-1">
-                Gestiona y visualiza tu desempeño financiero
-              </p>
-            </div>
-          </div>
-          <div className="flex-shrink-0">
-            <Suspense fallback={<div className="h-8 w-20 rounded-full bg-muted/50 animate-pulse" />}>
-              <HeaderActionsServer />
-            </Suspense>
-          </div>
-        </div>
-      </div>
-
-      {/* Dashboard streams in — recharts deferred to client */}
-      <Suspense fallback={<div className="max-w-7xl mx-auto px-4 pt-6 pb-6"><CardSkeleton /></div>}>
+    <div className="min-h-screen bg-transparent">
+      <Suspense fallback={<div className="mx-auto max-w-[1440px] px-4 py-6"><CardSkeleton /></div>}>
         <FinanceBody userRole={userRole} />
       </Suspense>
     </div>

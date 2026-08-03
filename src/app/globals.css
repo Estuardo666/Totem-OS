@@ -532,6 +532,34 @@ html[data-theme="catppuccin"] [class~="bg-white"] { background-color: hsl(var(--
 [class~="bg-background/80"],
 [class~="bg-background/90"] { background-color: transparent !important; }
 
+/* Finance dashboard legacy utilities remain readable in the default dark variant. */
+html.dark .finance-dashboard [class~="bg-white"] {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground));
+}
+html.dark .finance-dashboard [class~="bg-slate-50"],
+html.dark .finance-dashboard [class~="bg-slate-50/60"],
+html.dark .finance-dashboard [class~="bg-slate-100"] {
+  background-color: hsl(var(--muted)) !important;
+}
+html.dark .finance-dashboard [class*="border-slate-"] {
+  border-color: hsl(var(--border)) !important;
+}
+html.dark .finance-dashboard [class~="text-slate-950"],
+html.dark .finance-dashboard [class~="text-slate-900"],
+html.dark .finance-dashboard [class~="text-slate-800"],
+html.dark .finance-dashboard [class~="text-slate-700"] {
+  color: hsl(var(--foreground)) !important;
+}
+html.dark .finance-dashboard [class~="text-slate-600"],
+html.dark .finance-dashboard [class~="text-slate-500"],
+html.dark .finance-dashboard [class~="text-slate-400"] {
+  color: hsl(var(--muted-foreground)) !important;
+}
+html.dark .finance-dashboard [class~="hover:bg-slate-50"]:hover {
+  background-color: hsl(var(--accent)) !important;
+}
+
 @layer base {
   * {
     @apply border-border;

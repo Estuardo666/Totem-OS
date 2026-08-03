@@ -27,7 +27,8 @@ import type { ApiResponse } from "@/types";
 
 export type { MonthlyFinancialSummaryData } from "@/lib/finance-monthly-summary-types";
 
-type MonthlySummarySnapshot = Omit<MonthlyFinancialSummaryData, "comparison" | "heroFocus">;
+export type FinanceDashboardPeriodSnapshot = Omit<MonthlyFinancialSummaryData, "comparison" | "heroFocus">;
+type MonthlySummarySnapshot = FinanceDashboardPeriodSnapshot;
 
 function buildMonthlyComparison(current: MonthlySummarySnapshot, previous: MonthlySummarySnapshot): MonthlySummaryComparison {
   const metrics: MonthlySummaryComparison["metrics"] = [
@@ -407,5 +408,34 @@ export async function getMonthlyFinancialSummaryFromDb(monthValue?: string): Pro
     };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Error al generar el resumen financiero mensual" };
+  }
+}
+
+export async function getFinanceDashboardPeriodSnapshotsFromDb(
+  monthValues: string[]
+): Promise<ApiResponse<FinanceDashboardPeriodSnapshot[]>> {
+  try {
+    const session = await auth();
+    const userId = session?.user?.id;
+    const userRole = session?.user?.role;
+
+    if (!userId || userRole !== "ADMIN") {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const uniqueMonths = Array.from(new Set(monthValues))
+      .map((value) => resolveSummaryMonth(value))
+      .sort((a, b) => a.getTime() - b.getTime());
+
+    const snapshots = await Promise.all(
+      uniqueMonths.map((monthDate) => buildMonthlyFinancialSummary(userId, monthDate))
+    );
+
+    return { success: true, data: snapshots };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al cargar los períodos financieros",
+    };
   }
 }
