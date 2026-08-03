@@ -263,7 +263,7 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
         <section aria-label="Resumen ejecutivo" className="mb-5">
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
             {isAdmin && finance && <Metric label="Ingresos del mes" value={formatCurrency(finance.totalIncome)} delta={`${finance.incomeDeltaPct && finance.incomeDeltaPct >= 0 ? "+" : ""}${Math.round(finance.incomeDeltaPct || 0)}%`} tone="success" points={[4, 5, 4, 7, 8, 9, 11]} icon={WalletCards} href="/finance" />}
-            {isAdmin && finance && <Metric label="Pendiente por facturar" value={formatCurrency(finance.closureControl?.pendingAmount || 0)} delta={`${finance.closureControl?.pendingCount || 0} clientes`} tone="warning" points={[8, 7, 8, 6, 5, 5, 4]} icon={FileText} href="/finance/receivables" />}
+            {isAdmin && finance && <Metric label="Pendiente por facturar" value={formatCurrency(finance.pendingInvoicingAmount || 0)} delta={`${finance.pendingInvoicingCount || 0} facturas`} tone="warning" points={[8, 7, 8, 6, 5, 5, 4]} icon={FileText} href="/finance/receivables" />}
             <Metric label="Tareas vencidas" value={overdueTasks.length} delta={overdueTasks.length ? "requieren acción" : "todo al día"} tone={overdueTasks.length ? "error" : "success"} points={[7, 6, 6, 5, 4, 4, overdueTasks.length]} icon={CircleAlert} href="/content" />
             <Metric label="Contenido publicado" value={publishedThisMonth} delta="este mes" tone="info" points={[3, 4, 4, 6, 5, 8, publishedThisMonth]} icon={PanelTop} href="/content" />
             <Metric label={isAdmin ? "Clientes activos" : "Tareas asignadas"} value={isAdmin ? activeClients : tasks.length} delta={isAdmin ? "en el sistema" : activeRoleLabel} tone="neutral" points={[5, 6, 5, 7, 7, 8, 9]} icon={UsersRound} href={isAdmin ? "/clients" : "/content"} />
@@ -396,7 +396,7 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
             <div className="px-5 pb-5 sm:px-6">
               <div className="grid grid-cols-2 gap-x-5 gap-y-4 border-b border-border/60 py-4 sm:grid-cols-4">
                 <FinanceMetric label="Cobrado" value={finance.totalIncome} tone="positive" />
-                <FinanceMetric label="Pendiente" value={finance.closureControl?.pendingAmount || 0} tone="pending" />
+                <FinanceMetric label="Pendiente" value={finance.pendingInvoicingAmount || 0} tone="pending" />
                 <FinanceMetric label="Gastos" value={finance.totalExpenses} tone="neutral" />
                 <FinanceMetric label="Proyectado" value={projectedBalance} tone="positive" />
               </div>

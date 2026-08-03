@@ -30,6 +30,9 @@ export interface FinancialStats {
   totalExpenses: number;
   netProfit: number;
   cashBalance: number;
+  /** Facturas emitidas que siguen PENDING u OVERDUE; no incluye cierres mensuales sin factura. */
+  pendingInvoicingAmount?: number;
+  pendingInvoicingCount?: number;
   incomeDeltaPct?: number;
   expensesDeltaPct?: number;
   netProfitDeltaPct?: number;
@@ -209,6 +212,15 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
           include: {
             client: true,
           },
+        })
+      : [];
+
+    // La métrica del Home debe reflejar facturas realmente emitidas y aún no pagadas.
+    // `closureControl.pendingAmount` representa fees recurrentes sin cierre y no es equivalente.
+    const pendingInvoices = isAdmin
+      ? await db.invoice.findMany({
+          where: { status: { in: ["PENDING", "OVERDUE"] } },
+          select: { amount: true },
         })
       : [];
 
@@ -755,6 +767,10 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         totalExpenses,
         netProfit,
         cashBalance,
+        ...(isAdmin && {
+          pendingInvoicingAmount: sumCurrency(pendingInvoices.map((invoice) => invoice.amount)),
+          pendingInvoicingCount: pendingInvoices.length,
+        }),
         incomeDeltaPct,
         expensesDeltaPct,
         netProfitDeltaPct,
