@@ -142,7 +142,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // Asegurar que el rol esté en el objeto user para el callback jwt
           user.role = dbUser.roleLegacy || "EDITOR";
           user.specialty = dbUser.specialty || null;
-          user.primaryColor = dbUser.primaryColor || "#2563eb";
+          user.primaryColor = dbUser.primaryColor || "#3b82f6";
           user.themeId = dbUser.themeId === "catppuccin" ? "catppuccin" : "default";
           user.catppuccinAccent = dbUser.catppuccinAccent;
         } catch (error) {
@@ -161,7 +161,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // Asegurar que el rol esté en el objeto user para el callback jwt
           user.role = dbUser?.roleLegacy || "EDITOR";
           user.specialty = dbUser?.specialty || null;
-          user.primaryColor = dbUser?.primaryColor || "#2563eb";
+          user.primaryColor = dbUser?.primaryColor || "#3b82f6";
           user.themeId = dbUser?.themeId === "catppuccin" ? "catppuccin" : "default";
           user.catppuccinAccent = dbUser?.catppuccinAccent || "mauve";
         } catch (error) {

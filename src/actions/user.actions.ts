@@ -35,7 +35,7 @@ function buildCurrentUserFallback(session: Awaited<ReturnType<typeof import("@/a
     hourlyRate: 0,
     currency: "USD",
     soundNotifications: true,
-    primaryColor: sessionUser?.primaryColor || "#27221F",
+    primaryColor: sessionUser?.primaryColor || "#3b82f6",
     darkMode: false,
     themeId: sessionUser?.themeId || "default",
     catppuccinAccent: sessionUser?.catppuccinAccent || "mauve",

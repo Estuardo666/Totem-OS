@@ -1,5 +1,6 @@
-export const DEFAULT_PRIMARY_COLOR = "#27221F";
+export const DEFAULT_PRIMARY_COLOR = "#3b82f6";
 export const DEFAULT_GRADIENT_COLOR = "#6366f1";
+export const LEGACY_INK_COLOR = "#27221F";
 export const PRIMARY_COLOR_COOKIE = "primaryColor";
 export const THEME_ID_COOKIE = "themeId";
 export const CATPPUCCIN_ACCENT_COOKIE = "catppuccinAccent";
@@ -123,7 +124,7 @@ export function getThemeCssVariables(selection: ThemeSelection): Record<string, 
       "--primary": primary.hsl,
       "--primary-color": primary.hex,
       "--primary-foreground": primary.foregroundHsl,
-      "--gradient-accent": hexToHsl(primary.hex.toLowerCase() === DEFAULT_PRIMARY_COLOR.toLowerCase() ? DEFAULT_GRADIENT_COLOR : primary.hex),
+      "--gradient-accent": hexToHsl(primary.hex.toLowerCase() === LEGACY_INK_COLOR.toLowerCase() ? DEFAULT_GRADIENT_COLOR : primary.hex),
       "--accent": selection.variant === "dark" ? "23 1% 16%" : "220 20% 96%",
       "--accent-foreground": selection.variant === "dark" ? "0 0% 98%" : "22 11% 14%",
     };

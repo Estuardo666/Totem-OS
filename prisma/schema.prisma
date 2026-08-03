@@ -62,7 +62,7 @@ model User {
   
   // Configuración de usuario
   soundNotifications Boolean @default(true)
-  primaryColor       String  @default("#27221F")
+  primaryColor       String  @default("#3b82f6")
   darkMode           Boolean @default(false)
   themeId            String  @default("default")
   catppuccinAccent   String  @default("mauve")

@@ -75,7 +75,7 @@ async function SettingsContent() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <AppearanceForm
-              primaryColor={user.primaryColor || "#2563eb"}
+              primaryColor={user.primaryColor || "#3b82f6"}
               darkMode={user.darkMode ?? false}
               themeId={user.themeId === "catppuccin" ? "catppuccin" : "default"}
               catppuccinAccent={user.catppuccinAccent || "mauve"}
