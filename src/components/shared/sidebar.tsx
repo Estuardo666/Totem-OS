@@ -283,7 +283,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
       {...props}
     >
       {/* Logo */}
-      <div className="mb-3 flex h-20 items-center border-b px-5 py-3">
+      <div className="mb-3 flex h-20 items-center border-b px-[1.125rem] py-[0.675rem]">
         <Link href="/" className="flex h-full w-full items-center" onClick={() => onNavigate?.()}>
           {mounted && (brandSettings?.logoLight || brandSettings?.logoDark) ? (
             <>
@@ -294,7 +294,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   alt="Totem OS"
                   width={180}
                   height={56}
-                  className="block max-h-12 w-auto max-w-full object-contain dark:hidden"
+                  className="block max-h-[3.3rem] w-auto max-w-full object-contain dark:hidden"
                 />
               )}
               {/* Logo Modo Oscuro */}
@@ -304,7 +304,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                   alt="Totem OS"
                   width={180}
                   height={56}
-                  className="hidden max-h-12 w-auto max-w-full object-contain dark:block"
+                  className="hidden max-h-[3.3rem] w-auto max-w-full object-contain dark:block"
                 />
               )}
             </>
@@ -390,7 +390,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                           key={child.href}
                           href={child.href}
                           className={cn(
-                            "flex items-center rounded-lg px-3 py-1 text-sm font-normal transition-all duration-300 ease-standard",
+                            "flex items-center rounded-lg px-3 py-1 text-[0.7875rem] font-normal transition-all duration-300 ease-standard",
                             childIsActive ? "text-primary" : "text-foreground/75 hover:text-primary dark:text-foreground/65 dark:hover:text-white"
                           )}
                           onClick={() => onNavigate?.()}

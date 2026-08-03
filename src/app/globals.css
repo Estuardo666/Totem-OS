@@ -400,6 +400,17 @@ html[data-theme="catppuccin"] [class~="bg-blue-600"] { background-color: hsl(var
 html[data-theme="catppuccin"] [class~="bg-blue-50"],
 html[data-theme="catppuccin"] [class~="bg-blue-100"] { background-color: hsl(var(--theme-info) / 0.14) !important; }
 
+/* Catppuccin card hierarchy: borderless in Mocha, softly outlined in Latte. */
+html[data-theme="catppuccin"][data-theme-variant="dark"] main
+  :is(div, section, article)[class~="border"][class*="rounded"] {
+  border-color: transparent !important;
+}
+
+html[data-theme="catppuccin"][data-theme-variant="light"] main
+  :is(div, section, article)[class~="border"][class*="rounded"] {
+  border-color: hsl(var(--border) / 0.5) !important;
+}
+
 /* Legacy utility colors keep their meaning in every theme instead of reviving Totem lime. */
 [class~="bg-green-500"], [class~="bg-green-600"],
 [class~="bg-emerald-500"], [class~="bg-emerald-600"] {
