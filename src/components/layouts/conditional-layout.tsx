@@ -45,7 +45,7 @@ export function ConditionalLayout({
         {/* Sidebar tiene w-56 (224px) + m-4 izquierdo (16px) = 240px total */}
         <main className="flex-1 md:pl-[240px] w-full overflow-x-hidden pt-[calc(4rem+var(--sat,0px))] md:pt-0">
           {/* Navbar móvil visible solo en móvil */}
-          <div data-mobile-navbar className="md:hidden sticky top-0 z-40">
+          <div data-mobile-navbar className="md:hidden">
             <Navbar />
           </div>
 

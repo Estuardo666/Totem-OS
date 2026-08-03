@@ -111,7 +111,7 @@ export function Navbar() {
           </SheetTrigger>
           <SheetContent 
             side="left" 
-            className="w-[75vw] max-w-[400px] p-0 bg-white/95 dark:bg-background/30 backdrop-blur-xl border-r-0 rounded-r-3xl"
+            className="w-[75vw] max-w-[400px] bg-white/95 p-0 pt-[calc(var(--sat,0px)+0.5rem)] backdrop-blur-xl dark:bg-background/30 border-r-0 rounded-r-3xl [&>button]:top-[calc(var(--sat,0px)+1rem)]"
           >
             <SheetTitle className="sr-only">Menú de Navegación</SheetTitle>
             <Sidebar 
@@ -129,7 +129,7 @@ export function Navbar() {
                   alt="Totem OS"
                   width={120}
                   height={40}
-                  className="h-8 w-auto block dark:hidden"
+                  className="block h-10 w-auto dark:hidden"
                   priority
                 />
               )}
@@ -139,7 +139,7 @@ export function Navbar() {
                   alt="Totem OS"
                   width={120}
                   height={40}
-                  className="h-8 w-auto hidden dark:block"
+                  className="hidden h-10 w-auto dark:block"
                   priority
                 />
               )}

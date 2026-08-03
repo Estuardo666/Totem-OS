@@ -237,6 +237,13 @@ html {
   }
 }
 
+/* Mobile page headers dock below the global header instead of competing with it. */
+@media (max-width: 767px) {
+  main [class~="sticky"][class~="top-0"][class~="z-40"]:not([data-mobile-navbar]) {
+    top: calc(4rem + var(--sat, 0px));
+  }
+}
+
 /* Forzar body sin padding/margin derecho - anula estilos inline de Radix */
 body {
   width: 100%;
