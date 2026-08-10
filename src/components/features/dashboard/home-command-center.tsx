@@ -25,6 +25,7 @@ import type { UserWorkload } from "@/actions/workload-actions";
 import type { FinancialStats } from "@/actions/finance-actions";
 import { DashboardRefresh } from "@/components/features/content/dashboard-refresh";
 import { AnimatedNumber } from "@/components/features/dashboard/animated-number";
+import { isOverdueEditingTask, isOverduePublicationTask } from "@/components/features/dashboard/dashboard-overdue";
 import { HomeMotion } from "@/components/features/dashboard/home-motion";
 
 type Feedback = {
@@ -212,13 +213,15 @@ function getTaskOwnerRecord(task: ContentTaskWithClient) {
 
 export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clients, workloads, feedbacks, finance, receivables }: HomeCommandCenterProps) {
   const isAdmin = userRole === "ADMIN";
-  const today = startOfDay(new Date());
+  const now = new Date();
+  const today = startOfDay(now);
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const monthTasks = tasks.filter((task) => {
     const date = task.publishedAt || task.dueDate || task.createdAt;
     return date >= monthStart;
   });
-  const overdueTasks = tasks.filter((task) => task.dueDate && startOfDay(new Date(task.dueDate)) < today && task.status !== "PUBLISHED");
+  const overdueEditingTasks = tasks.filter((task) => isOverdueEditingTask(task, now));
+  const overduePublicationTasks = tasks.filter((task) => isOverduePublicationTask(task, now));
   const scheduledToday = tasks
     .filter((task) => task.scheduledAt && isToday(new Date(task.scheduledAt)) && task.status !== "PUBLISHED")
     .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
@@ -269,10 +272,11 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
         </header>
 
         <section aria-label="Resumen ejecutivo" className="mb-5">
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <div className={`grid grid-cols-2 gap-3 lg:grid-cols-3 ${isAdmin ? "xl:grid-cols-6" : "xl:grid-cols-4"}`}>
             {isAdmin && finance && <Metric label="Ingresos del mes" value={finance.totalIncome} valueKind="currency" delta={`${finance.incomeDeltaPct && finance.incomeDeltaPct >= 0 ? "+" : ""}${Math.round(finance.incomeDeltaPct || 0)}%`} tone="success" points={[4, 5, 4, 7, 8, 9, 11]} icon={WalletCards} href="/finance" />}
             {isAdmin && receivables && <Metric label="Saldo pendiente total" value={receivables.totalReceivable} valueKind="currency" delta={`${receivables.clientsWithDebt} clientes con deuda`} tone="warning" points={[8, 7, 8, 6, 5, 5, receivables.totalReceivable]} icon={FileText} href="/finance/receivables" />}
-            <Metric label="Tareas vencidas" value={overdueTasks.length} delta={overdueTasks.length ? "requieren acción" : "todo al día"} tone={overdueTasks.length ? "error" : "success"} points={[7, 6, 6, 5, 4, 4, overdueTasks.length]} icon={CircleAlert} href="/content" />
+            <Metric label="Tareas vencidas edición" value={overdueEditingTasks.length} delta={overdueEditingTasks.length ? "siguen en edición" : "edición al día"} tone={overdueEditingTasks.length ? "error" : "success"} points={[7, 6, 6, 5, 4, 4, overdueEditingTasks.length]} icon={CircleAlert} href="/content?status=EDITING" />
+            <Metric label="Tareas vencidas publicación" value={overduePublicationTasks.length} delta={overduePublicationTasks.length ? "pendientes de publicar" : "publicación al día"} tone={overduePublicationTasks.length ? "error" : "success"} points={[6, 6, 5, 5, 4, 3, overduePublicationTasks.length]} icon={FileCheck2} href="/content?status=CLIENT_APPROVED" />
             <Metric label="Contenido publicado" value={publishedThisMonth} delta="este mes" tone="info" points={[3, 4, 4, 6, 5, 8, publishedThisMonth]} icon={PanelTop} href="/content" />
             <Metric label={isAdmin ? "Clientes activos" : "Tareas asignadas"} value={isAdmin ? activeClients : tasks.length} delta={isAdmin ? "en el sistema" : activeRoleLabel} tone="neutral" points={[5, 6, 5, 7, 7, 8, 9]} icon={UsersRound} href={isAdmin ? "/clients" : "/content"} />
           </div>
