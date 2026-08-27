@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { subHours } from "date-fns";
 import { Loader2, Trash2, Copy, Check, Image as ImageIconLucide, FileText, Palette, ExternalLink } from "lucide-react";
 import { updateContentTaskSchema, createContentTaskSchema, type UpdateContentTaskInput, type CreateContentTaskInput } from "@/schemas/content";
+import type { z } from "zod";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import { updateTask, deleteTask, createTask } from "@/actions/content-actions";
 import type { User } from "@prisma/client";
@@ -84,18 +85,20 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
   const isNewTask = !task;
   
-  const form = useForm<UpdateContentTaskInput | CreateContentTaskInput>({
+  type TaskSheetFormValues =
+    | z.input<typeof updateContentTaskSchema>
+    | z.input<typeof createContentTaskSchema>;
+
+  const form = useForm<TaskSheetFormValues>({
     resolver: zodResolver(isNewTask ? createContentTaskSchema : updateContentTaskSchema),
     defaultValues: {
       title: task?.title || "",
-      type: task?.type || "REEL",
-      status: task?.status || "IDEA",
+      type: (task?.type as TaskSheetFormValues["type"]) || "REEL",
+      status: (task?.status as TaskSheetFormValues["status"]) || "IDEA",
       clientId: task?.clientId || "",
-      assignedToId: task?.assignedToId || undefined,
+      assignedEditorId: task?.assignedEditorId || undefined,
       dueDate: task?.dueDate
-        ? typeof task.dueDate === "string"
-          ? task.dueDate.split("T")[0]
-          : new Date(task.dueDate).toISOString().split("T")[0]
+        ? new Date(task.dueDate).toISOString().split("T")[0]
         : undefined,
       scheduledAt: task?.scheduledAt
         ? formatToDatetimeLocal(task.scheduledAt)
@@ -108,14 +111,12 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
     if (task) {
       form.reset({
         title: task.title,
-        type: task.type,
-        status: task.status,
+        type: task.type as TaskSheetFormValues["type"],
+        status: task.status as TaskSheetFormValues["status"],
         clientId: task.clientId,
-        assignedToId: task.assignedToId || undefined,
+        assignedEditorId: task.assignedEditorId || undefined,
         dueDate: task.dueDate
-          ? typeof task.dueDate === "string"
-            ? task.dueDate.split("T")[0]
-            : new Date(task.dueDate).toISOString().split("T")[0]
+          ? new Date(task.dueDate).toISOString().split("T")[0]
           : undefined,
         scheduledAt: task.scheduledAt
           ? formatToDatetimeLocal(task.scheduledAt)
@@ -132,14 +133,14 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
         type: "REEL",
         status: "IDEA",
         clientId: "",
-        assignedToId: undefined,
+        assignedEditorId: undefined,
         dueDate: undefined,
         scheduledAt: scheduledAtValue,
       });
     }
   }, [task, form, initialScheduledAt]);
 
-  const onSubmit = async (data: UpdateContentTaskInput | CreateContentTaskInput) => {
+  const onSubmit = async (data: TaskSheetFormValues) => {
     setIsSubmitting(true);
 
     try {
@@ -356,7 +357,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
               <FormField
                 control={form.control}
-                name="assignedToId"
+                name="assignedEditorId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Asignar a</FormLabel>
@@ -398,7 +399,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     <FormControl>
                       <Input
                         type="datetime-local"
-                        value={field.value || ""}
+                        value={formatToDatetimeLocal(field.value)}
                         onChange={(e) => {
                           field.onChange(e.target.value || undefined);
                           // Calcular automáticamente la fecha de entrega cuando cambia la fecha programada

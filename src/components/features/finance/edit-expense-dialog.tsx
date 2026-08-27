@@ -306,9 +306,7 @@ export function EditExpenseDialog({
                       type="date"
                       value={
                         field.value
-                          ? typeof field.value === "string"
-                            ? field.value.split("T")[0]
-                            : new Date(field.value).toISOString().split("T")[0]
+                          ? new Date(field.value).toISOString().split("T")[0]
                           : new Date().toISOString().split("T")[0]
                       }
                       onChange={(e) => {

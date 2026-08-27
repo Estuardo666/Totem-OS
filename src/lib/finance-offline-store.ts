@@ -59,7 +59,7 @@ function rehydrateQueueItem(item: FinanceOfflineQueueItem): FinanceOfflineQueueI
       payload: {
         ...item.payload,
         dueDate: withDate(item.payload.dueDate),
-        generatedAt: withDate(item.payload.generatedAt),
+        generatedAt: withDate(item.payload.generatedAt) ?? new Date(item.createdAt),
       },
     };
   }

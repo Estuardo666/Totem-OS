@@ -88,6 +88,13 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     setTasks(initialTasks);
   }, [initialTasks]);
 
+  // Espejo de clientId: el effect de Pusher se monta una sola vez, pero el
+  // filtro debe usar siempre el cliente actualmente seleccionado.
+  const clientIdRef = useRef(clientId);
+  useEffect(() => {
+    clientIdRef.current = clientId;
+  }, [clientId]);
+
   useEffect(() => {
     if (!isMounted) return;
 
@@ -330,10 +337,11 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
         const result = await getTasks();
         if (result.success && result.data) {
           // Si hay clientId, filtrar solo las tareas de ese cliente
-          const filteredData = clientId 
-            ? result.data.filter(t => t.client.id === clientId)
+          const currentClientId = clientIdRef.current;
+          const filteredData = currentClientId 
+            ? result.data.filter(t => t.client.id === currentClientId)
             : result.data;
-          console.log("✅ Tareas obtenidas del servidor:", filteredData.length, clientId ? `(filtradas para cliente ${clientId})` : "(todas)");
+          console.log("✅ Tareas obtenidas del servidor:", filteredData.length, currentClientId ? `(filtradas para cliente ${currentClientId})` : "(todas)");
           
           // Fusionar: preservar el orden local, actualizar datos del servidor
           setTasks((prevTasks) => {

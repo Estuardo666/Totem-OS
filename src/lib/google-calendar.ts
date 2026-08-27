@@ -567,7 +567,7 @@ export class GoogleCalendarService {
         type: 'web_hook',
         address: webhookUrl,
         token: secretToken,
-        expiration: expirationMs,
+        expiration: String(expirationMs),
       },
     });
 

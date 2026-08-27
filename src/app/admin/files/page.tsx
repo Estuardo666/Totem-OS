@@ -64,10 +64,10 @@ export default function UploadThingFilesPage() {
     toast({ title: "Copiado al portapapeles" });
   };
 
-  const loadFiles = async (reset = false) => {
+  const loadFiles = async (reset = false, startOffset?: number) => {
     setLoading(true);
     try {
-      const currentOffset = reset ? 0 : offset;
+      const currentOffset = reset ? 0 : startOffset ?? offset;
       const response = await listUploadThingFilesAction(currentOffset, 100);
 
       if (response.success && response.data) {
@@ -78,6 +78,7 @@ export default function UploadThingFilesPage() {
         } else {
           setFiles((prev) => [...prev, ...response.data!.files]);
           setFilteredFiles((prev) => [...prev, ...response.data!.files]);
+          setOffset(currentOffset);
         }
         setHasMore(response.data.hasMore);
       } else {
@@ -100,6 +101,9 @@ export default function UploadThingFilesPage() {
 
   useEffect(() => {
     loadFiles(true);
+  // Carga inicial única: loadFiles se recrea en cada render, incluirla como
+  // dependencia dispararía la petición en bucle.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -402,10 +406,7 @@ export default function UploadThingFilesPage() {
             <div className="mt-4 text-center">
               <Button
                 variant="outline"
-                onClick={() => {
-                  setOffset(offset + 100);
-                  loadFiles();
-                }}
+                onClick={() => loadFiles(false, offset + 100)}
                 disabled={loading}
               >
                 Cargar más archivos

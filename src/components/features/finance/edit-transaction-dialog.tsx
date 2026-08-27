@@ -58,8 +58,8 @@ export function EditTransactionDialog({
     resolver: zodResolver(updateTransactionSchema),
     defaultValues: {
       amount: transaction?.amount || 0,
-      type: transaction?.type || "INCOME",
-      status: transaction?.status || "PENDING",
+      type: (transaction?.type as UpdateTransactionInput["type"]) || "INCOME",
+      status: (transaction?.status as UpdateTransactionInput["status"]) || "PENDING",
       description: transaction?.description || "",
       relatedClientId: transaction?.relatedClientId || undefined,
     },
@@ -82,7 +82,7 @@ export function EditTransactionDialog({
     if (transaction && open) {
       form.reset({
         amount: transaction.amount,
-        type: transaction.type as "INCOME" | "EXPENSE",
+        type: transaction.type as "INCOME" | "EXPENSE" | "HONORARIOS",
         status: transaction.status as "PENDING" | "PAID" | "CANCELLED",
         description: transaction.description || "",
         relatedClientId: transaction.relatedClientId || undefined,

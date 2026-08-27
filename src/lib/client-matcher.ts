@@ -8,6 +8,8 @@
 import { db } from "@/lib/db";
 import type { Client } from "@prisma/client";
 
+type ClientMatchCandidate = Pick<Client, "id" | "name" | "contactEmails">;
+
 export interface MatchResult {
   clientId: string;
   confidence: "exact" | "partial" | "email" | "default";
@@ -74,7 +76,7 @@ function extractClientHintFromTitle(title: string): string {
 /**
  * Busca cliente por match exacto de nombre
  */
-function findExactMatch(clients: Client[], hint: string): Client | null {
+function findExactMatch(clients: ClientMatchCandidate[], hint: string): ClientMatchCandidate | null {
   const normalizedHint = normalize(hint);
   return (
     clients.find((c) => normalize(c.name) === normalizedHint) ?? null
@@ -84,7 +86,7 @@ function findExactMatch(clients: Client[], hint: string): Client | null {
 /**
  * Busca cliente por match parcial (el hint está contenido en el nombre o viceversa)
  */
-function findPartialMatch(clients: Client[], hint: string): Client | null {
+function findPartialMatch(clients: ClientMatchCandidate[], hint: string): ClientMatchCandidate | null {
   const normalizedHint = normalize(hint);
   if (normalizedHint.length < 3) return null; // too short to match reliably
 
@@ -107,13 +109,13 @@ function findPartialMatch(clients: Client[], hint: string): Client | null {
  * Busca cliente por email de attendees contra contactEmails del cliente
  */
 function findEmailMatch(
-  clients: Client[],
+  clients: ClientMatchCandidate[],
   attendeeEmails: string[]
-): Client | null {
+): ClientMatchCandidate | null {
   if (attendeeEmails.length === 0) return null;
 
   for (const client of clients) {
-    const raw = (client as any).contactEmails;
+    const raw = client.contactEmails;
     if (!raw) continue;
 
     try {

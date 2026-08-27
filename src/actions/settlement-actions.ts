@@ -168,11 +168,11 @@ export async function getUserSettlements(
         let amount = 0;
         let type: "SALARIO" | "HONORARIOS" = "SALARIO";
 
-        if (user.role === "EDITOR") {
+        if (user.roleLegacy === "EDITOR") {
           // Salario fijo para editores
           amount = user.baseSalary ?? 0;
           type = "SALARIO";
-        } else if (user.role === "ADMIN") {
+        } else if (user.roleLegacy === "ADMIN") {
           // Honorarios para socios (50% de utilidad cada uno)
           amount = settlement.partnerFees;
           type = "HONORARIOS";
@@ -186,7 +186,7 @@ export async function getUserSettlements(
         return {
           userId: user.id,
           userName: user.name,
-          userRole: user.role,
+          userRole: user.roleLegacy,
           amount,
           type,
           status: existingTransfer

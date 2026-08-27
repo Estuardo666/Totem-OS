@@ -6,9 +6,25 @@
  * but backed by our own Web Push + VAPID infrastructure.
  */
 
+import { z } from "zod";
+
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { sendPush, getPushStats, type PushPayload, type SendTargetOptions } from "@/lib/web-push";
+
+/**
+ * Las server actions son endpoints HTTP: los tipos de TypeScript se borran en
+ * runtime y el llamante puede enviar un objeto donde se espera un string. Sin
+ * esta validación, Prisma tratará ese objeto como filtro ({ not: "" }) y la
+ * consulta afectara a filas que no corresponden.
+ */
+const endpointSchema = z.string().trim().min(1).max(2048).url();
+
+const subscribeParamsSchema = z.object({
+  endpoint: endpointSchema,
+  p256dh: z.string().trim().min(1).max(512),
+  auth: z.string().trim().min(1).max(512),
+});
 
 // ---------------------------------------------------------------------------
 // Types (same shape as old OneSignal actions for compatibility)
@@ -38,23 +54,29 @@ export async function subscribePush(params: {
   auth: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
+    const parsedParams = subscribeParamsSchema.safeParse(params);
+
+    if (!parsedParams.success) {
+      return { success: false, error: "Datos de suscripción inválidos" };
+    }
+
     const session = await auth();
     const userId = session?.user?.id ?? null;
     const role = session?.user?.roleLegacy ?? null;
 
     await db.pushSubscription.upsert({
-      where: { endpoint: params.endpoint },
+      where: { endpoint: parsedParams.data.endpoint },
       update: {
-        p256dh: params.p256dh,
-        auth: params.auth,
+        p256dh: parsedParams.data.p256dh,
+        auth: parsedParams.data.auth,
         userId,
         role,
         lastSeenAt: new Date(),
       },
       create: {
-        endpoint: params.endpoint,
-        p256dh: params.p256dh,
-        auth: params.auth,
+        endpoint: parsedParams.data.endpoint,
+        p256dh: parsedParams.data.p256dh,
+        auth: parsedParams.data.auth,
         userId,
         role,
       },
@@ -77,7 +99,13 @@ export async function unsubscribePush(
   endpoint: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await db.pushSubscription.deleteMany({ where: { endpoint } });
+    const parsedEndpoint = endpointSchema.safeParse(endpoint);
+
+    if (!parsedEndpoint.success) {
+      return { success: false, error: "Endpoint inválido" };
+    }
+
+    await db.pushSubscription.deleteMany({ where: { endpoint: parsedEndpoint.data } });
     return { success: true };
   } catch (error) {
     console.error("[PushActions] unsubscribePush error:", error);

@@ -6,11 +6,11 @@ import { revalidatePath } from "next/cache";
 import type { ApiResponse } from "@/types";
 import { userCreateSchema, userUpdateSchema } from "@/schemas/admin-schemas";
 import bcrypt from "bcryptjs";
-import type { User } from "@prisma/client";
+import type { Prisma, User } from "@prisma/client";
 
-// Tipo extendido de User (simplificado)
-export type AdminUserWithRelations = User & {
-  _count?: {
+// Nunca exponemos el hash de contraseña a componentes cliente.
+export type AdminUserWithRelations = Omit<User, "password"> & {
+  _count: {
     tasksAsEditor: number;
     tasksAsCommunity: number;
   };
@@ -110,7 +110,7 @@ export async function updateUser(userId: string, input: unknown): Promise<ApiRes
       if (duplicate) return { success: false, error: "Email ya existe" };
     }
 
-    const updateData: any = {
+    const updateData: Prisma.UserUpdateInput = {
       ...(validatedData.name && { name: validatedData.name }),
       ...(validatedData.email && { email: validatedData.email }),
       ...(validatedData.image !== undefined && { image: validatedData.image }),

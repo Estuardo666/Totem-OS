@@ -29,7 +29,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-2xl font-semibold mt-8 mb-4">1. Introducción</h2>
             <p>
-              Totem OS ("nosotros", "nuestro" o "Totem OS") opera el sitio web y aplicación Totem OS (el "Servicio"). Esta página te informa sobre nuestras políticas respecto al tratamiento de datos personales cuando utilizas nuestro Servicio y las opciones que tienes asociadas a esos datos.
+              Totem OS (&quot;nosotros&quot;, &quot;nuestro&quot; o &quot;Totem OS&quot;) opera el sitio web y aplicación Totem OS (el &quot;Servicio&quot;). Esta página te informa sobre nuestras políticas respecto al tratamiento de datos personales cuando utilizas nuestro Servicio y las opciones que tienes asociadas a esos datos.
             </p>
             <p>
               Tótem Mass Media es responsable del tratamiento de los datos personales recopilados a través de Totem OS. Nos comprometemos a proteger tu privacidad y asegurar que comprendas cómo recopilamos y utilizamos tus datos personales.
@@ -170,7 +170,7 @@ export default function PrivacyPage() {
               <li><strong>Toma de decisiones automatizada:</strong> No ser sujeto solo a decisiones automatizadas</li>
             </ul>
             <p className="mt-4">
-              Para ejercer estos derechos, contacta con support@totem-os.com con el asunto "Solicitud de Privacidad".
+              Para ejercer estos derechos, contacta con support@totem-os.com con el asunto &quot;Solicitud de Privacidad&quot;.
             </p>
           </section>
 

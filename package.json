@@ -8,7 +8,8 @@
     "dev:standard": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "typecheck": "tsc --noEmit --pretty false",
+    "lint": "eslint .",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -17,7 +18,8 @@
     "db:seed": "npx tsx prisma/seed.ts",
     "prepare": "husky",
     "test:cwv": "npx playwright test --config=playwright.config.ts --project=mobile-chrome",
-    "test:perf": "npx playwright test --config=playwright.config.ts"
+    "test:perf": "npx playwright test --config=playwright.config.ts",
+    "test:finance-access": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/finance-strategic-access.test.mjs"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
@@ -54,8 +56,8 @@
     "fast-xml-parser": "^5.9.3",
     "googleapis": "^171.0.0",
     "lucide-react": "^0.446.0",
-    "next": "^15.0.0",
-    "next-auth": "^5.0.0-beta.30",
+    "next": "^15.5.24",
+    "next-auth": "^5.0.0-beta.32",
     "node-forge": "^1.4.0",
     "pdfkit": "^0.19.1",
     "pusher": "^5.2.0",
@@ -67,7 +69,7 @@
     "react-hook-form": "^7.53.0",
     "recharts": "^2.15.4",
     "resend": "^6.16.0",
-    "sharp": "^0.33.5",
+    "sharp": "^0.35.4",
     "soap": "^1.9.3",
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.2",
@@ -89,16 +91,23 @@
     "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.9.0",
-    "eslint-config-next": "^15.0.0",
+    "eslint-config-next": "^15.5.24",
     "husky": "^9.1.7",
     "lighthouse": "^12.8.2",
     "lint-staged": "^16.2.7",
     "playwright-lighthouse": "^4.0.0",
-    "postcss": "^8.4.47",
+    "postcss": "^8.5.26",
     "prisma": "^5.19.0",
     "tailwindcss": "^3.4.13",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.6.2"
+  },
+  "overrides": {
+    "@auth/core": "0.41.3",
+    "lodash": "4.18.1",
+    "protobufjs": "7.6.6",
+    "postcss": "$postcss",
+    "effect": "3.22.1"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

@@ -278,6 +278,9 @@ export function TransactionDialog({
           setLoadingUsers(false);
         });
     }
+  // honorariosForm e incomeForm son instancias de useForm, estables durante toda
+  // la vida del componente.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, expenseForm]);
 
   // Resetear formularios cuando se cierra el dialog

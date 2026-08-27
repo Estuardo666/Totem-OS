@@ -728,7 +728,7 @@ export async function updateLoginBackground(
 export async function testAIConnection(
   apiKey: string,
   baseUrl?: string
-): Promise<ApiResponse<{ success: boolean; models: { id: string; name?: string }[] }>> {
+): Promise<ApiResponse<{ success: boolean; models: { id: string; name: string }[] }>> {
   try {
     // 1. Validar sesión y permisos
     const session = await auth();

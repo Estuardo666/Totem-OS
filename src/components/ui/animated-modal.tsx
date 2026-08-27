@@ -27,7 +27,8 @@ export function AnimatedModal({ open, onOpenChange, children, title, description
 
     const measure = () => {
       const next = el.scrollHeight;
-      if (next !== height) setHeight(next);
+      // Actualización funcional: evita leer height y con ello re-crear el effect.
+      setHeight((prev) => (prev === next ? prev : next));
     };
 
     // medir en el frame actual y en el siguiente para capturar layout completo

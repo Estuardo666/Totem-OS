@@ -290,7 +290,9 @@ function MiniBar({ value, color = "bg-emerald-500" }: { value: number; color?: s
 }
 
 export function StrategicFinanceDashboard({ stats, profitability, clientPlans, receivables, periodSnapshots, userRole }: StrategicFinanceDashboardProps) {
-  const now = new Date();
+  // Fecha fija durante la vida del componente: sin memo, cada render crea una
+  // referencia nueva y anula el useMemo de selectedSnapshots.
+  const now = useMemo(() => new Date(), []);
   const currentPeriodValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const previousDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const previousPeriodValue = `${previousDate.getFullYear()}-${String(previousDate.getMonth() + 1).padStart(2, "0")}`;

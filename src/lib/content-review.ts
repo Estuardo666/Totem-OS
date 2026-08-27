@@ -154,7 +154,7 @@ const sanitizeComment = (entry: unknown): TaskReviewComment | null => {
 
   return {
     ...baseReply,
-    resolved: candidate.resolved,
+    resolved: baseReply.resolved,
     replies,
   };
 };

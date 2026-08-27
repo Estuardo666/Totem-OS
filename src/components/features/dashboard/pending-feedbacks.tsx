@@ -55,7 +55,7 @@ export async function PendingFeedbacks() {
                 </p>
                 {feedback.comment && (
                   <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded border">
-                    "{feedback.comment}"
+                    &quot;{feedback.comment}&quot;
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground mt-2">

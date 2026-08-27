@@ -143,7 +143,7 @@ export function RoleSheet({ role, trigger, mode = "create" }: RoleSheetProps) {
                   </FormControl>
                   <FormMessage />
                   <p className="text-xs text-muted-foreground">
-                    Mínimo 2 caracteres. Ejemplos: "Admin", "Editor", "Viewer"
+                    Mínimo 2 caracteres. Ejemplos: &quot;Admin&quot;, &quot;Editor&quot;, &quot;Viewer&quot;
                   </p>
                 </FormItem>
               )}
@@ -159,6 +159,7 @@ export function RoleSheet({ role, trigger, mode = "create" }: RoleSheetProps) {
                     <Textarea
                       placeholder="Describe las responsabilidades de este rol..."
                       {...field}
+                      value={field.value ?? ""}
                       disabled={isSubmitting}
                       className="resize-none"
                       rows={4}

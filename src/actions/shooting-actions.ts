@@ -136,12 +136,12 @@ export async function createShooting(
       const calResult = await syncShootingToCalendar(sessionUserId, {
         title: input.title,
         startTime: input.startTime,
-        endTime: input.endTime,
+        endTime: resolvedEndTime,
         address: input.address,
         mapLink: input.mapLink,
         notes: input.notes,
         clientId: input.clientId,
-        crewIds: input.crewIds,
+        crewIds: input.crewIds ?? [],
       });
 
       if (calResult.success && calResult.eventId) {
@@ -157,7 +157,7 @@ export async function createShooting(
     // 4. Notificar
     await notifyCrewNewShooting({
       shootingTitle: input.title,
-      crewIds: input.crewIds,
+      crewIds: input.crewIds ?? [],
       startTime: input.startTime,
       createdBy: sessionUserId,
     });
@@ -431,12 +431,10 @@ export async function duplicateShooting(
     }
 
     // 1. Obtener rodaje original
-    const originalResult = await validateShootingExists(id);
-    if (!originalResult.valid || !originalResult.shooting) {
+    const original = await getShootingByIdFromDb(id);
+    if (!original) {
       return { success: false, error: "Rodaje original no encontrado" };
     }
-
-    const original = originalResult.shooting;
 
     // 2. Calcular nueva fecha si no se proporciona
     let duplicateStartTime = newStartTime;

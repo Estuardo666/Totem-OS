@@ -30,8 +30,8 @@ export default async function Home() {
   const clients = clientsResult.success ? clientsResult.data ?? [] : [];
   const feedbacks = feedbacksResult.success ? feedbacksResult.data ?? [] : [];
   const workloads = workloadsResult.success ? workloadsResult.data ?? [] : [];
-  const finance = financeResult.success ? financeResult.data : null;
-  const receivables = receivablesResult.success ? receivablesResult.data : null;
+  const finance = financeResult.success ? financeResult.data ?? null : null;
+  const receivables = receivablesResult.success ? receivablesResult.data ?? null : null;
 
   return (
     <HomeCommandCenter

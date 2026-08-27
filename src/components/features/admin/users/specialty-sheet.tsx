@@ -25,6 +25,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { specialtySchema } from "@/schemas/admin-schemas";
+import type { SpecialtyInput } from "@/schemas/admin-schemas";
 import { createSpecialty } from "@/actions/admin/specialty-actions";
 
 interface SpecialtySheetProps {

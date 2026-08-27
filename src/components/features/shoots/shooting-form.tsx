@@ -146,6 +146,9 @@ export function ShootingForm({
       });
 
     return () => controller.abort();
+  // `shooting` solo decide la preselección de crew al abrir el formulario;
+  // incluirlo repetiría getUsers() y pisaría la selección manual del usuario.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Cargar tareas cuando se selecciona un cliente

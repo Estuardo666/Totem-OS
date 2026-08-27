@@ -122,6 +122,9 @@ export function GooglePlacesAutocomplete({
       window.removeEventListener("google-maps-loaded", handleLoaded);
       window.removeEventListener("google-maps-error", handleError);
     };
+  // Registro único de listeners de window al montar; depender de `toast`
+  // duplicaría los handlers cada vez que cambie el estado de notificaciones.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const initializeServices = () => {
@@ -222,6 +225,9 @@ export function GooglePlacesAutocomplete({
     }, 300);
 
     return () => clearTimeout(timeoutId);
+  // Debounce de búsqueda: solo debe reaccionar a `query` e `isScriptLoaded`.
+  // `toast` es estable y reiniciaría el temporizador sin motivo.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, isScriptLoaded]);
 
   const handlePlaceSelect = async (place: GooglePlace) => {

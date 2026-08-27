@@ -190,7 +190,7 @@ export function BrandingSettings() {
                 ) : (
                   <div className="text-center">
                     <ImagePlus className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-                    <UploadButton<OurFileRouter>
+                    <UploadButton<OurFileRouter, "brandLogo">
                       endpoint="brandLogo"
                       onUploadBegin={() => setIsUploadingLight(true)}
                       onClientUploadComplete={(res) => {
@@ -256,7 +256,7 @@ export function BrandingSettings() {
                 ) : (
                   <div className="text-center">
                     <ImagePlus className="h-5 w-5 mx-auto text-gray-400 mb-1" />
-                    <UploadButton<OurFileRouter>
+                    <UploadButton<OurFileRouter, "brandLogo">
                       endpoint="brandLogo"
                       onUploadBegin={() => setIsUploadingDark(true)}
                       onClientUploadComplete={(res) => {
@@ -322,7 +322,7 @@ export function BrandingSettings() {
                 ) : (
                   <div className="text-center">
                     <ImagePlus className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-                    <UploadButton<OurFileRouter>
+                    <UploadButton<OurFileRouter, "favicon">
                       endpoint="favicon"
                       onUploadBegin={() => setIsUploadingFavicon(true)}
                       onClientUploadComplete={(res) => {
@@ -389,7 +389,7 @@ export function BrandingSettings() {
                 ) : (
                   <div className="text-center">
                     <ImagePlus className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-                    <UploadButton<OurFileRouter>
+                    <UploadButton<OurFileRouter, "loginBackground">
                       endpoint="loginBackground"
                       onUploadBegin={() => setIsUploadingBackground(true)}
                       onClientUploadComplete={(res) => {

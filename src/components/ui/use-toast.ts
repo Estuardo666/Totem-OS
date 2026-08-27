@@ -7,7 +7,7 @@ import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
 const TOAST_LIMIT = 5;
 const TOAST_REMOVE_DELAY = 1000000;
 
-type ToasterToast = ToastProps & {
+type ToasterToast = Omit<ToastProps, "title"> & {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
@@ -77,20 +77,21 @@ function getToastText(toast: ToasterToast): string {
   }
   if (React.isValidElement(toast.title)) {
     // Intentar extraer el texto del elemento React
-    const children = toast.title.props?.children;
+    const titleElement = toast.title as React.ReactElement<{ children?: React.ReactNode }>;
+    const children = titleElement.props.children;
     if (Array.isArray(children)) {
       // Buscar el div con el mensaje
-      const messageDiv = children.find((child: any) => 
-        React.isValidElement(child) && 
-        child.props?.className?.includes('flex flex-col')
-      );
-      if (messageDiv?.props?.children) {
-        const textSpan = Array.isArray(messageDiv.props.children) 
-          ? messageDiv.props.children.find((c: any) => 
-              React.isValidElement(c) && c.type === 'span'
+      const messageDiv = children.find((child) => {
+        if (!React.isValidElement<{ className?: string }>(child)) return false;
+        return child.props.className?.includes("flex flex-col");
+      });
+      if (React.isValidElement<{ children?: React.ReactNode }>(messageDiv) && messageDiv.props.children) {
+        const textSpan = Array.isArray(messageDiv.props.children)
+          ? messageDiv.props.children.find((child) =>
+              React.isValidElement(child) && child.type === "span"
             )
           : messageDiv.props.children;
-        if (textSpan?.props?.children) {
+        if (React.isValidElement<{ children?: React.ReactNode }>(textSpan) && textSpan.props.children) {
           return String(textSpan.props.children);
         }
       }

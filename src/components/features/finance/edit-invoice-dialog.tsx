@@ -58,12 +58,10 @@ export function EditInvoiceDialog({
     resolver: zodResolver(updateInvoiceSchema),
     defaultValues: {
       amount: invoice?.amount || 0,
-      status: invoice?.status || "PENDING",
+      status: (invoice?.status as UpdateInvoiceInput["status"]) || "PENDING",
       clientId: invoice?.clientId || "",
       dueDate: invoice?.dueDate
-        ? typeof invoice.dueDate === "string"
-          ? invoice.dueDate.split("T")[0]
-          : new Date(invoice.dueDate).toISOString().split("T")[0]
+        ? new Date(invoice.dueDate)
         : undefined,
     },
   });
@@ -88,9 +86,7 @@ export function EditInvoiceDialog({
         status: invoice.status as "PENDING" | "SENT" | "PAID",
         clientId: invoice.clientId,
         dueDate: invoice.dueDate
-          ? typeof invoice.dueDate === "string"
-            ? invoice.dueDate.split("T")[0]
-            : new Date(invoice.dueDate).toISOString().split("T")[0]
+          ? new Date(invoice.dueDate)
           : undefined,
       });
     }
@@ -247,9 +243,9 @@ export function EditInvoiceDialog({
                   <FormControl>
                     <Input
                       type="date"
-                      value={field.value || ""}
+                      value={field.value ? new Date(field.value).toISOString().split("T")[0] : ""}
                       onChange={(e) => {
-                        field.onChange(e.target.value || undefined);
+                        field.onChange(e.target.value ? new Date(e.target.value) : undefined);
                       }}
                       disabled={isSubmitting}
                     />

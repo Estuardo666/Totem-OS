@@ -277,7 +277,7 @@ export function UserSheet({ user, trigger, mode = "create", open: externalOpen, 
                     </Select>
                     <FormMessage />
                     <p className="text-xs text-muted-foreground">
-                      Opciones gestionadas en la pestaña "Especialidades"
+                      Opciones gestionadas en la pestaña &quot;Especialidades&quot;
                     </p>
                   </FormItem>
                 )}

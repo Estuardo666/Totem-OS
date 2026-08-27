@@ -52,15 +52,17 @@ export function EditUserDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSendingRecovery, setIsSendingRecovery] = useState(false);
 
-  const activeTasksCount = user._count?.tasks || 0;
+  const activeTasksCount =
+    (user._count?.tasksAsEditor || 0) +
+    (user._count?.tasksAsCommunity || 0);
 
   const form = useForm<UpdateUserInput>({
     resolver: zodResolver(updateUserSchema),
     defaultValues: {
       name: user.name,
       email: user.email,
-      role: user.role as "ADMIN" | "EDITOR",
-      specialty: (user.specialty as "EDITOR" | "COMMUNITY" | null) || null,
+      roleLegacy: user.roleLegacy as "ADMIN" | "EDITOR",
+      specialty: user.specialty || null,
     },
   });
 
@@ -70,8 +72,8 @@ export function EditUserDialog({
       form.reset({
         name: user.name,
         email: user.email,
-        role: user.role as "ADMIN" | "EDITOR",
-        specialty: (user.specialty as "EDITOR" | "COMMUNITY" | null) || null,
+        roleLegacy: user.roleLegacy as "ADMIN" | "EDITOR",
+        specialty: user.specialty || null,
       });
     }
   }, [user, open, form]);
@@ -165,7 +167,7 @@ export function EditUserDialog({
         </Card>
 
         {/* Advertencia al cambiar rol con carga pendiente */}
-        {form.watch("role") !== user.role && activeTasksCount > 5 && (
+        {form.watch("roleLegacy") !== user.roleLegacy && activeTasksCount > 5 && (
           <Card className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20">
             <CardContent className="pt-4">
               <div className="flex items-start gap-2">
@@ -244,7 +246,7 @@ export function EditUserDialog({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="role"
+                name="roleLegacy"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Rol</FormLabel>

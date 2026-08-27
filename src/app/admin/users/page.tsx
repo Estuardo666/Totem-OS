@@ -83,8 +83,8 @@ export default async function AdminUsersPage() {
     );
   }
 
-  const users = usersResult.data;
-  const specialties = specialtiesResult.data;
+  const users = usersResult.data ?? [];
+  const specialties = specialtiesResult.data ?? [];
 
   return (
     <div className="min-h-screen bg-muted/30">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Pusher from "pusher-js";
@@ -16,7 +16,7 @@ export function DashboardRefresh() {
 
   const userId = session?.user?.id;
 
-  const triggerRefresh = () => {
+  const triggerRefresh = useCallback(() => {
     setLastUpdated(new Date());
     setIsRefreshing(true);
     window.dispatchEvent(new CustomEvent("totem:dashboard-refresh"));
@@ -24,7 +24,7 @@ export function DashboardRefresh() {
       router.refresh();
       setIsRefreshing(false);
     }, 300);
-  };
+  }, [router]);
 
   useEffect(() => {
     if (!userId || typeof window === "undefined") return;
@@ -72,7 +72,7 @@ export function DashboardRefresh() {
       pusher.unsubscribe(`user-${userId}`);
       pusher.disconnect();
     };
-  }, [userId, router]);
+  }, [userId, triggerRefresh]);
 
   // Inicializar lastUpdated al montar
   useEffect(() => {

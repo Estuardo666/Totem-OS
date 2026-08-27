@@ -1,7 +1,26 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { checkRateLimit, getClientIP } from "@/lib/rate-limiter";
+
+/**
+ * Los valores del body llegan como JSON arbitrario. Si se pasan sin validar a
+ * `where`, Prisma acepta objetos de filtro ({ not: "" }, { contains: "" }...) y
+ * un atacante puede ampliar el alcance de la consulta. Validar a string es lo
+ * que impide esa inyección de operadores.
+ */
+const endpointSchema = z.string().trim().min(1).max(2048).url();
+
+const subscribeSchema = z.object({
+  endpoint: endpointSchema,
+  keys: z.object({
+    p256dh: z.string().trim().min(1).max(512),
+    auth: z.string().trim().min(1).max(512),
+  }),
+});
+
+const unsubscribeSchema = z.object({ endpoint: endpointSchema });
 
 /**
  * POST /api/push/subscribe
@@ -21,15 +40,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
-    const { endpoint, keys } = body;
+    const parsed = subscribeSchema.safeParse(await request.json());
 
-    if (!endpoint || !keys?.p256dh || !keys?.auth) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "endpoint, keys.p256dh y keys.auth son requeridos" },
+        { error: "endpoint, keys.p256dh y keys.auth son requeridos y deben ser texto" },
         { status: 400 }
       );
     }
+
+    const { endpoint, keys } = parsed.data;
 
     // Get current session (optional — guests can subscribe too)
     const session = await auth();
@@ -74,12 +94,23 @@ export async function POST(request: Request) {
  */
 export async function DELETE(request: Request) {
   try {
-    const body = await request.json();
-    const { endpoint } = body;
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(clientIP, "push-unsubscribe", 10, 60 * 1000);
 
-    if (!endpoint) {
-      return NextResponse.json({ error: "endpoint es requerido" }, { status: 400 });
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: "Demasiados intentos. Inténtalo más tarde.", retryAfter: rateLimitResult.retryAfter },
+        { status: 429, headers: { "Retry-After": (rateLimitResult.retryAfter ?? 60).toString() } }
+      );
     }
+
+    const parsed = unsubscribeSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: "endpoint es requerido y debe ser texto" }, { status: 400 });
+    }
+
+    const { endpoint } = parsed.data;
 
     await db.pushSubscription.deleteMany({ where: { endpoint } });
 

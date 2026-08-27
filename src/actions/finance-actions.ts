@@ -48,6 +48,7 @@ import {
   getGlobalProfitabilityStatsFromDb,
 } from "@/lib/finance-reporting-service";
 import type {
+  ExpensesStatsData,
   FinancialStats as FinancialStatsData,
   GlobalProfitabilityStatsData,
 } from "@/lib/finance-reporting-service";
@@ -61,6 +62,11 @@ import {
   getClientMonthlyClosuresFromDb,
   upsertClientMonthlyClosureFromDb,
 } from "@/lib/finance-monthly-close-service";
+import {
+  canReadStrategicClientAnalytics,
+  getCurrentEcuadorMonthRange,
+  getStrategicClientScope,
+} from "@/lib/finance-strategic-access";
 export type {
   ClientMonthlyClosurePageData,
   MonthlyClosureAccrualStatus,
@@ -82,6 +88,16 @@ export interface StrategicClientPlan {
   monthlyShoots: number;
   paymentDay: number | null;
   billingStartDate: Date | null;
+}
+
+export interface StrategicClientAnalyticsPlan extends StrategicClientPlan {
+  invoices: Array<{
+    amount: number;
+    status: string;
+    dueDate: Date | null;
+  }>;
+  completedReels: number;
+  completedShootings: number;
 }
 
 export interface UserSettlementReport {
@@ -113,14 +129,18 @@ export async function getStrategicClientPlans():
   Promise<ApiResponse<StrategicClientPlan[]>> {
   try {
     const session = await auth();
-    const userId = session?.user?.id;
-    const userRole = session?.user?.role;
-    const isEditor = userRole === "EDITOR";
+    if (!session?.user?.id) {
+      return { success: false, error: "No autenticado" };
+    }
+
+    const userRole = session.user.roleLegacy ?? session.user.role;
+    const clientScope = getStrategicClientScope(session.user.id, userRole);
+    if (!clientScope) {
+      return { success: false, error: "No autorizado" };
+    }
 
     const clients = await db.client.findMany({
-      where: {
-        ...(isEditor && userId ? { editorId: userId } : {}),
-      },
+      where: clientScope,
       select: {
         id: true,
         name: true,
@@ -142,6 +162,81 @@ export async function getStrategicClientPlans():
       success: false,
       error:
         error instanceof Error ? error.message : "Error al cargar planes de clientes",
+    };
+  }
+}
+
+/**
+ * Datos acotados para Analíticas IA. Los montos de facturas sólo se exponen a
+ * administradores y los entregables corresponden al mes vigente en Ecuador.
+ */
+export async function getStrategicClientAnalyticsPlans():
+  Promise<ApiResponse<StrategicClientAnalyticsPlan[]>> {
+  try {
+    const session = await auth();
+    const userRole = session?.user?.roleLegacy ?? session?.user?.role;
+    if (!canReadStrategicClientAnalytics(session?.user?.id, userRole)) {
+      return {
+        success: false,
+        error: session?.user ? "No autorizado" : "No autenticado",
+      };
+    }
+
+    const { start, end } = getCurrentEcuadorMonthRange();
+    const clients = await db.client.findMany({
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        logo: true,
+        monthlyRate: true,
+        monthlyReels: true,
+        monthlyFlyers: true,
+        monthlyShoots: true,
+        paymentDay: true,
+        billingStartDate: true,
+        invoices: {
+          where: {
+            OR: [
+              { status: { in: ["PENDING", "OVERDUE"] } },
+              { status: "PAID", generatedAt: { gte: start, lt: end } },
+            ],
+          },
+          select: { amount: true, status: true, dueDate: true },
+        },
+        tasks: {
+          where: {
+            type: "REEL",
+            status: "PUBLISHED",
+            publishedAt: { gte: start, lt: end },
+          },
+          select: { id: true },
+        },
+        shootings: {
+          where: {
+            status: "COMPLETED",
+            startTime: { gte: start, lt: end },
+          },
+          select: { id: true },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    const analyticsPlans = clients.map(({ tasks, shootings, ...client }) => ({
+      ...client,
+      completedReels: tasks.length,
+      completedShootings: shootings.length,
+    }));
+
+    return { success: true, data: analyticsPlans };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Error al cargar analíticas de clientes",
     };
   }
 }
@@ -744,7 +839,7 @@ export async function getClientAccountStatus(
 
 // ============ REPORTING OPERATIONS ============
 
-export async function getFinancialStats(): Promise<ApiResponse<any>> {
+export async function getFinancialStats(): Promise<ApiResponse<FinancialStatsData>> {
   return getFinancialStatsFromDb();
 }
 
@@ -753,7 +848,7 @@ export async function getExpensesStats(filters?: {
   userId?: string;
   clientId?: string;
   category?: string;
-}): Promise<ApiResponse<any>> {
+}): Promise<ApiResponse<ExpensesStatsData>> {
   return getExpensesStatsFromDb(filters);
 }
 

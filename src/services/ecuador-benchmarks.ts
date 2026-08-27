@@ -177,9 +177,9 @@ class EcuadorBenchmarksService {
    * Obtener datos de la región andina para comparación
    */
   async getAndeanRegionBenchmarks(): Promise<{
-    colombia: Partial<EcuadorBenchmarks>;
-    peru: Partial<EcuadorBenchmarks>;
-    chile: Partial<EcuadorBenchmarks>;
+    colombia: { country: string; metrics?: Pick<EcuadorBenchmarks["metrics"], "profit_margin" | "revenue_growth_rate"> };
+    peru: { country: string; metrics?: Pick<EcuadorBenchmarks["metrics"], "profit_margin" | "revenue_growth_rate"> };
+    chile: { country: string; metrics?: Pick<EcuadorBenchmarks["metrics"], "profit_margin" | "revenue_growth_rate"> };
   }> {
     try {
       // Datos de países vecinos para contexto regional

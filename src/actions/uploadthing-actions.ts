@@ -49,9 +49,9 @@ export async function listUploadThingFilesAction(
           key: file.key,
           name: file.name,
           status: file.status,
-          url: file.url,
+          url: `https://utfs.io/f/${file.key}`,
           size: file.size,
-          uploadedAt: file.uploadedAt,
+          uploadedAt: new Date(file.uploadedAt).toISOString(),
           customId: file.customId,
         })),
         hasMore: response.hasMore,
@@ -115,7 +115,7 @@ export async function getUploadThingFileInfoAction(
 
     return {
       success: true,
-      data: fileData.map((file) => ({
+      data: fileData.data.map((file) => ({
         id: file.key,
         key: file.key,
         name: file.key.split("_").pop() || file.key,

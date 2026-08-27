@@ -29,14 +29,14 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mt-8 mb-4">1. Aceptación de Términos</h2>
             <p>
-              Estos Términos de Servicio ("Términos") constituyen un acuerdo vinculante entre tú (el "Usuario" o "tú") y Tótem Mass Media ("Nosotros", "la Empresa" o "Totem OS"). Al acceder y utilizar Totem OS, aceptas estos Términos en su totalidad. Si no estás de acuerdo con cualquier parte, no debes usar el Servicio.
+              Estos Términos de Servicio (&quot;Términos&quot;) constituyen un acuerdo vinculante entre tú (el &quot;Usuario&quot; o &quot;tú&quot;) y Tótem Mass Media (&quot;Nosotros&quot;, &quot;la Empresa&quot; o &quot;Totem OS&quot;). Al acceder y utilizar Totem OS, aceptas estos Términos en su totalidad. Si no estás de acuerdo con cualquier parte, no debes usar el Servicio.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold mt-8 mb-4">2. Descripción del Servicio</h2>
             <p>
-              Totem OS es un sistema operativo interno ("Sistema") diseñado para agencias de marketing digital. Proporciona herramientas para gestión de clientes, contenido, finanzas, métricas y comunicaciones. El Servicio es proporcionado "tal cual" y está sujeto a estas condiciones.
+              Totem OS es un sistema operativo interno (&quot;Sistema&quot;) diseñado para agencias de marketing digital. Proporciona herramientas para gestión de clientes, contenido, finanzas, métricas y comunicaciones. El Servicio es proporcionado &quot;tal cual&quot; y está sujeto a estas condiciones.
             </p>
           </section>
 
@@ -91,7 +91,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mt-8 mb-4">6. Contenido del Usuario</h2>
             <p>
-              Eres responsable de todo contenido que cargues, publiques o transmitas a través de Totem OS ("Contenido del Usuario"). Al cargar Contenido del Usuario, garantizas que:
+              Eres responsable de todo contenido que cargues, publiques o transmitas a través de Totem OS (&quot;Contenido del Usuario&quot;). Al cargar Contenido del Usuario, garantizas que:
             </p>
             <ul className="list-disc list-inside space-y-2">
               <li>Posees todos los derechos sobre el contenido</li>
@@ -144,7 +144,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mt-8 mb-4">9. Garantía Limitada y Renuncia</h2>
             <p>
-              Totem OS se proporciona "TAL CUAL" y "SEGÚN DISPONIBILIDAD". Renunciamos expresamente a cualquier garantía, incluidas:
+              Totem OS se proporciona &quot;TAL CUAL&quot; y &quot;SEGÚN DISPONIBILIDAD&quot;. Renunciamos expresamente a cualquier garantía, incluidas:
             </p>
             <ul className="list-disc list-inside space-y-2">
               <li>Garantía de comerciabilidad</li>

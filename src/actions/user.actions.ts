@@ -9,10 +9,11 @@ import {
 import { createUserSchema, updateUserSchema, registerSchema, userSettingsSchema } from "@/schemas/user";
 import type { ApiResponse } from "@/types";
 import type { User } from "@prisma/client";
+import type { Session } from "next-auth";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 
-function buildCurrentUserFallback(session: Awaited<ReturnType<typeof import("@/auth")["auth"]>>) {
+function buildCurrentUserFallback(session: Session | null) {
   const now = new Date();
   const sessionUser = session?.user;
 

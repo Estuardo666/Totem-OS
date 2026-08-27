@@ -548,7 +548,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
             title: "Error",
             description: result.error || "No se pudieron eliminar las transacciones",
           });
-        } else {
+        } else if (result.data) {
           deletedCount += result.data.deleted;
         }
       }
@@ -563,7 +563,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
             title: "Error",
             description: result.error || "No se pudieron eliminar las facturas",
           });
-        } else {
+        } else if (result.data) {
           deletedCount += result.data.deleted;
         }
       }
@@ -578,7 +578,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
             title: "Error",
             description: result.error || "No se pudieron eliminar los gastos",
           });
-        } else {
+        } else if (result.data) {
           deletedCount += result.data.deleted;
         }
       }
@@ -624,7 +624,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
     try {
       const result = await bulkUpdateTransactionStatus(transactionIds, newStatus);
       
-      if (result.success) {
+      if (result.success && result.data) {
         const statusLabel = newStatus === "PAID" ? "Pagadas" : newStatus === "PENDING" ? "Pendientes" : "Canceladas";
         toast({
           title: "Estado actualizado",

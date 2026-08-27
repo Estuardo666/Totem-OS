@@ -12,41 +12,12 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { FinancialStats } from "@/lib/finance-reporting-service";
+import type { StrategicClientAnalyticsPlan } from "@/actions/finance-actions";
 import type { AnalyticsPredictionPoint, FinanceAiAnalyticsViewModel } from "@/types/ai-analytics";
-
-type StrategicClientPlan = {
-  id: string;
-  name: string;
-  status: string;
-  logo: string | null;
-  paymentDay: number | null;
-  billingStartDate: Date | null;
-  monthlyRate?: number | null;
-  monthlyReels?: number | null;
-  monthlyShoots?: number | null;
-  invoices: Array<{
-    amount: number;
-    status: string;
-    dueDate: Date | null;
-    generatedAt: Date;
-  }>;
-  tasks: Array<{
-    id: string;
-    type: string;
-    status: string;
-    dueDate: Date | null;
-    publishedAt: Date | null;
-  }>;
-  shootings: Array<{
-    id: string;
-    status: string;
-    startTime: Date;
-  }>;
-};
 
 interface FinanceAiAnalyticsDashboardProps {
   stats: FinancialStats;
-  clientPlans: StrategicClientPlan[];
+  clientPlans: StrategicClientAnalyticsPlan[];
 }
 
 interface PredictionApiResponse {
@@ -75,7 +46,7 @@ function buildFallbackPredictions(stats: FinancialStats): AnalyticsPredictionPoi
   });
 }
 
-function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientPlan[], aiData?: PredictionApiResponse): FinanceAiAnalyticsViewModel {
+function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientAnalyticsPlan[], aiData?: PredictionApiResponse): FinanceAiAnalyticsViewModel {
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
@@ -135,8 +106,8 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientPlan[
     .slice()
     .map((plan) => {
       const planValue = plan.monthlyRate ?? 0;
-      const reelsDone = plan.tasks.filter((task) => task.type === "REEL" && task.status === "PUBLISHED" && task.publishedAt).length;
-      const shootsDone = plan.shootings.filter((shooting) => shooting.status === "COMPLETED").length;
+      const reelsDone = plan.completedReels;
+      const shootsDone = plan.completedShootings;
       const planUnits = (plan.monthlyReels ?? 0) + (plan.monthlyShoots ?? 0);
       const completedUnits = reelsDone + shootsDone;
       const usagePercent = planUnits > 0 ? Math.round((completedUnits / planUnits) * 100) : 0;
@@ -151,11 +122,8 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientPlan[
         if (invoice.status === "OVERDUE") return true;
         return invoice.dueDate ? invoice.dueDate.getTime() < today.getTime() : false;
       });
-      const paidInvoices = plan.invoices.filter((invoice) => invoice.status === "PAID");
-      const paidInvoicesThisMonth = paidInvoices.filter((invoice) => {
-        const invoiceDate = invoice.generatedAt;
-        return invoiceDate.getMonth() === currentMonth && invoiceDate.getFullYear() === currentYear;
-      });
+      // La Server Action ya limita las facturas PAID al mes vigente.
+      const paidInvoicesThisMonth = plan.invoices.filter((invoice) => invoice.status === "PAID");
       const clientPending = pendingInvoices.reduce((sum, invoice) => sum + invoice.amount, 0);
       const scheduledPaymentDay = plan.paymentDay ?? 10;
       const billingStarted = !plan.billingStartDate
@@ -200,7 +168,7 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientPlan[
           ? `Tiene ${formatCurrency(clientPending)} pendientes por cobrar. ${loadReason ?? "Conviene darle seguimiento para que ese ingreso no se retrase."}`
           : usagePercent >= 85
             ? `${loadReason ?? "La carga del equipo está subiendo."} Está al día en pagos, pero ya conviene seguir de cerca esta cuenta.`
-            : paidInvoices.length > 0
+            : paidInvoicesThisMonth.length > 0
               ? "Está al día en pagos y por ahora no muestra señales financieras preocupantes."
               : "No muestra señales de deuda y por ahora se ve estable.";
       const statusLabel = overdueInvoices.length > 0
@@ -366,6 +334,10 @@ export function FinanceAiAnalyticsDashboard({ stats, clientPlans }: FinanceAiAna
 
   useEffect(() => {
     void loadPredictions();
+  // Se depende de los campos primitivos de `stats`, no de loadPredictions (que se
+  // recrea en cada render) ni del objeto `stats` completo: así la lectura IA solo
+  // se regenera cuando cambian las cifras reales.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stats.expensesDeltaPct, stats.incomeDeltaPct, stats.netProfit, stats.totalExpenses, stats.totalIncome]);
 
   const model = useMemo(() => buildViewModel(stats, clientPlans, aiData), [aiData, clientPlans, stats]);

@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { Brain } from "lucide-react";
-import { getFinancialStats, getStrategicClientPlans } from "@/actions/finance-actions";
+import { getFinancialStats, getStrategicClientAnalyticsPlans } from "@/actions/finance-actions";
 import { FinanceAiAnalyticsDashboard } from "@/components/features/finance/finance-ai-analytics-dashboard";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -18,7 +18,7 @@ export default async function FinanceAiAnalyticsPage() {
 
   const [statsResult, clientPlansResult] = await Promise.all([
     getFinancialStats(),
-    getStrategicClientPlans(),
+    getStrategicClientAnalyticsPlans(),
   ]);
 
   if (!statsResult.success || !statsResult.data) {

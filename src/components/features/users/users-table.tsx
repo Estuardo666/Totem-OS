@@ -119,8 +119,8 @@ export function UsersTable({ users }: UsersTableProps) {
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <Badge variant={getRoleBadgeVariant(user.role)}>
-                      {user.role}
+                    <Badge variant={getRoleBadgeVariant(user.roleLegacy)}>
+                      {user.roleLegacy}
                     </Badge>
                   </TableCell>
                   <TableCell>

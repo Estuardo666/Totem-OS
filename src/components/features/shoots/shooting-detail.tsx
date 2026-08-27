@@ -354,7 +354,7 @@ export function ShootingDetail({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar rodaje?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará el rodaje "{shooting.title}" permanentemente de la plataforma y también del Google Calendar si está vinculado.
+              Esta acción no se puede deshacer. Se eliminará el rodaje &quot;{shooting.title}&quot; permanentemente de la plataforma y también del Google Calendar si está vinculado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

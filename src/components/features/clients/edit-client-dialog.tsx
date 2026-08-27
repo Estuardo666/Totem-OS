@@ -118,6 +118,10 @@ export function EditClientDialog({
         contactEmails: contactEmailsValue,
       });
     }
+  // contactEmailsValue se recalcula en cada render (IIFE); incluirla dispararía
+  // form.reset() continuamente y borraría lo que el usuario está escribiendo.
+  // Se deriva de `client`, que ya está en las dependencias.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, open, form]);
 
   const handleAuthError = useRedirectOnAuthError();

@@ -31,7 +31,7 @@ export default async function ProfitsPage() {
       <Suspense fallback={<CardSkeleton />}>
         <ProfitDistributionDashboard
           distributions={distributionsResult.success ? distributionsResult.data ?? [] : []}
-          preview={previewResult.success ? previewResult.data : null}
+          preview={previewResult.success ? previewResult.data ?? null : null}
           currentYear={currentYear}
           currentMonth={currentMonth}
           userRole={session.user.role}

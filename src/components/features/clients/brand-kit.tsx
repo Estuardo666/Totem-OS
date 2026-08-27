@@ -6,7 +6,6 @@ import { UploadButton } from "@uploadthing/react";
 import { Image as ImageIcon, FileText, Trash2, ExternalLink, Loader2, Copy, Check, Download, Palette, Search } from "lucide-react";
 import type { BrandAsset } from "@prisma/client";
 import Image from "next/image";
-// @ts-expect-error - TypeScript no detecta el uso en callback inline, pero sí se usa
 import { addBrandAsset, deleteBrandAsset } from "@/actions/client-actions";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
 import { useToast } from "@/components/ui/use-toast";
@@ -33,7 +32,6 @@ interface BrandKitProps {
   clientId: string;
 }
 
-// @ts-expect-error - TypeScript no detecta el uso de clientId en callback inline, pero sí se usa
 export function BrandKit({ assets, clientId }: BrandKitProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -173,15 +171,11 @@ export function BrandKit({ assets, clientId }: BrandKitProps) {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Brand Kit</h2>
         <div className="flex items-center gap-2">
-          <UploadButton<OurFileRouter>
+          <UploadButton<OurFileRouter, "brandAsset">
             endpoint="brandAsset"
             onUploadBegin={(files) => {
               setIsUploading(true);
-              // Handle different possible formats of files parameter
-              const fileNames = Array.isArray(files) 
-                ? files.map(f => f.name || f)
-                : files ? [files.name || files] : [];
-              setUploadingFiles(fileNames);
+              setUploadingFiles(files ? [files] : []);
             }}
             onClientUploadComplete={async (res) => {
               try {

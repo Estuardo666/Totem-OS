@@ -4,13 +4,17 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import type { ApiResponse } from "@/types";
-import { roleSchema, type RoleInput } from "@/schemas/admin-schemas";
+import { roleSchema } from "@/schemas/admin-schemas";
 import type { Role } from "@prisma/client";
+
+export type RoleWithUserCount = Role & {
+  _count: { users: number };
+};
 
 /**
  * Obtiene todos los roles del sistema
  */
-export async function getRoles(): Promise<ApiResponse<Role[]>> {
+export async function getRoles(): Promise<ApiResponse<RoleWithUserCount[]>> {
   try {
     // Validar autenticación
     const session = await auth();
@@ -23,16 +27,24 @@ export async function getRoles(): Promise<ApiResponse<Role[]>> {
 
     const roles = await db.role.findMany({
       orderBy: { createdAt: "asc" },
-      include: {
-        _count: {
-          select: {
-            users: true,
-          },
-        },
-      },
     });
 
-    return { success: true, data: roles };
+    const roleCounts = await db.user.groupBy({
+      by: ["roleLegacy"],
+      _count: { _all: true },
+    });
+    const countsByName = new Map(
+      roleCounts.map(({ roleLegacy, _count }) => [
+        roleLegacy.toUpperCase(),
+        _count._all,
+      ])
+    );
+    const rolesWithCounts = roles.map((role) => ({
+      ...role,
+      _count: { users: countsByName.get(role.name.toUpperCase()) ?? 0 },
+    }));
+
+    return { success: true, data: rolesWithCounts };
   } catch (error) {
     return {
       success: false,
@@ -195,13 +207,6 @@ export async function deleteRole(
     // 2. Verificar que el rol existe y contar usuarios asignados
     const role = await db.role.findUnique({
       where: { id: roleId },
-      include: {
-        _count: {
-          select: {
-            users: true,
-          },
-        },
-      },
     });
 
     if (!role) {
@@ -212,10 +217,13 @@ export async function deleteRole(
     }
 
     // 3. Validar que no tenga usuarios asignados
-    if (role._count.users > 0) {
+    const assignedUsers = await db.user.count({
+      where: { roleLegacy: role.name.toUpperCase() },
+    });
+    if (assignedUsers > 0) {
       return {
         success: false,
-        error: `No se puede eliminar el rol "${role.name}" porque tiene ${role._count.users} usuario(s) asignado(s). Asigna primero otros roles a estos usuarios.`,
+        error: `No se puede eliminar el rol "${role.name}" porque tiene ${assignedUsers} usuario(s) asignado(s). Asigna primero otros roles a estos usuarios.`,
       };
     }
 
