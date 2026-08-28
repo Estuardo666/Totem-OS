@@ -40,10 +40,13 @@ extension View {
     ) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         if #available(iOS 26.0, *) {
-            glassEffect(.regular.interactive(), in: shape)
-                .overlay {
-                    shape.stroke(.white.opacity(isFocused ? 0.42 : 0.12), lineWidth: 1)
-                }
+            // Text fields are containers, not pressable glass controls. Keeping the
+            // material passive prevents it from lifting away from a static base.
+            glassEffect(.regular, in: shape)
+                .shadow(
+                    color: .white.opacity(isFocused ? 0.20 : 0),
+                    radius: isFocused ? 8 : 0
+                )
         } else if reduceTransparency {
             background(Color(red: 36 / 255, green: 31 / 255, blue: 53 / 255), in: shape)
                 .overlay {

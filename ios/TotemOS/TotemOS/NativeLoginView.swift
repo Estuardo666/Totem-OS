@@ -148,8 +148,12 @@ struct NativeLoginView: View {
     private var signInButton: some View {
         if #available(iOS 26.0, *) {
             submitControl
-                .buttonStyle(.glassProminent)
-                .tint(Color.totemLime)
+                .buttonStyle(.plain)
+                .foregroundStyle(Color(red: 0.08, green: 0.08, blue: 0.08))
+                .glassEffect(
+                    .regular.tint(Color.totemLime).interactive(),
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                )
         } else {
             submitControl
                 .buttonStyle(TotemPrimaryButtonStyle())
