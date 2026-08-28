@@ -106,8 +106,13 @@ jobs:
           set -e
 
           if [ "$test_status" -ne 0 ]; then
-            { grep -E 'error:|XCTAssert|failed|Failure|Unable to|timed out|Undefined symbol|cannot find' /tmp/totem-ios-tests.log || true; } \
-              | sort -u \
+            {
+              grep -A 6 'Testing failed:' /tmp/totem-ios-tests.log || true
+              grep -E 'error:|XCTAssert|crashed|Undefined symbol|cannot find' /tmp/totem-ios-tests.log || true
+              grep -v '^[[:space:]]*$' /tmp/totem-ios-tests.log | tail -n 6
+            } \
+              | grep -v '^[[:space:]]*$' \
+              | awk '!seen[$0]++' \
               | head -n 9 \
               | sed 's/%/%25/g' \
               | while IFS= read -r line; do
