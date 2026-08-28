@@ -19,29 +19,27 @@ struct ShellTabBarView: View {
         let tabs = snapshot.tabs
         let split = min(2, tabs.count)
 
-        TotemGlassContainer(spacing: 8) {
-            GeometryReader { proxy in
-                HStack(spacing: 4) {
-                    ForEach(tabs.prefix(split)) { tab in tabButton(tab) }
+        GeometryReader { proxy in
+            HStack(spacing: 4) {
+                ForEach(tabs.prefix(split)) { tab in tabButton(tab) }
 
-                    centerAction
+                centerAction
 
-                    ForEach(tabs.dropFirst(split)) { tab in tabButton(tab) }
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .contentShape(Capsule())
-                // Mantener el platter fuera del subárbol de `Menu` evita que
-                // iOS lo use entero como origen de la presentación.
-                .background {
-                    Color.clear
-                        .totemShellGlass(
-                            in: Capsule(),
-                            reduceTransparency: reduceTransparency
-                        )
-                }
-                .simultaneousGesture(selectionDrag(tabs: tabs, width: proxy.size.width))
+                ForEach(tabs.dropFirst(split)) { tab in tabButton(tab) }
             }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .contentShape(Capsule())
+            // El platter es una capa pasiva independiente. No se agrupa con
+            // el lente activo porque ambos se superponen espacialmente.
+            .background {
+                Color.clear
+                    .totemShellGlass(
+                        in: Capsule(),
+                        reduceTransparency: reduceTransparency
+                    )
+            }
+            .simultaneousGesture(selectionDrag(tabs: tabs, width: proxy.size.width))
         }
         .frame(height: 64)
         .padding(.horizontal, 16)
