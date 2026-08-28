@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Chrome, Loader2 } from "lucide-react";
 import { PasswordInput } from "@/components/ui/password-input";
+import { useTotemIOSApp } from "@/hooks/use-totem-ios-app";
 
 const signInSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -26,6 +27,7 @@ interface SignInFormProps {
 export function SignInForm({ callbackUrl = "/" }: SignInFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isTotemIOSApp = useTotemIOSApp();
   const { toast } = useToast();
   const {
     register,
@@ -271,24 +273,32 @@ export function SignInForm({ callbackUrl = "/" }: SignInFormProps) {
         </Button>
       </form>
 
-      <div className="divider-container">
-        <div className="divider-line" />
-        <div className="divider-text">
-          <span className="text-xs uppercase tracking-wider text-gray-400">
-            O continúa con
-          </span>
-        </div>
-      </div>
+      {isTotemIOSApp ? (
+        <p className="text-center text-xs text-gray-400">
+          En la app iOS, inicia sesión con correo y contraseña.
+        </p>
+      ) : (
+        <>
+          <div className="divider-container">
+            <div className="divider-line" />
+            <div className="divider-text">
+              <span className="text-xs uppercase tracking-wider text-gray-400">
+                O continúa con
+              </span>
+            </div>
+          </div>
 
-      <Button
-        type="button"
-        disabled={isLoading}
-        onClick={handleGoogleSignIn}
-        className="macos-button secondary-button w-full rounded-full h-11 text-base font-medium"
-      >
-        <Chrome className="mr-2 h-5 w-5" />
-        Continuar con Google
-      </Button>
+          <Button
+            type="button"
+            disabled={isLoading}
+            onClick={handleGoogleSignIn}
+            className="macos-button secondary-button w-full rounded-full h-11 text-base font-medium"
+          >
+            <Chrome className="mr-2 h-5 w-5" />
+            Continuar con Google
+          </Button>
+        </>
+      )}
     </div>
   );
 }

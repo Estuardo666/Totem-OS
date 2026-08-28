@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { Menu, Settings, Plug, LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,7 @@ import { Sidebar } from "./sidebar";
 import { getPublicBrandSettings } from "@/actions/admin-actions";
 import { updateUserSettings } from "@/actions/user.actions";
 import { toggleThemeVariantClient } from "@/lib/theme";
+import { signOutWithTotemIOSCleanup } from "@/lib/totem-ios-client";
 
 export function Navbar() {
   const { data: session } = useSession();
@@ -190,7 +191,7 @@ export function Navbar() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => signOut({ callbackUrl: "/sign-in" })}
+              onClick={() => void signOutWithTotemIOSCleanup()}
               className="cursor-pointer"
             >
               <LogOut className="mr-2 h-4 w-4" />

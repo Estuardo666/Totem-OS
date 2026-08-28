@@ -1,0 +1,3 @@
+APNS_ENVIRONMENT = production
+SWIFT_COMPILATION_MODE = wholemodule
+

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, FileText, Moon, Sun, Receipt } from "lucide-react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getBrandSettings } from "@/actions/admin-actions";
 import { updateUserSettings } from "@/actions/user.actions";
@@ -20,6 +20,7 @@ import {
 import { NotificationBell } from "./notification-bell";
 import { cn } from "@/lib/utils";
 import { toggleThemeVariantClient } from "@/lib/theme";
+import { signOutWithTotemIOSCleanup } from "@/lib/totem-ios-client";
 
 interface NavItem {
   href: string;
@@ -472,7 +473,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                 <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel><DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link href="/admin/settings" className="cursor-pointer" onClick={() => onNavigate?.()}><Settings className="mr-2 h-4 w-4" /><span>Configuración</span></Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/admin/settings/integrations" className="cursor-pointer" onClick={() => onNavigate?.()}><Plug className="mr-2 h-4 w-4" /><span>Integraciones</span></Link></DropdownMenuItem>
-                <DropdownMenuSeparator /><DropdownMenuItem onClick={() => signOut({ callbackUrl: "/sign-in" })} className="cursor-pointer"><LogOut className="mr-2 h-4 w-4" /><span>Cerrar Sesión</span></DropdownMenuItem>
+                <DropdownMenuSeparator /><DropdownMenuItem onClick={() => void signOutWithTotemIOSCleanup()} className="cursor-pointer"><LogOut className="mr-2 h-4 w-4" /><span>Cerrar Sesión</span></DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <div className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{user.name || "Usuario"}</span><span className="block truncate text-xs text-muted-foreground">{userRole === "ADMIN" ? "Administrador" : userRole === "USER" ? "Usuario" : "EDITOR"}</span></div>
@@ -486,4 +487,3 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
     </div>
   );
 }
-

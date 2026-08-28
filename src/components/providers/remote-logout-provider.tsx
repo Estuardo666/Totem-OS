@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import Pusher from "pusher-js";
 import { toast } from "@/components/ui/use-toast";
+import { signOutWithTotemIOSCleanup } from "@/lib/totem-ios-client";
 
 /**
  * Provider que escucha eventos de logout remoto via Pusher
@@ -61,7 +62,7 @@ export function RemoteLogoutProvider({
 
       // Esperar un momento para que el usuario vea la notificación
       setTimeout(() => {
-        signOut({ callbackUrl: "/sign-in" });
+        void signOutWithTotemIOSCleanup();
       }, 1500);
     });
 

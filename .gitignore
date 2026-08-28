@@ -15,6 +15,12 @@ test-results.xml
 playwright-report/
 tests/performance/.auth/
 
+# iOS / XcodeGen
+ios/TotemOS/TotemOS.xcodeproj/
+ios/TotemOS/DerivedData/
+*.xcuserstate
+xcuserdata/
+
 
 # next.js
 /.next/

@@ -1,0 +1,62 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-build.yml"
+  pull_request:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ios/TotemOS
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select Xcode 26.2
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app
+
+      - name: Install XcodeGen
+        run: |
+          curl --fail --location --silent --show-error \
+            https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip \
+            --output /tmp/xcodegen.zip
+          echo "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806  /tmp/xcodegen.zip" \
+            | shasum --algorithm 256 --check
+          unzip -q /tmp/xcodegen.zip -d /tmp/xcodegen-release
+
+      - name: Generate Xcode project
+        run: /tmp/xcodegen-release/xcodegen/bin/xcodegen generate
+
+      - name: Build for iOS Simulator
+        run: >-
+          xcodebuild
+          -project TotemOS.xcodeproj
+          -scheme TotemOS
+          -configuration Debug
+          -sdk iphonesimulator
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+      - name: Run unit tests
+        run: >-
+          xcodebuild
+          -project TotemOS.xcodeproj
+          -scheme TotemOS
+          -destination 'platform=iOS Simulator,name=iPhone 16e,OS=26.2'
+          CODE_SIGNING_ALLOWED=NO
+          test
