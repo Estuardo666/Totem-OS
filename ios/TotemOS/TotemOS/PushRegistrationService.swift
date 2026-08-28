@@ -105,7 +105,7 @@ final class PushRegistrationService {
                 "localStorage.setItem('totem-ios-apns-context', context);",
                 arguments: ["context": json],
                 in: nil,
-                contentWorld: .page
+                in: .page
             ) { result in
                 switch result {
                 case .success:
