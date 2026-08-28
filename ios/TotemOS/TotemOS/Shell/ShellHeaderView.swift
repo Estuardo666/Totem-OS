@@ -4,15 +4,13 @@ import TotemOSKit
 /// Header flotante: menú, logo, tema, tareas, notificaciones y avatar.
 struct ShellHeaderView: View {
     @EnvironmentObject private var shell: ShellModel
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorScheme) private var colorScheme
 
     private var snapshot: ShellSnapshot { shell.snapshot }
 
     var body: some View {
         HStack(spacing: 2) {
-            ShellIconButton(systemImage: "line.3.horizontal", label: "Abrir menú") {
-                shell.isDrawerOpen = true
+            ShellIconButton(systemImage: "ellipsis", label: "Abrir menú") {
+                shell.toggleNavigationMenu()
             }
 
             logo
@@ -44,47 +42,27 @@ struct ShellHeaderView: View {
             }
 
             if let user = snapshot.user {
-                Menu {
-                    Section(user.name) {
-                        Text(user.roleLabel)
-                    }
-                    Button {
-                        shell.send(.openSettings)
-                    } label: {
-                        Label("Configuración", systemImage: "gearshape")
-                    }
-                    Button {
-                        shell.send(.openIntegrations)
-                    } label: {
-                        Label("Integraciones", systemImage: "powerplug")
-                    }
-                    Divider()
-                    Button(role: .destructive) {
-                        shell.send(.signOut)
-                    } label: {
-                        Label("Cerrar Sesión", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
+                Button {
+                    shell.toggleAccountMenu()
                 } label: {
                     ShellAvatarView(user: user)
                         .frame(width: shellMinimumTapTarget, height: shellMinimumTapTarget)
                         .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("Mi cuenta")
             }
         }
         .padding(.horizontal, 6)
         .frame(minHeight: 56)
-        // Una sola superficie pasiva para todo el header.
-        .totemShellGlass(
-            in: Capsule(),
-            reduceTransparency: reduceTransparency
-        )
+        // La barra no dibuja material propio: evita el flash negro al abrir
+        // menús y mantiene el fondo cien por ciento transparente.
         .padding(.horizontal, 12)
     }
 
     @ViewBuilder
     private var logo: some View {
-        let logoValue = colorScheme == .dark ? snapshot.logoDark : snapshot.logoLight
+        let logoValue = snapshot.theme == .dark ? snapshot.logoDark : snapshot.logoLight
 
         if let logoValue, let url = ShellAsset.url(for: logoValue) {
             AsyncImage(url: url) { image in

@@ -14,6 +14,7 @@ import { useEffect, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { PushPermissionBanner } from "./PushPermissionBanner";
+import { isTotemIOSAppUserAgent } from "@/lib/totem-ios-client";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
@@ -215,12 +216,20 @@ async function subscribeAndRegister(): Promise<boolean> {
 
 export function WebPushProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
+  const isNativeIOSApp = isTotemIOSAppUserAgent();
   const [showBanner, setShowBanner] = useState(false);
   const [showInstallHint, setShowInstallHint] = useState(false);
 
   // On mount: check permission state, show banner or re-subscribe
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // La app nativa usa APNs. Nunca debe registrarse como Web Push ni mostrar
+    // instrucciones de instalación de PWA dentro de su WKWebView.
+    if (isNativeIOSApp) {
+      setShowBanner(false);
+      setShowInstallHint(false);
+      return;
+    }
 
     let mounted = true;
 
@@ -266,10 +275,11 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isNativeIOSApp]);
 
   // Listen for messages from the service worker (foreground notifications)
   useEffect(() => {
+    if (isNativeIOSApp) return;
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
 
     const handleMessage = (event: MessageEvent) => {
@@ -285,10 +295,11 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
 
     navigator.serviceWorker.addEventListener("message", handleMessage);
     return () => navigator.serviceWorker.removeEventListener("message", handleMessage);
-  }, []);
+  }, [isNativeIOSApp]);
 
   // When session is available and permission granted, ensure subscription is linked to user
   useEffect(() => {
+    if (isNativeIOSApp) return;
     if (!session?.user?.id) return;
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
 
@@ -296,7 +307,7 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
     subscribeAndRegister().catch((err) =>
       console.error("[WebPush] Re-subscribe after login failed:", err)
     );
-  }, [session?.user?.id]);
+  }, [isNativeIOSApp, session?.user?.id]);
 
   // CRITICAL for Safari: requestPermission() must be called synchronously
   // inside a click handler — no await before it.
@@ -328,7 +339,7 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
 
   // Render banners via portal into document.body to bypass any parent CSS clipping
   const bannerPortal =
-    showBanner && session?.user?.id && typeof document !== "undefined"
+    !isNativeIOSApp && showBanner && session?.user?.id && typeof document !== "undefined"
       ? createPortal(
           <PushPermissionBanner onEnable={handleEnableNotifications} />,
           document.body
@@ -336,7 +347,7 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
       : null;
 
   const installPortal =
-    showInstallHint && typeof document !== "undefined"
+    !isNativeIOSApp && showInstallHint && typeof document !== "undefined"
       ? createPortal(
           <div
             style={{

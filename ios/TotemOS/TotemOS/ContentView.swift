@@ -24,7 +24,7 @@ struct ContentView: View {
                 }
                 .ignoresSafeArea()
 
-                // Shell nativo superpuesto: header, drawer y barra inferior.
+                // Shell nativo superpuesto: header, menús y barra inferior.
                 NativeShellOverlay()
                     .zIndex(3)
             }

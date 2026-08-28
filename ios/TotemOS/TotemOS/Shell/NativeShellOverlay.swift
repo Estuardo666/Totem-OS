@@ -17,17 +17,54 @@ struct NativeShellOverlay: View {
                     Spacer(minLength: 0)
 
                     ShellTabBarView()
-                        .padding(.bottom, 4)
+                        // El mismo margen que a izquierda y derecha hace que la
+                        // cápsula siga visualmente el borde del iPhone.
+                        .padding(.bottom, 16)
                 }
                 .transition(reduceMotion ? .identity : .opacity)
 
-                if shell.isDrawerOpen {
-                    ShellDrawerView()
-                        .transition(.identity)
+                if shell.isNavigationMenuOpen || shell.isAccountMenuOpen {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .ignoresSafeArea()
+                        .onTapGesture { shell.closeMenus() }
+
+                    if shell.isNavigationMenuOpen {
+                        ShellNavigationMenuView()
+                            .padding(.top, 64)
+                            .padding(.leading, 12)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            .transition(
+                                reduceMotion
+                                    ? .opacity
+                                    : .scale(scale: 0.92, anchor: .topLeading).combined(with: .opacity)
+                            )
+                    }
+
+                    if shell.isAccountMenuOpen {
+                        ShellAccountMenuView()
+                            .padding(.top, 64)
+                            .padding(.trailing, 12)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                            .transition(
+                                reduceMotion
+                                    ? .opacity
+                                    : .scale(scale: 0.92, anchor: .topTrailing).combined(with: .opacity)
+                            )
+                    }
                 }
             }
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: shell.isVisible)
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.26, dampingFraction: 1),
+            value: shell.isNavigationMenuOpen
+        )
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.26, dampingFraction: 1),
+            value: shell.isAccountMenuOpen
+        )
+        .preferredColorScheme(shell.snapshot.theme == .dark ? .dark : .light)
         .sheet(isPresented: $shell.isNotificationListOpen) {
             ShellNotificationsView()
                 .environmentObject(shell)

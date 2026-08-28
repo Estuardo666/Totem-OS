@@ -13,7 +13,11 @@ type APNSLogoutContext = {
 
 export function isTotemIOSAppUserAgent(): boolean {
   return typeof navigator !== "undefined"
-    && navigator.userAgent.includes(TOTEM_IOS_USER_AGENT_MARKER);
+    && isTotemIOSUserAgent(navigator.userAgent);
+}
+
+export function isTotemIOSUserAgent(userAgent: string): boolean {
+  return userAgent.includes(TOTEM_IOS_USER_AGENT_MARKER);
 }
 
 export async function signOutWithTotemIOSCleanup(

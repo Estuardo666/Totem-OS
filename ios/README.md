@@ -45,7 +45,7 @@ El simulador compila y ejecuta la interfaz, pero no entrega un token APNs real. 
 
 ## Shell nativo (`totemShell`)
 
-En la app nativa el header, el drawer, la barra inferior y el botón de
+En la app nativa el header, el menú emergente, la barra inferior y el botón de
 transacción se dibujan en SwiftUI sobre el `WKWebView`. Safari, la PWA y el
 escritorio conservan los componentes React actuales.
 
@@ -59,5 +59,9 @@ escritorio conservan los componentes React actuales.
   enums antes de actuar (`TotemOSKit/ShellContracts.swift`).
 - iOS 26 usa Liquid Glass real; iOS 17–18 cae a materiales nativos y
   "Reducir transparencia" cambia a una superficie sólida.
+- La navegación superior se abre desde tres puntos en un menú compacto; la
+  barra inferior permite arrastrar la selección y queda a 16 puntos del borde.
+- Web Push se desactiva dentro de `TotemOS-iOS`: la app usa APNs y nunca muestra
+  el aviso de "Añadir a pantalla de inicio" destinado a Safari.
 
 Pruebas: `ShellContractTests` en Xcode y `npm run test:shell-contract` en la web.

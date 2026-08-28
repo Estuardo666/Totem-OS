@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseTotemIOSAPNSLogoutContext } from "../../src/lib/totem-ios-client.ts";
+import {
+  isTotemIOSUserAgent,
+  parseTotemIOSAPNSLogoutContext,
+} from "../../src/lib/totem-ios-client.ts";
+
+test("distingue la app nativa de Safari y la PWA", () => {
+  assert.equal(isTotemIOSUserAgent("Mobile/15E148 TotemOS-iOS"), true);
+  assert.equal(isTotemIOSUserAgent("Mozilla/5.0 (iPhone) Mobile/15E148 Safari/604.1"), false);
+});
 
 test("acepta solamente el contexto APNs esperado para logout iOS", () => {
   const context = parseTotemIOSAPNSLogoutContext(JSON.stringify({

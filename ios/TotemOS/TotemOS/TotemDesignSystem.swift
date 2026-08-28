@@ -72,7 +72,7 @@ extension View {
     /// Una sola superficie de vidrio por contenedor del shell.
     ///
     /// - `interactive`: reservado para controles pulsables; los contenedores
-    ///   (header, drawer) se mantienen pasivos para no apilar capas.
+    ///   (menús y barra base) se mantienen pasivos para no apilar capas.
     @ViewBuilder
     func totemShellGlass(
         in shape: some InsettableShape,

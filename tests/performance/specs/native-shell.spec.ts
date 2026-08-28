@@ -57,6 +57,7 @@ test.describe("app nativa TotemOS-iOS", () => {
 
     await expect(page.locator("[data-mobile-navbar]")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Registrar transacción" })).toHaveCount(0);
+    await expect(page.getByText(/añade esta app a tu pantalla de inicio/i)).toHaveCount(0);
 
     await expect.poll(async () => (await latestSnapshot(page))?.version).toBe(1);
 
