@@ -83,6 +83,9 @@ jobs:
           xcrun simctl boot "$udid" || true
           xcrun simctl bootstatus "$udid" -b
 
+      - name: Inspect generated Info.plist
+        run: plutil -p TotemOS/Info.plist
+
       - name: Build for testing
         run: >-
           xcodebuild
@@ -120,6 +123,20 @@ jobs:
                 done
             echo "----- tail of xcodebuild log -----"
             tail -n 120 /tmp/totem-ios-tests.log
+
+            echo "----- crash reports -----"
+            report="$(grep -rl TotemOS ~/Library/Logs/DiagnosticReports 2>/dev/null | head -n 1)"
+            if [ -n "$report" ]; then
+              head -n 60 "$report"
+              { grep -E 'Fatal error|termination|Exception|abort' "$report" || true; } \
+                | head -n 4 \
+                | sed 's/%/%25/g' \
+                | while IFS= read -r line; do
+                    echo "::error title=iOS crash::$line"
+                  done
+            else
+              echo "No crash report found."
+            fi
             echo "::error title=iOS unit tests::xcodebuild exited with status $test_status"
             exit "$test_status"
           fi
