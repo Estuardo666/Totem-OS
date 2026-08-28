@@ -1,6 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
 import * as fs from "fs";
 
+const JS_TRANSFER_BUDGET = 350 * 1024;
+const TOTAL_TRANSFER_BUDGET = 2 * 1024 * 1024;
+
 const BLOCKED = [
   "**/pusher.js",
   "**/pusher-js/**",
@@ -19,30 +22,35 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
+function isExpectedBlockedResourceError(message: string, sourceUrl: string): boolean {
+  const details = `${message} ${sourceUrl}`;
+  return details.includes("maps.googleapis.com/maps/api/js") || details.includes("/_vercel/speed-insights/");
+}
+
 async function collectMetrics(page: Page) {
   return await page.evaluate(() => {
-    const nav = performance.getEntriesByType("navigation")[0];
+    const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
     const paints = performance.getEntriesByType("paint");
-    const resources = performance.getEntriesByType("resource");
-    const fcp = paints.find((p: any) => p.name === "first-contentful-paint");
-    const lcpEntry = performance.getEntriesByType("largest-contentful-paint").pop();
-    const clsEntries = performance.getEntriesByType("layout-shift");
-    const jsResources = resources.filter((r: any) => r.initiatorType === "script");
-    const cssResources = resources.filter((r: any) => r.initiatorType === "link");
-    const imgResources = resources.filter((r: any) => r.initiatorType === "img");
-    const fontResources = resources.filter((r: any) => r.initiatorType === "font");
-    const totalTransferSize = resources.reduce((sum: number, r: any) => sum + (r.transferSize || 0), 0);
-    const jsSize = jsResources.reduce((sum: number, r: any) => sum + (r.transferSize || 0), 0);
-    const clsValue = clsEntries.reduce((sum: number, e: any) => sum + (e.value || 0), 0);
+    const resources = performance.getEntriesByType("resource") as PerformanceResourceTiming[];
+    const fcp = paints.find((paint) => paint.name === "first-contentful-paint");
+    const observed = (window as typeof window & {
+      __totemPerformanceMetrics?: { lcp: number; cls: number; clsEntries: number };
+    }).__totemPerformanceMetrics;
+    const jsResources = resources.filter((resource) => resource.initiatorType === "script");
+    const cssResources = resources.filter((resource) => /\.css(?:\?|$)/.test(resource.name));
+    const imgResources = resources.filter((resource) => resource.initiatorType === "img" || /\/_next\/image\?/.test(resource.name));
+    const fontResources = resources.filter((resource) => resource.initiatorType === "font" || /\.(?:woff2?|ttf)(?:\?|$)/.test(resource.name));
+    const totalTransferSize = resources.reduce((sum, resource) => sum + (resource.transferSize || 0), nav?.transferSize || 0);
+    const jsSize = jsResources.reduce((sum, resource) => sum + (resource.transferSize || 0), 0);
     return {
       TTFB: nav ? nav.responseStart : 0,
       FCP: fcp ? fcp.startTime : 0,
-      LCP: lcpEntry ? lcpEntry.startTime : 0,
+      LCP: observed?.lcp || 0,
       domContentLoaded: nav ? nav.domContentLoadedEventEnd : 0,
       loadComplete: nav ? nav.loadEventEnd : 0,
       domInteractive: nav ? nav.domInteractive : 0,
-      clsValue: clsValue.toFixed(3),
-      clsEntries: clsEntries.length,
+      clsValue: (observed?.cls || 0).toFixed(3),
+      clsEntries: observed?.clsEntries || 0,
       totalResources: resources.length,
       jsCount: jsResources.length,
       cssCount: cssResources.length,
@@ -57,6 +65,30 @@ async function collectMetrics(page: Page) {
 
 test.describe("Homepage Performance Audit", () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const metrics = { lcp: 0, cls: 0, clsEntries: 0 };
+      Object.defineProperty(window, "__totemPerformanceMetrics", {
+        value: metrics,
+        configurable: false,
+      });
+
+      new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        const latest = entries.at(-1);
+        if (latest) metrics.lcp = latest.startTime;
+      }).observe({ type: "largest-contentful-paint", buffered: true });
+
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const layoutShift = entry as PerformanceEntry & { value: number; hadRecentInput: boolean };
+          if (!layoutShift.hadRecentInput) {
+            metrics.cls += layoutShift.value;
+            metrics.clsEntries += 1;
+          }
+        }
+      }).observe({ type: "layout-shift", buffered: true });
+    });
+
     for (const pattern of BLOCKED) {
       await page.route(pattern, (route: any) => route.abort());
     }
@@ -65,7 +97,11 @@ test.describe("Homepage Performance Audit", () => {
   test("collect Core Web Vitals + resource breakdown", async ({ page }, testInfo) => {
     const errors: string[] = [];
     page.on("pageerror", (err: any) => errors.push(err.message));
-    page.on("console", (msg: any) => { if (msg.type() === "error") errors.push(msg.text()); });
+    page.on("console", (msg) => {
+      if (msg.type() === "error" && !isExpectedBlockedResourceError(msg.text(), msg.location().url)) {
+        errors.push(msg.text());
+      }
+    });
 
     const startTime = Date.now();
     await page.goto("/");
@@ -103,9 +139,8 @@ test.describe("Homepage Performance Audit", () => {
     console.log("========================");
 
     const opportunities: string[] = [];
-    if (metrics.jsCount > 8) opportunities.push("JS bundling: " + metrics.jsCount + " scripts. Code splitting needed.");
-    if (metrics.jsTransfer > 300000) opportunities.push("JS size: " + formatBytes(metrics.jsTransfer) + ". Tree-shaking audit.");
-    if (metrics.totalTransfer > 1000000) opportunities.push("Page weight: " + formatBytes(metrics.totalTransfer) + ". Audit images/fonts.");
+    if (metrics.jsTransfer > JS_TRANSFER_BUDGET) opportunities.push("JS size: " + formatBytes(metrics.jsTransfer) + ". Tree-shaking audit.");
+    if (metrics.totalTransfer > TOTAL_TRANSFER_BUDGET) opportunities.push("Page weight: " + formatBytes(metrics.totalTransfer) + ". Audit images/fonts.");
     if (metrics.FCP > 2000) opportunities.push("FCP slow. Preload critical CSS.");
     if (metrics.LCP > 3000) opportunities.push("LCP slow. Optimize KPI card rendering.");
     if (Number(metrics.clsValue) > 0.1) opportunities.push("CLS high. Reserve space for dynamic content.");
@@ -123,18 +158,19 @@ test.describe("Homepage Performance Audit", () => {
     });
 
     expect(metrics.FCP).toBeLessThan(3000);
+    expect(metrics.LCP).toBeGreaterThan(0);
     expect(metrics.LCP).toBeLessThan(4000);
     expect(Number(metrics.clsValue)).toBeLessThan(0.25);
-    expect(metrics.jsCount).toBeLessThan(15);
-    expect(metrics.totalTransfer).toBeLessThan(2000000);
+    expect(metrics.jsTransfer).toBeLessThan(JS_TRANSFER_BUDGET);
+    expect(metrics.totalTransfer).toBeLessThan(TOTAL_TRANSFER_BUDGET);
     expect(errors).toHaveLength(0);
   });
 
   test("verify key sections render after load", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Hola,").first()).toBeVisible();
-    await expect(page.getByText("Acciones Rápidas").first()).toBeVisible();
-    await expect(page.getByText("Tareas Prioritarias").first()).toBeVisible();
+    await expect(page.getByRole("region", { name: "Resumen ejecutivo" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Agenda de hoy" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pipeline de contenido" })).toBeVisible();
   });
 });

@@ -20,9 +20,10 @@ export default async function globalSetup() {
 
   console.log("🔐 Logging in test@totem.com...");
 
-  await page.goto(`${baseUrl}/sign-in`);
-  await page.waitForLoadState("networkidle");
-  await page.fill('input[name="email"]', "test@totem.com");
+  await page.goto(`${baseUrl}/sign-in`, { waitUntil: "domcontentloaded" });
+  const emailInput = page.locator('input[name="email"]');
+  await emailInput.waitFor({ state: "visible" });
+  await emailInput.fill("test@totem.com");
   await page.fill('input[name="password"]', "1234567890@@");
   await page.click('button[type="submit"]');
   await page.waitForURL("**/", { timeout: 30_000 });

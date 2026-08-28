@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 import path from "path";
 
+const baseURL = process.env.BASE_URL || "https://totem-os.vercel.app";
+
 export default defineConfig({
   testDir: "./tests/performance/specs",
   testMatch: /.*\.spec\.ts$/,
@@ -13,7 +15,7 @@ export default defineConfig({
   ],
   globalSetup: "./tests/performance/auth.setup.ts",
   use: {
-    baseURL: "https://totem-os.vercel.app",
+    baseURL,
     headless: true,
     storageState: path.join(__dirname, "tests/performance/.auth/user.json"),
   },

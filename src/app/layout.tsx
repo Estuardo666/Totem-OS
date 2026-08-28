@@ -33,6 +33,9 @@ const googleSans = localFont({
   ],
   variable: "--font-google-sans",
   display: "swap",
+  // Let the browser fetch only the weights/styles used on the current route.
+  // Preloading every source adds roughly 2 MB to the first mobile visit.
+  preload: false,
 });
 
 // Cache brand settings for 1 hour — avoids a DB hit on every route render
