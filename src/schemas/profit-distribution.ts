@@ -19,27 +19,7 @@ export const profitDistributionSchema = z.object({
 });
 
 export const createProfitDistributionSchema = profitDistributionSchema
-  .omit({ id: true, status: true })
-  .extend({
-    items: z.array(profitDistributionItemSchema).min(1, "Agrega al menos un socio"),
-  })
-  .superRefine((data, ctx) => {
-    const totalPercent = data.items.reduce((sum, item) => sum + item.percent, 0);
-    if (Math.abs(totalPercent - 100) > 0.01) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `La suma de porcentajes debe ser 100% (actual: ${totalPercent.toFixed(1)}%)`,
-        path: ["items"],
-      });
-    }
-    if (data.distributableAmount > data.totalProfit - data.fundContribution + 0.01) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "El monto distribuible no puede superar la utilidad neta menos el aporte al fondo",
-        path: ["distributableAmount"],
-      });
-    }
-  });
+  .pick({ year: true, month: true, notes: true });
 
 export const approveProfitDistributionSchema = z.object({
   id: z.string().cuid(),

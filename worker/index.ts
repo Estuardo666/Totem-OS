@@ -3,7 +3,6 @@
 // O con: pm2 start worker/dist/index.js --name sri-worker
 
 import { dequeueJob, completeJob, failJob } from "../src/services/facturacion/job-service";
-import { registrarLatido } from "../src/services/facturacion/configuracion-service";
 import { db as prisma } from "../src/lib/db";
 import { buildFacturaXml } from "../src/lib/sri/xml/factura-builder";
 import { buildNotaCreditoXml } from "../src/lib/sri/xml/nota-credito-builder";
@@ -19,6 +18,8 @@ const POLL_INTERVAL = parseInt(process.env.SRI_POLL_INTERVAL ?? "5000");
 const WORKER_ID = process.env.SRI_WORKER_ID ?? `worker-${Date.now()}`;
 const MODO = process.env.SRI_MODO ?? "LOCAL";
 const AMBIENTE = process.env.SRI_AMBIENTE ?? "1";
+const TOTEM_API_URL = process.env.TOTEM_API_URL;
+const WORKER_SECRET = process.env.FACTURACION_WORKER_SECRET;
 
 let running = true;
 let lastHeartbeat = 0;
@@ -487,14 +488,29 @@ function formatDate(date: Date): string {
 
 async function heartbeat(sriAlcanzable: boolean) {
   try {
-    await registrarLatido({
-      workerId: WORKER_ID,
-      modo: MODO,
-      hostname: process.env.HOSTNAME ?? require("os").hostname(),
-      version: "0.1.0",
-      sriAmbiente: AMBIENTE,
-      sriAlcanzable,
+    if (!TOTEM_API_URL || !WORKER_SECRET) {
+      throw new Error("Faltan TOTEM_API_URL o FACTURACION_WORKER_SECRET");
+    }
+
+    const response = await fetch(`${TOTEM_API_URL.replace(/\/$/, "")}/api/facturacion/worker/latido`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${WORKER_SECRET}`,
+      },
+      body: JSON.stringify({
+        workerId: WORKER_ID,
+        modo: MODO,
+        hostname: process.env.HOSTNAME ?? require("os").hostname(),
+        version: "0.1.0",
+        sriAmbiente: AMBIENTE,
+        sriAlcanzable,
+      }),
     });
+
+    if (!response.ok) {
+      throw new Error(`Heartbeat rechazado por Totem OS (${response.status})`);
+    }
   } catch (error) {
     console.error("[SRI Worker] Error en heartbeat:", error);
   }

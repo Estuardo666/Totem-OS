@@ -3,28 +3,38 @@
 // GET /api/facturacion/worker/latido - La UI consulta el estado del worker
 
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { auth } from "@/auth";
 import { registrarLatido, getWorkerStatus } from "@/services/facturacion/configuracion-service";
+import { isWorkerRequestAuthorized } from "@/lib/worker-auth";
+
+const workerHeartbeatSchema = z.object({
+  workerId: z.string().trim().min(1).max(128),
+  modo: z.enum(["LOCAL", "NUBE"]),
+  hostname: z.string().trim().min(1).max(255),
+  version: z.string().trim().min(1).max(64).optional(),
+  sriAmbiente: z.enum(["1", "2"]).default("1"),
+  sriAlcanzable: z.boolean().default(false),
+}).strict();
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { workerId, modo, hostname, version, sriAmbiente, sriAlcanzable } = body;
+    if (!isWorkerRequestAuthorized(
+      request.headers.get("authorization"),
+      process.env.FACTURACION_WORKER_SECRET
+    )) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
-    if (!workerId || !modo || !hostname) {
+    const parsed = workerHeartbeatSchema.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Faltan campos requeridos: workerId, modo, hostname" },
+        { error: "Latido invalido", details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
-    await registrarLatido({
-      workerId,
-      modo,
-      hostname,
-      version,
-      sriAmbiente: sriAmbiente ?? "1",
-      sriAlcanzable: sriAlcanzable ?? false,
-    });
+    await registrarLatido(parsed.data);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -37,6 +47,12 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
+    const session = await auth();
+    const role = session?.user?.roleLegacy ?? session?.user?.role;
+    if (!session?.user?.id || role !== "ADMIN") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const status = await getWorkerStatus();
     return NextResponse.json(status);
   } catch (error) {

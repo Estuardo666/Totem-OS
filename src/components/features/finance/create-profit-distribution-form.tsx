@@ -37,20 +37,10 @@ export function CreateProfitDistributionForm({
   const handleCreate = async () => {
     setIsSubmitting(true);
     try {
-      const items = preview.eligibleUsers.map((u) => ({
-        userId: u.userId,
-        percent: u.profitSharePercent,
-        amount: Math.round(preview.distributableAmount * (u.profitSharePercent / 100) * 100) / 100,
-      }));
-
       const result = await createProfitDistribution({
         year: currentYear,
         month: currentMonth,
-        totalProfit: preview.netProfit,
-        fundContribution: preview.fundContribution,
-        distributableAmount: preview.distributableAmount,
         notes: notes || undefined,
-        items,
       });
 
       if (result.success) {

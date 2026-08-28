@@ -24,16 +24,16 @@ generator client {
 }
 
 // 🔧 PRODUCCIÓN/NUBE (PostgreSQL Neon) - ACTIVO
-  datasource db {
+datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL") // Connection Pooling
   directUrl = env("DATABASE_URL_UNPOOLED") // Direct connection
 }
 
 // 🔧 DESARROLLO LOCAL (SQLite) - COMENTADO
- //datasource db {
- //  provider = "sqlite"
- // url      = env("DATABASE_URL")
+//datasource db {
+//  provider = "sqlite"
+// url      = env("DATABASE_URL")
 //}
 
 // USUARIOS Y EQUIPO (compatible con Auth.js)
@@ -46,20 +46,20 @@ model User {
   emailVerified DateTime?
   image         String? // URL de la foto de perfil
   password      String? // Opcional: solo para usuarios con credenciales (no Google)
-  
+
   // Legacy: Campo string para compatibilidad
-  roleLegacy    String   @default("EDITOR") @map("role") // "ADMIN", "EDITOR"
-  
+  roleLegacy String @default("EDITOR") @map("role") // "ADMIN", "EDITOR"
+
   // Campo de texto para especialidad (se llena desde la tabla Specialty)
-  specialty     String? // Ej: "Community Manager", "Diseñador Gráfico"
-  salaryType    String    @default("MONTHLY") // "HOURLY", "MONTHLY", "PROFIT_SHARE" (default MONTHLY, admins suelen usar PROFIT_SHARE)
-  baseSalary    Float? // Sueldo mensual fijo (opcional)
-  profitSharePercent Float? // Porcentaje de participación en ganancias (opcional, para socios, ej: 50.0)
+  specialty             String? // Ej: "Community Manager", "Diseñador Gráfico"
+  salaryType            String  @default("MONTHLY") // "HOURLY", "MONTHLY", "PROFIT_SHARE" (default MONTHLY, admins suelen usar PROFIT_SHARE)
+  baseSalary            Float? // Sueldo mensual fijo (opcional)
+  profitSharePercent    Float? // Porcentaje de participación en ganancias (opcional, para socios, ej: 50.0)
   emergencyFundEligible Boolean @default(true) // Si participa en el reparto de utilidades y recibe aportes al fondo
-  bankAccountInfo String? // Información de cuenta bancaria para transferencias
-  hourlyRate    Float     @default(0.0) // Tarifa por hora en USD
-  currency      String    @default("USD")
-  
+  bankAccountInfo       String? // Información de cuenta bancaria para transferencias
+  hourlyRate            Float   @default(0.0) // Tarifa por hora en USD
+  currency              String  @default("USD")
+
   // Configuración de usuario
   soundNotifications Boolean @default(true)
   primaryColor       String  @default("#3b82f6")
@@ -72,26 +72,27 @@ model User {
   sessions Session[]
 
   // Relaciones de la aplicación
-  tasksAsEditor       ContentTask[]     @relation("AssignedEditor")
-  tasksAsCommunity    ContentTask[]     @relation("AssignedCommunity")
-  expensesPaid     Expense[]          @relation("PaidByUser")
-  transactions     Transaction[]      @relation("TransactionUser") // Gastos asignados para reembolso
-  transactionsReceived Transaction[]  @relation("TransactionRecipient") // Honorarios/salarios recibidos
-  payrolls          Payroll[]
-  shoots           Shoot[]           @relation("ShootCrew")
-  internalTransfers InternalTransfer[] @relation("InternalTransferUser")
-  clientsAsEditor   Client[]          @relation("ClientEditor") // Clientes donde es editor responsable
-  clientsAsCommunity Client[]         @relation("ClientCommunity") // Clientes donde es community manager
-  notifications     Notification[]     // Notificaciones recibidas
-  voiceNotes        VoiceNote[]        // Notas de voz personales
-  timeEntries       TimeEntry[]        // Registros de tiempo trabajado
-  googleCalendarToken GoogleCalendarToken? // Token de Google Calendar
-  financeAlertsAssigned FinanceAlert[] @relation("FinanceAlertAssigned")
-  approvedMonthlyClosures ClientMonthlyClosure[] @relation("MonthlyClosureApprovedBy")
-  profitDistributions  ProfitDistributionItem[] @relation("ProfitDistributionItemUser")
-  emergencyFundMovements EmergencyFundMovement[] @relation("EmergencyFundAuthorizedBy")
-  electronicRetentions   ElectronicRetention[]   @relation("ElectronicRetentionUser")
-  pushSubscriptions      PushSubscription[]      // Web Push suscripciones propias
+  tasksAsEditor           ContentTask[]            @relation("AssignedEditor")
+  tasksAsCommunity        ContentTask[]            @relation("AssignedCommunity")
+  expensesPaid            Expense[]                @relation("PaidByUser")
+  transactions            Transaction[]            @relation("TransactionUser") // Gastos asignados para reembolso
+  transactionsReceived    Transaction[]            @relation("TransactionRecipient") // Honorarios/salarios recibidos
+  payrolls                Payroll[]
+  shoots                  Shoot[]                  @relation("ShootCrew")
+  internalTransfers       InternalTransfer[]       @relation("InternalTransferUser")
+  clientsAsEditor         Client[]                 @relation("ClientEditor") // Clientes donde es editor responsable
+  clientsAsCommunity      Client[]                 @relation("ClientCommunity") // Clientes donde es community manager
+  notifications           Notification[] // Notificaciones recibidas
+  voiceNotes              VoiceNote[] // Notas de voz personales
+  timeEntries             TimeEntry[] // Registros de tiempo trabajado
+  googleCalendarToken     GoogleCalendarToken? // Token de Google Calendar
+  financeAlertsAssigned   FinanceAlert[]           @relation("FinanceAlertAssigned")
+  approvedMonthlyClosures ClientMonthlyClosure[]   @relation("MonthlyClosureApprovedBy")
+  profitDistributions     ProfitDistributionItem[] @relation("ProfitDistributionItemUser")
+  emergencyFundMovements  EmergencyFundMovement[]  @relation("EmergencyFundAuthorizedBy")
+  electronicRetentions    ElectronicRetention[]    @relation("ElectronicRetentionUser")
+  pushSubscriptions       PushSubscription[] // Web Push suscripciones propias
+  apnsInstallations       ApnsDeviceInstallation[] // Instalaciones de la app nativa iOS
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -114,9 +115,9 @@ model Role {
 
 // ESPECIALIDADES (Catálogo dinámico para el campo specialty en User)
 model Specialty {
-  id    String @id @default(cuid())
-  name  String @unique
-  
+  id   String @id @default(cuid())
+  name String @unique
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -162,28 +163,28 @@ model VerificationToken {
 
 // CLIENTES (COMMAND CENTER)
 model Client {
-  id     String @id @default(cuid())
-  name   String
-  email  String?
+  id            String  @id @default(cuid())
+  name          String
+  email         String?
   contactEmails String? // JSON array de correos adicionales (usados para Calendar)
-  status String @default("ACTIVE") // ACTIVE, PAUSED, DEBT, INACTIVE
-  color  String @default("#000000") // Color de marca del cliente
+  status        String  @default("ACTIVE") // ACTIVE, PAUSED, DEBT, INACTIVE
+  color         String  @default("#000000") // Color de marca del cliente
 
   // JSON Blobs para flexibilidad (almacenados como String en SQLite)
-  brandKit   String? // { colors: [], fonts: [], driveLink: "" }
-  vault      String? // { instagram: { user, pass }, ... } (encrypted)
-  planConfig String? // { quota: { reels: 3, flyers: 1 } }
-  brandDNA   String? // { businessDescription, toneOfVoice, audience, values }
+  brandKit      String? // { colors: [], fonts: [], driveLink: "" }
+  vault         String? // { instagram: { user, pass }, ... } (encrypted)
+  planConfig    String? // { quota: { reels: 3, flyers: 1 } }
+  brandDNA      String? // { businessDescription, toneOfVoice, audience, values }
   metricsConfig String? // { enabledMetrics: ["metaViews", "metaLikes", ...] }
 
   // Contrato mensual de entregables
-  monthlyReels  Int   @default(0) // Cantidad de Reels contratados al mes
-  monthlyFlyers Int   @default(0) // Cantidad de Flyers contratados al mes
-  monthlyShoots Int   @default(0) // Cantidad de rodajes/sesiones contratadas al mes
-  monthlyRate   Float @default(0) // Tarifa mensual del plan (para cobro automático)
-  paymentDay    Int?  // Día del mes para cobro (1-31)
+  monthlyReels     Int       @default(0) // Cantidad de Reels contratados al mes
+  monthlyFlyers    Int       @default(0) // Cantidad de Flyers contratados al mes
+  monthlyShoots    Int       @default(0) // Cantidad de rodajes/sesiones contratadas al mes
+  monthlyRate      Float     @default(0) // Tarifa mensual del plan (para cobro automático)
+  paymentDay       Int? // Día del mes para cobro (1-31)
   billingStartDate DateTime? // Fecha desde la que inicia la facturación recurrente
-  logo          String? // URL del logotipo del cliente
+  logo             String? // URL del logotipo del cliente
 
   // Asignación por Cliente
   editorId    String? // Editor responsable de la cuenta
@@ -191,15 +192,15 @@ model Client {
   communityId String? // Community Manager responsable de la publicación
   community   User?   @relation("ClientCommunity", fields: [communityId], references: [id], onDelete: SetNull)
 
-  lastPostDate     DateTime?
-  shareToken       String? @unique // Token para enlaces compartidos de reportes
-  reportLastViewed DateTime? // Última vez que el cliente vio el reporte compartido
-  hasPendingFeedback Boolean @default(false) // Indica si el cliente tiene feedback pendiente de revisar
-  
+  lastPostDate       DateTime?
+  shareToken         String?   @unique // Token para enlaces compartidos de reportes
+  reportLastViewed   DateTime? // Última vez que el cliente vio el reporte compartido
+  hasPendingFeedback Boolean   @default(false) // Indica si el cliente tiene feedback pendiente de revisar
+
   // IA Performance Overview
   lastAiOverview     String? // Último análisis de performance generado por IA (almacenado como texto)
   lastAiOverviewDate DateTime? // Fecha de la última generación
-  
+
   // Meta Graph API Integration
   facebookPageId      String? // ID de la Fanpage vinculada
   instagramBusinessId String? // ID de la cuenta de Instagram vinculada
@@ -207,25 +208,25 @@ model Client {
   adAccountId         String? // ID de la cuenta publicitaria de Meta (para IA Ads Advisor y optimizaciones)
 
   // Facturación Electrónica - Datos fiscales
-  tipoIdentificacion   String?  // RUC, CEDULA, PASAPORTE, CONSUMIDOR_FINAL
-  numeroIdentificacion String?  // 13 dígitos RUC o 10 cédula
-  razonSocial          String?  // Nombre legal/fiscal
-  direccionFiscal      String?  // Dirección fiscal
-  emailFacturacion     String?  // Email para enviar facturas electrónicas
-  aplicaRetencion      Boolean  @default(false)
-  porcentajeRetIva     Float?   @default(0)
-  porcentajeRetRenta   Float?   @default(0)
+  tipoIdentificacion   String? // RUC, CEDULA, PASAPORTE, CONSUMIDOR_FINAL
+  numeroIdentificacion String? // 13 dígitos RUC o 10 cédula
+  razonSocial          String? // Nombre legal/fiscal
+  direccionFiscal      String? // Dirección fiscal
+  emailFacturacion     String? // Email para enviar facturas electrónicas
+  aplicaRetencion      Boolean @default(false)
+  porcentajeRetIva     Float?  @default(0)
+  porcentajeRetRenta   Float?  @default(0)
 
-  tasks        ContentTask[]
-  expenses     Expense[]
-  invoices     Invoice[]
-  transactions Transaction[]
-  credentials  Credential[]
-  brandAssets  BrandAsset[]
-  feedbacks    ClientFeedback[]
-  shootings    Shoot[]
-  metrics      ClientMetric[]
-  monthlyClosures ClientMonthlyClosure[]
+  tasks             ContentTask[]
+  expenses          Expense[]
+  invoices          Invoice[]
+  transactions      Transaction[]
+  credentials       Credential[]
+  brandAssets       BrandAsset[]
+  feedbacks         ClientFeedback[]
+  shootings         Shoot[]
+  metrics           ClientMetric[]
+  monthlyClosures   ClientMonthlyClosure[]
   monthlyStrategies ClientMonthlyStrategy[]
   billingExceptions ClientBillingException[]
 
@@ -275,19 +276,19 @@ model ContentTask {
   clientFeedback String?
 
   // Recursos Creativos
-  postCopy       String? // Texto del post/copy
-  coverImageUrl  String? // URL de la imagen de portada subida
-  audioBriefUrl  String? // URL de la nota de voz (Totem Voice)
-  scriptUrl      String? // URL del archivo del guión (PDF/Word/TXT)
+  postCopy      String? // Texto del post/copy
+  coverImageUrl String? // URL de la imagen de portada subida
+  audioBriefUrl String? // URL de la nota de voz (Totem Voice)
+  scriptUrl     String? // URL del archivo del guión (PDF/Word/TXT)
 
   clientId String
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  assignedEditorId String?
-  assignedEditor   User?   @relation("AssignedEditor", fields: [assignedEditorId], references: [id], onDelete: SetNull)
+  assignedEditorId    String?
+  assignedEditor      User?     @relation("AssignedEditor", fields: [assignedEditorId], references: [id], onDelete: SetNull)
   assignedCommunityId String?
-  assignedCommunity   User?   @relation("AssignedCommunity", fields: [assignedCommunityId], references: [id], onDelete: SetNull)
-  assignedAt   DateTime? // Fecha en que se asignó la tarea (para badge "Nuevo")
+  assignedCommunity   User?     @relation("AssignedCommunity", fields: [assignedCommunityId], references: [id], onDelete: SetNull)
+  assignedAt          DateTime? // Fecha en que se asignó la tarea (para badge "Nuevo")
 
   shootId String?
   shoot   Shoot?  @relation(fields: [shootId], references: [id], onDelete: SetNull)
@@ -307,33 +308,33 @@ model ContentTask {
 }
 
 model Shoot {
-  id            String        @id @default(cuid())
-  title         String
-  startTime     DateTime // Fecha y hora de inicio
-  endTime       DateTime // Fecha y hora de finalización
-  address       String? // Dirección escrita
-  mapLink       String? // Link de Google Maps
+  id              String   @id @default(cuid())
+  title           String
+  startTime       DateTime // Fecha y hora de inicio
+  endTime         DateTime // Fecha y hora de finalización
+  address         String? // Dirección escrita
+  mapLink         String? // Link de Google Maps
   googleEventId   String? // ID del evento en Google Calendar
   googleEventLink String? // Link al evento en Google Calendar
-  scriptUrl     String? // Archivo del guión (PDF/Word)
-  audioBriefUrl String? // Nota de voz
-  notes         String? // Notas adicionales del rodaje
-  status        String        @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELED
-  
+  scriptUrl       String? // Archivo del guión (PDF/Word)
+  audioBriefUrl   String? // Nota de voz
+  notes           String? // Notas adicionales del rodaje
+  status          String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELED
+
   // Google Calendar bidirectional sync
-  syncedFromCalendar Boolean   @default(false) // true = creado desde Calendar, no re-syncear
+  syncedFromCalendar  Boolean @default(false) // true = creado desde Calendar, no re-syncear
   reminderSentMorning Boolean @default(false) // dedup cron 7am
   reminderSent1h      Boolean @default(false) // dedup cron 1h antes
-  
-  clientId      String
-  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
-  tasks         ContentTask[] // Relación One-to-Many (una tarea puede estar en un rodaje)
-  crew          User[]        @relation("ShootCrew") // Relación Many-to-Many
-  
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  tasks ContentTask[] // Relación One-to-Many (una tarea puede estar en un rodaje)
+  crew  User[]        @relation("ShootCrew") // Relación Many-to-Many
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([clientId])
   @@index([startTime])
   @@index([endTime])
@@ -456,7 +457,7 @@ model BrandAsset {
   url      String
   fileKey  String @unique
   fileType String // "image", "pdf", "document"
-  fileSize Int?   // Tamaño del archivo en bytes
+  fileSize Int? // Tamaño del archivo en bytes
 
   clientId String
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -471,32 +472,32 @@ model BrandAsset {
 
 // FEEDBACK DE CLIENTES
 model ClientFeedback {
-  id        String   @id @default(cuid())
-  clientId  String
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
-  month     Int      // Mes del reporte (1-12)
-  year      Int      // Año del reporte
-  
-  approved  Boolean  @default(false) // Si el cliente aprobó el reporte
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  month Int // Mes del reporte (1-12)
+  year  Int // Año del reporte
+
+  approved   Boolean   @default(false) // Si el cliente aprobó el reporte
   approvedAt DateTime? // Fecha de aprobación
-  
-  comment   String?  // Comentario del cliente
-  viewed    Boolean  @default(false) // Si el feedback ha sido visto por la agencia
-  
+
+  comment String? // Comentario del cliente
+  viewed  Boolean @default(false) // Si el feedback ha sido visto por la agencia
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([clientId, month, year]) // Un solo feedback por cliente/mes/año
   @@index([clientId])
   @@index([month, year])
-  @@unique([clientId, month, year]) // Un solo feedback por cliente/mes/año
 }
 
 // EXCEPCIONES DE FACTURACION MENSUAL POR CLIENTE
 model ClientBillingException {
-  id             String   @id @default(cuid())
-  clientId       String
-  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   month          Int
   year           Int
@@ -505,8 +506,8 @@ model ClientBillingException {
   reason         String
   notes          String?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([clientId, year, month])
   @@index([clientId])
@@ -516,16 +517,16 @@ model ClientBillingException {
 
 // TRACKING MENSUAL DE ESTRATEGIA POR CLIENTE
 model ClientMonthlyStrategy {
-  id        String   @id @default(cuid())
-  clientId  String
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  month     Int
-  year      Int
+  month Int
+  year  Int
 
-  prepared  Boolean  @default(false)
-  sentAt    DateTime?
-  approved  Boolean  @default(false)
+  prepared Boolean   @default(false)
+  sentAt   DateTime?
+  approved Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -540,16 +541,16 @@ model InternalTransfer {
   id     String @id @default(cuid())
   userId String
   user   User   @relation("InternalTransferUser", fields: [userId], references: [id], onDelete: Cascade)
-  
+
   amount Float
   month  Int
   year   Int
   type   String // "HONORARIOS", "SALARIO"
   status String @default("PENDING") // "PENDING", "PAID"
-  
+
   description String? // Descripción opcional del pago
   paidAt      DateTime? // Fecha en que se registró el pago
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -562,8 +563,8 @@ model InternalTransfer {
 
 // MÉTRICAS DE TAREAS (Meta - Instagram/Facebook y TikTok)
 model TaskMetrics {
-  id     String @id @default(cuid())
-  taskId String @unique
+  id     String      @id @default(cuid())
+  taskId String      @unique
   task   ContentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   // Métricas Meta (Instagram/Facebook)
@@ -586,21 +587,21 @@ model TaskMetrics {
   notes            String? // Notas adicionales sobre las métricas
 
   // Métricas de conversión y ventas
-  conversions      Int @default(0) // Leads, registros, clics en link de bio
-  salesCount       Int @default(0) // Número de ventas cerradas
-  revenue          Float @default(0.0) // Monto total en dinero generado por esta pieza
+  conversions      Int     @default(0) // Leads, registros, clics en link de bio
+  salesCount       Int     @default(0) // Número de ventas cerradas
+  revenue          Float   @default(0.0) // Monto total en dinero generado por esta pieza
   conversionSource String? // Ej: "Link en Bio", "DM", "WhatsApp", "Web", "Local Físico"
 
   // Métricas calculadas
-  erMeta    Float @default(0.0) // Engagement Rate Meta
-  erTikTok  Float @default(0.0) // Engagement Rate TikTok
+  erMeta              Float @default(0.0) // Engagement Rate Meta
+  erTikTok            Float @default(0.0) // Engagement Rate TikTok
   totalBrandAwareness Float @default(0.0) // Reach Meta + Views TikTok
   globalSocialProof   Float @default(0.0) // Suma total de Likes y Comentarios
-  viralityIndex      Float @default(0.0) // Relación Shares vs Views
-  efficiencyScore    Float @default(0.0) // Promedio ponderado del ER global
-  cpa                Float @default(0.0) // Costo por Adquisición (budget / salesCount)
-  roas               Float @default(0.0) // Retorno a la Inversión Publicitaria (revenue / budget)
-  conversionRate     Float @default(0.0) // Tasa de conversión (conversions / (metaReach + ttViews)) * 100
+  viralityIndex       Float @default(0.0) // Relación Shares vs Views
+  efficiencyScore     Float @default(0.0) // Promedio ponderado del ER global
+  cpa                 Float @default(0.0) // Costo por Adquisición (budget / salesCount)
+  roas                Float @default(0.0) // Retorno a la Inversión Publicitaria (revenue / budget)
+  conversionRate      Float @default(0.0) // Tasa de conversión (conversions / (metaReach + ttViews)) * 100
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -615,29 +616,29 @@ model VoiceNote {
   audioUrl  String
   title     String?  @default("Nota de voz")
   createdAt DateTime @default(now())
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([createdAt])
 }
 
 // NOTIFICACIONES
 model Notification {
-  id         String   @id @default(cuid())
-  userId     String   // El destinatario
-  message    String
-  type       String   // ej: "ASSIGNED", "STATUS_CHANGE", "INFO"
-  read       Boolean  @default(false)
-  createdBy  String?  // ID del usuario que creó la notificación (opcional, para mostrar foto de perfil)
-  createdAt  DateTime @default(now())
-  
+  id        String   @id @default(cuid())
+  userId    String // El destinatario
+  message   String
+  type      String // ej: "ASSIGNED", "STATUS_CHANGE", "INFO"
+  read      Boolean  @default(false)
+  createdBy String? // ID del usuario que creó la notificación (opcional, para mostrar foto de perfil)
+  createdAt DateTime @default(now())
+
   // Metadatos opcionales para enriquecer las notificaciones
-  clientLogo String?  // URL del logo del cliente (para mostrar en notificaciones de tareas)
-  clientName String?  // Nombre del cliente (para contexto adicional)
-  
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  clientLogo String? // URL del logo del cliente (para mostrar en notificaciones de tareas)
+  clientName String? // Nombre del cliente (para contexto adicional)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([read])
   @@index([createdAt])
@@ -645,17 +646,17 @@ model Notification {
 
 // ALERTAS FINANCIERAS
 model FinanceAlert {
-  id          String   @id @default(cuid())
-  type        String   // CASH_FLOW, BUDGET, PROFITABILITY, CLIENT_RISK, ANOMALY, OPTIMIZATION
-  severity    String   // LOW, MEDIUM, HIGH, CRITICAL
-  status      String   @default("ACTIVE") // ACTIVE, ACKNOWLEDGED, RESOLVED
+  id          String  @id @default(cuid())
+  type        String // CASH_FLOW, BUDGET, PROFITABILITY, CLIENT_RISK, ANOMALY, OPTIMIZATION
+  severity    String // LOW, MEDIUM, HIGH, CRITICAL
+  status      String  @default("ACTIVE") // ACTIVE, ACKNOWLEDGED, RESOLVED
   title       String
   message     String
-  fingerprint String   @unique // Evita duplicados por período/regla
-  metadata    String?  // JSON string con datos de contexto
+  fingerprint String  @unique // Evita duplicados por período/regla
+  metadata    String? // JSON string con datos de contexto
 
   assignedToId String? // Usuario responsable (opcional)
-  assignedTo   User?    @relation("FinanceAlertAssigned", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedTo   User?     @relation("FinanceAlertAssigned", fields: [assignedToId], references: [id], onDelete: SetNull)
   resolvedAt   DateTime?
 
   createdAt DateTime @default(now())
@@ -668,13 +669,13 @@ model FinanceAlert {
 }
 
 model FinanceAlertRule {
-  id          String   @id @default(cuid())
-  key         String   @unique
+  id          String  @id @default(cuid())
+  key         String  @unique
   name        String
   description String?
-  enabled     Boolean  @default(true)
-  severity    String   @default("MEDIUM")
-  config      String   // JSON string con umbrales y parámetros
+  enabled     Boolean @default(true)
+  severity    String  @default("MEDIUM")
+  config      String // JSON string con umbrales y parámetros
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -684,9 +685,9 @@ model FinanceAlertRule {
 
 // CONFIGURACIÓN GLOBAL DEL SISTEMA
 model GlobalConfig {
-  id    String   @id @default(cuid())
-  key   String   @unique
-  value String   // JSON string para valores complejos
+  id    String @id @default(cuid())
+  key   String @unique
+  value String // JSON string para valores complejos
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -697,9 +698,9 @@ model GlobalConfig {
 // INTEGRACIÓN META GRAPH API (Facebook & Instagram)
 model AgencyMetaAccount {
   id             String   @id @default(cuid())
-  facebookUserId String   // ID numérico del usuario de FB
-  name           String   // Nombre del usuario, ej: "Stuart Admin"
-  accessToken    String   // Token de usuario de larga duración (60 días)
+  facebookUserId String // ID numérico del usuario de FB
+  name           String // Nombre del usuario, ej: "Stuart Admin"
+  accessToken    String // Token de usuario de larga duración (60 días)
   tokenExpiresAt DateTime // Fecha de expiración del token
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -712,8 +713,8 @@ model ClientMetric {
   id         String   @id @default(cuid())
   clientId   String
   client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  platform   String   // "FACEBOOK" | "INSTAGRAM"
-  metricName String   // ej: "page_impressions", "page_engaged_users"
+  platform   String // "FACEBOOK" | "INSTAGRAM"
+  metricName String // ej: "page_impressions", "page_engaged_users"
   value      Float
   date       DateTime // Fecha del dato
   fetchedAt  DateTime @default(now())
@@ -724,22 +725,22 @@ model ClientMetric {
 
 // CIERRE MENSUAL CONTABLE POR CLIENTE
 model ClientMonthlyClosure {
-  id            String   @id @default(cuid())
-  clientId      String
-  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  year          Int
-  month         Int
-  accrualStatus String   // FULL, PARTIAL, NONE
-  accruedAmount Float    @default(0)
-  recommendation String? // FULL, PARTIAL, NONE, REVIEW
+  id                   String    @id @default(cuid())
+  clientId             String
+  client               Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  year                 Int
+  month                Int
+  accrualStatus        String // FULL, PARTIAL, NONE
+  accruedAmount        Float     @default(0)
+  recommendation       String? // FULL, PARTIAL, NONE, REVIEW
   recommendationReason String?
-  evidenceSummary String? // JSON con métricas operativas del período
-  notes         String?
-  approvedById  String?
-  approvedBy    User?    @relation("MonthlyClosureApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
-  approvedAt    DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  evidenceSummary      String? // JSON con métricas operativas del período
+  notes                String?
+  approvedById         String?
+  approvedBy           User?     @relation("MonthlyClosureApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@unique([clientId, year, month])
   @@index([year, month])
@@ -750,37 +751,37 @@ model ClientMonthlyClosure {
 
 // DISTRIBUCIÓN DE UTILIDADES (Reparto formal de ganancias)
 model ProfitDistribution {
-  id             String    @id @default(cuid())
-  year           Int
-  month          Int
-  status         String    @default("DRAFT") // DRAFT, APPROVED, PAID
-  totalProfit    Float     // Utilidad neta del mes (collectedCash − gastos − honorarios)
-  fundContribution Float    @default(0) // Monto apartado para el fondo de emergencia
-  distributableAmount Float  @default(0) // totalProfit − fundContribution
-  notes          String?
-  approvedById   String?
-  approvedAt     DateTime?
-  paidAt         DateTime?
-  items          ProfitDistributionItem[]
+  id                  String                   @id @default(cuid())
+  year                Int
+  month               Int
+  status              String                   @default("DRAFT") // DRAFT, APPROVED, PAID
+  totalProfit         Float // Utilidad neta del mes (collectedCash − gastos − honorarios)
+  fundContribution    Float                    @default(0) // Monto apartado para el fondo de emergencia
+  distributableAmount Float                    @default(0) // totalProfit − fundContribution
+  notes               String?
+  approvedById        String?
+  approvedAt          DateTime?
+  paidAt              DateTime?
+  items               ProfitDistributionItem[]
 
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([year, month])
   @@index([status])
 }
 
 model ProfitDistributionItem {
-  id              String   @id @default(cuid())
-  distributionId  String
-  distribution    ProfitDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
-  userId          String
-  user            User     @relation("ProfitDistributionItemUser", fields: [userId], references: [id], onDelete: Cascade)
-  percent         Float    // Porcentaje del usuario al momento de la distribución
-  amount          Float    // Monto calculado: distributableAmount × percent / 100
+  id                String             @id @default(cuid())
+  distributionId    String
+  distribution      ProfitDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User               @relation("ProfitDistributionItemUser", fields: [userId], references: [id], onDelete: Cascade)
+  percent           Float // Porcentaje del usuario al momento de la distribución
+  amount            Float // Monto calculado: distributableAmount × percent / 100
   paidTransactionId String? // ID de la Transaction HONORARIOS creada al pagar
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([distributionId])
   @@index([userId])
@@ -788,18 +789,18 @@ model ProfitDistributionItem {
 
 // FONDO DE EMERGENCIA (Movimientos de reserva)
 model EmergencyFundMovement {
-  id                     String   @id @default(cuid())
-  type                   String   // CONTRIBUTION, WITHDRAWAL
-  amount                 Float
-  balanceAfter           Float    // Saldo acumulado después del movimiento
-  year                   Int
-  month                  Int
-  reason                 String?
-  authorizedByUserId     String?
-  authorizedBy           User?    @relation("EmergencyFundAuthorizedBy", fields: [authorizedByUserId], references: [id], onDelete: SetNull)
-  relatedTransactionId   String?  // Transaction EXPENSE creada al retirar
+  id                   String  @id @default(cuid())
+  type                 String // CONTRIBUTION, WITHDRAWAL
+  amount               Float
+  balanceAfter         Float // Saldo acumulado después del movimiento
+  year                 Int
+  month                Int
+  reason               String?
+  authorizedByUserId   String?
+  authorizedBy         User?   @relation("EmergencyFundAuthorizedBy", fields: [authorizedByUserId], references: [id], onDelete: SetNull)
+  relatedTransactionId String? // Transaction EXPENSE creada al retirar
 
-  createdAt              DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([type])
   @@index([year, month])
@@ -808,23 +809,23 @@ model EmergencyFundMovement {
 
 // CONTROL DE TIEMPO - TOTEM CHRONOS
 model TimeEntry {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  taskId        String?   // Opcional: vincular a una tarea específica
-  clientId      String?   // Opcional: vincular a un cliente
-  
-  startTime     DateTime  @default(now())
-  endTime       DateTime?
-  duration      Int?      // En segundos (calculado al cerrar)
-  hourlyRate    Float     // Tarifa horaria en ese momento ($)
-  earnings      Float?    // Dinero ganado en esta sesión
-  
-  description   String?   // Descripción de lo trabajado
-  aiSummary     String?   // Resumen generado por IA
-  
-  status        String    @default("RUNNING") // RUNNING, COMPLETED, MANUAL
-  createdAt     DateTime  @default(now())
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId   String? // Opcional: vincular a una tarea específica
+  clientId String? // Opcional: vincular a un cliente
+
+  startTime  DateTime  @default(now())
+  endTime    DateTime?
+  duration   Int? // En segundos (calculado al cerrar)
+  hourlyRate Float // Tarifa horaria en ese momento ($)
+  earnings   Float? // Dinero ganado en esta sesión
+
+  description String? // Descripción de lo trabajado
+  aiSummary   String? // Resumen generado por IA
+
+  status    String   @default("RUNNING") // RUNNING, COMPLETED, MANUAL
+  createdAt DateTime @default(now())
 
   @@index([userId, startTime])
   @@index([status])
@@ -839,41 +840,41 @@ model GoogleCalendarToken {
   accessToken  String
   refreshToken String
   expiresAt    DateTime
-  scope        String   // Scopes autorizados
-  
+  scope        String // Scopes autorizados
+
   // Incremental sync
-  lastSyncToken String?  // syncToken de Google Calendar para sync incremental
+  lastSyncToken String? // syncToken de Google Calendar para sync incremental
   lastSyncAt    DateTime? // última vez que se hizo sync
-  
+
   // Webhook channel
-  channelId         String?  // ID del canal de push notification
-  channelResourceId String?  // Resource ID del canal
+  channelId         String? // ID del canal de push notification
+  channelResourceId String? // Resource ID del canal
   channelExpiration DateTime? // Cuándo expira el canal
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 
 // ONESIGNAL PUSH NOTIFICATIONS
 model OneSignalPlayer {
-  id        String   @id @default(cuid())
-  
-  userId    String?  // Relación opcional con User (puede ser null si usuario no autenticado)
-  playerId  String   @unique // ID del dispositivo en OneSignal
-  device    String?  // Tipo de dispositivo: "ios", "android", "web"
-  browser   String?  // Navegador si es web: "chrome", "safari", "firefox"
-  
+  id String @id @default(cuid())
+
+  userId   String? // Relación opcional con User (puede ser null si usuario no autenticado)
+  playerId String  @unique // ID del dispositivo en OneSignal
+  device   String? // Tipo de dispositivo: "ios", "android", "web"
+  browser  String? // Navegador si es web: "chrome", "safari", "firefox"
+
   // Metadata útil
-  subscribed Boolean  @default(true) // Si el usuario tiene notificaciones activas
+  subscribed Boolean   @default(true) // Si el usuario tiene notificaciones activas
   lastSeen   DateTime? // Última actividad
-  
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([userId])
   @@index([playerId])
 }
@@ -886,12 +887,38 @@ model PushSubscription {
   auth       String
   userId     String?
   user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  role       String?  // "ADMIN" o "EDITOR"
+  role       String? // "ADMIN" o "EDITOR"
   createdAt  DateTime @default(now())
   lastSeenAt DateTime @default(now())
 
   @@index([userId])
   @@index([role])
+}
+
+// APNs DEVICE INSTALLATIONS (app nativa iOS)
+model ApnsDeviceInstallation {
+  id             String    @id @default(cuid())
+  installationId String
+  deviceToken    String
+  environment    String // "SANDBOX" | "PRODUCTION"
+  bundleId       String
+  appVersion     String
+  appBuild       String?
+  deviceModel    String?
+  osVersion      String?
+  locale         String?
+  status         String    @default("ACTIVE") // "ACTIVE" | "REVOKED" | "INVALID"
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastSeenAt     DateTime  @default(now())
+  invalidatedAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([installationId, environment])
+  @@unique([deviceToken, environment])
+  @@index([userId, status])
+  @@index([environment, status])
 }
 
 // ============================================================================
@@ -900,58 +927,58 @@ model PushSubscription {
 
 // CONFIGURACIÓN DEL EMISOR (Singleton)
 model CompanyConfig {
-  id                String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Datos legales del emisor
-  ruc               String   @unique
-  razonSocial       String
-  nombreComercial   String?
-  direccionMatriz   String
-  establecimiento   String   @default("001")
-  puntoEmision      String   @default("001")
+  ruc             String  @unique
+  razonSocial     String
+  nombreComercial String?
+  direccionMatriz String
+  establecimiento String  @default("001")
+  puntoEmision    String  @default("001")
 
   // Configuración tributaria
   obligadoContabilidad Boolean @default(true)
-  agenteRetencion     Boolean  @default(false)
-  contribuyenteRimpe  Boolean  @default(false)
+  agenteRetencion      Boolean @default(false)
+  contribuyenteRimpe   Boolean @default(false)
 
   // Ambiente SRI: 1=Pruebas, 2=Produccion
-  sriAmbiente         String   @default("1")
+  sriAmbiente String @default("1")
 
   // Modo de firma: NUBE (worker Fly.io) o LOCAL (PC/servidor propio)
-  modoFirma           String   @default("LOCAL")
+  modoFirma String @default("LOCAL")
 
   // .p12 local cifrado (AES-256-GCM) - se almacena en BD cuando modo=LOCAL
-  p12LocalCifrado     Bytes?
-  p12LocalIv          Bytes?
-  p12LocalAuthTag     Bytes?
-  p12LocalNombre      String?
-  p12LocalSubidoAt    DateTime?
+  p12LocalCifrado  Bytes?
+  p12LocalIv       Bytes?
+  p12LocalAuthTag  Bytes?
+  p12LocalNombre   String?
+  p12LocalSubidoAt DateTime?
 
   // Huella del certificado (SHA-256 del cert, sin private key)
-  p12Huella           String?
-  p12Vence            DateTime?
-  p12Titular          String?
+  p12Huella  String?
+  p12Vence   DateTime?
+  p12Titular String?
 
   // Estado del worker
-  workerModo          String?
-  workerUltimoLatido  DateTime?
-  workerVersion       String?
-  workerHostname      String?
+  workerModo         String?
+  workerUltimoLatido DateTime?
+  workerVersion      String?
+  workerHostname     String?
 
   // Configuración de email
-  emailProveedor      String   @default("RESEND")
+  emailProveedor      String  @default("RESEND")
   emailFrom           String?
   emailReplyTo        String?
-  emailBccAdmin       Boolean  @default(true)
-  emailAsuntoTemplate String?  // plantilla con variables: {numero}, {cliente}
+  emailBccAdmin       Boolean @default(true)
+  emailAsuntoTemplate String? // plantilla con variables: {numero}, {cliente}
   emailCuerpoTemplate String?
   emailLogoUrl        String?
 
   // Secuenciales (próximo a usar)
-  siguienteFactura      Int    @default(1)
-  siguienteNotaCredito  Int    @default(1)
-  siguienteRetencion    Int    @default(1)
+  siguienteFactura     Int @default(1)
+  siguienteNotaCredito Int @default(1)
+  siguienteRetencion   Int @default(1)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -959,12 +986,12 @@ model CompanyConfig {
 
 // SECUENCIALES POR TIPO DE COMPROBANTE (atómico)
 model SecuencialComprobante {
-  id                String   @id @default(cuid())
-  tipoComprobante   String   // "01"=Factura, "04"=NC, "07"=Retención
-  establecimiento   String   // "001"
-  puntoEmision      String   // "001"
-  ultimoSecuencial  Int      @default(0)  // último autorizado por SRI
-  siguiente         Int      @default(1)  // próximo a usar
+  id               String @id @default(cuid())
+  tipoComprobante  String // "01"=Factura, "04"=NC, "07"=Retención
+  establecimiento  String // "001"
+  puntoEmision     String // "001"
+  ultimoSecuencial Int    @default(0) // último autorizado por SRI
+  siguiente        Int    @default(1) // próximo a usar
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -975,16 +1002,16 @@ model SecuencialComprobante {
 
 // CATÁLOGO DE PRODUCTOS/SERVICIOS PARA FACTURACIÓN
 model ProductoFacturacion {
-  id              String   @id @default(cuid())
-  codigo          String   @unique  // "REEL-001", "SERV-DISENO"
-  descripcion     String
-  precioUnitario  Float
-  tipoIva         String   @default("4")  // "0","2","4","6","7" (códigos SRI)
-  unidad          String   @default("SERVICIO")  // SERVICIO, BIEN, HORA
-  activo          Boolean  @default(true)
+  id             String  @id @default(cuid())
+  codigo         String  @unique // "REEL-001", "SERV-DISENO"
+  descripcion    String
+  precioUnitario Float
+  tipoIva        String  @default("4") // "0","2","4","6","7" (códigos SRI)
+  unidad         String  @default("SERVICIO") // SERVICIO, BIEN, HORA
+  activo         Boolean @default(true)
 
-  aplicaIce       Boolean  @default(false)
-  aplicaRetencion Boolean  @default(false)
+  aplicaIce       Boolean @default(false)
+  aplicaRetencion Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -995,59 +1022,59 @@ model ProductoFacturacion {
 
 // FACTURA ELECTRÓNICA
 model ElectronicInvoice {
-  id                String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Identificación SRI
-  claveAcceso       String?  @unique  // 49 dígitos
-  numeroAutorizacion String?          // Autorización del SRI
-  secuencial        String            // "001-001-000000001"
+  claveAcceso        String? @unique // 49 dígitos
+  numeroAutorizacion String? // Autorización del SRI
+  secuencial         String // "001-001-000000001"
 
   // Datos del cliente
-  clientId          String
-  client            Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  tipoIdentificacion String
+  clientId             String
+  client               Client  @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  tipoIdentificacion   String
   numeroIdentificacion String
-  razonSocial       String
-  direccionCliente  String?
-  emailCliente      String?
+  razonSocial          String
+  direccionCliente     String?
+  emailCliente         String?
 
   // Montos
   subtotalSinImpuestos Float
-  subtotal0         Float    @default(0)   // Base 0%
-  subtotal2         Float    @default(0)   // Base 2% (régimen simplificado)
-  subtotal4         Float    @default(0)   // Base 4% (régimen simplificado)
-  subtotal12        Float    @default(0)   // Base IVA anterior
-  subtotal15        Float    @default(0)   // Base 15% (IVA vigente desde abril 2025)
-  valorIva          Float    @default(0)   // IVA calculado
-  totalDescuento    Float    @default(0)
-  propina           Float    @default(0)
-  importeTotal      Float
-  moneda            String   @default("DOLAR")
+  subtotal0            Float  @default(0) // Base 0%
+  subtotal2            Float  @default(0) // Base 2% (régimen simplificado)
+  subtotal4            Float  @default(0) // Base 4% (régimen simplificado)
+  subtotal12           Float  @default(0) // Base IVA anterior
+  subtotal15           Float  @default(0) // Base 15% (IVA vigente desde abril 2025)
+  valorIva             Float  @default(0) // IVA calculado
+  totalDescuento       Float  @default(0)
+  propina              Float  @default(0)
+  importeTotal         Float
+  moneda               String @default("DOLAR")
 
   // Forma de pago
-  formaPagoCodigo   String   @default("20")  // "01","15","16","17","18","19","20","21"
-  formaPagoPlazo    String?                   // "30"
-  formaPagoUnidad   String?                   // "DIAS"
-  pagos             String?   // JSON array para múltiples formas de pago
+  formaPagoCodigo String  @default("20") // "01","15","16","17","18","19","20","21"
+  formaPagoPlazo  String? // "30"
+  formaPagoUnidad String? // "DIAS"
+  pagos           String? // JSON array para múltiples formas de pago
 
   // Estado del comprobante
-  estado            String   @default("PENDIENTE_FIRMA")
+  estado String @default("PENDIENTE_FIRMA")
   // PENDIENTE_FIRMA, FIRMADA, ENVIADA, AUTORIZADA, RECHAZADA, ANULADA, ERROR, CANCELADA_LOCAL
 
   // Archivos generados
-  rideUrl           String?   // URL del PDF (RIDE) en UploadThing
-  xmlUrl            String?   // URL del XML firmado
-  xmlSriResponse    String?   // Respuesta XML del SRI (autorización)
+  rideUrl        String? // URL del PDF (RIDE) en UploadThing
+  xmlUrl         String? // URL del XML firmado
+  xmlSriResponse String? // Respuesta XML del SRI (autorización)
 
   // Relación con Invoice existente (cuando se emite desde receivables)
-  invoiceId         String?   @unique
-  invoice           Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoiceId String?  @unique
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   // Relación con Notas de Crédito (cuando se anula)
-  notasCredito      CreditNote[] @relation("FacturaOriginal")
+  notasCredito CreditNote[] @relation("FacturaOriginal")
 
   // Relación con Retenciones
-  retenciones       ElectronicRetention[]
+  retenciones ElectronicRetention[]
 
   // Fechas
   fechaEmision      DateTime  @default(now())
@@ -1055,14 +1082,14 @@ model ElectronicInvoice {
   fechaAnulacion    DateTime?
 
   // Auditoría
-  intentosSri       Int       @default(0)
-  ultimoErrorSri    String?
-  codigoErrorSri    String?
+  intentosSri    Int     @default(0)
+  ultimoErrorSri String?
+  codigoErrorSri String?
 
   // Relaciones
-  items             ElectronicInvoiceItem[]
-  emailsEnviados    EmailEnviado[]
-  jobs              SriJob[]
+  items          ElectronicInvoiceItem[]
+  emailsEnviados EmailEnviado[]
+  jobs           SriJob[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1075,23 +1102,23 @@ model ElectronicInvoice {
 
 // LÍNEAS DE DETALLE DE FACTURA ELECTRÓNICA
 model ElectronicInvoiceItem {
-  id                  String   @id @default(cuid())
-  facturaId           String
-  factura             ElectronicInvoice @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  id        String            @id @default(cuid())
+  facturaId String
+  factura   ElectronicInvoice @relation(fields: [facturaId], references: [id], onDelete: Cascade)
 
-  codigoPrincipal     String   // código del producto/servicio
-  descripcion         String
-  cantidad            Float
-  precioUnitario      Float
-  descuento           Float    @default(0)
+  codigoPrincipal        String // código del producto/servicio
+  descripcion            String
+  cantidad               Float
+  precioUnitario         Float
+  descuento              Float  @default(0)
   precioTotalSinImpuesto Float
 
   // Impuesto por línea
-  codigoImpuesto      String   // "2"=IVA
-  codigoPorcentaje    String   // "0","2","4","6","7" (códigos SRI)
-  tarifa              Float    // 0, 2, 4, 12, 15
-  baseImponible       Float
-  valorImpuesto       Float
+  codigoImpuesto   String // "2"=IVA
+  codigoPorcentaje String // "0","2","4","6","7" (códigos SRI)
+  tarifa           Float // 0, 2, 4, 12, 15
+  baseImponible    Float
+  valorImpuesto    Float
 
   createdAt DateTime @default(now())
 
@@ -1100,51 +1127,51 @@ model ElectronicInvoiceItem {
 
 // NOTA DE CRÉDITO ELECTRÓNICA
 model CreditNote {
-  id                String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Identificación SRI
-  claveAcceso       String?  @unique
+  claveAcceso        String? @unique
   numeroAutorizacion String?
-  secuencial        String
+  secuencial         String
 
   // Factura que modifica
   facturaOriginalId String
   facturaOriginal   ElectronicInvoice @relation("FacturaOriginal", fields: [facturaOriginalId], references: [id], onDelete: Restrict)
 
   // Datos del cliente
-  clientId          String
-  tipoIdentificacion String
+  clientId             String
+  tipoIdentificacion   String
   numeroIdentificacion String
-  razonSocial       String
+  razonSocial          String
 
   // Montos
   subtotalSinImpuestos Float
-  valorIva          Float
-  importeTotal      Float
-  moneda            String   @default("DOLAR")
+  valorIva             Float
+  importeTotal         Float
+  moneda               String @default("DOLAR")
 
   // Motivo
-  motivo            String   // Descripción del ajuste
-  tipoModificacion  String   // "DEVOLUCION", "DESCUENTO", "CORRECCION", "ANULACION"
+  motivo           String // Descripción del ajuste
+  tipoModificacion String // "DEVOLUCION", "DESCUENTO", "CORRECCION", "ANULACION"
 
   // Estado
-  estado            String   @default("PENDIENTE_FIRMA")
+  estado String @default("PENDIENTE_FIRMA")
 
   // Archivos
-  rideUrl           String?
-  xmlUrl            String?
+  rideUrl String?
+  xmlUrl  String?
 
   // Fechas
-  fechaEmision      DateTime @default(now())
+  fechaEmision      DateTime  @default(now())
   fechaAutorizacion DateTime?
 
   // Auditoría
-  intentosSri       Int       @default(0)
-  ultimoErrorSri    String?
+  intentosSri    Int     @default(0)
+  ultimoErrorSri String?
 
   // Relaciones
-  items             CreditNoteItem[]
-  jobs              SriJob[]
+  items CreditNoteItem[]
+  jobs  SriJob[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1156,22 +1183,22 @@ model CreditNote {
 
 // LÍNEAS DE DETALLE DE NOTA DE CRÉDITO
 model CreditNoteItem {
-  id                  String   @id @default(cuid())
-  notaCreditoId       String
-  notaCredito         CreditNote @relation(fields: [notaCreditoId], references: [id], onDelete: Cascade)
+  id            String     @id @default(cuid())
+  notaCreditoId String
+  notaCredito   CreditNote @relation(fields: [notaCreditoId], references: [id], onDelete: Cascade)
 
-  codigoPrincipal     String
-  descripcion         String
-  cantidad            Float
-  precioUnitario      Float
-  descuento           Float    @default(0)
+  codigoPrincipal        String
+  descripcion            String
+  cantidad               Float
+  precioUnitario         Float
+  descuento              Float  @default(0)
   precioTotalSinImpuesto Float
 
-  codigoImpuesto      String
-  codigoPorcentaje    String
-  tarifa              Float
-  baseImponible       Float
-  valorImpuesto       Float
+  codigoImpuesto   String
+  codigoPorcentaje String
+  tarifa           Float
+  baseImponible    Float
+  valorImpuesto    Float
 
   createdAt DateTime @default(now())
 
@@ -1180,58 +1207,58 @@ model CreditNoteItem {
 
 // COMPROBANTE DE RETENCIÓN ELECTRÓNICA
 model ElectronicRetention {
-  id                String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Identificación SRI
-  claveAcceso       String?  @unique
+  claveAcceso        String? @unique
   numeroAutorizacion String?
-  secuencial        String
+  secuencial         String
 
   // Proveedor/Usuario (para honorarios)
-  userId            String?
-  user              User?    @relation("ElectronicRetentionUser", fields: [userId], references: [id], onDelete: SetNull)
-  proveedorRuc      String?
-  proveedorNombre   String?
+  userId          String?
+  user            User?   @relation("ElectronicRetentionUser", fields: [userId], references: [id], onDelete: SetNull)
+  proveedorRuc    String?
+  proveedorNombre String?
 
   // Datos del sujeto retenido
-  tipoSujeto        String   // "USUARIO" | "PROVEEDOR"
-  tipoIdentificacion String
+  tipoSujeto           String // "USUARIO" | "PROVEEDOR"
+  tipoIdentificacion   String
   numeroIdentificacion String
-  razonSocial       String
+  razonSocial          String
 
   // Factura relacionada (opcional)
   facturaElectronicaId String?
   facturaElectronica   ElectronicInvoice? @relation(fields: [facturaElectronicaId], references: [id], onDelete: SetNull)
 
   // Periodo fiscal
-  periodoFiscal     String   // "MM/YYYY"
+  periodoFiscal String // "MM/YYYY"
 
   // Retenciones aplicadas (JSON array)
-  retenciones       String   // [{tipoImpuesto,codigo,porcentaje,baseImponible,valorRetenido}]
+  retenciones String // [{tipoImpuesto,codigo,porcentaje,baseImponible,valorRetenido}]
 
   // Totales
-  totalRetenido     Float
+  totalRetenido Float
 
   // Estado
-  estado            String   @default("PENDIENTE_FIRMA")
+  estado String @default("PENDIENTE_FIRMA")
 
   // Archivos
-  rideUrl           String?
-  xmlUrl            String?
+  rideUrl String?
+  xmlUrl  String?
 
   // Relación con Transaction (pago de honorarios)
-  transactionId     String?  @unique
+  transactionId String? @unique
 
   // Fechas
-  fechaEmision      DateTime @default(now())
+  fechaEmision      DateTime  @default(now())
   fechaAutorizacion DateTime?
 
   // Auditoría
-  intentosSri       Int       @default(0)
-  ultimoErrorSri    String?
+  intentosSri    Int     @default(0)
+  ultimoErrorSri String?
 
   // Relaciones
-  jobs              SriJob[]
+  jobs SriJob[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1244,28 +1271,28 @@ model ElectronicRetention {
 
 // COLA DE TRABAJOS SRI (Worker polling)
 model SriJob {
-  id            String   @id @default(cuid())
-  type          String   // "EMITIR_FACTURA", "NOTA_CREDITO", "RETENCION", "CONSULTAR_AUTORIZACION", "TEST"
-  status        String   @default("PENDING") // PENDING, RUNNING, DONE, FAILED
+  id     String @id @default(cuid())
+  type   String // "EMITIR_FACTURA", "NOTA_CREDITO", "RETENCION", "CONSULTAR_AUTORIZACION", "TEST"
+  status String @default("PENDING") // PENDING, RUNNING, DONE, FAILED
 
   // Referencia polimórfica al comprobante
   facturaId     String?
-  factura       ElectronicInvoice? @relation(fields: [facturaId], references: [id], onDelete: SetNull)
+  factura       ElectronicInvoice?   @relation(fields: [facturaId], references: [id], onDelete: SetNull)
   notaCreditoId String?
-  notaCredito   CreditNote? @relation(fields: [notaCreditoId], references: [id], onDelete: SetNull)
+  notaCredito   CreditNote?          @relation(fields: [notaCreditoId], references: [id], onDelete: SetNull)
   retencionId   String?
   retencion     ElectronicRetention? @relation(fields: [retencionId], references: [id], onDelete: SetNull)
 
   // Payload y resultado
-  payload       String?   // JSON con datos adicionales
-  resultado     String?   // JSON con respuesta del SRI
-  error         String?   // Mensaje de error si falló
+  payload   String? // JSON con datos adicionales
+  resultado String? // JSON con respuesta del SRI
+  error     String? // Mensaje de error si falló
 
   // Control de reintentos
-  intentos      Int       @default(0)
-  maxIntentos   Int       @default(3)
-  procesadoAt   DateTime?
-  disponibleAt  DateTime? // Para backoff exponencial
+  intentos     Int       @default(0)
+  maxIntentos  Int       @default(3)
+  procesadoAt  DateTime?
+  disponibleAt DateTime? // Para backoff exponencial
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1278,14 +1305,14 @@ model SriJob {
 
 // EMAILS ENVIADOS DE COMPROBANTES
 model EmailEnviado {
-  id            String   @id @default(cuid())
+  id            String             @id @default(cuid())
   facturaId     String?
   factura       ElectronicInvoice? @relation(fields: [facturaId], references: [id], onDelete: SetNull)
   notaCreditoId String?
   email         String
-  status        String   @default("PENDIENTE") // PENDIENTE, ENVIADO, FALLIDO, REBOTADO
-  providerId    String?  // ID del proveedor (Resend, etc.)
-  intentos      Int      @default(0)
+  status        String             @default("PENDIENTE") // PENDIENTE, ENVIADO, FALLIDO, REBOTADO
+  providerId    String? // ID del proveedor (Resend, etc.)
+  intentos      Int                @default(0)
   error         String?
   enviadoAt     DateTime?
 
@@ -1299,10 +1326,10 @@ model EmailEnviado {
 model WorkerLatido {
   id            String   @id @default(cuid())
   workerId      String
-  modo          String   // "NUBE" | "LOCAL"
+  modo          String // "NUBE" | "LOCAL"
   hostname      String
   version       String?
-  sriAmbiente   String   // "1" | "2"
+  sriAmbiente   String // "1" | "2"
   sriAlcanzable Boolean  @default(false)
   timestamp     DateTime @default(now())
 

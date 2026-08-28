@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "tsx index.ts"
+    "start": "node --env-file=../.env --env-file=.env dist/worker/index.js",
+    "dev": "tsx --env-file=../.env --env-file=.env index.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.19.0",

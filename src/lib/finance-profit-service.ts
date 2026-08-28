@@ -13,6 +13,7 @@ import {
 } from "@/lib/finance-funds-logic";
 import { getFinanceSettingsWithFallback } from "@/actions/finance-settings-actions";
 import { getEmergencyFundBalance } from "@/lib/finance-emergency-fund-service";
+import { calculateProfitShares } from "@/lib/finance-distribution-invariants";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -292,17 +293,41 @@ export async function createDraftDistribution(
       };
     }
 
+    // El navegador solo elige periodo y notas. La utilidad, el fondo, los
+    // participantes, los porcentajes y los montos se reconstruyen desde la BD.
+    const previewResult = await getProfitPreview(input.year, input.month);
+    if (!previewResult.success || !previewResult.data) {
+      return {
+        success: false,
+        error: previewResult.error ?? "No se pudo calcular la distribucion",
+      };
+    }
+    if (!previewResult.data.canDistribute) {
+      return {
+        success: false,
+        error: previewResult.data.reasonNoDistribution ?? "La distribucion no esta habilitada",
+      };
+    }
+
+    const calculatedItems = calculateProfitShares(
+      previewResult.data.distributableAmount,
+      previewResult.data.eligibleUsers.map((user) => ({
+        userId: user.userId,
+        percent: user.profitSharePercent,
+      }))
+    );
+
     const distribution = await db.profitDistribution.create({
       data: {
         year: input.year,
         month: input.month,
         status: "DRAFT",
-        totalProfit: input.totalProfit,
-        fundContribution: input.fundContribution,
-        distributableAmount: input.distributableAmount,
+        totalProfit: previewResult.data.netProfit,
+        fundContribution: previewResult.data.fundContribution,
+        distributableAmount: previewResult.data.distributableAmount,
         notes: input.notes,
         items: {
-          create: input.items.map((item) => ({
+          create: calculatedItems.map((item) => ({
             userId: item.userId,
             percent: item.percent,
             amount: item.amount,

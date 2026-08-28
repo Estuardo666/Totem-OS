@@ -19,7 +19,11 @@
     "prepare": "husky",
     "test:cwv": "npx playwright test --config=playwright.config.ts --project=mobile-chrome",
     "test:perf": "npx playwright test --config=playwright.config.ts",
-    "test:finance-access": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/finance-strategic-access.test.mjs"
+    "test:finance-access": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/finance-strategic-access.test.mjs",
+    "test:finance-distribution": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/finance-distribution-invariants.test.mjs",
+    "test:worker-auth": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/worker-auth.test.mjs",
+    "test:apns-contract": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/apns-device-contract.test.mjs",
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/*.test.mjs"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
