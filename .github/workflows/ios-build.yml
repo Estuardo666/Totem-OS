@@ -97,10 +97,21 @@ jobs:
           set -e
 
           if [ "$test_status" -ne 0 ]; then
-            diagnostic="$({ grep -E 'error:|failed|Failure|Unable to|timed out' /tmp/totem-ios-tests.log || true; } | tail -n 1 | sed 's/%/%25/g')"
-            if [ -z "$diagnostic" ]; then
-              diagnostic="xcodebuild exited with status $test_status"
-            fi
-            echo "::error title=iOS unit tests::$diagnostic"
+            { grep -E 'error:|XCTAssert|failed with|Test Case .* failed|Unable to|timed out' /tmp/totem-ios-tests.log || true; } \
+              | sort -u \
+              | head -n 8 \
+              | sed 's/%/%25/g' \
+              | while IFS= read -r line; do
+                  echo "::error title=iOS unit tests::$line"
+                done
+            echo "::error title=iOS unit tests::xcodebuild exited with status $test_status"
             exit "$test_status"
           fi
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ios-test-log
+          path: /tmp/totem-ios-tests.log
+          if-no-files-found: warn
