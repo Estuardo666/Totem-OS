@@ -24,7 +24,9 @@
     "test:worker-auth": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/worker-auth.test.mjs",
     "test:shell-contract": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/totem-shell-contract.test.mjs",
     "test:apns-contract": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/apns-device-contract.test.mjs",
-    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/*.test.mjs"
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/*.test.mjs",
+    "db:seed:test": "node tests/integration/seed-test-db.mjs",
+    "test:integration": "node --test tests/integration/*.test.mjs"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

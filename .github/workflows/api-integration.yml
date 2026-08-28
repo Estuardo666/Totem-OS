@@ -1,0 +1,56 @@
+name: API Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: totem_test
+          POSTGRES_PASSWORD: totem_test
+          POSTGRES_DB: totem_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U totem_test -d totem_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://totem_test:totem_test@localhost:5432/totem_test?schema=public
+      DATABASE_URL_UNPOOLED: postgresql://totem_test:totem_test@localhost:5432/totem_test?schema=public
+      TOTEM_TEST_DATABASE: "1"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v5.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply Prisma migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed deterministic fixtures
+        run: npm run db:seed:test
+
+      - name: Run Prisma integration tests
+        run: npm run test:integration
