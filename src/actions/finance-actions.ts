@@ -961,6 +961,72 @@ export async function saveClientMonthlyClosure(input: unknown): Promise<ApiRespo
   }
 }
 
+/**
+ * Cierra de una vez todos los clientes cuyo caso no admite duda.
+ *
+ * Solo actua sobre las recomendaciones FULL (se entrego el plan completo) y
+ * NONE (no hubo ninguna evidencia de trabajo). Las PARTIAL se dejan intactas a
+ * proposito: ahi el sistema no sabe cuanto corresponde cobrar y esa decision es
+ * del socio, no del programa. Tampoco toca los clientes que ya tienen cierre.
+ */
+export async function closeMonthRecommended(
+  month: number,
+  year: number
+): Promise<
+  ApiResponse<{ cerrados: number; omitidosParciales: number; yaCerrados: number }>
+> {
+  try {
+    const session = await auth();
+    const userId = session?.user?.id;
+    if (!userId || session?.user?.role !== "ADMIN") {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const page = await getClientMonthlyClosuresFromDb(year, month);
+    if (!page.success || !page.data) {
+      return { success: false, error: page.error ?? "No se pudo leer el cierre del mes" };
+    }
+
+    let cerrados = 0;
+    let omitidosParciales = 0;
+    let yaCerrados = 0;
+
+    for (const item of page.data.items) {
+      if (item.closure) {
+        yaCerrados += 1;
+        continue;
+      }
+      if (item.recommendation.status === "PARTIAL") {
+        omitidosParciales += 1;
+        continue;
+      }
+
+      const esTotal = item.recommendation.status === "FULL";
+      const result = await upsertClientMonthlyClosureFromDb(
+        {
+          clientId: item.clientId,
+          year,
+          month,
+          accrualStatus: esTotal ? "FULL" : "NONE",
+          accruedAmount: esTotal ? item.recommendation.amount : 0,
+          notes: `Cierre automático: ${item.recommendation.reason}`,
+        },
+        userId
+      );
+
+      if (result.success) cerrados += 1;
+    }
+
+    revalidateFinanceViews();
+    return { success: true, data: { cerrados, omitidosParciales, yaCerrados } };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al cerrar el mes",
+    };
+  }
+}
+
 // ============ SALARY & SETTLEMENT OPERATIONS ============
 
 export async function updateUserSalaryConfig(

@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Clock3, FileWarning, PencilLine } from "lucide-react";
+import { CheckCircle2, Clock3, FileWarning, Loader2, PencilLine, Wand2 } from "lucide-react";
 import type { ClientMonthlyClosurePageData } from "@/actions/finance-actions";
+import { closeMonthRecommended } from "@/actions/finance-actions";
+import { useToast } from "@/components/ui/use-toast";
 import { FinanceSectionNav } from "@/components/features/finance/finance-section-nav";
 import { MonthYearSelector } from "@/components/features/finance/month-year-selector";
 import { MonthlyCloseDialog } from "@/components/features/finance/monthly-close-dialog";
@@ -59,6 +61,32 @@ function getRecommendationBadge(status: "FULL" | "PARTIAL" | "NONE") {
 export function MonthlyClosePageClient({ data, userRole }: MonthlyClosePageClientProps) {
   const router = useRouter();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [isClosing, startClosing] = useTransition();
+
+  // Cierra solo los casos sin ambiguedad. Los parciales se quedan para revisar
+  // a mano, porque ahi la cifra la decide el socio y no el sistema.
+  const pendientesAutomaticos = data.items.filter(
+    (item) => !item.closure && item.recommendation.status !== "PARTIAL"
+  ).length;
+
+  const handleCloseRecommended = () => {
+    startClosing(async () => {
+      const result = await closeMonthRecommended(data.period.month, data.period.year);
+      if (result.success && result.data) {
+        const { cerrados, omitidosParciales } = result.data;
+        toast({
+          title: cerrados > 0 ? `${cerrados} cliente(s) cerrados` : "No había nada que cerrar",
+          description: omitidosParciales > 0
+            ? `${omitidosParciales} quedan pendientes de revisar: el sistema no sabe cuánto corresponde cobrar.`
+            : "Todos los casos claros del mes quedaron cerrados.",
+        });
+        router.refresh();
+      } else {
+        toast({ variant: "destructive", title: "Error", description: result.error });
+      }
+    });
+  };
 
   const selectedItem = data.items.find((item) => item.clientId === selectedClientId) ?? null;
 
@@ -99,12 +127,27 @@ export function MonthlyClosePageClient({ data, userRole }: MonthlyClosePageClien
         <div className="space-y-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <FinanceSectionNav userRole={userRole} />
-            <MonthYearSelector
-              month={data.period.month}
-              year={data.period.year}
-              onMonthChange={handleMonthChange}
-              onYearChange={handleYearChange}
-            />
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleCloseRecommended}
+                disabled={isClosing || pendientesAutomaticos === 0}
+                className="rounded-full"
+              >
+                {isClosing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="mr-2 h-4 w-4" />
+                )}
+                Cerrar casos claros
+                {pendientesAutomaticos > 0 ? ` (${pendientesAutomaticos})` : ""}
+              </Button>
+              <MonthYearSelector
+                month={data.period.month}
+                year={data.period.year}
+                onMonthChange={handleMonthChange}
+                onYearChange={handleYearChange}
+              />
+            </div>
           </div>
 
           <Card className="overflow-hidden border-border/60 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 text-white shadow-sm">

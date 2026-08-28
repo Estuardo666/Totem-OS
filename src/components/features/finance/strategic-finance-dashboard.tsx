@@ -160,6 +160,21 @@ function aggregateSnapshots(
       : snapshot.executive.recognizedRevenue > 0
         ? selectedRevenueForOverhead / snapshot.executive.recognizedRevenue
         : 0;
+    // Los costes directos que no pertenecen a ningun cliente —sobre todo los
+    // honorarios de los socios, que nadie factura a una cuenta concreta— solo
+    // existen en el total ejecutivo. Al rearmar las cifras cliente por cliente
+    // se perdian por completo y la utilidad salia inflada. Se reparten igual
+    // que el gasto general: en proporcion al alcance seleccionado.
+    const attributedDirectCosts = snapshot.clients.reduce(
+      (sum, row) => sum + row.directCosts,
+      0
+    );
+    const unattributedDirectCosts = Math.max(
+      0,
+      snapshot.executive.directCosts - attributedDirectCosts
+    );
+
+    directCosts += unattributedDirectCosts * overheadShare;
     operatingExpenses += snapshot.executive.operatingExpenses * overheadShare;
   }
 
