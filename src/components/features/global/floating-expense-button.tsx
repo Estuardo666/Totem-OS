@@ -21,6 +21,7 @@ export function FloatingExpenseButton() {
       {/* Botón flotante */}
       <TransactionDialog>
         <button
+          data-totem-web-chrome
           onPointerDown={() => {
             const isPwa = window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
             if (isPwa && "vibrate" in navigator) navigator.vibrate(12);

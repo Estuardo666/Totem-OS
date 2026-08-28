@@ -1224,3 +1224,9 @@ html.dark .finance-dashboard [class~="hover:bg-slate-50"]:hover {
     background-color: color-mix(in srgb, var(--client-color) 20%, transparent) !important;
   }
 }
+
+/* Shell nativo TotemOS-iOS: el WKWebView marca el documento antes de
+   renderizar, de modo que el chrome web no alcanza a parpadear. */
+html[data-totem-native-shell="1"] [data-totem-web-chrome] {
+  display: none !important;
+}

@@ -7,12 +7,14 @@ struct ContentView: View {
     var body: some View {
         ZStack(alignment: .top) {
             Color.totemLaunchBackground
+                .ignoresSafeArea()
 
             if appModel.showsNativeLogin {
                 NativeLoginView {
                     isLaunching = true
                     appModel.nativeLoginDidSucceed()
                 }
+                .ignoresSafeArea()
                 .transition(.opacity)
             } else {
                 WebAppView {
@@ -20,10 +22,16 @@ struct ContentView: View {
                         isLaunching = false
                     }
                 }
+                .ignoresSafeArea()
+
+                // Shell nativo superpuesto: header, drawer y barra inferior.
+                NativeShellOverlay()
+                    .zIndex(3)
             }
 
             if isLaunching && !appModel.showsNativeLogin {
                 LaunchLoadingView()
+                    .ignoresSafeArea()
                     .transition(.opacity)
                     .zIndex(1)
             }
@@ -39,8 +47,7 @@ struct ContentView: View {
                     .zIndex(2)
             }
         }
-        .background(Color.totemLaunchBackground)
-        .ignoresSafeArea()
+        .background(Color.totemLaunchBackground.ignoresSafeArea())
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
     }

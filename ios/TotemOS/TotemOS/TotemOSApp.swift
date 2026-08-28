@@ -6,11 +6,13 @@ import UserNotifications
 struct TotemOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var appModel = AppModel.shared
+    @StateObject private var shellModel = ShellModel()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(appModel)
+                .environmentObject(shellModel)
         }
     }
 }

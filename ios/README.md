@@ -42,3 +42,22 @@ APNS_BUNDLE_ID=com.totemmassmedia.totemos
 ```
 
 El simulador compila y ejecuta la interfaz, pero no entrega un token APNs real. El registro completo se valida mediante un build firmado instalado en un iPhone o distribuido por TestFlight.
+
+## Shell nativo (`totemShell`)
+
+En la app nativa el header, el drawer, la barra inferior y el botón de
+transacción se dibujan en SwiftUI sobre el `WKWebView`. Safari, la PWA y el
+escritorio conservan los componentes React actuales.
+
+- El `WKWebView` inyecta `ShellUserScript.marker()` en `atDocumentStart`. Solo
+  con esa marca React oculta la navbar móvil y el botón flotante.
+- React publica un snapshot versionado por `webkit.messageHandlers.totemShell`
+  (`src/lib/totem-shell-contract.ts`) con ruta, tema, usuario, navegación ya
+  filtrada por permisos, contadores y cinco notificaciones recientes.
+- Swift envía comandos tipados con `callAsyncJavaScript` hacia
+  `window.__totemShellDispatch`; ambos lados validan rutas, identificadores y
+  enums antes de actuar (`TotemOSKit/ShellContracts.swift`).
+- iOS 26 usa Liquid Glass real; iOS 17–18 cae a materiales nativos y
+  "Reducir transparencia" cambia a una superficie sólida.
+
+Pruebas: `ShellContractTests` en Xcode y `npm run test:shell-contract` en la web.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -94,6 +94,9 @@ interface TransactionDialogProps {
   children?: React.ReactNode;
   defaultTab?: "income" | "expense" | "honorarios";
   isAdminOverride?: boolean;
+  /** Control externo opcional. Sin él, el diálogo sigue manejando su estado. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // Función helper para obtener la fecha actual en zona horaria de Ecuador (America/Guayaquil)
@@ -155,13 +158,26 @@ export function TransactionDialog({
   children,
   defaultTab,
   isAdminOverride,
+  open: controlledOpen,
+  onOpenChange,
 }: TransactionDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { data: session } = useSession();
   const userRole = session?.user?.role;
   const isAdmin = isAdminOverride ?? userRole === "ADMIN";
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (!isControlled) {
+        setUncontrolledOpen(next);
+      }
+      onOpenChange?.(next);
+    },
+    [isControlled, onOpenChange]
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clients, setClients] = useState<OfflineClientOption[]>([]);
   const [users, setUsers] = useState<OfflineUserOption[]>([]);
@@ -570,18 +586,21 @@ export function TransactionDialog({
     }
   }, [open, resolvedDefaultTab]);
 
-  const triggerContent = children ?? (
+  // Bajo control externo y sin hijos el diálogo no dibuja disparador propio.
+  const triggerContent = children ?? (isControlled ? null : (
     <Button variant="outline" className="gap-2">
       <Plus className="h-4 w-4" />
       Nueva Transacción
     </Button>
-  );
+  ));
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {triggerContent}
-      </DialogTrigger>
+      {triggerContent && (
+        <DialogTrigger asChild>
+          {triggerContent}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Nueva Transacción</DialogTitle>

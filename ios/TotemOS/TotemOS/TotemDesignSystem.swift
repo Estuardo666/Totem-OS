@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum TotemTypography {
     static func regular(_ size: CGFloat, relativeTo style: Font.TextStyle) -> Font {
@@ -63,4 +64,54 @@ extension View {
 
 extension Color {
     static let totemLime = Color(red: 159 / 255, green: 232 / 255, blue: 66 / 255)
+}
+
+// MARK: - Shell nativo
+
+extension View {
+    /// Una sola superficie de vidrio por contenedor del shell.
+    ///
+    /// - `interactive`: reservado para controles pulsables; los contenedores
+    ///   (header, drawer) se mantienen pasivos para no apilar capas.
+    @ViewBuilder
+    func totemShellGlass(
+        in shape: some InsettableShape,
+        interactive: Bool = false,
+        reduceTransparency: Bool = false
+    ) -> some View {
+        if reduceTransparency {
+            background(Color.totemShellSolid, in: shape)
+                .overlay { shape.stroke(.white.opacity(0.12), lineWidth: 1) }
+        } else if #available(iOS 26.0, *) {
+            glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
+        } else {
+            background(.ultraThinMaterial, in: shape)
+                .overlay { shape.stroke(.white.opacity(0.12), lineWidth: 1) }
+        }
+    }
+}
+
+/// `GlassEffectContainer` en iOS 26; en versiones previas no añade capas.
+struct TotemGlassContainer<Content: View>: View {
+    var spacing: CGFloat = 12
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) { content }
+        } else {
+            content
+        }
+    }
+}
+
+extension Color {
+    /// Respaldo opaco para "Reducir transparencia".
+    static let totemShellSolid = Color(
+        UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 24 / 255, green: 22 / 255, blue: 36 / 255, alpha: 1)
+                : UIColor(red: 246 / 255, green: 246 / 255, blue: 250 / 255, alpha: 1)
+        }
+    )
 }
