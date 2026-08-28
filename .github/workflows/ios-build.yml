@@ -53,10 +53,30 @@ jobs:
           build
 
       - name: Run unit tests
-        run: >-
-          xcodebuild
-          -project TotemOS.xcodeproj
-          -scheme TotemOS
-          -destination 'platform=iOS Simulator,name=iPhone 16e,OS=26.2'
-          CODE_SIGNING_ALLOWED=NO
-          test
+        run: |
+          destinations="$(
+            xcodebuild \
+              -project TotemOS.xcodeproj \
+              -scheme TotemOS \
+              -showdestinations
+          )"
+          printf '%s\n' "$destinations"
+
+          simulator_id="$(
+            printf '%s\n' "$destinations" \
+              | sed -nE '/platform:iOS Simulator/ s/.*id:([0-9A-Fa-f-]{36}),.*/\1/p' \
+              | head -n 1 \
+              | xargs
+          )"
+
+          if [[ -z "$simulator_id" ]]; then
+            echo "No available iOS Simulator destination was reported by Xcode." >&2
+            exit 1
+          fi
+
+          xcodebuild \
+            -project TotemOS.xcodeproj \
+            -scheme TotemOS \
+            -destination "platform=iOS Simulator,id=$simulator_id" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
