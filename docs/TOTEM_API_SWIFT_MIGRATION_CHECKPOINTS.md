@@ -10,7 +10,10 @@ criterio de salida y una verificación antes de iniciar el siguiente.
   de permisos documentados.
 - [x] **CP02 — Base de pruebas backend** (`3c5d103`): migración inicial,
   PostgreSQL efímero en CI, seed determinista y smoke test Prisma.
-- [ ] **CP03 — Kernel `/api/v1`**: siguiente checkpoint habilitado.
+- [x] **CP03 — Kernel `/api/v1`** (`b8e994f`): contexto común,
+  envelopes, Problem Details, validación, cursor, límite de payload y endpoint
+  de contrato.
+- [ ] **CP04 — Autenticación y capacidades**: siguiente checkpoint habilitado.
 
 Los hashes son referencias del repositorio en la fecha de corte; si se continúa
 en otra rama, conservar el contenido de los documentos aunque cambie el hash.
