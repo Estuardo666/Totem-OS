@@ -82,6 +82,10 @@ workflows:
       xcode: latest
       groups:
         - appstore
+      # Must match the App Store Connect key name in
+      # Codemagic > Teams > Integrations > Developer Portal.
+      integrations:
+        app_store_connect: TotemOS
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.totemmassmedia.totemos
