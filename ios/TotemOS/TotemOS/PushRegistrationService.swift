@@ -100,7 +100,7 @@ final class PushRegistrationService {
         guard let json = String(data: data, encoding: .utf8) else {
             throw PushRegistrationError.unexpectedResponse
         }
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             webView.callAsyncJavaScript(
                 "localStorage.setItem('totem-ios-apns-context', context);",
                 arguments: ["context": json],
@@ -131,7 +131,7 @@ final class PushRegistrationService {
         }
 
         let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
-        let allCookies = await withCheckedContinuation { continuation in
+        let allCookies = await withCheckedContinuation { (continuation: CheckedContinuation<[HTTPCookie], Never>) in
             cookieStore.getAllCookies { cookies in
                 continuation.resume(returning: cookies)
             }
