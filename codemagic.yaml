@@ -1,0 +1,127 @@
+definitions:
+  scripts:
+    - &generate_project
+      name: Generate the Xcode project
+      script: |
+        set -e
+        which xcodegen || brew install xcodegen
+        cd ios/TotemOS
+        xcodegen generate
+
+    - &select_simulator
+      name: Select and boot an iPhone simulator
+      script: |
+        set -e
+        udid="$(
+          xcrun simctl list devices available \
+            | sed -nE '/^-- iOS /,/^-- /p' \
+            | sed -nE 's/^ *iPhone[^(]*\(([0-9A-Fa-f-]{36})\).*/\1/p' \
+            | head -n 1
+        )"
+
+        if [ -z "$udid" ]; then
+          echo "No available iPhone simulator on the machine."
+          xcrun simctl list devices available
+          exit 1
+        fi
+
+        echo "Selected simulator $udid"
+        xcrun simctl boot "$udid" || true
+        xcrun simctl bootstatus "$udid" -b
+        echo "SIMULATOR_UDID=$udid" >> "$CM_ENV"
+
+workflows:
+  ios-test:
+    name: iOS build and unit tests
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      xcode: latest
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: main
+          include: true
+    scripts:
+      - *generate_project
+      - *select_simulator
+      - name: Build for the simulator
+        script: |
+          set -e
+          cd ios/TotemOS
+          xcodebuild \
+            -project TotemOS.xcodeproj \
+            -scheme TotemOS \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+      - name: Run the unit tests
+        script: |
+          set -e
+          cd ios/TotemOS
+          xcodebuild \
+            -project TotemOS.xcodeproj \
+            -scheme TotemOS \
+            -destination "id=$SIMULATOR_UDID" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+    artifacts:
+      - /tmp/xcodebuild_logs/*.log
+
+  # Requires a paid Apple Developer Program membership: connect an App Store
+  # Connect API key in Codemagic (Teams > Integrations > Developer Portal) and
+  # register it under the "appstore" group before running this workflow.
+  ios-testflight:
+    name: iOS TestFlight release
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    environment:
+      xcode: latest
+      groups:
+        - appstore
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.totemmassmedia.totemos
+      vars:
+        APP_STORE_APPLE_ID: $APP_STORE_APPLE_ID
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: "ios-v*"
+          include: true
+    scripts:
+      - *generate_project
+      - name: Set the build number
+        script: |
+          set -e
+          cd ios/TotemOS
+          latest="$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)"
+          agvtool new-version -all "$(($latest + 1))"
+      - name: Fetch the signing files
+        script: |
+          set -e
+          keychain initialize
+          app-store-connect fetch-signing-files "com.totemmassmedia.totemos" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          cd ios/TotemOS
+          xcode-project use-profiles
+      - name: Archive the app
+        script: |
+          set -e
+          cd ios/TotemOS
+          xcode-project build-ipa \
+            --project TotemOS.xcodeproj \
+            --scheme TotemOS \
+            --config Release
+    artifacts:
+      - ios/TotemOS/build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
