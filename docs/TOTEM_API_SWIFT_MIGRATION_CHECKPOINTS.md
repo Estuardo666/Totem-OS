@@ -4,6 +4,17 @@ Este documento conserva el plan aprobado para continuar la implementación por
 checkpoints. No se debe saltar un checkpoint: cada uno necesita código, pruebas,
 criterio de salida y una verificación antes de iniciar el siguiente.
 
+## Estado de ejecución
+
+- [x] **CP01 — Inventario del sistema** (`2f34c7d`): inventario técnico y matriz
+  de permisos documentados.
+- [x] **CP02 — Base de pruebas backend** (`3c5d103`): migración inicial,
+  PostgreSQL efímero en CI, seed determinista y smoke test Prisma.
+- [ ] **CP03 — Kernel `/api/v1`**: siguiente checkpoint habilitado.
+
+Los hashes son referencias del repositorio en la fecha de corte; si se continúa
+en otra rama, conservar el contenido de los documentos aunque cambie el hash.
+
 ## Decisiones fijadas
 
 - Backend compartido dentro de Next.js; no se crea un microservicio separado.
