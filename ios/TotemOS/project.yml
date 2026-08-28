@@ -26,7 +26,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.totemmassmedia.totemos
         PRODUCT_MODULE_NAME: TotemOS
-        PRODUCT_NAME: Totem OS
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Totem OS
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.business
