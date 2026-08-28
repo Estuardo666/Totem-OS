@@ -62,15 +62,24 @@ jobs:
           )"
           printf '%s\n' "$destinations"
 
-          simulator_id="$(
+          destination_id="$(
             printf '%s\n' "$destinations" \
               | sed -nE '/platform:iOS Simulator/ s/.*id:([0-9A-Fa-f-]{36}),.*/\1/p' \
               | head -n 1 \
               | xargs
           )"
 
-          if [[ -z "$simulator_id" ]]; then
-            echo "No available iOS Simulator destination was reported by Xcode." >&2
+          if [[ -z "$destination_id" ]]; then
+            destination_id="$(
+              printf '%s\n' "$destinations" \
+                | sed -nE '/platform:macOS.*variant:Designed for/ s/.*id:([0-9A-Fa-f]+),.*/\1/p' \
+                | head -n 1 \
+                | xargs
+            )"
+          fi
+
+          if [[ -z "$destination_id" ]]; then
+            echo "No compatible destination was reported by Xcode." >&2
             exit 1
           fi
 
@@ -79,7 +88,7 @@ jobs:
           xcodebuild \
             -project TotemOS.xcodeproj \
             -scheme TotemOS \
-            -destination "platform=iOS Simulator,id=$simulator_id" \
+            -destination "id=$destination_id" \
             CODE_SIGNING_ALLOWED=NO \
             test 2>&1 | tee /tmp/totem-ios-tests.log
           test_status="${PIPESTATUS[0]}"
