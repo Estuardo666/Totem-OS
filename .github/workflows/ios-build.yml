@@ -18,7 +18,7 @@ permissions:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: ios/TotemOS
@@ -26,9 +26,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Select Xcode 16.3
-        run: sudo xcode-select -s /Applications/Xcode_16.3.app
 
       - name: Install XcodeGen
         run: |
@@ -42,6 +39,15 @@ jobs:
       - name: Generate Xcode project
         run: /tmp/xcodegen-release/xcodegen/bin/xcodegen generate
 
+      - name: Prepare iOS simulator runtime
+        run: |
+          xcodebuild -version
+          if ! xcrun simctl list runtimes | grep -q "iOS "; then
+            echo "No iOS runtime installed; downloading."
+            xcodebuild -downloadPlatform iOS
+          fi
+          xcrun simctl list runtimes
+
       - name: Build for iOS Simulator
         run: >-
           xcodebuild
@@ -52,56 +58,47 @@ jobs:
           CODE_SIGNING_ALLOWED=NO
           build
 
-      - name: Run unit tests
+      - name: Select iPhone simulator
+        id: simulator
         run: |
-          destinations="$(
-            xcodebuild \
-              -project TotemOS.xcodeproj \
-              -scheme TotemOS \
-              -showdestinations
-          )"
-          printf '%s\n' "$destinations"
-
-          destination_id="$(
-            printf '%s\n' "$destinations" \
-              | sed -nE '/platform:iOS Simulator/ s/.*id:([0-9A-Fa-f-]{36}),.*/\1/p' \
-              | head -n 1 \
-              | xargs
+          udid="$(
+            xcrun simctl list devices available \
+              | sed -nE '/^-- iOS /,/^-- /p' \
+              | sed -nE 's/^ *iPhone[^(]*\(([0-9A-Fa-f-]{36})\).*/\1/p' \
+              | head -n 1
           )"
 
-          if [[ -z "$destination_id" ]]; then
-            destination_id="$(
-              printf '%s\n' "$destinations" \
-                | sed -nE '/platform:macOS.*variant:Designed for/ s/.*id:([0-9A-Fa-f]+),.*/\1/p' \
-                | head -n 1 \
-                | xargs
-            )"
-          fi
-
-          if [[ -z "$destination_id" ]]; then
-            echo "No compatible destination was reported by Xcode." >&2
+          if [ -z "$udid" ]; then
+            echo "::error title=iOS unit tests::No available iPhone simulator on the runner."
+            xcrun simctl list devices available
             exit 1
           fi
 
+          echo "Selected simulator $udid"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+
+      - name: Boot simulator
+        run: |
+          udid="${{ steps.simulator.outputs.udid }}"
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b
+
+      - name: Run unit tests
+        run: |
           set +e
           set -o pipefail
           xcodebuild \
             -project TotemOS.xcodeproj \
             -scheme TotemOS \
-            -destination "id=$destination_id" \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
             CODE_SIGNING_ALLOWED=NO \
             test 2>&1 | tee /tmp/totem-ios-tests.log
           test_status="${PIPESTATUS[0]}"
           set -e
 
-          if [[ "$test_status" -ne 0 ]]; then
-            diagnostic="$(
-              { grep -E 'error:|failed|Failure|Unable to|timed out' \
-                  /tmp/totem-ios-tests.log || true; } \
-                | tail -n 1 \
-                | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g'
-            )"
-            if [[ -z "$diagnostic" ]]; then
+          if [ "$test_status" -ne 0 ]; then
+            diagnostic="$({ grep -E 'error:|failed|Failure|Unable to|timed out' /tmp/totem-ios-tests.log || true; } | tail -n 1 | sed 's/%/%25/g')"
+            if [ -z "$diagnostic" ]; then
               diagnostic="xcodebuild exited with status $test_status"
             fi
             echo "::error title=iOS unit tests::$diagnostic"
