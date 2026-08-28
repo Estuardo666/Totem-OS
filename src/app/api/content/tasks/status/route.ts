@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { updateTaskStatus } from "@/actions/content-actions";
 
+import { auth } from "@/auth";
 export async function POST(request: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const body = (await request.json()) as {
       taskId?: string;

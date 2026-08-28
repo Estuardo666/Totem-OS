@@ -34,6 +34,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { EmergencyWithdrawalForm } from "./emergency-withdrawal-form";
 
+import { EmergencyContributionForm } from "@/components/features/finance/emergency-contribution-form";
 interface EmergencyFundDashboardProps {
   balance: {
     balance: number;
@@ -50,6 +51,7 @@ export function EmergencyFundDashboard({
 }: EmergencyFundDashboardProps) {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isContributionOpen, setIsContributionOpen] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   const handleExecute = async (movementId: string) => {
@@ -78,7 +80,7 @@ export function EmergencyFundDashboard({
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <Card className="border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
@@ -90,18 +92,16 @@ export function EmergencyFundDashboard({
             <div className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
               ${currentBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </div>
-            {balance?.coverageMonths !== null && balance?.coverageMonths !== undefined && (
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-                {balance.coverageMonths} meses de cobertura
-              </p>
-            )}
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+              Se reparte a fin de año
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <ArrowUpRight className="h-4 w-4 text-green-600" />
-              Total aportado
+              Total pasado a utilidades
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -115,7 +115,7 @@ export function EmergencyFundDashboard({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <ArrowDownRight className="h-4 w-4 text-red-600" />
-              Total retirado
+              Total sacado
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -123,6 +123,22 @@ export function EmergencyFundDashboard({
               ${totalWithdrawn.toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground mt-1">{withdrawals.length} retiros</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Le corresponde a cada socio
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ${(currentBalance / 2).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Mitad del saldo, por socio
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -148,17 +164,35 @@ export function EmergencyFundDashboard({
 
       {/* Action bar */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Movimientos del fondo</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <h2 className="text-lg font-semibold">Movimientos de utilidades</h2>
+        <div className="flex items-center gap-2">
+        <Dialog open={isContributionOpen} onOpenChange={setIsContributionOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline">
-              <ArrowDownRight className="mr-2 h-4 w-4" />
-              Solicitar retiro
+            <Button>
+              <ArrowUpRight className="mr-2 h-4 w-4" />
+              Pasar dinero a utilidades
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Solicitar retiro del fondo</DialogTitle>
+              <DialogTitle>Pasar dinero de caja a utilidades</DialogTitle>
+            </DialogHeader>
+            <EmergencyContributionForm
+              currentBalance={currentBalance}
+              onSuccess={() => setIsContributionOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              <ArrowDownRight className="mr-2 h-4 w-4" />
+              Sacar de utilidades
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Sacar dinero de utilidades</DialogTitle>
             </DialogHeader>
             <EmergencyWithdrawalForm
               currentBalance={currentBalance}
@@ -166,6 +200,7 @@ export function EmergencyFundDashboard({
             />
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Movements table */}

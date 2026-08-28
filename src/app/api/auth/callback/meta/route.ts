@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { exchangeCodeForToken, getFacebookUserInfo } from "@/lib/meta/auth-service";
 import { db } from "@/lib/db";
+import { META_STATE_COOKIE, clearOAuthCookies, readOAuthCookie, safeEqual } from "@/lib/oauth-state";
 
 /**
  * API Route para recibir el callback de OAuth de Meta
@@ -52,6 +53,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(
         new URL(
           "/admin/settings/integrations?error=" + encodeURIComponent("Código de autorización no recibido"),
+          request.url
+        )
+      );
+    }
+
+    // 4b. Validar el state contra la cookie: sin esto el callback aceptaria
+    // cualquier codigo, permitiendo conectar la cuenta de Meta de un atacante
+    // a la sesion de la victima.
+    const returnedState = searchParams.get("state");
+    const expectedState = await readOAuthCookie(META_STATE_COOKIE);
+    await clearOAuthCookies(META_STATE_COOKIE);
+
+    if (!safeEqual(returnedState ?? undefined, expectedState)) {
+      console.error("[Meta OAuth] state invalido o ausente; se descarta el callback");
+      return NextResponse.redirect(
+        new URL(
+          "/admin/settings/integrations?error=" + encodeURIComponent("Validacion de seguridad fallida (state)"),
           request.url
         )
       );

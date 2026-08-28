@@ -1030,6 +1030,66 @@ export async function updateUserSalaryConfig(
   }
 }
 
+/**
+ * Cuanto dinero queda en caja al cerrar un mes.
+ *
+ * Caja es el dinero de la cuenta operativa que todavia no tiene destino: no se
+ * ha pagado como honorario, no se ha gastado y no se ha pasado a Utilidades.
+ * Por eso se restan tambien los traspasos a Utilidades: ese dinero ya salio a
+ * la cuenta de ahorro y contarlo en los dos sitios lo duplicaria.
+ */
+export async function getCajaDelMes(
+  month: number,
+  year: number
+): Promise<ApiResponse<{ ingresos: number; gastos: number; honorarios: number; aUtilidades: number; caja: number }>> {
+  try {
+    const session = await auth();
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const monthStart = new Date(year, month - 1, 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+
+    const [invoices, incomeTx, expenses, expenseTx, honorariosTx, movimientos] =
+      await Promise.all([
+        db.invoice.findMany({ where: { status: "PAID", generatedAt: { gte: monthStart, lte: monthEnd } } }),
+        db.transaction.findMany({ where: { type: "INCOME", status: "PAID", createdAt: { gte: monthStart, lte: monthEnd } } }),
+        db.expense.findMany({ where: { date: { gte: monthStart, lte: monthEnd } } }),
+        db.transaction.findMany({ where: { type: "EXPENSE", status: "PAID", createdAt: { gte: monthStart, lte: monthEnd } } }),
+        db.transaction.findMany({ where: { type: "HONORARIOS", status: "PAID", createdAt: { gte: monthStart, lte: monthEnd } } }),
+        db.emergencyFundMovement.findMany({ where: { year, month } }),
+      ]);
+
+    const suma = <T,>(items: T[], pick: (item: T) => number) =>
+      items.reduce((total, item) => total + pick(item), 0);
+
+    const ingresos = suma(invoices, (i) => i.amount) + suma(incomeTx, (t) => t.amount);
+    const gastos = suma(expenses, (e) => e.amount) + suma(expenseTx, (t) => t.amount);
+    const honorarios = suma(honorariosTx, (t) => t.amount);
+    const aUtilidades =
+      suma(movimientos.filter((m) => m.type === "CONTRIBUTION"), (m) => m.amount) -
+      suma(movimientos.filter((m) => m.type === "WITHDRAWAL"), (m) => m.amount);
+
+    return {
+      success: true,
+      data: {
+        ingresos,
+        gastos,
+        honorarios,
+        aUtilidades,
+        caja: ingresos - gastos - honorarios - aUtilidades,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al calcular la caja del mes",
+    };
+  }
+}
+
 export async function getSettlementReport(
   month: number,
   year: number
@@ -1077,9 +1137,12 @@ export async function getSettlementReport(
       paidInvoices.reduce((sum, inv) => sum + inv.amount, 0) +
       paidIncomeTransactions.reduce((sum, t) => sum + t.amount, 0);
 
-    const reimbursedExpenses = await db.expense.findMany({
+    // Todos los gastos del periodo, esten reembolsados o no. El filtro anterior
+    // (reimbursed: true) dejaba fuera los gastos pagados con la cuenta de la
+    // empresa —que nunca se reembolsan a nadie— y los que alguien adelanto y
+    // aun no se le devuelven. Ese dinero ya salio: tiene que reducir el bote.
+    const periodExpenses = await db.expense.findMany({
       where: {
-        reimbursed: true,
         date: { gte: monthStart, lte: monthEnd },
       },
     });
@@ -1100,8 +1163,12 @@ export async function getSettlementReport(
       },
     });
 
+    // Todo honorario pagado es dinero que ya salio de la cuenta operativa, sea
+    // por el reparto, por un trabajo puntual o por un extra. Para saber cuanto
+    // queda en caja se restan todos por igual: el reparto 50/50 no se decide
+    // aqui, sino al pasar dinero a Utilidades.
     const totalExpenses =
-      reimbursedExpenses.reduce((sum, e) => sum + e.amount, 0) +
+      periodExpenses.reduce((sum, e) => sum + e.amount, 0) +
       paidExpenseTransactions.reduce((sum, t) => sum + t.amount, 0) +
       paidHonorariosTransactions.reduce((sum, t) => sum + t.amount, 0);
 
@@ -1141,11 +1208,11 @@ export async function getSettlementReport(
           salary = totalHours * (user.hourlyRate ?? 0);
         }
 
-        // Profit share is ADITIVE — applies on top of any salaryType
+        // El dinero que queda cada mes NO se reparte: se queda en caja, sin
+        // dueño, y de ahi pueden salir mas honorarios, gastos del dia a dia o
+        // un traspaso a Utilidades. El 50/50 se aplica solo sobre lo que se
+        // pasa a Utilidades, no sobre el sobrante mensual.
         const userProfitSharePercent = user.profitSharePercent ?? 0;
-        if (userProfitSharePercent > 0 && netIncome > 0) {
-          profitShare = netIncome * (userProfitSharePercent / 100);
-        }
 
         const pendingExpenses = await db.expense.findMany({
           where: { paidByUserId: user.id, reimbursed: false },

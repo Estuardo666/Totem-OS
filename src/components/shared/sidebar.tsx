@@ -100,6 +100,11 @@ const navItems: (NavItem | NavItemWithChildren)[] = [
         icon: Wallet,
       },
       {
+        href: "/finance/utilidades",
+        label: "Utilidades acumuladas",
+        icon: Wallet,
+      },
+      {
         href: "/admin/facturacion",
         label: "Facturación Electrónica",
         icon: Receipt,
@@ -378,6 +383,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
                           child.href === "/finance/monthly-summary" ? isAdmin :
                           child.href === "/finance/alerts" ? isAdmin :
                           child.href === "/finance/settlement" ? isAdmin :
+                          child.href === "/finance/utilidades" ? isAdmin :
                           child.href === "/admin/facturacion" ? isAdmin :
                           true
                         )

@@ -496,7 +496,13 @@ export function TransactionList({ transactions }: TransactionListProps) {
       filteredTransactions.forEach(t => {
         // Detectar si es un expense, invoice o una transacción
         const isExpense = t.type === "EXPENSE";
-        const sourceType = t.sourceType || 
+        // El tipo manda sobre la categoria: los honorarios tambien usan
+        // `category` (UTILIDADES / TRABAJO / AHORRO), asi que deducir "gasto"
+        // por tener categoria los clasificaria mal y la seleccion masiva
+        // actuaria sobre la tabla equivocada.
+        const sourceType =
+          t.type === "HONORARIOS" ? "HONORARIOS" :
+          t.sourceType ||
           (t.description?.startsWith("Factura") ? "INVOICE" : 
            isExpense ? "EXPENSE" :
            t.category ? "EXPENSE" : "TRANSACTION");

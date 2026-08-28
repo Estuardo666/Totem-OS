@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { CodeChallengeMethod } from 'google-auth-library';
 import { db } from '@/lib/db';
 
 const googleCalendarToken = (db as any).googleCalendarToken;
@@ -43,7 +44,7 @@ export class GoogleCalendarService {
   /**
    * Obtiene la URL de autorización para Google Calendar
    */
-  static getAuthUrl(): string {
+  static getAuthUrl(state: string, codeChallenge: string): string {
     const scopes = [
       'https://www.googleapis.com/auth/calendar',
       'https://www.googleapis.com/auth/calendar.events'
@@ -53,20 +54,23 @@ export class GoogleCalendarService {
       access_type: 'offline',
       scope: scopes,
       prompt: 'consent', // Forzar refresh token
+      state,
+      code_challenge_method: CodeChallengeMethod.S256,
+      code_challenge: codeChallenge,
     });
   }
 
   /**
    * Intercambia el código de autorización por tokens
    */
-  static async exchangeCodeForTokens(code: string): Promise<{
+  static async exchangeCodeForTokens(code: string, codeVerifier: string): Promise<{
     accessToken: string;
     refreshToken: string;
     expiresIn: number;
     scope: string;
   }> {
     try {
-      const { tokens } = await this.oauth2Client.getToken(code);
+      const { tokens } = await this.oauth2Client.getToken({ code, codeVerifier });
       
       if (!tokens.access_token || !tokens.refresh_token) {
         throw new Error('No se pudieron obtener los tokens necesarios');

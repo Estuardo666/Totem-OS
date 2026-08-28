@@ -91,9 +91,13 @@ export function SettlementCard({
       .slice(0, 2) || "";
   };
 
-  const totalEstimated = userReport.salary + userReport.reimbursements;
+  // La barra solo tiene sentido para quien cobra un sueldo fijo: hay un objetivo
+  // contra el que medir. Los socios sacan honorarios de caja segun lo que haya,
+  // sin importe esperado, asi que para ellos no se muestra.
+  const totalEstimated =
+    userReport.salary > 0 ? userReport.salary + userReport.reimbursements : 0;
   const progressPercentage = totalEstimated > 0 
-    ? (userReport.paidSoFar / totalEstimated) * 100 
+    ? Math.min(100, (userReport.paidSoFar / totalEstimated) * 100) 
     : 0;
 
   return (

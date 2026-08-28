@@ -19,8 +19,8 @@ export default async function EmergencyFundPage() {
   return (
     <div className="container mx-auto p-3">
       <PageHeader
-        title="Fondo de Emergencia"
-        description="Reserva acumulada de la empresa para imprevistos"
+        title="Utilidades acumuladas"
+        description="Dinero ya apartado de caja y repartido 50/50 entre los socios. Se distribuye a fin de año."
       />
       <Suspense fallback={<CardSkeleton />}>
         <EmergencyFundDashboard

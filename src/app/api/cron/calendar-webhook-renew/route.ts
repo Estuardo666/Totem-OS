@@ -24,7 +24,17 @@ export async function POST(request: NextRequest) {
 
     const webhookBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "https://totem-os.vercel.app";
     const webhookUrl = `${webhookBaseUrl}/api/google-calendar/webhook`;
-    const secretToken = process.env.GOOGLE_CALENDAR_WEBHOOK_SECRET || "";
+    const secretToken = process.env.GOOGLE_CALENDAR_WEBHOOK_SECRET;
+
+    // Sin secreto no se registra ningun canal: un webhook sin token no se puede
+    // verificar y aceptaria notificaciones de cualquier origen. Se falla de
+    // forma explicita para que el problema de configuracion sea visible.
+    if (!secretToken) {
+      return NextResponse.json(
+        { error: "GOOGLE_CALENDAR_WEBHOOK_SECRET no esta configurado; no se registran webhooks." },
+        { status: 500 }
+      );
+    }
 
     // Get all users with Google Calendar connected
     const tokens = await (db as any).googleCalendarToken.findMany({

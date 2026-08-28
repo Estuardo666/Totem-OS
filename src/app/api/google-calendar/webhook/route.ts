@@ -51,7 +51,13 @@ export async function POST(request: NextRequest) {
 
     // 5. Verify token if we set one
     const expectedToken = process.env.GOOGLE_CALENDAR_WEBHOOK_SECRET;
-    if (expectedToken && channelToken !== expectedToken) {
+    if (!expectedToken) {
+      // Sin secreto configurado no hay forma de verificar el origen: se ignora
+      // la notificacion en vez de procesarla a ciegas.
+      console.error("[Calendar Webhook] GOOGLE_CALENDAR_WEBHOOK_SECRET no configurado; notificacion ignorada");
+      return new NextResponse(null, { status: 200 });
+    }
+    if (channelToken !== expectedToken) {
       console.warn(`[Calendar Webhook] Token mismatch for channel ${channelId}`);
       return new NextResponse(null, { status: 200 });
     }

@@ -325,7 +325,7 @@ async function getMonthlyIncomeExpenses(date: Date) {
         _sum: { amount: true },
       }),
       db.expense.aggregate({
-        where: { reimbursed: true, date: { gte: start, lte: end } },
+        where: { date: { gte: start, lte: end } },
         _sum: { amount: true },
       }),
       db.transaction.aggregate({
@@ -386,7 +386,7 @@ export async function evaluateFinanceAlerts(): Promise<ApiResponse<{ alerts: Fin
           _sum: { amount: true },
         }),
         db.expense.aggregate({
-          where: { reimbursed: true, date: { gte: lookbackStart } },
+          where: { date: { gte: lookbackStart } },
           _sum: { amount: true },
         }),
       ]);
@@ -571,7 +571,7 @@ export async function evaluateFinanceAlerts(): Promise<ApiResponse<{ alerts: Fin
 
       const groupedExpenses = await db.expense.groupBy({
         by: ["category"],
-        where: { reimbursed: true, date: { gte: start, lte: end } },
+        where: { date: { gte: start, lte: end } },
         _sum: { amount: true },
       });
 

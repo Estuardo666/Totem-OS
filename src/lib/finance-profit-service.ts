@@ -90,11 +90,23 @@ export async function getProfitPreview(
         }),
       ]);
 
+    // Los gastos viven en dos sitios: transacciones de tipo EXPENSE y la tabla
+    // de gastos (Uber, comida, suscripciones...). Contar solo las primeras
+    // dejaba fuera casi todo el gasto real y sobrestimaba la utilidad.
+    // Va fuera del Promise.all a proposito: una quinta consulta de Prisma ahi
+    // dispara una inferencia de tipos que agota la memoria de TypeScript.
+    const periodExpenses = await db.expense.findMany({
+      where: { date: { gte: start, lte: end } },
+      select: { amount: true },
+    });
+
     const collectedCash =
       paidInvoices.reduce((s, i) => s + i.amount, 0) +
       paidIncomeTx.reduce((s, t) => s + t.amount, 0);
 
-    const totalExpensesPaid = paidExpenseTx.reduce((s, t) => s + t.amount, 0);
+    const totalExpensesPaid =
+      paidExpenseTx.reduce((s, t) => s + t.amount, 0) +
+      periodExpenses.reduce((s, e) => s + e.amount, 0);
     const totalHonorariosPaid = paidHonorariosTx.reduce(
       (s, t) => s + t.amount,
       0

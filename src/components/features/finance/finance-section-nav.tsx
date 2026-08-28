@@ -51,13 +51,13 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/finance/profits",
-    label: "Utilidades",
+    label: "Reparto de utilidades",
     icon: PiggyBank,
     adminOnly: true,
   },
   {
-    href: "/finance/emergency-fund",
-    label: "Fondo de Emergencia",
+    href: "/finance/utilidades",
+    label: "Utilidades acumuladas",
     icon: Shield,
     adminOnly: true,
   },

@@ -10,7 +10,7 @@
 
 ```
 Name: CRON_SECRET
-Value: bb13da8ced4026e79a6175e7de98caa695c1b71a77374f173b7ee0b3f56ff36e
+Value: TU_CRON_SECRET
 ```
 
 6. Selecciona: **Production**, **Preview** y **Development** (los 3)
@@ -47,7 +47,7 @@ Vercel automáticamente va a deployar. Espera 2-3 minutos.
 Abre esta URL en tu navegador (reemplaza `tu-app` con tu dominio de Vercel):
 
 ```
-https://tu-app.vercel.app/api/cron/daily-digest?secret=bb13da8ced4026e79a6175e7de98caa695c1b71a77374f173b7ee0b3f56ff36e
+https://tu-app.vercel.app/api/cron/daily-digest?secret=TU_CRON_SECRET
 ```
 
 Deberías ver:

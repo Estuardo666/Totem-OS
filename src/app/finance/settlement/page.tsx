@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { getSettlementReport } from "@/actions/finance-actions";
+import { getCajaDelMes, getSettlementReport } from "@/actions/finance-actions";
 import { getUsers } from "@/actions/user.actions";
 import { SettlementPageClient } from "@/components/features/finance/settlement-page-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,10 +75,13 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
   const year = currentYear >= 2000 && currentYear <= 2100 ? currentYear : now.getFullYear();
 
   // Obtener datos
-  const [reportsResult, usersResult] = await Promise.all([
+  const [reportsResult, usersResult, cajaResult] = await Promise.all([
     getSettlementReport(month, year),
     getUsers(),
+    getCajaDelMes(month, year),
   ]);
+
+  const caja = cajaResult.success ? cajaResult.data : null;
 
   const reports = reportsResult.success ? reportsResult.data ?? [] : [];
   const users = usersResult.success ? usersResult.data ?? [] : [];
@@ -87,6 +90,33 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
 
   return (
     <div className="container mx-auto p-3">
+      {isAdmin && caja && (
+        <Card className="mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Queda en caja este mes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              ${caja.caja.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              ${caja.ingresos.toLocaleString("en-US", { minimumFractionDigits: 2 })} de ingresos
+              {" − "}${caja.gastos.toLocaleString("en-US", { minimumFractionDigits: 2 })} de gastos
+              {" − "}${caja.honorarios.toLocaleString("en-US", { minimumFractionDigits: 2 })} de honorarios
+              {caja.aUtilidades !== 0 && (
+                <>
+                  {" − "}${caja.aUtilidades.toLocaleString("en-US", { minimumFractionDigits: 2 })} pasado a utilidades
+                </>
+              )}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Dinero sin destino todavía: puede salir como honorarios, cubrir gastos del día a día o pasar a Utilidades.
+            </p>
+          </CardContent>
+        </Card>
+      )}
       <SettlementPageClient
         initialMonth={month}
         initialYear={year}

@@ -7,7 +7,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db as prisma } from "@/lib/db";
 
+import { auth } from "@/auth";
 export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id || session.user.roleLegacy !== "ADMIN") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const productos = await prisma.productoFacturacion.findMany({
       orderBy: { descripcion: "asc" },
@@ -22,6 +28,11 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id || session.user.roleLegacy !== "ADMIN") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { codigo, descripcion, precioUnitario, tipoIva, unidad } = body;
@@ -55,6 +66,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id || session.user.roleLegacy !== "ADMIN") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { id, codigo, descripcion, precioUnitario, tipoIva, unidad } = body;
@@ -84,6 +100,11 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id || session.user.roleLegacy !== "ADMIN") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

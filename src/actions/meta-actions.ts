@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { getManagedPages, getInstagramBusinessAccount, getMetaAuthorizationUrl, getAdAccounts, checkPermissions } from "@/lib/meta/auth-service";
+import { META_STATE_COOKIE, createState, setOAuthCookie } from "@/lib/oauth-state";
 import type { ApiResponse } from "@/types";
 import { revalidatePath } from "next/cache";
 
@@ -19,7 +20,10 @@ export async function getMetaAuthUrl(): Promise<ApiResponse<{ url: string }>> {
       };
     }
 
-    const url = getMetaAuthorizationUrl();
+    const state = createState();
+    await setOAuthCookie(META_STATE_COOKIE, state);
+
+    const url = getMetaAuthorizationUrl(state);
     return {
       success: true,
       data: { url },

@@ -27,6 +27,7 @@ import {
 import {
   getEmergencyFundBalance as getEmergencyFundBalanceFromService,
   getEmergencyFundMovements as getEmergencyFundMovementsFromService,
+  recordContribution as recordContributionFromService,
   requestWithdrawal as requestWithdrawalFromService,
   executeWithdrawal as executeWithdrawalFromService,
 } from "@/lib/finance-emergency-fund-service";
@@ -38,7 +39,7 @@ import {
 function revalidateFundsViews() {
   revalidatePath("/finance");
   revalidatePath("/finance/profits");
-  revalidatePath("/finance/emergency-fund");
+  revalidatePath("/finance/utilidades");
   revalidatePath("/finance/monthly-summary");
 }
 
@@ -165,6 +166,52 @@ export async function getEmergencyFundMovements(
   filters?: { year?: number; type?: string }
 ): Promise<ApiResponse<EmergencyFundMovementWithUser[]>> {
   return getEmergencyFundMovementsFromService(filters);
+}
+
+/**
+ * Registra a mano cuanto dinero quedo en caja tras un reparto.
+ *
+ * El monto no se conoce por adelantado: primero se pagan reembolsos y
+ * honorarios, y lo que sobra se anota aqui. El saldo es acumulado, asi que
+ * cada aporte se suma al total historico del fondo.
+ */
+export async function recordEmergencyContribution(input: {
+  amount: number;
+  year: number;
+  month: number;
+  reason?: string;
+}): Promise<ApiResponse<{ id: string; newBalance: number }>> {
+  try {
+    const session = await auth();
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return { success: false, error: "No autorizado" };
+    }
+
+    if (!Number.isFinite(input?.amount) || input.amount <= 0) {
+      return { success: false, error: "El monto debe ser mayor a 0" };
+    }
+
+    const result = await recordContributionFromService({
+      amount: input.amount,
+      year: input.year,
+      month: input.month,
+      reason: input.reason?.trim() || undefined,
+      authorizedByUserId: session.user.id,
+    });
+
+    if (result.success) {
+      revalidateFundsViews();
+    }
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Error al registrar el aporte a caja",
+    };
+  }
 }
 
 export async function requestEmergencyWithdrawal(

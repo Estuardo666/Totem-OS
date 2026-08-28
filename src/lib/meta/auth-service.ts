@@ -31,7 +31,7 @@ export interface MetaUserToken {
  * Genera la URL de autorización de Facebook OAuth 2.0
  * Permisos solicitados para gestión completa de páginas e Instagram Business
  */
-export function getMetaAuthorizationUrl(): string {
+export function getMetaAuthorizationUrl(state: string): string {
   if (!META_APP_ID) {
     throw new Error("META_APP_ID no está configurado en las variables de entorno");
   }
@@ -49,6 +49,7 @@ export function getMetaAuthorizationUrl(): string {
     scope: scopes,
     response_type: "code",
     auth_type: "rerequest", // Forzar re-autorización si los permisos fueron rechazados
+    state, // Se valida en el callback contra una cookie httpOnly
   });
 
   return `https://www.facebook.com/v21.0/dialog/oauth?${params.toString()}`;
