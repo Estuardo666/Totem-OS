@@ -22,17 +22,20 @@ targets:
     configFiles:
       Debug: Config/Debug.xcconfig
       Release: Config/Release.xcconfig
+    info:
+      path: TotemOS/Info.plist
+      properties:
+        CFBundleDisplayName: Totem OS
+        LSApplicationCategoryType: public.app-category.business
+        TOTEM_BASE_URL: https://totem-os.vercel.app
+        UIApplicationSupportsIndirectInputEvents: true
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.totemmassmedia.totemos
         PRODUCT_MODULE_NAME: TotemOS
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Totem OS
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.business
-        INFOPLIST_KEY_TOTEM_BASE_URL: https://totem-os.vercel.app
-        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: TotemOS/Resources/TotemOS.entitlements
   TotemOSTests:
     type: bundle.unit-test
