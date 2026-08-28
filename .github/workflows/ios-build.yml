@@ -83,6 +83,15 @@ jobs:
           xcrun simctl boot "$udid" || true
           xcrun simctl bootstatus "$udid" -b
 
+      - name: Build for testing
+        run: >-
+          xcodebuild
+          -project TotemOS.xcodeproj
+          -scheme TotemOS
+          -destination "id=${{ steps.simulator.outputs.udid }}"
+          CODE_SIGNING_ALLOWED=NO
+          build-for-testing
+
       - name: Run unit tests
         run: |
           set +e
@@ -92,18 +101,20 @@ jobs:
             -scheme TotemOS \
             -destination "id=${{ steps.simulator.outputs.udid }}" \
             CODE_SIGNING_ALLOWED=NO \
-            test 2>&1 | tee /tmp/totem-ios-tests.log
+            test-without-building 2>&1 | tee /tmp/totem-ios-tests.log
           test_status="${PIPESTATUS[0]}"
           set -e
 
           if [ "$test_status" -ne 0 ]; then
-            { grep -E 'error:|XCTAssert|failed with|Test Case .* failed|Unable to|timed out' /tmp/totem-ios-tests.log || true; } \
+            { grep -E 'error:|XCTAssert|failed|Failure|Unable to|timed out|Undefined symbol|cannot find' /tmp/totem-ios-tests.log || true; } \
               | sort -u \
-              | head -n 8 \
+              | head -n 9 \
               | sed 's/%/%25/g' \
               | while IFS= read -r line; do
                   echo "::error title=iOS unit tests::$line"
                 done
+            echo "----- tail of xcodebuild log -----"
+            tail -n 120 /tmp/totem-ios-tests.log
             echo "::error title=iOS unit tests::xcodebuild exited with status $test_status"
             exit "$test_status"
           fi
