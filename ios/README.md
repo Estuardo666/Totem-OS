@@ -1,19 +1,21 @@
 # Totem OS para iOS
 
-Base SwiftUI para `com.totemmassmedia.totemos`. La primera versión reutiliza la sesión web de Totem OS dentro de `WKWebView`; así evita duplicar autenticación o introducir tokens nativos antes de auditar ese contrato.
+Base SwiftUI para `com.totemmassmedia.totemos`. El login es nativo y reutiliza el contrato CSRF, proveedor `credentials` y cookie de sesión de Auth.js; no mantiene un segundo sistema de autenticación ni duplica las reglas de usuarios y roles.
 
 ## Qué incluye
 
 - Contenedor SwiftUI para `https://totem-os.vercel.app`.
 - Cookies persistentes de `WKWebView` para conservar la sesión.
-- Inicio de sesión por correo y contraseña. Google OAuth se oculta dentro de la app porque Google no permite ese flujo en navegadores embebidos.
+- Inicio de sesión SwiftUI por correo y contraseña. La app obtiene el CSRF oficial, valida la sesión y transfiere las cookies HTTPS al `WKWebView`.
+- Las contraseñas permanecen solo durante la petición y no se guardan en `UserDefaults`, Keychain ni el repositorio.
+- Google OAuth no se ofrece todavía en iOS; requiere Google Sign-In nativo y su propio contrato de backend.
 - Registro APNs después de que el usuario inicia sesión.
 - Revocación de la instalación APNs antes del cierre de sesión normal o remoto.
 - Contrato compatible con `POST /api/push/apns`.
 - UUID estable por instalación almacenado en `UserDefaults`.
 - Entornos APNs separados: `SANDBOX` en Debug y `PRODUCTION` en Release.
 - Privacy Manifest para el uso de `UserDefaults`.
-- Build y pruebas automáticas con Xcode 26.2 en GitHub Actions.
+- Build y pruebas automáticas con el Xcode más reciente disponible en GitHub Actions.
 
 ## Generar el proyecto en un Mac
 

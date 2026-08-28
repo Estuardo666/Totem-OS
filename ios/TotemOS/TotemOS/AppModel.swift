@@ -9,6 +9,7 @@ final class AppModel: ObservableObject {
     static let shared = AppModel()
 
     @Published private(set) var isOffline = false
+    @Published private(set) var showsNativeLogin = false
 
     private weak var webView: WKWebView?
     private var deviceToken: String?
@@ -29,6 +30,18 @@ final class AppModel: ObservableObject {
         self.isOffline = isOffline
     }
 
+    func presentNativeLogin() {
+        isAuthenticated = false
+        isOffline = false
+        NativeAuthService.clearURLSessionAuthCookies()
+        showsNativeLogin = true
+    }
+
+    func nativeLoginDidSucceed() {
+        isOffline = false
+        showsNativeLogin = false
+    }
+
     func webViewDidFinish(url: URL?) {
         guard
             let url,
@@ -40,6 +53,7 @@ final class AppModel: ObservableObject {
             if url?.host == AppEnvironment.baseURL.host,
                url?.path.hasPrefix("/sign-in") == true {
                 handleSignedOutSession()
+                presentNativeLogin()
             }
             isAuthenticated = false
             return

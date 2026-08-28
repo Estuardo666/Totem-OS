@@ -8,13 +8,21 @@ struct ContentView: View {
         ZStack(alignment: .top) {
             Color.totemLaunchBackground
 
-            WebAppView {
-                withAnimation(.easeOut(duration: 0.25)) {
-                    isLaunching = false
+            if appModel.showsNativeLogin {
+                NativeLoginView {
+                    isLaunching = true
+                    appModel.nativeLoginDidSucceed()
+                }
+                .transition(.opacity)
+            } else {
+                WebAppView {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        isLaunching = false
+                    }
                 }
             }
 
-            if isLaunching {
+            if isLaunching && !appModel.showsNativeLogin {
                 LaunchLoadingView()
                     .transition(.opacity)
                     .zIndex(1)
