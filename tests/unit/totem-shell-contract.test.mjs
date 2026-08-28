@@ -12,6 +12,7 @@ import {
 const baseInput = {
   route: "/finance/transactions",
   theme: "dark",
+  accentColor: "#cba6f7",
   user: { name: "Ana Pérez", role: "ADMIN", image: "https://cdn.example.com/a.png" },
   logoLight: "/logo-light.png",
   logoDark: "javascript:alert(1)",
@@ -35,6 +36,7 @@ test("el snapshot expone la versión, la ruta y los datos saneados", () => {
   assert.equal(snapshot.version, TOTEM_SHELL_CONTRACT_VERSION);
   assert.equal(snapshot.route, "/finance/transactions");
   assert.equal(snapshot.theme, "dark");
+  assert.equal(snapshot.accentColor, "#CBA6F7");
   assert.equal(snapshot.user.roleLabel, "Administrador");
   assert.equal(snapshot.user.initials, "AP");
   assert.equal(snapshot.logoLight, "/logo-light.png");
@@ -105,9 +107,14 @@ test("solo se aceptan comandos conocidos con rutas permitidas", () => {
     { type: "navigate", route: "/clients" }
   );
   assert.deepEqual(
-    parseShellCommand(JSON.stringify({ type: "openTransaction" }), snapshot),
-    { type: "openTransaction" }
+    parseShellCommand(JSON.stringify({ type: "openTransaction", tab: "expense" }), snapshot),
+    { type: "openTransaction", tab: "expense" }
   );
+  assert.deepEqual(
+    parseShellCommand({ type: "openTransaction" }, snapshot),
+    { type: "openTransaction", tab: "income" }
+  );
+  assert.equal(parseShellCommand({ type: "openTransaction", tab: "otro" }, snapshot), null);
   assert.deepEqual(
     parseShellCommand({ type: "markNotificationRead", notificationId: "clx123abc" }, snapshot),
     { type: "markNotificationRead", notificationId: "clx123abc" }
@@ -122,6 +129,10 @@ test("solo se aceptan comandos conocidos con rutas permitidas", () => {
   assert.equal(parseShellCommand(null, snapshot), null);
 });
 
+test("el color primario inválido usa un respaldo seguro", () => {
+  assert.equal(buildShellSnapshot({ ...baseInput, accentColor: "red" }).accentColor, "#3B82F6");
+});
+
 test("un usuario sin permisos no puede navegar a rutas de administración del menú", () => {
   const snapshot = buildShellSnapshot({ ...baseInput, user: { name: "Bea", role: "USER" } });
 
@@ -130,5 +141,10 @@ test("un usuario sin permisos no puede navegar a rutas de administración del me
   assert.deepEqual(
     parseShellCommand({ type: "navigate", route: "/finance/transactions" }, snapshot),
     { type: "navigate", route: "/finance/transactions" }
+  );
+  assert.equal(parseShellCommand({ type: "openTransaction", tab: "income" }, snapshot), null);
+  assert.deepEqual(
+    parseShellCommand({ type: "openTransaction", tab: "expense" }, snapshot),
+    { type: "openTransaction", tab: "expense" }
   );
 });

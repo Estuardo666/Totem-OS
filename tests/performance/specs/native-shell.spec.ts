@@ -96,8 +96,9 @@ test.describe("app nativa TotemOS-iOS", () => {
     expect(await dispatch({ type: "navigate", route: "https://example.com" })).toBe(false);
     expect(await dispatch({ type: "eval", code: "1" })).toBe(false);
 
-    expect(await dispatch({ type: "openTransaction" })).toBe(true);
+    expect(await dispatch({ type: "openTransaction", tab: "expense" })).toBe(true);
     await expect(page.getByRole("dialog").getByText("Nueva Transacción")).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Gasto" })).toHaveAttribute("data-state", "active");
     // Mientras el formulario está abierto el shell nativo se oculta.
     await expect.poll(async () => (await latestSnapshot(page))?.overlayHidden).toBe(true);
   });

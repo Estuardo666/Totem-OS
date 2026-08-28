@@ -4,6 +4,7 @@ import TotemOSKit
 /// Header flotante: menú, logo, tema, tareas, notificaciones y avatar.
 struct ShellHeaderView: View {
     @EnvironmentObject private var shell: ShellModel
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     private var snapshot: ShellSnapshot { shell.snapshot }
 
@@ -55,8 +56,10 @@ struct ShellHeaderView: View {
         }
         .padding(.horizontal, 6)
         .frame(minHeight: 56)
-        // La barra no dibuja material propio: evita el flash negro al abrir
-        // menús y mantiene el fondo cien por ciento transparente.
+        .totemShellGlass(
+            in: Capsule(),
+            reduceTransparency: reduceTransparency
+        )
         .padding(.horizontal, 12)
     }
 

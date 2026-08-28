@@ -19,6 +19,7 @@ export const MAX_SHELL_BADGE_COUNT = 999;
 
 export type ShellRole = "ADMIN" | "EDITOR" | "USER";
 export type ShellThemeVariant = "light" | "dark";
+export type ShellTransactionTab = "expense" | "income" | "honorarios";
 
 export interface ShellNavItem {
   id: string;
@@ -58,6 +59,8 @@ export interface ShellSnapshot {
   version: number;
   route: string;
   theme: ShellThemeVariant;
+  /** Color primario efectivo del tema del usuario, en #RRGGBB. */
+  accentColor: string;
   user: ShellUser | null;
   logoLight: string | null;
   logoDark: string | null;
@@ -78,7 +81,7 @@ export type ShellCommand =
   | { type: "openNotifications" }
   | { type: "openSettings" }
   | { type: "openIntegrations" }
-  | { type: "openTransaction" }
+  | { type: "openTransaction"; tab: ShellTransactionTab }
   | { type: "signOut" };
 
 export const SHELL_SETTINGS_ROUTE = "/admin/settings";
@@ -242,6 +245,7 @@ export function shellInitials(name: string): string {
 export interface ShellSnapshotInput {
   route: string;
   theme: ShellThemeVariant;
+  accentColor?: string | null;
   user: { name?: string | null; role?: string | null; image?: string | null } | null;
   logoLight?: string | null;
   logoDark?: string | null;
@@ -281,6 +285,7 @@ export function buildShellSnapshot(input: ShellSnapshotInput): ShellSnapshot {
     version: TOTEM_SHELL_CONTRACT_VERSION,
     route: isValidShellRoute(input.route) ? input.route : "/",
     theme: isShellThemeVariant(input.theme) ? input.theme : "light",
+    accentColor: sanitizeAccentColor(input.accentColor),
     user: input.user
       ? {
         name: truncate(name, MAX_SHELL_LABEL_LENGTH),
@@ -337,8 +342,19 @@ export function parseShellCommand(
       return { type: "openSettings" };
     case "openIntegrations":
       return { type: "openIntegrations" };
-    case "openTransaction":
-      return { type: "openTransaction" };
+    case "openTransaction": {
+      const tab = candidate.tab;
+      if (tab === "expense" || tab === "income" || tab === "honorarios") {
+        if (snapshot.user?.role !== "ADMIN" && tab !== "expense") return null;
+        return { type: "openTransaction", tab };
+      }
+      if ("tab" in candidate) return null;
+      // Compatibilidad con builds anteriores que no enviaban pestaña.
+      return {
+        type: "openTransaction",
+        tab: snapshot.user?.role === "ADMIN" ? "income" : "expense",
+      };
+    }
     case "signOut":
       return { type: "signOut" };
     default:
@@ -352,4 +368,10 @@ function safeParse(rawValue: string): unknown {
   } catch {
     return null;
   }
+}
+
+function sanitizeAccentColor(value: unknown): string {
+  return typeof value === "string" && /^#[0-9A-Fa-f]{6}$/.test(value)
+    ? value.toUpperCase()
+    : "#3B82F6";
 }

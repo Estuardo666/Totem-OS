@@ -10,6 +10,7 @@ final class ShellModel: ObservableObject {
     @Published private(set) var hasSnapshot = false
     @Published var isNavigationMenuOpen = false
     @Published var isAccountMenuOpen = false
+    @Published var isTransactionMenuOpen = false
     @Published var isNotificationListOpen = false
 
     private weak var webView: WKWebView?
@@ -24,6 +25,7 @@ final class ShellModel: ObservableObject {
         hasSnapshot = false
         isNavigationMenuOpen = false
         isAccountMenuOpen = false
+        isTransactionMenuOpen = false
         isNotificationListOpen = false
     }
 
@@ -81,17 +83,26 @@ final class ShellModel: ObservableObject {
 
     func toggleNavigationMenu() {
         isAccountMenuOpen = false
+        isTransactionMenuOpen = false
         isNavigationMenuOpen.toggle()
     }
 
     func toggleAccountMenu() {
         isNavigationMenuOpen = false
+        isTransactionMenuOpen = false
         isAccountMenuOpen.toggle()
+    }
+
+    func toggleTransactionMenu() {
+        isNavigationMenuOpen = false
+        isAccountMenuOpen = false
+        isTransactionMenuOpen.toggle()
     }
 
     func closeMenus() {
         isNavigationMenuOpen = false
         isAccountMenuOpen = false
+        isTransactionMenuOpen = false
     }
 }
 

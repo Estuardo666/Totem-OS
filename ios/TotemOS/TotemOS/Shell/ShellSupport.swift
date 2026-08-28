@@ -90,3 +90,24 @@ extension ShellNotification {
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
+
+extension Color {
+    init?(shellHex value: String?) {
+        guard let value,
+              ShellContract.isValidHexColor(value),
+              let rgb = UInt64(value.dropFirst(), radix: 16)
+        else { return nil }
+
+        self.init(
+            red: Double((rgb >> 16) & 0xFF) / 255,
+            green: Double((rgb >> 8) & 0xFF) / 255,
+            blue: Double(rgb & 0xFF) / 255
+        )
+    }
+}
+
+extension ShellSnapshot {
+    var accent: Color {
+        Color(shellHex: accentColor) ?? Color(red: 59 / 255, green: 130 / 255, blue: 246 / 255)
+    }
+}

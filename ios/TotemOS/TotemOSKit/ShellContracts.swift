@@ -32,6 +32,11 @@ public enum ShellContract {
         let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
         return value.unicodeScalars.allSatisfy(allowed.contains)
     }
+
+    public static func isValidHexColor(_ value: String) -> Bool {
+        guard value.count == 7, value.first == "#" else { return false }
+        return value.dropFirst().allSatisfy { $0.isHexDigit }
+    }
 }
 
 public enum ShellRole: String, Codable, Equatable {
@@ -43,6 +48,12 @@ public enum ShellRole: String, Codable, Equatable {
 public enum ShellThemeVariant: String, Codable, Equatable {
     case light
     case dark
+}
+
+public enum ShellTransactionTab: String, Codable, Equatable {
+    case expense
+    case income
+    case honorarios
 }
 
 public struct ShellNavItem: Codable, Equatable, Identifiable {
@@ -125,6 +136,7 @@ public struct ShellSnapshot: Codable, Equatable {
     public let version: Int
     public let route: String
     public let theme: ShellThemeVariant
+    public let accentColor: String?
     public let user: ShellUser?
     public let logoLight: String?
     public let logoDark: String?
@@ -139,6 +151,7 @@ public struct ShellSnapshot: Codable, Equatable {
         version: Int,
         route: String,
         theme: ShellThemeVariant,
+        accentColor: String? = nil,
         user: ShellUser?,
         logoLight: String?,
         logoDark: String?,
@@ -152,6 +165,7 @@ public struct ShellSnapshot: Codable, Equatable {
         self.version = version
         self.route = route
         self.theme = theme
+        self.accentColor = accentColor
         self.user = user
         self.logoLight = logoLight
         self.logoDark = logoDark
@@ -195,6 +209,10 @@ public enum ShellSnapshotDecoder {
         guard ShellContract.isValidRoute(snapshot.route) else {
             throw ShellSnapshotError.invalidRoute(snapshot.route)
         }
+        if let accentColor = snapshot.accentColor,
+           !ShellContract.isValidHexColor(accentColor) {
+            throw ShellSnapshotError.invalidPayload
+        }
         for item in snapshot.tabs where !ShellContract.isValidRoute(item.route) {
             throw ShellSnapshotError.invalidRoute(item.route)
         }
@@ -235,7 +253,7 @@ public enum ShellCommand: Equatable {
     case openNotifications
     case openSettings
     case openIntegrations
-    case openTransaction
+    case openTransaction(tab: ShellTransactionTab)
     case signOut
 
     /// Diccionario JSON serializable. `nil` si el comando lleva datos inválidos.
@@ -257,8 +275,8 @@ public enum ShellCommand: Equatable {
             return ["type": "openSettings"]
         case .openIntegrations:
             return ["type": "openIntegrations"]
-        case .openTransaction:
-            return ["type": "openTransaction"]
+        case .openTransaction(let tab):
+            return ["type": "openTransaction", "tab": tab.rawValue]
         case .signOut:
             return ["type": "signOut"]
         }
@@ -291,6 +309,7 @@ public extension ShellSnapshot {
         version: ShellContract.version,
         route: "/",
         theme: .light,
+        accentColor: nil,
         user: nil,
         logoLight: nil,
         logoDark: nil,

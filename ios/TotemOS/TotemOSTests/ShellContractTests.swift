@@ -13,6 +13,7 @@ final class ShellContractTests: XCTestCase {
           "version": \(version),
           "route": "\(route)",
           "theme": "dark",
+          "accentColor": "#CBA6F7",
           "user": {
             "name": "Ana Pérez",
             "role": "ADMIN",
@@ -65,6 +66,7 @@ final class ShellContractTests: XCTestCase {
 
         XCTAssertEqual(snapshot.route, "/finance/transactions")
         XCTAssertEqual(snapshot.theme, .dark)
+        XCTAssertEqual(snapshot.accentColor, "#CBA6F7")
         XCTAssertEqual(snapshot.user?.role, .admin)
         XCTAssertEqual(snapshot.taskCount, 3)
         XCTAssertEqual(snapshot.notifications.count, 1)
@@ -126,6 +128,14 @@ final class ShellContractTests: XCTestCase {
             ShellCommand.setTheme(variant: .light).payload,
             ["type": "setTheme", "variant": "light"]
         )
-        XCTAssertEqual(ShellCommand.openTransaction.payload, ["type": "openTransaction"])
+        XCTAssertEqual(
+            ShellCommand.openTransaction(tab: .expense).payload,
+            ["type": "openTransaction", "tab": "expense"]
+        )
+    }
+
+    func testRejectsInvalidAccentColor() {
+        let invalid = snapshotJSON().replacingOccurrences(of: "#CBA6F7", with: "purple")
+        XCTAssertThrowsError(try ShellSnapshotDecoder.decode(invalid))
     }
 }

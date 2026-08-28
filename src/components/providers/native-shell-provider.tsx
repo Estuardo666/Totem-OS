@@ -13,7 +13,11 @@ import {
 } from "@/actions/notification-actions";
 import { updateUserSettings } from "@/actions/user.actions";
 import { useNativeShell } from "@/hooks/use-native-shell";
-import { toggleThemeVariantClient } from "@/lib/theme";
+import {
+  DEFAULT_PRIMARY_COLOR,
+  sanitizeHexColor,
+  toggleThemeVariantClient,
+} from "@/lib/theme";
 import type { ThemeVariant } from "@/lib/theme";
 import { signOutWithTotemIOSCleanup } from "@/lib/totem-ios-client";
 import {
@@ -24,6 +28,7 @@ import {
   SHELL_SETTINGS_ROUTE,
   TOTEM_SHELL_BRIDGE_NAME,
   type ShellSnapshot,
+  type ShellTransactionTab,
 } from "@/lib/totem-shell-contract";
 
 const SHELL_DISPATCH_FUNCTION = "__totemShellDispatch";
@@ -66,20 +71,32 @@ function NativeShellBridge() {
   const userId = session?.user?.id;
 
   const [theme, setTheme] = useState<ThemeVariant>("light");
+  const [accentColor, setAccentColor] = useState(DEFAULT_PRIMARY_COLOR);
   const [brand, setBrand] = useState<{ logoLight: string | null; logoDark: string | null } | null>(null);
   const [taskCount, setTaskCount] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<ShellNotificationSource[]>([]);
   const [isTransactionOpen, setIsTransactionOpen] = useState(false);
+  const [transactionTab, setTransactionTab] = useState<ShellTransactionTab>("expense");
 
   // El tema vive en el DOM: se observa igual que en navbar y sidebar web.
   useEffect(() => {
     const root = document.documentElement;
-    const sync = () => setTheme(root.classList.contains("dark") ? "dark" : "light");
+    const sync = () => {
+      setTheme(root.classList.contains("dark") ? "dark" : "light");
+      setAccentColor(
+        sanitizeHexColor(
+          window.getComputedStyle(root).getPropertyValue("--primary-color")
+        ) ?? DEFAULT_PRIMARY_COLOR
+      );
+    };
     sync();
 
     const observer = new MutationObserver(sync);
-    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ["class", "style", "data-theme", "data-theme-variant"],
+    });
     return () => observer.disconnect();
   }, []);
 
@@ -141,6 +158,7 @@ function NativeShellBridge() {
   const snapshot = useMemo<ShellSnapshot>(() => buildShellSnapshot({
     route: pathname || "/",
     theme,
+    accentColor,
     user: session?.user
       ? {
         name: session.user.name,
@@ -164,6 +182,7 @@ function NativeShellBridge() {
   }), [
     pathname,
     theme,
+    accentColor,
     session?.user,
     brand,
     taskCount,
@@ -242,6 +261,7 @@ function NativeShellBridge() {
         router.push(SHELL_INTEGRATIONS_ROUTE);
         return true;
       case "openTransaction":
+        setTransactionTab(command.tab);
         setIsTransactionOpen(true);
         return true;
       case "signOut":
@@ -264,6 +284,7 @@ function NativeShellBridge() {
     <TransactionDialog
       open={isTransactionOpen}
       onOpenChange={setIsTransactionOpen}
+      defaultTab={transactionTab}
     />
   );
 }

@@ -19,22 +19,24 @@ struct ShellTabBarView: View {
         let tabs = snapshot.tabs
         let split = min(2, tabs.count)
 
-        GeometryReader { proxy in
-            HStack(spacing: 4) {
-                ForEach(tabs.prefix(split)) { tab in tabButton(tab) }
+        TotemGlassContainer(spacing: 8) {
+            GeometryReader { proxy in
+                HStack(spacing: 4) {
+                    ForEach(tabs.prefix(split)) { tab in tabButton(tab) }
 
-                centerAction
+                    centerAction
 
-                ForEach(tabs.dropFirst(split)) { tab in tabButton(tab) }
+                    ForEach(tabs.dropFirst(split)) { tab in tabButton(tab) }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .contentShape(Capsule())
+                .totemShellGlass(
+                    in: Capsule(),
+                    reduceTransparency: reduceTransparency
+                )
+                .simultaneousGesture(selectionDrag(tabs: tabs, width: proxy.size.width))
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .contentShape(Capsule())
-            .totemShellGlass(
-                in: Capsule(),
-                reduceTransparency: reduceTransparency
-            )
-            .simultaneousGesture(selectionDrag(tabs: tabs, width: proxy.size.width))
         }
         .frame(height: 64)
         .padding(.horizontal, 16)
@@ -67,13 +69,22 @@ struct ShellTabBarView: View {
             .background {
                 if isActive {
                     Capsule()
-                        .fill(Color.accentColor.opacity(0.18))
+                        .fill(snapshot.accent.opacity(0.08))
+                        .totemShellGlass(
+                            in: Capsule(),
+                            interactive: true,
+                            reduceTransparency: reduceTransparency
+                        )
+                        .overlay {
+                            Capsule().stroke(snapshot.accent.opacity(0.32), lineWidth: 1)
+                        }
+                        .shadow(color: snapshot.accent.opacity(0.24), radius: 10)
                         .matchedGeometryEffect(id: "shell-tab-selection", in: selectionNamespace)
                 }
             }
         }
         .buttonStyle(.plain)
-        .foregroundStyle(isActive ? Color.accentColor : Color.primary.opacity(0.75))
+        .foregroundStyle(isActive ? snapshot.accent : Color.primary.opacity(0.75))
         .accessibilityLabel(tab.label)
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
     }
@@ -85,13 +96,17 @@ struct ShellTabBarView: View {
 
     private var centerAction: some View {
         Button {
-            shell.send(.openTransaction)
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.82)) {
+                shell.toggleTransactionMenu()
+            }
         } label: {
-            Image(systemName: "receipt")
-                .font(.system(size: 20, weight: .semibold))
+            Image(systemName: "plus")
+                .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(Color.white)
                 .frame(width: 52, height: 52)
-                .background(Color.accentColor, in: Circle())
+                .background(snapshot.accent, in: Circle())
+                .shadow(color: snapshot.accent.opacity(0.36), radius: 10, y: 4)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Registrar transacción")
