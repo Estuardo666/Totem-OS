@@ -66,10 +66,16 @@ struct ShellHeaderView: View {
         }
         .padding(.horizontal, 6)
         .frame(minHeight: 56)
-        .totemShellGlass(
-            in: Capsule(),
-            reduceTransparency: reduceTransparency
-        )
+        // El vidrio vive en una vista hermana, no alrededor del árbol de
+        // controles. Así `Menu` transforma solo su botón de origen y no la
+        // cápsula completa del header.
+        .background {
+            Color.clear
+                .totemShellGlass(
+                    in: Capsule(),
+                    reduceTransparency: reduceTransparency
+                )
+        }
         .padding(.horizontal, 12)
     }
 

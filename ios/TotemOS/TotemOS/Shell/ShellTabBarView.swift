@@ -31,10 +31,15 @@ struct ShellTabBarView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
                 .contentShape(Capsule())
-                .totemShellGlass(
-                    in: Capsule(),
-                    reduceTransparency: reduceTransparency
-                )
+                // Mantener el platter fuera del subárbol de `Menu` evita que
+                // iOS lo use entero como origen de la presentación.
+                .background {
+                    Color.clear
+                        .totemShellGlass(
+                            in: Capsule(),
+                            reduceTransparency: reduceTransparency
+                        )
+                }
                 .simultaneousGesture(selectionDrag(tabs: tabs, width: proxy.size.width))
             }
         }
