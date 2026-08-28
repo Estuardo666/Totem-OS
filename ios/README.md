@@ -7,6 +7,8 @@ Base SwiftUI para `com.totemmassmedia.totemos`. El login es nativo y reutiliza e
 - Contenedor SwiftUI para `https://totem-os.vercel.app`.
 - Cookies persistentes de `WKWebView` para conservar la sesión.
 - Inicio de sesión SwiftUI por correo y contraseña. La app obtiene el CSRF oficial, valida la sesión y transfiere las cookies HTTPS al `WKWebView`.
+- Login con Google Sans, controles Liquid Glass nativos en iOS 26 y material compatible en iOS 17–18.
+- Los estilos reutilizables para futuras pantallas Swift viven en `TotemDesignSystem.swift`.
 - Las contraseñas permanecen solo durante la petición y no se guardan en `UserDefaults`, Keychain ni el repositorio.
 - Google OAuth no se ofrece todavía en iOS; requiere Google Sign-In nativo y su propio contrato de backend.
 - Registro APNs después de que el usuario inicia sesión.

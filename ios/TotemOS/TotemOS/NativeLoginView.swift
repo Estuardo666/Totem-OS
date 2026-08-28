@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct NativeLoginView: View {
     let onAuthenticated: () -> Void
@@ -9,6 +10,7 @@ struct NativeLoginView: View {
     @State private var isSubmitting = false
     @State private var errorMessage: String?
     @FocusState private var focusedField: Field?
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     private enum Field: Hashable {
         case email
@@ -27,6 +29,20 @@ struct NativeLoginView: View {
             )
             .ignoresSafeArea()
 
+            Circle()
+                .fill(Color.purple.opacity(0.34))
+                .frame(width: 320, height: 320)
+                .blur(radius: 70)
+                .offset(x: 150, y: -260)
+                .accessibilityHidden(true)
+
+            Circle()
+                .fill(Color.blue.opacity(0.18))
+                .frame(width: 280, height: 280)
+                .blur(radius: 80)
+                .offset(x: -160, y: 310)
+                .accessibilityHidden(true)
+
             ScrollView {
                 VStack(spacing: 30) {
                     Spacer(minLength: 30)
@@ -41,11 +57,11 @@ struct NativeLoginView: View {
 
                         VStack(spacing: 8) {
                             Text("Bienvenido a Totem OS")
-                                .font(.system(size: 30, weight: .bold, design: .rounded))
+                                .font(TotemTypography.bold(30, relativeTo: .largeTitle))
                                 .foregroundStyle(.white)
 
                             Text("Inicia sesión para continuar")
-                                .font(.subheadline)
+                                .font(TotemTypography.regular(16, relativeTo: .body))
                                 .foregroundStyle(.white.opacity(0.62))
                         }
                     }
@@ -57,6 +73,7 @@ struct NativeLoginView: View {
                             field: .email
                         ) {
                             TextField("tu@email.com", text: $email)
+                                .font(TotemTypography.regular(17, relativeTo: .body))
                                 .textContentType(.username)
                                 .keyboardType(.emailAddress)
                                 .textInputAutocapitalization(.never)
@@ -78,6 +95,7 @@ struct NativeLoginView: View {
                                     SecureField("Contraseña", text: $password)
                                 }
                             }
+                            .font(TotemTypography.regular(17, relativeTo: .body))
                             .textContentType(.password)
                             .focused($focusedField, equals: .password)
                             .submitLabel(.go)
@@ -97,43 +115,17 @@ struct NativeLoginView: View {
 
                         if let errorMessage {
                             Label(errorMessage, systemImage: "exclamationmark.circle.fill")
-                                .font(.footnote)
+                                .font(TotemTypography.regular(13, relativeTo: .footnote))
                                 .foregroundStyle(Color(red: 1, green: 0.55, blue: 0.62))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .accessibilityIdentifier("native-login-error")
                         }
 
-                        Button(action: signIn) {
-                            HStack(spacing: 10) {
-                                if isSubmitting {
-                                    ProgressView()
-                                        .tint(Color(red: 0.08, green: 0.08, blue: 0.08))
-                                }
-                                Text(isSubmitting ? "Iniciando sesión…" : "Iniciar sesión")
-                                    .fontWeight(.bold)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 54)
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(Color(red: 0.08, green: 0.08, blue: 0.08))
-                        .background(
-                            Color(red: 159 / 255, green: 232 / 255, blue: 66 / 255),
-                            in: RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        )
-                        .opacity(canSubmit ? 1 : 0.55)
-                        .disabled(!canSubmit)
-                        .accessibilityIdentifier("native-login-submit")
-                    }
-                    .padding(22)
-                    .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 28))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 28)
-                            .stroke(.white.opacity(0.10), lineWidth: 1)
+                        signInButton
                     }
 
                     Text("Tus credenciales se envían de forma segura y no se guardan en el dispositivo.")
-                        .font(.caption)
+                        .font(TotemTypography.regular(12, relativeTo: .caption))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.white.opacity(0.45))
                         .padding(.horizontal, 18)
@@ -152,6 +144,39 @@ struct NativeLoginView: View {
         !isSubmitting && email.contains("@") && !password.isEmpty
     }
 
+    @ViewBuilder
+    private var signInButton: some View {
+        if #available(iOS 26.0, *) {
+            submitControl
+                .buttonStyle(.glassProminent)
+                .tint(Color.totemLime)
+        } else {
+            submitControl
+                .buttonStyle(TotemPrimaryButtonStyle())
+        }
+    }
+
+    private var submitControl: some View {
+        Button(action: signIn) {
+            HStack(spacing: 10) {
+                if isSubmitting {
+                    ProgressView()
+                        .tint(Color(red: 0.08, green: 0.08, blue: 0.08))
+                }
+                Text(isSubmitting ? "Iniciando sesión…" : "Iniciar sesión")
+                    .font(TotemTypography.bold(17, relativeTo: .headline))
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 56)
+            .contentShape(Rectangle())
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .simultaneousGesture(TapGesture().onEnded { signIn() })
+        .opacity(canSubmit ? 1 : 0.55)
+        .disabled(!canSubmit)
+        .accessibilityIdentifier("native-login-submit")
+    }
+
     private func loginField<Content: View>(
         title: String,
         systemImage: String,
@@ -160,7 +185,7 @@ struct NativeLoginView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.footnote.weight(.semibold))
+                .font(TotemTypography.medium(14, relativeTo: .footnote))
                 .foregroundStyle(.white.opacity(0.72))
 
             HStack(spacing: 12) {
@@ -173,20 +198,18 @@ struct NativeLoginView: View {
                     .tint(.white)
             }
             .padding(.horizontal, 16)
-            .frame(height: 54)
-            .background(.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 16))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(
-                        focusedField == field ? .white.opacity(0.38) : .white.opacity(0.10),
-                        lineWidth: 1
-                    )
-            }
+            .frame(minHeight: 56)
+            .totemGlassSurface(
+                cornerRadius: 18,
+                isFocused: focusedField == field,
+                reduceTransparency: reduceTransparency
+            )
         }
     }
 
     private func signIn() {
         guard canSubmit else { return }
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
         focusedField = nil
         errorMessage = nil
         isSubmitting = true
@@ -201,9 +224,11 @@ struct NativeLoginView: View {
                     email: normalizedEmail,
                     password: submittedPassword
                 )
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
                 isSubmitting = false
                 onAuthenticated()
             } catch {
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
                 isSubmitting = false
                 errorMessage = (error as? LocalizedError)?.errorDescription
                     ?? NativeAuthenticationError.unavailable.localizedDescription

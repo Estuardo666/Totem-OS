@@ -48,6 +48,10 @@ targets:
         LSApplicationCategoryType: public.app-category.business
         TOTEM_BASE_URL: https://totem-os.vercel.app
         UIApplicationSupportsIndirectInputEvents: true
+        UIAppFonts:
+          - GoogleSans-Regular.ttf
+          - GoogleSans-Medium.ttf
+          - GoogleSans-Bold.ttf
         UIRequiresFullScreen: true
         UIStatusBarHidden: true
         UIViewControllerBasedStatusBarAppearance: false
