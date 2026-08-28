@@ -78,14 +78,14 @@ workflows:
     name: iOS TestFlight release
     instance_type: mac_mini_m2
     max_build_duration: 45
+    # Must match the App Store Connect key name in
+    # Codemagic > Teams > Integrations > Developer Portal.
+    integrations:
+      app_store_connect: TotemOS
     environment:
       xcode: latest
       groups:
         - appstore
-      # Must match the App Store Connect key name in
-      # Codemagic > Teams > Integrations > Developer Portal.
-      integrations:
-        app_store_connect: TotemOS
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.totemmassmedia.totemos
