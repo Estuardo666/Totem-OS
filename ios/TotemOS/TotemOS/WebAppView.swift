@@ -3,9 +3,10 @@ import WebKit
 
 struct WebAppView: UIViewRepresentable {
     @EnvironmentObject private var appModel: AppModel
+    let onContentReady: () -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(appModel: appModel)
+        Coordinator(appModel: appModel, onContentReady: onContentReady)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -14,6 +15,10 @@ struct WebAppView: UIViewRepresentable {
         configuration.applicationNameForUserAgent = "TotemOS-iOS"
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        webView.isOpaque = false
+        webView.backgroundColor = UIColor(red: 20 / 255, green: 18 / 255, blue: 32 / 255, alpha: 1)
+        webView.scrollView.backgroundColor = webView.backgroundColor
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         context.coordinator.webView = webView
@@ -37,10 +42,12 @@ struct WebAppView: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         private let appModel: AppModel
+        private let onContentReady: () -> Void
         weak var webView: WKWebView?
 
-        init(appModel: AppModel) {
+        init(appModel: AppModel, onContentReady: @escaping () -> Void) {
             self.appModel = appModel
+            self.onContentReady = onContentReady
         }
 
         @objc func refresh(_ sender: UIRefreshControl) {
@@ -55,6 +62,7 @@ struct WebAppView: UIViewRepresentable {
             webView.scrollView.refreshControl?.endRefreshing()
             appModel.updateConnection(isOffline: false)
             appModel.webViewDidFinish(url: webView.url)
+            onContentReady()
         }
 
         func webView(

@@ -48,12 +48,17 @@ targets:
         LSApplicationCategoryType: public.app-category.business
         TOTEM_BASE_URL: https://totem-os.vercel.app
         UIApplicationSupportsIndirectInputEvents: true
-        UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        UIStatusBarHidden: true
+        UIViewControllerBasedStatusBarAppearance: false
+        UILaunchScreen:
+          UIColorName: LaunchBackground
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.totemmassmedia.totemos
         PRODUCT_MODULE_NAME: TotemOS
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_DEBUG_DYLIB: NO
         GENERATE_INFOPLIST_FILE: NO
   TotemOSTests:
