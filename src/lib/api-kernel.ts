@@ -1,4 +1,5 @@
 import { ZodError, type ZodType } from "zod";
+import type { ApiActor } from "./api-actor.ts";
 
 export const API_REQUEST_ID_HEADER = "x-request-id";
 export const API_DEFAULT_PAGE_SIZE = 25;
@@ -6,6 +7,12 @@ export const API_MAX_PAGE_SIZE = 100;
 export const API_MAX_PAYLOAD_BYTES = 1024 * 1024;
 
 export type ApiProblemCode =
+  | "UNAUTHENTICATED"
+  | "SESSION_EXPIRED"
+  | "FORBIDDEN"
+  | "CSRF_FAILED"
+  | "RATE_LIMITED"
+  | "RATE_LIMIT_STORE_UNAVAILABLE"
   | "INVALID_JSON"
   | "INVALID_CONTENT_LENGTH"
   | "VALIDATION_ERROR"
@@ -19,6 +26,7 @@ export interface ApiRequestContext {
   request: Request;
   requestId: string;
   startedAt: number;
+  actor?: ApiActor;
 }
 
 export interface ApiMeta {
@@ -34,6 +42,7 @@ export interface ApiProblemBody {
   instance: string;
   code: ApiProblemCode;
   requestId: string;
+  retryAfter?: number;
   errors?: Array<{
     path: Array<string | number>;
     code: string;
@@ -41,12 +50,14 @@ export interface ApiProblemBody {
   }>;
 }
 
-interface ApiProblemOptions {
+export interface ApiProblemOptions {
   status: number;
   code: ApiProblemCode;
   title: string;
   detail: string;
   errors?: ApiProblemBody["errors"];
+  headers?: Record<string, string>;
+  retryAfter?: number;
 }
 
 /** Error tipado que el kernel puede convertir en Problem Details. */
@@ -55,6 +66,8 @@ export class ApiProblem extends Error {
   readonly code: ApiProblemCode;
   readonly title: string;
   readonly errors?: ApiProblemBody["errors"];
+  readonly headers?: Record<string, string>;
+  readonly retryAfter?: number;
 
   constructor(options: ApiProblemOptions) {
     super(options.detail);
@@ -63,6 +76,8 @@ export class ApiProblem extends Error {
     this.code = options.code;
     this.title = options.title;
     this.errors = options.errors;
+    this.headers = options.headers;
+    this.retryAfter = options.retryAfter;
   }
 }
 
@@ -142,23 +157,38 @@ export function apiProblemResponse(
     instance: new URL(context.request.url).pathname,
     code: normalized.code,
     requestId: context.requestId,
+    ...(normalized.retryAfter === undefined ? {} : { retryAfter: normalized.retryAfter }),
     ...(normalized.errors ? { errors: normalized.errors } : {}),
   };
 
+  const headers = baseHeaders(context, "application/problem+json");
+  for (const [name, value] of Object.entries(normalized.headers ?? {})) {
+    headers.set(name, value);
+  }
+
   return new Response(JSON.stringify(body), {
     status: normalized.status,
-    headers: baseHeaders(context, "application/problem+json"),
+    headers,
   });
 }
 
 export type ApiHandler = (context: ApiRequestContext) => Response | Promise<Response>;
+export type ApiResponseTransformer = (
+  response: Response,
+  context: ApiRequestContext
+) => Response | Promise<Response>;
+
+export interface ApiKernelOptions {
+  afterResponse?: ApiResponseTransformer;
+}
 
 /** Añade contexto, request ID y conversión uniforme de errores a cualquier ruta. */
-export function withApiKernel(handler: ApiHandler) {
+export function withApiKernel(handler: ApiHandler, options: ApiKernelOptions = {}) {
   return async (request: Request): Promise<Response> => {
     const context = createApiRequestContext(request);
     try {
-      return await handler(context);
+      const response = await handler(context);
+      return options.afterResponse ? await options.afterResponse(response, context) : response;
     } catch (error) {
       return apiProblemResponse(context, error);
     }

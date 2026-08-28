@@ -35,9 +35,10 @@ con `content-type: application/problem+json`:
 }
 ```
 
-Códigos implementados: `INVALID_JSON`, `INVALID_CONTENT_LENGTH`,
+Códigos base implementados: `INVALID_JSON`, `INVALID_CONTENT_LENGTH`,
 `VALIDATION_ERROR`, `PAYLOAD_TOO_LARGE`, `INVALID_CURSOR`,
-`INVALID_PAGINATION`, `METHOD_NOT_ALLOWED` e `INTERNAL_ERROR`.
+`INVALID_PAGINATION`, `METHOD_NOT_ALLOWED` e `INTERNAL_ERROR`. CP04 añade los
+códigos de autenticación, CSRF y rate limit documentados en su propia guía.
 
 ## Paginación
 
@@ -70,12 +71,13 @@ un recurso de negocio ni sustituye el guard de CP04.
   JSON limitado, cursor y wrapper de errores.
 - `src/lib/api-kernel-demo.ts`: handler stateless del contrato.
 - `src/app/api/v1/_kernel/echo/route.ts`: Route Handler Next.js.
-- `tests/unit/api-kernel.test.mjs`: siete pruebas del contrato completo.
+- `tests/unit/api-kernel.test.mjs`: ocho pruebas del contrato completo.
 
 ## Verificación
 
 - `npm run typecheck` ✅
-- `npm run test:unit` ✅ (29 tests)
+- `npm run test:unit` ✅ (30 tests en el corte de CP03; CP04 añade pruebas de
+  protección en el conteo actual)
 - `npm run lint` ✅ (14 warnings preexistentes de `<img>`, 0 errores)
 - `npm run build` ✅ (warnings preexistentes de `<img>` y Browserslist)
 

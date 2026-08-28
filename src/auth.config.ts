@@ -22,7 +22,9 @@ export const authConfig = {
     strategy: "jwt" as const,
     maxAge: 14 * 24 * 60 * 60, // 14 días (reducido desde 30)
   },
-  secret: process.env.AUTH_SECRET,
+  // Auth.js v5 recomienda AUTH_SECRET; conservar NEXTAUTH_SECRET como
+  // fallback evita romper instalaciones existentes durante la migración.
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   trustHost: true, // Permitir hosts de Vercel
   debug: process.env.NODE_ENV === "development",
   

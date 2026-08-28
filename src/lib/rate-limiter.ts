@@ -20,7 +20,7 @@ interface RateLimitResult {
 const store = new Map<string, Map<string, RateLimitEntry>>();
 
 // Limpiar registros cada 5 minutos
-setInterval(() => {
+const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [key, entries] of store.entries()) {
     const filtered = new Map(
@@ -33,6 +33,10 @@ setInterval(() => {
     }
   }
 }, 5 * 60 * 1000);
+
+// El temporizador de limpieza no debe mantener vivos los procesos de tests o
+// jobs puntuales que importan este módulo.
+cleanupTimer.unref?.();
 
 /**
  * Limitar tasa de peticiones

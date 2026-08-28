@@ -833,6 +833,23 @@ model TimeEntry {
   @@index([taskId])
 }
 
+// RATE LIMITING DISTRIBUIDO PARA LA API V1
+// Se guarda solo un hash del identificador para no persistir IPs en claro.
+model ApiRateLimitBucket {
+  id            String   @id @default(cuid())
+  bucket        String
+  identifierHash String
+  windowStart   DateTime
+  count         Int      @default(0)
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([bucket, identifierHash, windowStart])
+  @@index([expiresAt])
+  @@map("api_rate_limit_bucket")
+}
+
 // GOOGLE CALENDAR INTEGRATION
 model GoogleCalendarToken {
   id           String   @id @default(cuid())
