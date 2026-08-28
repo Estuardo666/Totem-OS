@@ -35,7 +35,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.totemmassmedia.totemos
         PRODUCT_MODULE_NAME: TotemOS
-        ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: YES
+        ENABLE_DEBUG_DYLIB: NO
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: TotemOS/Resources/TotemOS.entitlements
   TotemOSTests:
