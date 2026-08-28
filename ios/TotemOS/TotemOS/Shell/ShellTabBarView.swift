@@ -58,6 +58,12 @@ struct ShellTabBarView: View {
             VStack(spacing: 3) {
                 Image(systemName: tab.icon)
                     .font(.system(size: 17, weight: isActive ? .semibold : .regular))
+                    .overlay(alignment: .topTrailing) {
+                        if tab.route == "/content" {
+                            ShellBadge(count: snapshot.taskCount, tint: .orange)
+                                .offset(x: 12, y: -9)
+                        }
+                    }
                 Text(tab.label)
                     .font(.caption2)
                     .lineLimit(1)
@@ -85,7 +91,11 @@ struct ShellTabBarView: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(isActive ? snapshot.accent : Color.primary.opacity(0.75))
-        .accessibilityLabel(tab.label)
+        .accessibilityLabel(
+            tab.route == "/content" && snapshot.taskCount > 0
+                ? "\(tab.label), \(snapshot.taskCount) pendientes"
+                : tab.label
+        )
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
     }
 
@@ -95,10 +105,14 @@ struct ShellTabBarView: View {
     }
 
     private var centerAction: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.82)) {
-                shell.toggleTransactionMenu()
+        Menu {
+            ForEach(availableTransactionTabs, id: \.rawValue) { tab in
+                Button {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    shell.send(.openTransaction(tab: tab))
+                } label: {
+                    Label(tab.label, systemImage: tab.icon)
+                }
             }
         } label: {
             Image(systemName: "plus")
@@ -109,8 +123,15 @@ struct ShellTabBarView: View {
                 .shadow(color: snapshot.accent.opacity(0.36), radius: 10, y: 4)
         }
         .buttonStyle(.plain)
+        .menuOrder(.fixed)
         .accessibilityLabel("Registrar transacción")
         .padding(.horizontal, 2)
+    }
+
+    private var availableTransactionTabs: [ShellTransactionTab] {
+        snapshot.user?.role == .admin
+            ? [.expense, .income, .honorarios]
+            : [.expense]
     }
 
     /// Selección directa: la cápsula sigue el dedo entre los cuatro destinos.
@@ -159,5 +180,23 @@ struct ShellTabBarView: View {
             previewTabID = tab.id
         }
         shell.navigate(to: tab.route)
+    }
+}
+
+private extension ShellTransactionTab {
+    var label: String {
+        switch self {
+        case .expense: "Gasto"
+        case .income: "Ingreso"
+        case .honorarios: "Honorario"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .expense: "arrow.down.circle"
+        case .income: "arrow.up.circle"
+        case .honorarios: "person.crop.circle.badge.checkmark"
+        }
     }
 }

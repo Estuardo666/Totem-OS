@@ -8,9 +8,6 @@ import TotemOSKit
 final class ShellModel: ObservableObject {
     @Published private(set) var snapshot: ShellSnapshot = .empty
     @Published private(set) var hasSnapshot = false
-    @Published var isNavigationMenuOpen = false
-    @Published var isAccountMenuOpen = false
-    @Published var isTransactionMenuOpen = false
     @Published var isNotificationListOpen = false
 
     private weak var webView: WKWebView?
@@ -23,9 +20,6 @@ final class ShellModel: ObservableObject {
     func reset() {
         snapshot = .empty
         hasSnapshot = false
-        isNavigationMenuOpen = false
-        isAccountMenuOpen = false
-        isTransactionMenuOpen = false
         isNotificationListOpen = false
     }
 
@@ -54,7 +48,6 @@ final class ShellModel: ObservableObject {
         snapshot = decoded
         hasSnapshot = true
         if decoded.overlayHidden {
-            closeMenus()
             isNotificationListOpen = false
         }
     }
@@ -76,33 +69,8 @@ final class ShellModel: ObservableObject {
     }
 
     func navigate(to route: String) {
-        closeMenus()
         isNotificationListOpen = false
         send(.navigate(route: route))
-    }
-
-    func toggleNavigationMenu() {
-        isAccountMenuOpen = false
-        isTransactionMenuOpen = false
-        isNavigationMenuOpen.toggle()
-    }
-
-    func toggleAccountMenu() {
-        isNavigationMenuOpen = false
-        isTransactionMenuOpen = false
-        isAccountMenuOpen.toggle()
-    }
-
-    func toggleTransactionMenu() {
-        isNavigationMenuOpen = false
-        isAccountMenuOpen = false
-        isTransactionMenuOpen.toggle()
-    }
-
-    func closeMenus() {
-        isNavigationMenuOpen = false
-        isAccountMenuOpen = false
-        isTransactionMenuOpen = false
     }
 }
 

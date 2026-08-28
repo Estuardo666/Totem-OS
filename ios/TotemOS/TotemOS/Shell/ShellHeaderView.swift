@@ -1,7 +1,7 @@
 import SwiftUI
 import TotemOSKit
 
-/// Header flotante: menú, logo, tema, tareas, notificaciones y avatar.
+/// Header flotante: menús nativos, logo, tema y notificaciones.
 struct ShellHeaderView: View {
     @EnvironmentObject private var shell: ShellModel
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -10,9 +10,7 @@ struct ShellHeaderView: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            ShellIconButton(systemImage: "ellipsis", label: "Abrir menú") {
-                shell.toggleNavigationMenu()
-            }
+            navigationMenu
 
             logo
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -26,15 +24,6 @@ struct ShellHeaderView: View {
             }
 
             ShellIconButton(
-                systemImage: "checkmark.square",
-                label: "Tareas pendientes",
-                badge: snapshot.taskCount,
-                badgeTint: .orange
-            ) {
-                shell.navigate(to: "/content")
-            }
-
-            ShellIconButton(
                 systemImage: "bell",
                 label: "Notificaciones",
                 badge: snapshot.unreadNotificationCount
@@ -43,14 +32,35 @@ struct ShellHeaderView: View {
             }
 
             if let user = snapshot.user {
-                Button {
-                    shell.toggleAccountMenu()
+                Menu {
+                    Section {
+                        Button {
+                            shell.send(.openSettings)
+                        } label: {
+                            Label("Configuración", systemImage: "gearshape")
+                        }
+
+                        Button {
+                            shell.send(.openIntegrations)
+                        } label: {
+                            Label("Integraciones", systemImage: "powerplug")
+                        }
+                    } header: {
+                        Text("\(user.name) · \(user.roleLabel)")
+                    }
+
+                    Button(role: .destructive) {
+                        shell.send(.signOut)
+                    } label: {
+                        Label("Cerrar Sesión", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
                 } label: {
                     ShellAvatarView(user: user)
                         .frame(width: shellMinimumTapTarget, height: shellMinimumTapTarget)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .menuOrder(.fixed)
                 .accessibilityLabel("Mi cuenta")
             }
         }
@@ -61,6 +71,53 @@ struct ShellHeaderView: View {
             reduceTransparency: reduceTransparency
         )
         .padding(.horizontal, 12)
+    }
+
+    private var navigationMenu: some View {
+        Menu {
+            ForEach(snapshot.navigation) { item in
+                navigationMenuItem(item)
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 17, weight: .medium))
+                .frame(width: shellMinimumTapTarget, height: shellMinimumTapTarget)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .menuOrder(.fixed)
+        .accessibilityLabel("Abrir menú")
+    }
+
+    @ViewBuilder
+    private func navigationMenuItem(_ item: ShellNavItem) -> some View {
+        if let children = item.children, !children.isEmpty {
+            Menu {
+                Button {
+                    shell.navigate(to: item.route)
+                } label: {
+                    Label("Abrir \(item.label)", systemImage: item.icon)
+                }
+
+                Divider()
+
+                ForEach(children) { child in
+                    Button {
+                        shell.navigate(to: child.route)
+                    } label: {
+                        Label(child.label, systemImage: child.icon)
+                    }
+                }
+            } label: {
+                Label(item.label, systemImage: item.icon)
+            }
+        } else {
+            Button {
+                shell.navigate(to: item.route)
+            } label: {
+                Label(item.label, systemImage: item.icon)
+            }
+        }
     }
 
     @ViewBuilder
