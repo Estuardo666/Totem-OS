@@ -14,11 +14,24 @@ settings:
     TARGETED_DEVICE_FAMILY: "1"
 
 targets:
+  TotemOSKit:
+    type: framework
+    platform: iOS
+    sources:
+      - path: TotemOSKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.totemmassmedia.totemos.kit
+        PRODUCT_MODULE_NAME: TotemOSKit
+        GENERATE_INFOPLIST_FILE: YES
+
   TotemOS:
     type: application
     platform: iOS
     sources:
       - path: TotemOS
+    dependencies:
+      - target: TotemOSKit
     configFiles:
       Debug: Config/Debug.xcconfig
       Release: Config/Release.xcconfig
@@ -44,7 +57,7 @@ targets:
     sources:
       - path: TotemOSTests
     dependencies:
-      - target: TotemOS
+      - target: TotemOSKit
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
@@ -53,6 +66,7 @@ schemes:
   TotemOS:
     build:
       targets:
+        TotemOSKit: all
         TotemOS: all
         TotemOSTests: [test]
     test:

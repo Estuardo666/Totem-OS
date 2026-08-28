@@ -1,4 +1,5 @@
 import Foundation
+import TotemOSKit
 
 enum AppEnvironment {
     static let bundleIdentifier = "com.totemmassmedia.totemos"
@@ -23,9 +24,3 @@ enum AppEnvironment {
 #endif
     }
 }
-
-enum APNSEnvironment: String, Codable {
-    case sandbox = "SANDBOX"
-    case production = "PRODUCTION"
-}
-

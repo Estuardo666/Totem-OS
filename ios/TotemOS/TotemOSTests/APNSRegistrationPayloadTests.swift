@@ -1,5 +1,5 @@
 import XCTest
-@testable import TotemOS
+import TotemOSKit
 
 final class APNSRegistrationPayloadTests: XCTestCase {
     func testPayloadMatchesBackendContract() throws {

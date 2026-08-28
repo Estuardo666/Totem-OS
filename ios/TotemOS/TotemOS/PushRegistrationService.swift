@@ -1,23 +1,7 @@
 import Foundation
 import UIKit
 import WebKit
-
-struct APNSRegistrationPayload: Codable, Equatable {
-    let installationId: String
-    let deviceToken: String
-    let environment: APNSEnvironment
-    let bundleId: String
-    let appVersion: String
-    let appBuild: String?
-    let deviceModel: String?
-    let osVersion: String?
-    let locale: String?
-}
-
-struct APNSLogoutContext: Codable, Equatable {
-    let installationId: String
-    let environment: APNSEnvironment
-}
+import TotemOSKit
 
 enum PushRegistrationError: LocalizedError {
     case invalidEndpoint
@@ -100,21 +84,12 @@ final class PushRegistrationService {
         guard let json = String(data: data, encoding: .utf8) else {
             throw PushRegistrationError.unexpectedResponse
         }
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            webView.callAsyncJavaScript(
-                "localStorage.setItem('totem-ios-apns-context', context);",
-                arguments: ["context": json],
-                in: nil,
-                in: .page
-            ) { result in
-                switch result {
-                case .success:
-                    continuation.resume()
-                case .failure(let error):
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
+        _ = try await webView.callAsyncJavaScript(
+            "localStorage.setItem('totem-ios-apns-context', context);",
+            arguments: ["context": json],
+            in: nil,
+            contentWorld: .page
+        )
     }
 
     private func request(
@@ -130,12 +105,7 @@ final class PushRegistrationService {
             throw PushRegistrationError.invalidEndpoint
         }
 
-        let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
-        let allCookies = await withCheckedContinuation { (continuation: CheckedContinuation<[HTTPCookie], Never>) in
-            cookieStore.getAllCookies { cookies in
-                continuation.resume(returning: cookies)
-            }
-        }
+        let allCookies = await webView.configuration.websiteDataStore.httpCookieStore.allCookies()
         let cookies = allCookies.filter { cookieApplies($0, to: endpoint) }
         let cookieHeaders = HTTPCookie.requestHeaderFields(with: cookies)
 

@@ -58,17 +58,6 @@ jobs:
           fi
           xcrun simctl list runtimes
 
-          echo "----- Swift overlays in each installed runtime -----"
-          for root in \
-            /Library/Developer/CoreSimulator/Profiles/Runtimes/*.simruntime \
-            /Library/Developer/CoreSimulator/Volumes/*/Library/Developer/CoreSimulator/Profiles/Runtimes/*.simruntime
-          do
-            [ -d "$root" ] || continue
-            echo "== $root"
-            ls "$root/Contents/Resources/RuntimeRoot/usr/lib/swift" 2>/dev/null \
-              | grep -iE 'webkit|swiftCore' || echo "   (no WebKit overlay)"
-          done
-
       - name: Build for iOS Simulator
         run: >-
           xcodebuild
@@ -104,9 +93,6 @@ jobs:
           xcrun simctl boot "$udid" || true
           xcrun simctl bootstatus "$udid" -b
 
-      - name: Inspect generated Info.plist
-        run: plutil -p TotemOS/Info.plist
-
       - name: Build for testing
         run: >-
           xcodebuild
@@ -115,21 +101,6 @@ jobs:
           -destination "id=${{ steps.simulator.outputs.udid }}"
           CODE_SIGNING_ALLOWED=NO
           build-for-testing
-
-      - name: Inspect linked libraries
-        run: |
-          dir="$(
-            xcodebuild \
-              -project TotemOS.xcodeproj \
-              -scheme TotemOS \
-              -destination "id=${{ steps.simulator.outputs.udid }}" \
-              -showBuildSettings 2>/dev/null \
-              | sed -nE 's/^ *BUILT_PRODUCTS_DIR = (.*)$/\1/p' \
-              | head -n 1
-          )"
-          echo "products: $dir"
-          ls "$dir"
-          otool -L "$dir/TotemOS.app/TotemOS"
 
       - name: Run unit tests
         run: |
