@@ -66,6 +66,10 @@ final class AppModel: ObservableObject {
     }
 
     private func requestNotificationAuthorizationIfNeeded() {
+#if TOTEM_NO_PUSH
+        // Sin entitlement de APNs no se puede registrar el dispositivo.
+        return
+#else
         guard !requestedNotificationAuthorization else { return }
         requestedNotificationAuthorization = true
 
@@ -80,6 +84,7 @@ final class AppModel: ObservableObject {
                 receivePushRegistration(error: error)
             }
         }
+#endif
     }
 
     private func registerDeviceIfPossible() {
@@ -111,7 +116,9 @@ final class AppModel: ObservableObject {
 
     private func handleSignedOutSession() {
         guard hasObservedAuthenticatedSession else { return }
+#if !TOTEM_NO_PUSH
         UIApplication.shared.unregisterForRemoteNotifications()
+#endif
         hasObservedAuthenticatedSession = false
         requestedNotificationAuthorization = false
         deviceToken = nil

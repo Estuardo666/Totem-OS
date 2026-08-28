@@ -1,0 +1,4 @@
+// Build sin APNs: permite firmar con un Apple ID gratuito (Personal Team),
+// que no puede conceder el entitlement de Push Notifications.
+APNS_ENVIRONMENT = development
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG TOTEM_NO_PUSH

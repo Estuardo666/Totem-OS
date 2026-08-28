@@ -1,5 +1,10 @@
 name: TotemOS
 
+configs:
+  Debug: debug
+  DebugFree: debug
+  Release: release
+
 options:
   bundleIdPrefix: com.totemmassmedia
   deploymentTarget:
@@ -34,6 +39,7 @@ targets:
       - target: TotemOSKit
     configFiles:
       Debug: Config/Debug.xcconfig
+      DebugFree: Config/DebugFree.xcconfig
       Release: Config/Release.xcconfig
     info:
       path: TotemOS/Info.plist
@@ -50,7 +56,6 @@ targets:
         PRODUCT_MODULE_NAME: TotemOS
         ENABLE_DEBUG_DYLIB: NO
         GENERATE_INFOPLIST_FILE: NO
-        CODE_SIGN_ENTITLEMENTS: TotemOS/Resources/TotemOS.entitlements
   TotemOSTests:
     type: bundle.unit-test
     platform: iOS
@@ -69,6 +74,17 @@ schemes:
         TotemOSKit: all
         TotemOS: all
         TotemOSTests: [test]
+    run:
+      config: Debug
     test:
+      config: Debug
       targets:
         - TotemOSTests
+
+  TotemOS (sin push):
+    build:
+      targets:
+        TotemOSKit: all
+        TotemOS: all
+    run:
+      config: DebugFree
