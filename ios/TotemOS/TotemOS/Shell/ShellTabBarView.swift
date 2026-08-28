@@ -50,6 +50,7 @@ struct ShellTabBarView: View {
             else { return }
             self.previewTabID = nil
         }
+        .onAppear { ShellHaptics.prepare() }
     }
 
     private func tabButton(_ tab: ShellTabItem) -> some View {
@@ -111,7 +112,7 @@ struct ShellTabBarView: View {
         Menu {
             ForEach(availableTransactionTabs, id: \.rawValue) { tab in
                 Button {
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    ShellHaptics.tap()
                     shell.send(.openTransaction(tab: tab))
                 } label: {
                     Label(tab.label, systemImage: tab.icon)
@@ -127,6 +128,9 @@ struct ShellTabBarView: View {
         }
         .buttonStyle(.plain)
         .menuOrder(.fixed)
+        .simultaneousGesture(
+            TapGesture().onEnded { ShellHaptics.tap() }
+        )
         .accessibilityLabel("Registrar transacción")
         .padding(.horizontal, 2)
     }
@@ -158,7 +162,7 @@ struct ShellTabBarView: View {
                 let nextID = tabs[clamped].id
 
                 if previewTabID != nextID {
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    ShellHaptics.selectionChanged()
                     withAnimation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 1)) {
                         previewTabID = nextID
                     }
@@ -178,7 +182,7 @@ struct ShellTabBarView: View {
     }
 
     private func select(_ tab: ShellTabItem) {
-        UISelectionFeedbackGenerator().selectionChanged()
+        ShellHaptics.tap()
         withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 1)) {
             previewTabID = tab.id
         }
