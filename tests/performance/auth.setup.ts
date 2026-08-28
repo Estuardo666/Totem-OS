@@ -5,6 +5,15 @@ import * as fs from "fs";
 const authFile = path.join(__dirname, ".auth", "user.json");
 
 export default async function globalSetup() {
+  const testEmail = process.env.E2E_TEST_EMAIL?.trim();
+  const testPassword = process.env.E2E_TEST_PASSWORD;
+
+  if (!testEmail || !testPassword) {
+    throw new Error(
+      "E2E_TEST_EMAIL and E2E_TEST_PASSWORD are required to run authenticated E2E tests.",
+    );
+  }
+
   fs.mkdirSync(path.dirname(authFile), { recursive: true });
 
   const baseUrl = process.env.BASE_URL || "https://totem-os.vercel.app";
@@ -18,13 +27,13 @@ export default async function globalSetup() {
   });
   const page = await context.newPage();
 
-  console.log("🔐 Logging in test@totem.com...");
+  console.log("🔐 Logging in E2E test user...");
 
   await page.goto(`${baseUrl}/sign-in`, { waitUntil: "domcontentloaded" });
   const emailInput = page.locator('input[name="email"]');
   await emailInput.waitFor({ state: "visible" });
-  await emailInput.fill("test@totem.com");
-  await page.fill('input[name="password"]', "1234567890@@");
+  await emailInput.fill(testEmail);
+  await page.fill('input[name="password"]', testPassword);
   await page.click('button[type="submit"]');
   await page.waitForURL("**/", { timeout: 30_000 });
 

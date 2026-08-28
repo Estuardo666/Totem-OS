@@ -1,5 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
+import { existsSync } from "node:fs";
 import path from "path";
+import { loadEnvFile } from "node:process";
+
+for (const envFile of [".env.local", ".env"]) {
+  if (existsSync(envFile)) {
+    loadEnvFile(envFile);
+  }
+}
 
 const baseURL = process.env.BASE_URL || "https://totem-os.vercel.app";
 
