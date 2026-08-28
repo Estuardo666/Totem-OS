@@ -74,9 +74,30 @@ jobs:
             exit 1
           fi
 
+          xcrun simctl boot "$simulator_id" || true
+          xcrun simctl bootstatus "$simulator_id" --block
+
+          set +e
+          set -o pipefail
           xcodebuild \
             -project TotemOS.xcodeproj \
             -scheme TotemOS \
             -destination "platform=iOS Simulator,id=$simulator_id" \
             CODE_SIGNING_ALLOWED=NO \
-            test
+            test 2>&1 | tee /tmp/totem-ios-tests.log
+          test_status="${PIPESTATUS[0]}"
+          set -e
+
+          if [[ "$test_status" -ne 0 ]]; then
+            diagnostic="$(
+              { grep -E 'error:|failed|Failure|Unable to|timed out' \
+                  /tmp/totem-ios-tests.log || true; } \
+                | tail -n 1 \
+                | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g'
+            )"
+            if [[ -z "$diagnostic" ]]; then
+              diagnostic="xcodebuild exited with status $test_status"
+            fi
+            echo "::error title=iOS unit tests::$diagnostic"
+            exit "$test_status"
+          fi
