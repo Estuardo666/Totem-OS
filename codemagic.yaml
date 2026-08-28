@@ -71,6 +71,50 @@ workflows:
     artifacts:
       - /tmp/xcodebuild_logs/*.log
 
+  # Produces an unsigned IPA to sideload with Sideloadly or AltStore using a
+  # free Apple ID. Uses the DebugFree configuration, which carries no APNs
+  # entitlement, so push notifications are disabled in this build.
+  ios-sideload:
+    name: Unsigned IPA for sideloading
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      xcode: latest
+    scripts:
+      - *generate_project
+      - name: Build for a device without signing
+        script: |
+          set -e
+          cd ios/TotemOS
+          xcodebuild \
+            -project TotemOS.xcodeproj \
+            -scheme "TotemOS (sin push)" \
+            -configuration DebugFree \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+      - name: Package the unsigned IPA
+        script: |
+          set -e
+          cd ios/TotemOS
+          app="$(find build/Build/Products/DebugFree-iphoneos -maxdepth 1 -name '*.app' | head -n 1)"
+          if [ -z "$app" ]; then
+            echo "No .app was produced."
+            ls -R build/Build/Products || true
+            exit 1
+          fi
+          echo "Packaging $app"
+          rm -rf Payload TotemOS-unsigned.ipa
+          mkdir Payload
+          cp -R "$app" Payload/
+          zip -qry TotemOS-unsigned.ipa Payload
+          ls -lh TotemOS-unsigned.ipa
+    artifacts:
+      - ios/TotemOS/*.ipa
+
   # Requires a paid Apple Developer Program membership: connect an App Store
   # Connect API key in Codemagic (Teams > Integrations > Developer Portal) and
   # register it under the "appstore" group before running this workflow.
