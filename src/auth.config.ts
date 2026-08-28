@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
+import { normalizeCanonicalRole } from "./lib/roles";
 
 /**
  * Configuración base de NextAuth para Edge Runtime (Middleware)
@@ -35,8 +36,10 @@ export const authConfig = {
       if (user) {
         // Copiar el rol del usuario al token
         // El provider (Google o Credentials) debe pasar 'role' en el objeto user
-        if (user.role) {
-          token.role = user.role;
+        const roleCode = normalizeCanonicalRole(user.roleCode ?? user.role);
+        if (roleCode) {
+          token.roleCode = roleCode;
+          token.role = roleCode;
         }
       }
       return token;
@@ -45,9 +48,11 @@ export const authConfig = {
       // Pasar el rol del token a la sesión
       if (session.user && token) {
         // Compatibilidad: 'role' contiene el valor actual
-        session.user.role = token.role as string;
-        // Explícito: 'roleLegacy' también contiene el valor
-        session.user.roleLegacy = token.role as string;
+        const roleCode = normalizeCanonicalRole(token.roleCode ?? token.role) ?? "USER";
+        session.user.roleCode = roleCode;
+        session.user.role = roleCode;
+        // Compatibilidad: roleLegacy también refleja el rol canónico.
+        session.user.roleLegacy = roleCode;
       }
       return session;
     },

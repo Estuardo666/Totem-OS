@@ -61,7 +61,7 @@ export function EditUserDialog({
     defaultValues: {
       name: user.name,
       email: user.email,
-      roleLegacy: user.roleLegacy as "ADMIN" | "EDITOR",
+      roleLegacy: user.roleLegacy as "ADMIN" | "EDITOR" | "USER",
       specialty: user.specialty || null,
     },
   });
@@ -72,7 +72,7 @@ export function EditUserDialog({
       form.reset({
         name: user.name,
         email: user.email,
-        roleLegacy: user.roleLegacy as "ADMIN" | "EDITOR",
+        roleLegacy: user.roleLegacy as "ADMIN" | "EDITOR" | "USER",
         specialty: user.specialty || null,
       });
     }
@@ -263,6 +263,7 @@ export function EditUserDialog({
                       <SelectContent>
                         <SelectItem value="ADMIN">ADMIN</SelectItem>
                         <SelectItem value="EDITOR">EDITOR</SelectItem>
+                        <SelectItem value="USER">USER</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

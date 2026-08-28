@@ -45,6 +45,22 @@ test("el snapshot expone la versión, la ruta y los datos saneados", () => {
   assert.equal(snapshot.notifications.length, 1);
 });
 
+test("el shell prioriza roleCode sobre los campos legacy", () => {
+  const snapshot = buildShellSnapshot({
+    ...baseInput,
+    user: {
+      name: "Bea",
+      roleCode: "USER",
+      roleLegacy: "ADMIN",
+      role: "ADMIN",
+    },
+  });
+
+  assert.equal(snapshot.user.role, "USER");
+  assert.ok(!snapshot.navigation.some((item) => item.route === "/admin/users"));
+  assert.equal(snapshot.tabs[2].route, "/finance/personal");
+});
+
 test("la navegación se filtra por permisos antes de publicarse", () => {
   const adminRoutes = filterShellNavigation("ADMIN").map((item) => item.route);
   const userNav = filterShellNavigation("USER");

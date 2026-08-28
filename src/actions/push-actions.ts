@@ -11,6 +11,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { sendPush, getPushStats, type PushPayload, type SendTargetOptions } from "@/lib/web-push";
+import { resolveRoleCode } from "@/lib/roles";
 
 /**
  * Las server actions son endpoints HTTP: los tipos de TypeScript se borran en
@@ -62,7 +63,7 @@ export async function subscribePush(params: {
 
     const session = await auth();
     const userId = session?.user?.id ?? null;
-    const role = session?.user?.roleLegacy ?? null;
+    const role = resolveRoleCode(session?.user);
 
     await db.pushSubscription.upsert({
       where: { endpoint: parsedParams.data.endpoint },
@@ -213,7 +214,7 @@ export async function sendCustomPush(params: {
   error?: string;
 }> {
   const session = await auth();
-  if (!session?.user || session.user.roleLegacy !== "ADMIN") {
+  if (!session?.user || resolveRoleCode(session.user) !== "ADMIN") {
     return { success: false, error: "No autorizado" };
   }
 
@@ -277,7 +278,7 @@ export async function sendCustomPush(params: {
 
 export async function getSubscriptionStats() {
   const session = await auth();
-  if (!session?.user || session.user.roleLegacy !== "ADMIN") {
+  if (!session?.user || resolveRoleCode(session.user) !== "ADMIN") {
     return { success: false, error: "No autorizado" };
   }
 

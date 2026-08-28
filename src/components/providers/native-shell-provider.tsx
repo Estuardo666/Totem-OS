@@ -162,6 +162,8 @@ function NativeShellBridge() {
     user: session?.user
       ? {
         name: session.user.name,
+        roleCode: session.user.roleCode,
+        roleLegacy: session.user.roleLegacy,
         role: session.user.role,
         image: session.user.image,
       }

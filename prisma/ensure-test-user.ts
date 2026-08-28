@@ -30,6 +30,7 @@ async function ensureTestUser() {
       name: "Test User",
       password,
       roleLegacy: "EDITOR",
+      roleCode: "EDITOR",
       image: "https://avatar.vercel.sh/test",
     },
   });

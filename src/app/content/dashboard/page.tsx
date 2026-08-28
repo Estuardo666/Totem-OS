@@ -13,10 +13,11 @@ import { CurrentMonthTaskSummary } from "@/components/features/dashboard/current
 import { CardSkeleton } from "@/components/ui/skeletons-composite";
 import { Video } from "lucide-react";
 import { Suspense } from "react";
+import { resolveRoleCode } from "@/lib/roles";
 
 export default async function ContentDashboardPage() {
   const session = await auth();
-  const isAdmin = session?.user?.role === "ADMIN";
+  const isAdmin = resolveRoleCode(session?.user) === "ADMIN";
 
   if (!session?.user?.id) {
     redirect("/sign-in");

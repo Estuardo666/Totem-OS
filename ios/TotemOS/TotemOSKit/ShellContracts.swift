@@ -43,6 +43,65 @@ public enum ShellRole: String, Codable, Equatable {
     case admin = "ADMIN"
     case editor = "EDITOR"
     case user = "USER"
+
+    /// Capacidades compartidas con `src/lib/roles.ts`.
+    /// El backend sigue siendo la autoridad final, pero el shell puede tomar
+    /// decisiones de navegación sin inventar una segunda jerarquía de roles.
+    public var capabilities: Set<ShellCapability> {
+        switch self {
+        case .admin:
+            return Set(ShellCapability.allCases)
+        case .editor:
+            return [
+                .kernelEchoRead, .kernelEchoWrite, .dashboardRead,
+                .clientsRead, .clientsWrite, .contentRead, .contentWrite,
+                .shootsRead, .shootsWrite, .timeSelf, .notificationsSelf,
+                .voiceSelf, .metaRead, .metaWrite, .financePersonalRead,
+                .aiGenerate
+            ]
+        case .user:
+            return [
+                .kernelEchoRead, .dashboardRead, .clientsRead, .contentRead,
+                .shootsRead, .timeSelf, .notificationsSelf, .voiceSelf
+            ]
+        }
+    }
+
+    public func hasCapability(_ capability: ShellCapability) -> Bool {
+        capabilities.contains(capability)
+    }
+}
+
+/// Valores espejo de `API_CAPABILITIES` para que Swift y React expresen la
+/// misma matriz. No sustituye la autorización del API.
+public enum ShellCapability: String, CaseIterable, Hashable {
+    case kernelEchoRead = "kernel.echo.read"
+    case kernelEchoWrite = "kernel.echo.write"
+    case dashboardRead = "dashboard.read"
+    case clientsRead = "clients.read"
+    case clientsWrite = "clients.write"
+    case clientsDelete = "clients.delete"
+    case credentialsRead = "credentials.read"
+    case contentRead = "content.read"
+    case contentWrite = "content.write"
+    case contentDelete = "content.delete"
+    case shootsRead = "shoots.read"
+    case shootsWrite = "shoots.write"
+    case timeSelf = "time.self"
+    case timeTeam = "time.team"
+    case notificationsSelf = "notifications.self"
+    case notificationsBroadcast = "notifications.broadcast"
+    case voiceSelf = "voice.self"
+    case metaRead = "meta.read"
+    case metaWrite = "meta.write"
+    case financePersonalRead = "finance.personal.read"
+    case financeOperationalWrite = "finance.operational.write"
+    case financeStrategicRead = "finance.strategic.read"
+    case financeIrreversible = "finance.irreversible"
+    case adminUsers = "admin.users"
+    case adminSettings = "admin.settings"
+    case billingManage = "billing.manage"
+    case aiGenerate = "ai.generate"
 }
 
 public enum ShellThemeVariant: String, Codable, Equatable {

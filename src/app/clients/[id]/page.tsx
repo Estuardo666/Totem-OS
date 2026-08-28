@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
+import { resolveRoleCode } from "@/lib/roles";
 import {
   getClientBillingExceptions,
   getClientById,
@@ -77,8 +78,9 @@ export default async function ClientDetailPage({
 }: ClientDetailPageProps) {
   const { id } = await params;
   const session = await auth();
-  const isAdmin = session?.user?.role === "ADMIN";
-  const canEditClient = isAdmin || (session?.user?.role === "EDITOR" && session?.user?.specialty === "COMMUNITY");
+  const userRole = resolveRoleCode(session?.user);
+  const isAdmin = userRole === "ADMIN";
+  const canEditClient = isAdmin || (userRole === "EDITOR" && session?.user?.specialty === "COMMUNITY");
 
   // Check if user is authenticated
   if (!session?.user?.id) {
@@ -351,7 +353,7 @@ export default async function ClientDetailPage({
                     clientId={client.id}
                     initialOverview={client.lastAiOverview}
                     initialOverviewDate={client.lastAiOverviewDate}
-                    userRole={session?.user?.role as "ADMIN" | "EDITOR" | "VIEWER" | undefined}
+                    userRole={userRole ?? undefined}
                   />
 
                   {/* Resumen Ejecutivo */}

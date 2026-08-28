@@ -7,6 +7,7 @@ import { SettlementPageClient } from "@/components/features/finance/settlement-p
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { PageHeader } from "@/components/shared";
+import { resolveRoleCode } from "@/lib/roles";
 
 interface SettlementPageProps {
   searchParams: Promise<{ month?: string; year?: string }>;
@@ -21,15 +22,15 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
   }
 
   // Verificar rol desde la base de datos como fallback
-  let userRole = session.user.role;
+  let userRole = resolveRoleCode(session.user) ?? "USER";
   if (session.user.id) {
     try {
       const dbUser = await db.user.findUnique({
         where: { id: session.user.id },
-        select: { roleLegacy: true },
+        select: { roleCode: true, roleLegacy: true },
       });
       if (dbUser) {
-        userRole = dbUser.roleLegacy;
+        userRole = resolveRoleCode(dbUser) ?? "USER";
       }
     } catch (error) {
       console.error("Error al obtener rol desde DB:", error);

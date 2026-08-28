@@ -68,7 +68,7 @@ export async function checkAndMarkOverdueInvoices(): Promise<CobranzaResult> {
 
         const { sendNotification } = await import("@/actions/notification-actions");
         const admins = await db.user.findMany({
-          where: { roleLegacy: "ADMIN" },
+          where: { roleCode: "ADMIN" },
           select: { id: true },
         });
 
@@ -154,7 +154,7 @@ export async function checkPaymentAlerts72Hours(): Promise<CobranzaResult> {
         const { sendPushNotification } = await import("@/actions/push-actions");
 
         const admins = await db.user.findMany({
-          where: { roleLegacy: "ADMIN" },
+          where: { roleCode: "ADMIN" },
           select: { id: true },
         });
 

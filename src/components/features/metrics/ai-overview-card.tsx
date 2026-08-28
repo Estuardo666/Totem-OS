@@ -145,7 +145,7 @@ interface AiOverviewCardProps {
   clientId: string;
   initialOverview?: string | null;
   initialOverviewDate?: Date | null;
-  userRole?: "ADMIN" | "EDITOR" | "VIEWER";
+  userRole?: "ADMIN" | "EDITOR" | "USER";
   hasMetrics?: boolean;
 }
 

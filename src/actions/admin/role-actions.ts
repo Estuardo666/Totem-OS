@@ -30,12 +30,12 @@ export async function getRoles(): Promise<ApiResponse<RoleWithUserCount[]>> {
     });
 
     const roleCounts = await db.user.groupBy({
-      by: ["roleLegacy"],
+      by: ["roleCode"],
       _count: { _all: true },
     });
     const countsByName = new Map(
-      roleCounts.map(({ roleLegacy, _count }) => [
-        roleLegacy.toUpperCase(),
+      roleCounts.map(({ roleCode, _count }) => [
+        roleCode.toUpperCase(),
         _count._all,
       ])
     );
@@ -218,7 +218,7 @@ export async function deleteRole(
 
     // 3. Validar que no tenga usuarios asignados
     const assignedUsers = await db.user.count({
-      where: { roleLegacy: role.name.toUpperCase() },
+      where: { roleCode: role.name.toUpperCase() },
     });
     if (assignedUsers > 0) {
       return {

@@ -6,12 +6,12 @@ import { getUserWorkloads } from "@/actions/workload-actions";
 import { getFinancialStats } from "@/actions/finance-actions";
 import { getReceivables } from "@/actions/finance-actions";
 import { HomeCommandCenter } from "@/components/features/dashboard/home-command-center";
+import { resolveRoleCode } from "@/lib/roles";
 
 export default async function Home() {
   const session = await auth();
-  // `roleLegacy` is the persisted role and is the source of truth for Home permissions.
-  // Falling back to `role` keeps compatibility with older sessions.
-  const userRole = session?.user?.roleLegacy ?? session?.user?.role;
+  // roleCode es la fuente canónica; resolveRoleCode conserva sesiones antiguas.
+  const userRole = resolveRoleCode(session?.user) ?? "USER";
   const isAdmin = userRole === "ADMIN";
 
   // Finance is intentionally not requested for non-admins. The restriction is

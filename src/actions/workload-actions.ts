@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
+import { resolveRoleCode } from "@/lib/roles";
 
 export interface UserWorkload {
   userId: string;
@@ -45,6 +46,7 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
       select: {
         id: true,
         name: true,
+        roleCode: true,
         roleLegacy: true,
         specialty: true,
         image: true,
@@ -55,7 +57,7 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
     const workloads: UserWorkload[] = await Promise.all(
       users.map(async (user) => {
         let pendingTasksCount = 0;
-        const userRole = user.roleLegacy;
+        const userRole = resolveRoleCode(user) ?? "USER";
         const normalizedSpecialty = user.specialty?.toUpperCase() ?? null;
         const actsAsCommunity = normalizedSpecialty?.includes("COMMUNITY") ?? false;
 
@@ -89,13 +91,13 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
         pendingTasksCount = editorCount + communityCount;
 
         // Capacidad semanal estimada según el rol
-        // ADMIN: 15, EDITOR: 10, VIEWER: 5
+        // ADMIN: 15, EDITOR: 10, USER: 5
         let weeklyCapacity = 10; // Default
         if (userRole === "ADMIN") {
           weeklyCapacity = 15;
         } else if (userRole === "EDITOR") {
           weeklyCapacity = 10;
-        } else if (userRole === "VIEWER") {
+        } else if (userRole === "USER") {
           weeklyCapacity = 5;
         }
 

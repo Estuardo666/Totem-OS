@@ -15,6 +15,7 @@ import {
 } from "@/schemas/finance";
 import type { ApiResponse } from "@/types";
 import type { User, Transaction } from "@prisma/client";
+import { resolveRoleCode } from "@/lib/roles";
 
 // Import services
 import {
@@ -133,7 +134,7 @@ export async function getStrategicClientPlans():
       return { success: false, error: "No autenticado" };
     }
 
-    const userRole = session.user.roleLegacy ?? session.user.role;
+    const userRole = resolveRoleCode(session.user);
     const clientScope = getStrategicClientScope(session.user.id, userRole);
     if (!clientScope) {
       return { success: false, error: "No autorizado" };
@@ -174,7 +175,7 @@ export async function getStrategicClientAnalyticsPlans():
   Promise<ApiResponse<StrategicClientAnalyticsPlan[]>> {
   try {
     const session = await auth();
-    const userRole = session?.user?.roleLegacy ?? session?.user?.role;
+    const userRole = resolveRoleCode(session?.user);
     if (!canReadStrategicClientAnalytics(session?.user?.id, userRole)) {
       return {
         success: false,
@@ -402,7 +403,7 @@ export async function createExpense(input: unknown): Promise<ApiResponse<any>> {
     const expense = await createExpenseInDb({
       ...validatedData,
       createdByUserId: session.user.id,
-      isEditor: session.user.role === "EDITOR",
+      isEditor: resolveRoleCode(session.user) === "EDITOR",
     });
     revalidateFinanceViews();
     return { success: true, data: expense };
@@ -489,7 +490,7 @@ export async function createTransaction(input: unknown): Promise<ApiResponse<any
     }
 
     const validatedData = createTransactionSchema.parse(input);
-    const transaction = await createTransactionInDb(validatedData, session.user.id, session.user.role);
+    const transaction = await createTransactionInDb(validatedData, session.user.id, resolveRoleCode(session.user) ?? "USER");
     revalidateFinanceViews();
     return { success: true, data: transaction };
   } catch (error) {
@@ -1167,7 +1168,7 @@ export async function getSettlementReport(
     }
 
     const currentUserId = session.user.id;
-    const isAdmin = session.user.role === "ADMIN";
+    const isAdmin = resolveRoleCode(session.user) === "ADMIN";
 
     const monthStart = new Date(year, month - 1, 1);
     monthStart.setHours(0, 0, 0, 0);

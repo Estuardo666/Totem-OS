@@ -581,7 +581,7 @@ export async function updateTaskStatus(
       // No se reasigna: mantener el assignedCommunityId original
       // Buscar al admin para notificarle que la tarea está lista para publicar
       const adminUser = await db.user.findFirst({
-        where: { roleLegacy: "ADMIN" },
+        where: { roleCode: "ADMIN" },
         select: { id: true },
       });
       adminIdToNotify = adminUser?.id ?? null;
@@ -848,7 +848,7 @@ export async function updateTask(
     if (isChangingToClientApproved) {
       // Buscar al admin para notificarle que la tarea está lista para publicar
       const adminUser = await db.user.findFirst({
-        where: { roleLegacy: "ADMIN" },
+        where: { roleCode: "ADMIN" },
         select: { id: true },
       });
       adminIdToNotify = adminUser?.id ?? null;

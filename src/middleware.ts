@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 import { NextResponse } from "next/server";
+import { resolveRoleCode } from "./lib/roles";
 
 const { auth } = NextAuth(authConfig);
 
@@ -18,9 +19,9 @@ export default auth((req) => {
     const isAuthPage = req.nextUrl.pathname.startsWith("/sign-in") || req.nextUrl.pathname.startsWith("/sign-up");
     const isPublicReport = req.nextUrl.pathname.startsWith("/reports/share");
     const isPolicyPage = req.nextUrl.pathname.startsWith("/privacy") || req.nextUrl.pathname.startsWith("/terms");
-    // Intentar leer roleLegacy primero, luego role como fallback
-    // Si ambos son null/undefined, asumir EDITOR para no bloquear el acceso
-    const userRole = req.auth?.user?.roleLegacy || req.auth?.user?.role || "EDITOR";
+    // roleCode es canónico; los campos legacy solo sirven para sesiones antiguas.
+    // Sin un rol válido se aplica USER (mínimo privilegio), nunca EDITOR.
+    const userRole = resolveRoleCode(req.auth?.user) ?? "USER";
     const isEditor = userRole === "EDITOR";
 
     // Permitir acceso público a reportes compartidos
@@ -58,8 +59,15 @@ export default auth((req) => {
     return NextResponse.next();
   } catch (error) {
     console.error("[Middleware] Error:", error);
-    // En caso de error, permitir pasar (no bloquear el sitio)
-    return NextResponse.next();
+    // Ante un fallo de autenticación se falla cerrado para rutas protegidas.
+    const isPublicPath = req.nextUrl.pathname.startsWith("/sign-in")
+      || req.nextUrl.pathname.startsWith("/sign-up")
+      || req.nextUrl.pathname.startsWith("/privacy")
+      || req.nextUrl.pathname.startsWith("/terms")
+      || req.nextUrl.pathname.startsWith("/reports/share");
+    return isPublicPath
+      ? NextResponse.next()
+      : NextResponse.redirect(createUrlWithPort(req.nextUrl, "/sign-in?error=auth"));
   }
 });
 

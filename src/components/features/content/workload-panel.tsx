@@ -42,8 +42,8 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
         return <Badge variant="default" className="bg-purple-600 text-xs rounded-lg">Admin</Badge>;
       case "EDITOR":
         return <Badge variant="default" className="bg-blue-600 text-xs rounded-lg">Editor</Badge>;
-      case "VIEWER":
-        return <Badge variant="secondary" className="text-xs rounded-lg">Viewer</Badge>;
+      case "USER":
+        return <Badge variant="secondary" className="text-xs rounded-lg">Usuario</Badge>;
       default:
         return <Badge variant="secondary" className="text-xs rounded-lg">{role}</Badge>;
     }

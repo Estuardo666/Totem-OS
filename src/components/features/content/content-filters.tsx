@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { Client, User } from "@prisma/client";
+import { resolveRoleCode } from "@/lib/roles";
 
 const normalizeText = (text: string) =>
   text
@@ -117,12 +118,12 @@ export function ContentFilters({
 }: ContentFiltersProps) {
   const { data: session } = useSession();
   const userId = currentUserId || session?.user?.id;
-  const userRole = session?.user?.role;
+  const userRole = resolveRoleCode(session?.user);
   const [filtersOpen, setFiltersOpen] = useState(false);
   
-  // Por defecto, si es EDITOR o VIEWER, mostrar solo sus tareas
+  // Por defecto, los roles operativos trabajan sobre sus propias tareas.
   const [viewMode, setViewMode] = useState<"my-tasks" | "all">(
-    defaultView || (userRole === "EDITOR" || userRole === "VIEWER" ? "my-tasks" : "all")
+    defaultView || (userRole === "EDITOR" || userRole === "USER" ? "my-tasks" : "all")
   );
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
   const [selectedMonth, setSelectedMonth] = useState<string>(() => format(new Date(), "yyyy-MM"));
@@ -168,7 +169,7 @@ export function ContentFilters({
     // Filtro principal: "Mis Tareas" vs "Todo el Equipo"
     if (viewMode === "my-tasks" && userId) {
       filtered = filtered.filter((task) =>
-        matchesTaskAssignment(task, userId, session?.user?.specialty, session?.user?.role ?? null)
+        matchesTaskAssignment(task, userId, session?.user?.specialty, userRole)
       );
     }
 
@@ -198,7 +199,7 @@ export function ContentFilters({
             task,
             selectedUserId,
             selectedUser?.specialty ?? null,
-            selectedUser?.roleLegacy ?? null
+            resolveRoleCode(selectedUser)
           )
         );
       }
@@ -217,10 +218,9 @@ export function ContentFilters({
     selectedClientId,
     selectedMonth,
     selectedUserId,
+    selectedUser,
     selectedType,
-    selectedUser?.roleLegacy,
-    selectedUser?.specialty,
-    session?.user?.role,
+    userRole,
     session?.user?.specialty,
   ]);
 

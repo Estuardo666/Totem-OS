@@ -75,7 +75,7 @@ export async function notifyAdmins(
 ): Promise<ApiResponse<{ count: number }>> {
   try {
     const admins = await db.user.findMany({
-      where: { roleLegacy: "ADMIN" },
+      where: { roleCode: "ADMIN" },
       select: { id: true },
     });
 
@@ -123,7 +123,7 @@ export async function notifyAdminsWithPush(
     const { sendPushNotification } = await import("@/actions/push-actions");
     
     const admins = await db.user.findMany({
-      where: { roleLegacy: "ADMIN" },
+      where: { roleCode: "ADMIN" },
       select: { id: true },
     });
 

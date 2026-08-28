@@ -8,8 +8,9 @@ export const userSchema = z.object({
   lastName: z.string().optional(),
   email: z.string().email("Email inválido"),
   password: z.string().optional(),
-  // Campos Legacy actualizados
-  roleLegacy: z.enum(["ADMIN", "EDITOR"]).optional(),
+  // roleCode es canónico; roleLegacy se conserva para compatibilidad.
+  roleLegacy: z.enum(["ADMIN", "EDITOR", "USER"]).optional(),
+  roleCode: z.enum(["ADMIN", "EDITOR", "USER"]).optional(),
   specialty: z.string().optional().nullable(), // String libre para nombre de especialidad
   baseSalary: z.number().min(0, "El salario base debe ser mayor o igual a 0").optional(),
 });

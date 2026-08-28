@@ -6,11 +6,13 @@ import { ClientList } from "@/components/features/clients/client-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/auth";
+import { resolveRoleCode } from "@/lib/roles";
 
 export default async function ClientsPage() {
   const session = await auth();
-  const isAdmin = session?.user?.role === "ADMIN";
-  const canEditClient = isAdmin || session?.user?.role === "EDITOR" || session?.user?.role === "COMMUNITY";
+  const userRole = resolveRoleCode(session?.user);
+  const isAdmin = userRole === "ADMIN";
+  const canEditClient = isAdmin || userRole === "EDITOR";
   
   const [clientsResult, usersResult] = await Promise.all([
     getClients(),

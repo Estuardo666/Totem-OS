@@ -7,6 +7,7 @@ import type { ApiResponse } from "@/types";
 import { userCreateSchema, userUpdateSchema } from "@/schemas/admin-schemas";
 import bcrypt from "bcryptjs";
 import type { Prisma, User } from "@prisma/client";
+import { normalizeCanonicalRole, resolveRoleCode, type CanonicalRole } from "@/lib/roles";
 
 // Nunca exponemos el hash de contraseña a componentes cliente.
 export type AdminUserWithRelations = Omit<User, "password"> & {
@@ -23,7 +24,7 @@ export type AdminUserWithRelations = Omit<User, "password"> & {
 export async function getUsers(): Promise<ApiResponse<AdminUserWithRelations[]>> {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || resolveRoleCode(session.user) !== "ADMIN") {
       return { success: false, error: "No autorizado." };
     }
 
@@ -57,7 +58,7 @@ export async function getUsers(): Promise<ApiResponse<AdminUserWithRelations[]>>
 export async function createUser(input: unknown): Promise<ApiResponse<AdminUserWithRelations>> {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || resolveRoleCode(session.user) !== "ADMIN") {
       return { success: false, error: "No autorizado." };
     }
 
@@ -68,6 +69,7 @@ export async function createUser(input: unknown): Promise<ApiResponse<AdminUserW
     if (existingUser) return { success: false, error: "Email ya existe" };
 
     const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+    const roleCode = resolveRoleCode(validatedData) ?? "EDITOR";
 
     const user = await db.user.create({
       data: {
@@ -75,7 +77,8 @@ export async function createUser(input: unknown): Promise<ApiResponse<AdminUserW
         email: validatedData.email,
         password: hashedPassword,
         image: validatedData.image || null,
-        roleLegacy: validatedData.roleLegacy || "EDITOR",
+        roleLegacy: roleCode,
+        roleCode,
         specialty: validatedData.specialty || null,
       },
       include: { _count: { select: { tasksAsEditor: true, tasksAsCommunity: true } } },
@@ -95,7 +98,7 @@ export async function createUser(input: unknown): Promise<ApiResponse<AdminUserW
 export async function updateUser(userId: string, input: unknown): Promise<ApiResponse<AdminUserWithRelations>> {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || resolveRoleCode(session.user) !== "ADMIN") {
       return { success: false, error: "No autorizado." };
     }
 
@@ -114,9 +117,17 @@ export async function updateUser(userId: string, input: unknown): Promise<ApiRes
       ...(validatedData.name && { name: validatedData.name }),
       ...(validatedData.email && { email: validatedData.email }),
       ...(validatedData.image !== undefined && { image: validatedData.image }),
-      ...(validatedData.roleLegacy !== undefined && { roleLegacy: validatedData.roleLegacy }),
       ...(validatedData.specialty !== undefined && { specialty: validatedData.specialty }),
     };
+
+    const requestedRole = validatedData.roleCode ?? validatedData.roleLegacy;
+    if (requestedRole !== undefined) {
+      const roleCode = normalizeCanonicalRole(requestedRole);
+      if (roleCode) {
+        updateData.roleCode = roleCode;
+        updateData.roleLegacy = roleCode;
+      }
+    }
 
     if (validatedData.password) {
       updateData.password = await bcrypt.hash(validatedData.password, 10);
@@ -142,7 +153,7 @@ export async function updateUser(userId: string, input: unknown): Promise<ApiRes
 export async function deleteUser(userId: string): Promise<ApiResponse<{ success: boolean }>> {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || resolveRoleCode(session.user) !== "ADMIN") {
       return { success: false, error: "No autorizado." };
     }
 
@@ -167,29 +178,30 @@ export async function deleteUser(userId: string): Promise<ApiResponse<{ success:
 export async function fixUserRoles(): Promise<ApiResponse<{ updated: number }>> {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || resolveRoleCode(session.user) !== "ADMIN") {
       return { success: false, error: "No autorizado." };
     }
 
-    // Buscar usuarios con roles inválidos
-    // Asumimos que "CLIENTE" es el valor incorrecto que quieres corregir
-    const usersToFix = await db.user.findMany({
-      where: {
-        roleLegacy: {
-          notIn: ["ADMIN", "EDITOR"]
-        }
-      }
+    // Buscar usuarios con valores legacy o canónicos inválidos. El backfill
+    // nunca eleva un valor desconocido: lo convierte al rol mínimo USER.
+    const users = await db.user.findMany({
+      select: { id: true, roleLegacy: true, roleCode: true },
+    });
+    const usersToFix = users.filter((user) => {
+      const expected = normalizeCanonicalRole(user.roleLegacy) ?? "USER";
+      return user.roleCode !== expected || normalizeCanonicalRole(user.roleCode) === null;
     });
 
     if (usersToFix.length === 0) {
       return { success: true, data: { updated: 0 }, message: "No se encontraron usuarios con roles inválidos." };
     }
 
-    // Actualizar cada usuario inválido a EDITOR
+    // Actualizar ambos campos en una sola operación lógica.
     for (const user of usersToFix) {
+      const roleCode: CanonicalRole = normalizeCanonicalRole(user.roleLegacy) ?? "USER";
       await db.user.update({
         where: { id: user.id },
-        data: { roleLegacy: "EDITOR" }
+        data: { roleLegacy: roleCode, roleCode }
       });
     }
 

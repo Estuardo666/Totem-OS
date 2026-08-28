@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { pusherServer } from "@/lib/pusher";
+import { resolveRoleCode } from "@/lib/roles";
 
 export type ForceLogoutResult = {
   success: boolean;
@@ -22,7 +23,7 @@ export async function forceLogoutAllSessionsAction(): Promise<ForceLogoutResult>
     }
 
     // Solo admins pueden forzar logout
-    if (session.user.role !== "admin") {
+    if (resolveRoleCode(session.user) !== "ADMIN") {
       return { success: false, message: "Sin permisos de administrador" };
     }
 
@@ -62,7 +63,7 @@ export async function forceLogoutUserAction(targetUserId: string): Promise<Force
     }
 
     // Solo admins pueden forzar logout
-    if (session.user.role !== "admin") {
+    if (resolveRoleCode(session.user) !== "ADMIN") {
       return { success: false, message: "Sin permisos de administrador" };
     }
 

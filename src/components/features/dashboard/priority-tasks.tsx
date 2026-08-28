@@ -4,6 +4,7 @@ import { AlertCircle, ListTodo } from "lucide-react";
 import { auth } from "@/auth";
 import { format, isToday, isYesterday, differenceInHours, startOfDay, endOfDay, addDays } from "date-fns";
 import Link from "next/link";
+import { resolveRoleCode } from "@/lib/roles";
 
 const EDITOR_RESPONSIBLE_STATUSES = ["RECORDED", "EDITING", "REVIEW_CLIENT"] as const;
 const COMMUNITY_RESPONSIBLE_STATUSES = ["IDEA", "SCRIPT", "CLIENT_APPROVED"] as const;
@@ -53,7 +54,7 @@ function getDateColor(date: Date | null): string {
 export async function PriorityTasks() {
   const session = await auth();
   const userId = session?.user?.id;
-  const userRole = session?.user?.roleLegacy ?? session?.user?.role ?? null;
+  const userRole = resolveRoleCode(session?.user);
   const specialty = session?.user?.specialty ?? null;
 
   const tasksResult = await getTasks();

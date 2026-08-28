@@ -12,6 +12,7 @@ import type { User } from "@prisma/client";
 import type { Session } from "next-auth";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { normalizeCanonicalRole, resolveRoleCode } from "@/lib/roles";
 
 function buildCurrentUserFallback(session: Session | null) {
   const now = new Date();
@@ -26,7 +27,8 @@ function buildCurrentUserFallback(session: Session | null) {
     emailVerified: null,
     image: sessionUser?.image || null,
     password: null,
-    roleLegacy: sessionUser?.roleLegacy || sessionUser?.role || "EDITOR",
+    roleLegacy: resolveRoleCode(sessionUser) ?? "USER",
+    roleCode: resolveRoleCode(sessionUser) ?? "USER",
     specialty: sessionUser?.specialty || null,
     salaryType: "MONTHLY",
     baseSalary: null,
@@ -57,8 +59,13 @@ export async function createUser(
     const validatedData = createUserSchema.parse(input);
 
     // 2. Operación de DB
+    const roleCode = resolveRoleCode(validatedData) ?? "EDITOR";
     const user = await db.user.create({
-      data: validatedData,
+      data: {
+        ...validatedData,
+        roleLegacy: roleCode,
+        roleCode,
+      },
     });
 
     // 3. Retornar éxito
@@ -83,9 +90,14 @@ export async function updateUser(
   try {
     const validatedData = updateUserSchema.parse(input);
 
+    const requestedRole = validatedData.roleCode ?? validatedData.roleLegacy;
+    const roleCode = requestedRole === undefined ? undefined : normalizeCanonicalRole(requestedRole);
     const user = await db.user.update({
       where: { id },
-      data: validatedData,
+      data: {
+        ...validatedData,
+        ...(roleCode ? { roleLegacy: roleCode, roleCode } : {}),
+      },
     });
 
     return { success: true, data: user };
@@ -111,7 +123,7 @@ export async function updateUserAdmin(
     const { auth } = await import("@/auth");
     const session = await auth();
     const currentUserId = session?.user?.id;
-    const currentUserRole = session?.user?.role;
+    const currentUserRole = resolveRoleCode(session?.user);
 
     if (!currentUserId) {
       return {
@@ -133,7 +145,7 @@ export async function updateUserAdmin(
     // 3. Verificar que el usuario a actualizar existe
     const targetUser = await db.user.findUnique({
       where: { id: userId },
-      select: { id: true, roleLegacy: true },
+      select: { id: true, roleLegacy: true, roleCode: true },
     });
 
     if (!targetUser) {
@@ -146,7 +158,8 @@ export async function updateUserAdmin(
     // 4. Prevenir que un ADMIN se quite el rol de ADMIN a sí mismo
     // Nota: validatedData.role no existe en el schema actual, pero mantenemos la lógica por si se añade
     // Asumimos que validatedData.roleLegacy es el campo a comprobar
-    if (currentUserId === userId && validatedData.roleLegacy && validatedData.roleLegacy !== "ADMIN") {
+    const requestedRole = validatedData.roleCode ?? validatedData.roleLegacy;
+    if (currentUserId === userId && requestedRole && normalizeCanonicalRole(requestedRole) !== "ADMIN") {
       return {
         success: false,
         error: "No puedes quitarte el rol de ADMIN a ti mismo",
@@ -159,7 +172,12 @@ export async function updateUserAdmin(
       data: {
         ...(validatedData.name !== undefined && { name: validatedData.name }),
         ...(validatedData.email !== undefined && { email: validatedData.email }),
-        ...(validatedData.roleLegacy !== undefined && { roleLegacy: validatedData.roleLegacy }),
+        ...(requestedRole !== undefined && normalizeCanonicalRole(requestedRole)
+          ? {
+              roleLegacy: normalizeCanonicalRole(requestedRole)!,
+              roleCode: normalizeCanonicalRole(requestedRole)!,
+            }
+          : {}),
         ...(validatedData.specialty !== undefined && { specialty: validatedData.specialty ?? null }),
         ...(validatedData.baseSalary !== undefined && { baseSalary: validatedData.baseSalary }),
       },
@@ -193,7 +211,7 @@ export async function updateUserRate(
     const { auth } = await import("@/auth");
     const session = await auth();
     const currentUserId = session?.user?.id;
-    const currentUserRole = session?.user?.role;
+    const currentUserRole = resolveRoleCode(session?.user);
 
     if (!currentUserId) {
       return {
@@ -352,6 +370,7 @@ export async function registerUser(
         email: validatedData.email,
         password: hashedPassword,
         roleLegacy: "EDITOR", // Por defecto EDITOR
+        roleCode: "EDITOR",
         specialty: null, // Sin especialidad inicial
         baseSalary: 0,
       },

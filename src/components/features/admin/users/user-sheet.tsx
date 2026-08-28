@@ -249,6 +249,7 @@ export function UserSheet({ user, trigger, mode = "create", open: externalOpen, 
                       <SelectContent>
                         <SelectItem value="ADMIN">ADMIN</SelectItem>
                         <SelectItem value="EDITOR">EDITOR</SelectItem>
+                        <SelectItem value="USER">USER</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

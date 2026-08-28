@@ -10,6 +10,7 @@ declare module "next-auth" {
       image?: string | null;
       role: string; // Compatibilidad: Contiene el valor de roleLegacy
       roleLegacy: string; // Explícito: Valor real guardado en DB
+      roleCode: string; // Fuente canónica de autorización
       specialty?: string | null;
       primaryColor?: string | null;
       themeId?: "default" | "catppuccin" | null;
@@ -23,6 +24,7 @@ declare module "next-auth" {
     name: string;
     image?: string | null;
     role?: string; // Usado durante el signIn, mapeado a roleLegacy
+    roleCode?: string; // Rol canónico
     specialty?: string | null;
     primaryColor?: string | null;
     themeId?: "default" | "catppuccin" | null;
@@ -37,6 +39,7 @@ declare module "next-auth/jwt" {
     name: string;
     image?: string | null;
     role: string; // Almacena el valor de roleLegacy
+    roleCode: string; // Rol canónico
     specialty?: string | null;
     primaryColor?: string | null;
     themeId?: "default" | "catppuccin" | null;

@@ -49,6 +49,8 @@ model User {
 
   // Legacy: Campo string para compatibilidad
   roleLegacy String @default("EDITOR") @map("role") // "ADMIN", "EDITOR"
+  // Fuente canónica de autorización; roleLegacy se mantiene durante la transición.
+  roleCode String @default("EDITOR") @map("role_code") // "ADMIN", "EDITOR", "USER"
 
   // Campo de texto para especialidad (se llena desde la tabla Specialty)
   specialty             String? // Ej: "Community Manager", "Diseñador Gráfico"
@@ -99,6 +101,7 @@ model User {
 
   @@index([email])
   @@index([roleLegacy])
+  @@index([roleCode])
 }
 
 // ============================================================================

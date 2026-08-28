@@ -6,6 +6,8 @@
  * validación que replica `TotemOSKit/ShellContracts.swift`.
  */
 
+import { resolveRoleCode } from "./roles.ts";
+
 export const TOTEM_SHELL_BRIDGE_NAME = "totemShell";
 export const TOTEM_SHELL_CONTRACT_VERSION = 1;
 export const TOTEM_SHELL_MARKER_ATTRIBUTE = "data-totem-native-shell";
@@ -246,7 +248,13 @@ export interface ShellSnapshotInput {
   route: string;
   theme: ShellThemeVariant;
   accentColor?: string | null;
-  user: { name?: string | null; role?: string | null; image?: string | null } | null;
+  user: {
+    name?: string | null;
+    roleCode?: string | null;
+    roleLegacy?: string | null;
+    role?: string | null;
+    image?: string | null;
+  } | null;
   logoLight?: string | null;
   logoDark?: string | null;
   taskCount?: number;
@@ -264,7 +272,8 @@ export interface ShellSnapshotInput {
 
 /** Construye el snapshot ya saneado y filtrado por permisos. */
 export function buildShellSnapshot(input: ShellSnapshotInput): ShellSnapshot {
-  const role = isShellRole(input.user?.role) ? input.user.role : null;
+  const roleCode = resolveRoleCode(input.user);
+  const role = isShellRole(roleCode) ? roleCode : null;
   const name = input.user?.name?.trim() || "Usuario";
 
   const notifications = (input.notifications ?? [])

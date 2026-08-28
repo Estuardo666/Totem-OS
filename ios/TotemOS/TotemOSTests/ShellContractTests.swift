@@ -138,4 +138,13 @@ final class ShellContractTests: XCTestCase {
         let invalid = snapshotJSON().replacingOccurrences(of: "#CBA6F7", with: "purple")
         XCTAssertThrowsError(try ShellSnapshotDecoder.decode(invalid))
     }
+
+    func testRoleCapabilitiesMatchCanonicalMatrix() {
+        XCTAssertTrue(ShellRole.admin.hasCapability(.financeIrreversible))
+        XCTAssertTrue(ShellRole.editor.hasCapability(.clientsWrite))
+        XCTAssertFalse(ShellRole.editor.hasCapability(.financeIrreversible))
+        XCTAssertFalse(ShellRole.user.hasCapability(.clientsWrite))
+        XCTAssertGreaterThan(ShellRole.admin.capabilities.count, ShellRole.editor.capabilities.count)
+        XCTAssertGreaterThan(ShellRole.editor.capabilities.count, ShellRole.user.capabilities.count)
+    }
 }

@@ -9,6 +9,7 @@ import {
 } from "@/lib/prisma-connection-resilience";
 import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
+import { normalizeCanonicalRole, resolveRoleCode } from "@/lib/roles";
 
 /**
  * Configuración completa de NextAuth para Node.js Runtime
@@ -53,7 +54,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           image: user.image,
-          role: user.roleLegacy, // Incluir el rol legacy en el objeto de usuario
+          roleCode: user.roleCode,
+          role: user.roleCode, // Compatibilidad durante la migración
           specialty: user.specialty, // Incluir especialidad
           primaryColor: user.primaryColor,
           themeId: user.themeId === "catppuccin" ? "catppuccin" : "default",
@@ -86,6 +88,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 image: user.image || null,
                 emailVerified: new Date(),
                 roleLegacy: "EDITOR", // Rol por defecto (Legacy)
+                roleCode: "EDITOR",
                 specialty: null, // Especialidad nula por defecto
               },
             });
@@ -140,7 +143,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // Actualizar el user.id con el ID de Prisma para que el JWT tenga el ID correcto
           user.id = dbUser.id;
           // Asegurar que el rol esté en el objeto user para el callback jwt
-          user.role = dbUser.roleLegacy || "EDITOR";
+          const roleCode = resolveRoleCode({ roleCode: dbUser.roleCode, roleLegacy: dbUser.roleLegacy }) ?? "USER";
+          user.roleCode = roleCode;
+          user.role = roleCode;
           user.specialty = dbUser.specialty || null;
           user.primaryColor = dbUser.primaryColor || "#3b82f6";
           user.themeId = dbUser.themeId === "catppuccin" ? "catppuccin" : "default";
@@ -156,17 +161,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const dbUser = await prisma.user.findUnique({
             where: { email: user.email },
-            select: { roleLegacy: true, specialty: true, primaryColor: true, themeId: true, catppuccinAccent: true },
+            select: { roleCode: true, roleLegacy: true, specialty: true, primaryColor: true, themeId: true, catppuccinAccent: true },
           });
           // Asegurar que el rol esté en el objeto user para el callback jwt
-          user.role = dbUser?.roleLegacy || "EDITOR";
+          const roleCode = resolveRoleCode({ roleCode: dbUser?.roleCode, roleLegacy: dbUser?.roleLegacy }) ?? "USER";
+          user.roleCode = roleCode;
+          user.role = roleCode;
           user.specialty = dbUser?.specialty || null;
           user.primaryColor = dbUser?.primaryColor || "#3b82f6";
           user.themeId = dbUser?.themeId === "catppuccin" ? "catppuccin" : "default";
           user.catppuccinAccent = dbUser?.catppuccinAccent || "mauve";
         } catch (error) {
           console.error("❌ Error al obtener rol para credentials:", error);
-          user.role = "EDITOR";
+          user.roleCode = normalizeCanonicalRole(user.roleCode ?? user.role) ?? "USER";
+          user.role = user.roleCode;
         }
       }
 
@@ -180,8 +188,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.name = user.name;
         token.image = user.image;
         // Si el usuario trae rol del provider, úsalo
-        if (user.role) {
-          token.role = user.role;
+        const roleCode = normalizeCanonicalRole(user.roleCode ?? user.role);
+        if (roleCode) {
+          token.roleCode = roleCode;
+          token.role = roleCode;
         }
         if (user.specialty !== undefined) {
           token.specialty = user.specialty as string | null;
@@ -200,16 +210,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { roleLegacy: true, image: true, specialty: true, primaryColor: true, themeId: true, catppuccinAccent: true },
+            select: { roleCode: true, roleLegacy: true, image: true, specialty: true, primaryColor: true, themeId: true, catppuccinAccent: true },
           });
           clearPrismaConnectionBackoff();
           
           // Solo actualizar si la consulta fue exitosa Y hay un valor válido
-          if (dbUser?.roleLegacy) {
-            token.role = dbUser.roleLegacy;
+          const roleCode = resolveRoleCode({ roleCode: dbUser?.roleCode, roleLegacy: dbUser?.roleLegacy });
+          if (roleCode) {
+            token.roleCode = roleCode;
+            token.role = roleCode;
           }
-          // Si dbUser es null o roleLegacy está vacío, mantener token.role actual
-          // (no hacer downgrade a EDITOR)
+          // Si la BD no devuelve un rol válido, mantener el token existente;
+          // nunca se introduce un downgrade implícito a EDITOR.
           
           // Sincronizar imagen solo si existe en BD
           if (dbUser?.image) {
@@ -237,8 +249,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user && token) {
         session.user.id = token.id as string;
-        session.user.role = token.role as string; // Compatibilidad
-        session.user.roleLegacy = token.role as string; // Explícito
+        const roleCode = normalizeCanonicalRole(token.roleCode ?? token.role) ?? "USER";
+        session.user.roleCode = roleCode;
+        session.user.role = roleCode; // Compatibilidad
+        session.user.roleLegacy = roleCode; // Dual-read legacy
         session.user.specialty = token.specialty as string | null; // Especialidad
         session.user.email = token.email as string;
         session.user.name = token.name as string;

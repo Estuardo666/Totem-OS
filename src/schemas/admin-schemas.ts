@@ -25,8 +25,9 @@ export const userCreateSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
   
-  // Campos Legacy (Únicos campos relevantes)
-  roleLegacy: z.enum(["ADMIN", "EDITOR"]).default("EDITOR"),
+  // roleLegacy se mantiene para formularios existentes; roleCode es canónico.
+  roleLegacy: z.enum(["ADMIN", "EDITOR", "USER"]).default("EDITOR"),
+  roleCode: z.enum(["ADMIN", "EDITOR", "USER"]).optional(),
   specialty: z.string().optional().nullable(), // Nombre de la especialidad (texto)
   
   image: z.string().url("URL de imagen inválida").optional().nullable(),
@@ -41,8 +42,9 @@ export const userUpdateSchema = z.object({
   // Permite string vacío para que el formulario no falle al dejar el campo vacío
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").optional().or(z.literal("")),
   
-  // Campos Legacy
-  roleLegacy: z.enum(["ADMIN", "EDITOR"]).optional(),
+  // Compatibilidad dual durante CP05.
+  roleLegacy: z.enum(["ADMIN", "EDITOR", "USER"]).optional(),
+  roleCode: z.enum(["ADMIN", "EDITOR", "USER"]).optional(),
   specialty: z.string().optional().nullable(), // Nombre de la especialidad (texto)
   
   image: z.string().url("URL de imagen inválida").optional().nullable(),

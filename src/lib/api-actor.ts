@@ -1,10 +1,13 @@
-export const API_CAPABILITIES = {
-  kernelEchoRead: "kernel.echo.read",
-  kernelEchoWrite: "kernel.echo.write",
-} as const;
+import {
+  API_CAPABILITIES,
+  resolveRoleCode,
+  roleCapabilities,
+  type ApiCapability,
+  type CanonicalRole,
+} from "./roles.ts";
 
-export type ApiCapability = (typeof API_CAPABILITIES)[keyof typeof API_CAPABILITIES] | string;
-export type CanonicalRole = "ADMIN" | "EDITOR" | "USER";
+export { API_CAPABILITIES, normalizeCanonicalRole } from "./roles.ts";
+export type { ApiCapability, CanonicalRole } from "./roles.ts";
 
 export interface ApiActor {
   userId: string;
@@ -21,25 +24,12 @@ export interface ApiSessionLike {
     email?: unknown;
     role?: unknown;
     roleLegacy?: unknown;
+    roleCode?: unknown;
   } | null;
 }
 
-const ROLE_CAPABILITIES: Record<CanonicalRole, readonly ApiCapability[]> = {
-  // Los permisos se enumeran explícitamente. No se asigna acceso por defecto a
-  // roles desconocidos; CP05 ampliará esta tabla por dominio.
-  ADMIN: [API_CAPABILITIES.kernelEchoRead, API_CAPABILITIES.kernelEchoWrite],
-  EDITOR: [API_CAPABILITIES.kernelEchoRead, API_CAPABILITIES.kernelEchoWrite],
-  USER: [API_CAPABILITIES.kernelEchoRead],
-};
-
-export function normalizeCanonicalRole(value: unknown): CanonicalRole | null {
-  if (typeof value !== "string") return null;
-  const role = value.trim().toUpperCase();
-  return role === "ADMIN" || role === "EDITOR" || role === "USER" ? role : null;
-}
-
 export function apiCapabilitiesForRole(role: CanonicalRole): ReadonlySet<ApiCapability> {
-  return new Set(ROLE_CAPABILITIES[role]);
+  return roleCapabilities(role);
 }
 
 export function hasApiCapability(actor: ApiActor, capability: ApiCapability): boolean {
@@ -57,7 +47,11 @@ export function apiActorFromSession(session: ApiSessionLike | null | undefined):
   const user = session?.user;
   if (!user || typeof user.id !== "string" || user.id.trim().length === 0) return null;
 
-  const role = normalizeCanonicalRole(user.roleLegacy ?? user.role);
+  const role = resolveRoleCode({
+    roleCode: user.roleCode,
+    roleLegacy: user.roleLegacy,
+    role: user.role,
+  });
   if (!role) return null;
 
   const expiresAt = sessionExpiry(session.expires);

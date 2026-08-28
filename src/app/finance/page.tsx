@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getFinanceDashboardPeriodSnapshots, getFinancialStats, getGlobalProfitabilityStats, getReceivables, getStrategicClientPlans } from "@/actions/finance-actions";
 import { StrategicFinanceDashboardClient } from "@/components/features/finance/strategic-finance-dashboard-client";
+import { resolveRoleCode } from "@/lib/roles";
 import { PageHeader } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
 import { CardSkeleton } from "@/components/ui/skeletons-composite";
@@ -58,7 +59,7 @@ export default async function FinancePage() {
   const session = await auth();
   if (!session) redirect("/sign-in");
 
-  const userRole = session?.user?.role;
+  const userRole = resolveRoleCode(session?.user) ?? "USER";
   if (userRole !== "ADMIN") redirect("/finance/personal");
 
   return (

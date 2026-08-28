@@ -299,7 +299,7 @@ export async function checkAndCreateAutomaticTransaction(
 
     try {
       const admins = await db.user.findMany({
-        where: { roleLegacy: "ADMIN" },
+        where: { roleCode: "ADMIN" },
         select: { id: true },
       });
 

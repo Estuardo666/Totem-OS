@@ -23,6 +23,7 @@ test("Prisma reads the deterministic CP02 fixture through PostgreSQL", async () 
   assert.equal(task.title, "Tarea de humo CP02");
   assert.equal(task.client.id, fixtures.client.id);
   assert.equal(task.assignedEditor?.id, fixtures.editor.id);
+  assert.equal(task.assignedEditor?.roleCode, "EDITOR");
 });
 
 test("foreign-key cascade cleanup is available to every test run", async () => {

@@ -21,6 +21,7 @@ import { NotificationBell } from "./notification-bell";
 import { cn } from "@/lib/utils";
 import { toggleThemeVariantClient } from "@/lib/theme";
 import { signOutWithTotemIOSCleanup } from "@/lib/totem-ios-client";
+import { resolveRoleCode } from "@/lib/roles";
 
 interface NavItem {
   href: string;
@@ -174,7 +175,7 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
   });
 
   const user = session?.user;
-  const userRole = user?.role;
+  const userRole = resolveRoleCode(user);
   const isAdmin = userRole === "ADMIN";
   const userInitials = user?.name
     ?.split(" ")

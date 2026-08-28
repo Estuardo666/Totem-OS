@@ -48,6 +48,7 @@ export async function seedTestDatabase() {
       name: "CP02 Admin",
       email: "cp02-admin@totem.test",
       roleLegacy: "ADMIN",
+      roleCode: "ADMIN",
     },
   });
 
@@ -57,6 +58,7 @@ export async function seedTestDatabase() {
       name: "CP02 Editor",
       email: "cp02-editor@totem.test",
       roleLegacy: "EDITOR",
+      roleCode: "EDITOR",
     },
   });
 
