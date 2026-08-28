@@ -148,6 +148,21 @@ jobs:
             exit "$test_status"
           fi
 
+          echo "----- test summary -----"
+          { grep -E "Executed [0-9]+ test|Test Suite .* (passed|failed)" /tmp/totem-ios-tests.log || true; } \
+            | tail -n 6
+
+          executed="$(
+            sed -nE 's/.*Executed ([0-9]+) tests?.*/\1/p' /tmp/totem-ios-tests.log \
+              | sort -rn \
+              | head -n 1
+          )"
+          if [ -z "$executed" ] || [ "$executed" -eq 0 ]; then
+            echo "::error title=iOS unit tests::xcodebuild reported no executed tests."
+            exit 1
+          fi
+          echo "Executed $executed test(s)."
+
       - name: Upload test log
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
