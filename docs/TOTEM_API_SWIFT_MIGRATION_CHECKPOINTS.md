@@ -13,7 +13,9 @@ criterio de salida y una verificación antes de iniciar el siguiente.
 - [x] **CP03 — Kernel `/api/v1`** (`b8e994f`): contexto común,
   envelopes, Problem Details, validación, cursor, límite de payload y endpoint
   de contrato.
-- [ ] **CP04 — Autenticación y capacidades**: siguiente checkpoint habilitado.
+- [x] **CP04 — Autenticación y capacidades** (`6b717e5`): `ApiActor`, guard
+  default-deny por capacidades, CSRF doble envío y rate limiting PostgreSQL.
+- [ ] **CP05 — Roles canónicos**: siguiente checkpoint habilitado.
 
 Los hashes son referencias del repositorio en la fecha de corte; si se continúa
 en otra rama, conservar el contenido de los documentos aunque cambie el hash.
