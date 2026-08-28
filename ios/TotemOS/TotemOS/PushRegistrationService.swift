@@ -100,12 +100,21 @@ final class PushRegistrationService {
         guard let json = String(data: data, encoding: .utf8) else {
             throw PushRegistrationError.unexpectedResponse
         }
-        _ = try await webView.callAsyncJavaScript(
-            "localStorage.setItem('totem-ios-apns-context', context);",
-            arguments: ["context": json],
-            in: nil,
-            contentWorld: .page
-        )
+        try await withCheckedThrowingContinuation { continuation in
+            webView.callAsyncJavaScript(
+                "localStorage.setItem('totem-ios-apns-context', context);",
+                arguments: ["context": json],
+                in: nil,
+                contentWorld: .page
+            ) { result in
+                switch result {
+                case .success:
+                    continuation.resume()
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
     }
 
     private func request(
@@ -121,7 +130,12 @@ final class PushRegistrationService {
             throw PushRegistrationError.invalidEndpoint
         }
 
-        let allCookies = await webView.configuration.websiteDataStore.httpCookieStore.allCookies()
+        let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
+        let allCookies = await withCheckedContinuation { continuation in
+            cookieStore.getAllCookies { cookies in
+                continuation.resume(returning: cookies)
+            }
+        }
         let cookies = allCookies.filter { cookieApplies($0, to: endpoint) }
         let cookieHeaders = HTTPCookie.requestHeaderFields(with: cookies)
 
