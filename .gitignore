@@ -73,4 +73,5 @@ next-env.d.ts
 !components.json
 !.eslintrc.json
 !public/manifest.json
+!ios/TotemOS/TotemOS/Assets.xcassets/**/Contents.json
 ios/TotemOS/TotemOS/Info.plist
