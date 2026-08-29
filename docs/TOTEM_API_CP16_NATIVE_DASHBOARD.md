@@ -55,6 +55,8 @@ La bandera remota existente `ios_app_config` controla la ruta. Está **apagada p
 
 La configuración se carga en `/api/v1/app-config`. Un registro `UserRouteOverride` con `{ "path": "/", "mode": "web" }` gana sobre la bandera global y permite rollback inmediato para un usuario. El botón `Web` de Swift mantiene además un rollback local hasta el siguiente refresh del shell.
 
+Estado de producción: `ios_app_config` está habilitada con `{ "path": "/", "mode": "native" }`. Las instalaciones que ya tienen el shell cargado deben cerrar y abrir la app, o esperar al siguiente refresh, para volver a consultar la configuración.
+
 ## Verificación
 
 - `npm run test:unit` — contratos, cliente generado y feature flag.
