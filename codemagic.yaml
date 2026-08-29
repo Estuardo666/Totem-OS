@@ -37,7 +37,11 @@ workflows:
     max_build_duration: 30
     environment:
       xcode: latest
+    cache:
+      cache_paths:
+        - $HOME/Library/Developer/Xcode/DerivedData/CompilationCache.noindex
     triggering:
+      cancel_previous_builds: true
       events:
         - push
         - pull_request
@@ -47,29 +51,26 @@ workflows:
     scripts:
       - *generate_project
       - *select_simulator
-      - name: Build for the simulator
+      # `test` already builds the app and test bundle, so a separate simulator
+      # build only duplicates compilation work.
+      - name: Build and run the unit tests
         script: |
-          set -e
+          set -o pipefail
           cd ios/TotemOS
-          xcodebuild \
-            -project TotemOS.xcodeproj \
-            -scheme TotemOS \
-            -configuration Debug \
-            -sdk iphonesimulator \
-            CODE_SIGNING_ALLOWED=NO \
-            build
-      - name: Run the unit tests
-        script: |
-          set -e
-          cd ios/TotemOS
+          rm -rf /tmp/totem-ios-tests.xcresult
           xcodebuild \
             -project TotemOS.xcodeproj \
             -scheme TotemOS \
             -destination "id=$SIMULATOR_UDID" \
+            -derivedDataPath "$CM_BUILD_DIR/.codemagic/DerivedData" \
+            -resultBundlePath /tmp/totem-ios-tests.xcresult \
+            COMPILATION_CACHE_ENABLE_CACHING=YES \
             CODE_SIGNING_ALLOWED=NO \
-            test
+            test 2>&1 | tee /tmp/totem-ios-tests.log
     artifacts:
-      - /tmp/xcodebuild_logs/*.log
+      - /tmp/totem-ios-tests.log
+      - /tmp/totem-ios-tests.xcresult
+      - $HOME/Library/Logs/DiagnosticReports/*TotemOS*
 
   # Produces an unsigned IPA to sideload with Sideloadly or AltStore using a
   # free Apple ID. Uses the DebugFree configuration, which carries no APNs
@@ -80,6 +81,9 @@ workflows:
     max_build_duration: 30
     environment:
       xcode: latest
+    cache:
+      cache_paths:
+        - $HOME/Library/Developer/Xcode/DerivedData/CompilationCache.noindex
     scripts:
       - *generate_project
       - name: Build for a device without signing
@@ -95,6 +99,7 @@ workflows:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            COMPILATION_CACHE_ENABLE_CACHING=YES \
             build
       - name: Package the unsigned IPA
         script: |
@@ -135,6 +140,9 @@ workflows:
         bundle_identifier: com.totemmassmedia.totemos
       vars:
         APP_STORE_APPLE_ID: $APP_STORE_APPLE_ID
+    cache:
+      cache_paths:
+        - $HOME/Library/Developer/Xcode/DerivedData/CompilationCache.noindex
     triggering:
       events:
         - tag
@@ -166,7 +174,8 @@ workflows:
           xcode-project build-ipa \
             --project TotemOS.xcodeproj \
             --scheme TotemOS \
-            --config Release
+            --config Release \
+            --archive-xcargs "COMPILATION_CACHE_ENABLE_CACHING=True"
     artifacts:
       - ios/TotemOS/build/ios/ipa/*.ipa
     publishing:

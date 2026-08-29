@@ -1,15 +1,8 @@
 name: iOS Build
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "ios/**"
-      - ".github/workflows/ios-build.yml"
-  pull_request:
-    paths:
-      - "ios/**"
-      - ".github/workflows/ios-build.yml"
+  # Codemagic is the primary iOS builder. Keep this workflow as an explicit
+  # fallback so every pull request does not pay for the same macOS build twice.
   workflow_dispatch:
 
 permissions:
@@ -58,16 +51,6 @@ jobs:
           fi
           xcrun simctl list runtimes
 
-      - name: Build for iOS Simulator
-        run: >-
-          xcodebuild
-          -project TotemOS.xcodeproj
-          -scheme TotemOS
-          -configuration Debug
-          -sdk iphonesimulator
-          CODE_SIGNING_ALLOWED=NO
-          build
-
       - name: Select iPhone simulator
         id: simulator
         run: |
@@ -110,6 +93,7 @@ jobs:
           -project TotemOS.xcodeproj
           -scheme TotemOS
           -destination "id=${{ steps.simulator.outputs.udid }}"
+          -derivedDataPath /tmp/totem-derived-data
           CODE_SIGNING_ALLOWED=NO
           build-for-testing
 
@@ -121,6 +105,8 @@ jobs:
             -project TotemOS.xcodeproj \
             -scheme TotemOS \
             -destination "id=${{ steps.simulator.outputs.udid }}" \
+            -derivedDataPath /tmp/totem-derived-data \
+            -resultBundlePath /tmp/totem-ios-tests.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             test-without-building 2>&1 | tee /tmp/totem-ios-tests.log
           test_status="${PIPESTATUS[0]}"
@@ -179,5 +165,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ios-test-log
-          path: /tmp/totem-ios-tests.log
+          path: |
+            /tmp/totem-ios-tests.log
+            /tmp/totem-ios-tests.xcresult
           if-no-files-found: warn
