@@ -30,13 +30,13 @@ criterio de salida y una verificación antes de iniciar el siguiente.
   tombstones, change feed y receipts idempotentes en transacciones PostgreSQL.
 - [x] **CP10 — API de sync** (`6d53f08`): bootstrap/pull/push, cursores opacos,
   conflictos 409, cursor vencido 410 y compactación de 90 días.
-- [x] **CP11 — SwiftData y outbox** (`00e5189`): snapshots base/local,
+- [x] **CP11 — SwiftData y outbox** (`a6c38fd`): snapshots base/local,
   mutaciones idempotentes, tombstones y recuperación tras cierre forzado.
 - [x] **CP12 — Coordinador de sync Swift** (`2910386`): bootstrap/pull/push
   serializados, FIFO, pausa 401 y recuperación por conectividad.
 - [x] **CP13 — Resolución de conflictos** (`f37fc59`): merge de tres vías,
   campos superpuestos y delete-vs-edit con decisión explícita.
-- [x] **CP14 — Caché de archivos** (`ad9c1ea`): LRU acotado, thumbnails,
+- [x] **CP14 — Caché de archivos** (`49912fd`): LRU acotado, thumbnails,
   exclusión de backups y uploads de background fuera de SwiftData.
 - [x] **CP15 — React API foundation** (`cdc1cf3`): TanStack Query, cliente
   generado, query keys, Problem Details, retries e invalidaciones.
