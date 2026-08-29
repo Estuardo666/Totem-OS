@@ -25,7 +25,9 @@ struct NativeShellOverlay: View {
 
                     VStack(spacing: 0) {
                         ShellHeaderView()
-                            .padding(.top, 4)
+                            // The blur owns the unsafe area, while controls
+                            // remain below the Dynamic Island/notch.
+                            .padding(.top, proxy.safeAreaInsets.top + 4)
 
                         Spacer(minLength: 0)
 
@@ -38,6 +40,9 @@ struct NativeShellOverlay: View {
                 }
             }
         }
+        // Let only the background layer reach the physical top. The header's
+        // explicit safe-area padding above keeps its controls below the island.
+        .ignoresSafeArea(edges: .top)
         // La barra inferior se mide desde el borde físico; el header conserva
         // su margen seguro debajo de la isla del dispositivo.
         .ignoresSafeArea(edges: .bottom)

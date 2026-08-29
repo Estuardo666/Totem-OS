@@ -53,6 +53,7 @@ test("el header deja controles libres bajo la isla con blur progresivo", () => {
   assert.match(nativeOverlay, /CAGradientLayer/);
   assert.match(nativeOverlay, /UIColor\.black\.cgColor/);
   assert.doesNotMatch(nativeOverlay, /backgroundExtensionEffect/);
+  assert.match(nativeOverlay, /ignoresSafeArea\(edges: \.top\)/);
   assert.match(nativeOverlay, /ignoresSafeArea\(edges: \.bottom\)/);
 });
 
