@@ -1,6 +1,27 @@
 import { QueryClient } from "@tanstack/react-query";
 import { TotemApiClient, TotemApiError } from "../generated/api-client.ts";
 
+/**
+ * The browser API lives in this Next.js app, so cross-origin public API hosts
+ * cannot carry the app's session cookie. Keep same-origin values when they are
+ * valid, and fall back to relative requests when deployment configuration
+ * points at another host.
+ */
+export function resolveTotemApiBaseUrl(
+  configuredBaseUrl: string | undefined = process.env.NEXT_PUBLIC_API_BASE_URL,
+  runtimeOrigin?: string,
+): string {
+  if (!runtimeOrigin) return configuredBaseUrl ?? "";
+  if (!configuredBaseUrl) return "";
+
+  try {
+    const configuredUrl = new URL(configuredBaseUrl, runtimeOrigin);
+    return configuredUrl.origin === runtimeOrigin ? configuredBaseUrl : "";
+  } catch {
+    return "";
+  }
+}
+
 export const queryKeys = {
   shell: {
     all: ["shell"] as const,
@@ -22,7 +43,10 @@ export const queryKeys = {
 } as const;
 
 export const totemApiClient = new TotemApiClient({
-  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "",
+  baseUrl: resolveTotemApiBaseUrl(
+    process.env.NEXT_PUBLIC_API_BASE_URL,
+    typeof window === "undefined" ? undefined : window.location.origin,
+  ),
 });
 
 function shouldRetry(failureCount: number, error: unknown): boolean {
