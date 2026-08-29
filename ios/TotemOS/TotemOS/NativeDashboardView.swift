@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import TotemOSKit
 
 struct NativeDashboardView: View {
@@ -7,8 +8,8 @@ struct NativeDashboardView: View {
     let retry: () -> Void
     let rollback: () -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var coordinator: AppCoordinator
+    @State private var isRefreshing = false
 
     private var palette: TotemThemePalette { coordinator.themePalette }
 
@@ -53,7 +54,9 @@ struct NativeDashboardView: View {
         .accessibilityIdentifier("native-dashboard")
         .foregroundStyle(palette.foreground)
         .tint(palette.accent)
-        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.9), value: state)
+        .onChange(of: state) { _, next in
+            if next != .loading { isRefreshing = false }
+        }
     }
 
     private var header: some View {
@@ -71,13 +74,24 @@ struct NativeDashboardView: View {
             }
             Spacer(minLength: 8)
             HStack(spacing: 8) {
-                Button(action: retry) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.body.weight(.semibold))
-                        .frame(width: 40, height: 40)
+                Button {
+                    guard state != .loading, !isRefreshing else { return }
+                    isRefreshing = true
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    retry()
+                } label: {
+                    Group {
+                        if isRefreshing {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.body.weight(.semibold))
+                        }
+                    }
+                    .frame(width: 40, height: 40)
                 }
                 .buttonStyle(.bordered)
-                .disabled(state == .loading)
+                .disabled(state == .loading || isRefreshing)
                 .accessibilityLabel("Actualizar dashboard")
                 .accessibilityIdentifier("dashboard-refresh")
 

@@ -79,22 +79,17 @@ struct ShellTabBarView: View {
             .background {
                 if isActive {
                     Capsule()
-                        .fill(snapshot.accent.opacity(0.08))
                         .totemShellGlass(
                             in: Capsule(),
                             interactive: true,
                             reduceTransparency: reduceTransparency
                         )
-                        .overlay {
-                            Capsule().stroke(snapshot.accent.opacity(0.32), lineWidth: 1)
-                        }
-                        .shadow(color: snapshot.accent.opacity(0.24), radius: 10)
                         .matchedGeometryEffect(id: "shell-tab-selection", in: selectionNamespace)
                 }
             }
         }
         .buttonStyle(.plain)
-        .foregroundStyle(isActive ? snapshot.accent : Color.primary.opacity(0.75))
+        .foregroundStyle(Color.primary.opacity(isActive ? 0.95 : 0.65))
         .accessibilityLabel(
             tab.route == "/content" && snapshot.taskCount > 0
                 ? "\(tab.label), \(snapshot.taskCount) pendientes"
@@ -113,7 +108,7 @@ struct ShellTabBarView: View {
             ForEach(availableTransactionTabs, id: \.rawValue) { tab in
                 Button {
                     ShellHaptics.tap()
-                    shell.send(.openTransaction(tab: tab))
+                    shell.openTransaction(tab: tab)
                 } label: {
                     Label(tab.label, systemImage: tab.icon)
                 }

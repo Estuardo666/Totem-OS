@@ -4,15 +4,15 @@ import TotemOSKit
 
 enum TotemTypography {
     static func regular(_ size: CGFloat, relativeTo style: Font.TextStyle) -> Font {
-        .custom("GoogleSans-Regular", size: size, relativeTo: style)
+        .system(size: size, weight: .regular, design: .default)
     }
 
     static func medium(_ size: CGFloat, relativeTo style: Font.TextStyle) -> Font {
-        .custom("GoogleSans-Medium", size: size, relativeTo: style)
+        .system(size: size, weight: .medium, design: .default)
     }
 
     static func bold(_ size: CGFloat, relativeTo style: Font.TextStyle) -> Font {
-        .custom("GoogleSans-Bold", size: size, relativeTo: style)
+        .system(size: size, weight: .bold, design: .default)
     }
 }
 

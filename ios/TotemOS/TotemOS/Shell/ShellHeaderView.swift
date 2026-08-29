@@ -9,30 +9,35 @@ struct ShellHeaderView: View {
     private var snapshot: ShellSnapshot { shell.snapshot }
 
     var body: some View {
-        HStack(spacing: 2) {
-            navigationMenu
-
-            logo
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 4)
-
-            ShellIconButton(
-                systemImage: snapshot.theme == .dark ? "sun.max" : "moon",
-                label: snapshot.theme == .dark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"
-            ) {
-                shell.send(.toggleTheme)
+        HStack(spacing: 0) {
+            // La isla está dividida espacialmente: marca y navegación a la
+            // izquierda; preferencias de sesión a la derecha.
+            HStack(spacing: 2) {
+                navigationMenu
+                logo
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 4)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            ShellIconButton(
-                systemImage: "bell",
-                label: "Notificaciones",
-                badge: snapshot.unreadNotificationCount
-            ) {
-                shell.isNotificationListOpen = true
-            }
+            HStack(spacing: 2) {
+                ShellIconButton(
+                    systemImage: snapshot.theme == .dark ? "sun.max" : "moon",
+                    label: snapshot.theme == .dark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"
+                ) {
+                    shell.send(.toggleTheme)
+                }
 
-            if let user = snapshot.user {
-                Menu {
+                ShellIconButton(
+                    systemImage: "bell",
+                    label: "Notificaciones",
+                    badge: snapshot.unreadNotificationCount
+                ) {
+                    shell.isNotificationListOpen = true
+                }
+
+                if let user = snapshot.user {
+                    Menu {
                     Section {
                         Button {
                             shell.send(.openSettings)
@@ -54,14 +59,15 @@ struct ShellHeaderView: View {
                     } label: {
                         Label("Cerrar Sesión", systemImage: "rectangle.portrait.and.arrow.right")
                     }
-                } label: {
-                    ShellAvatarView(user: user)
-                        .frame(width: shellMinimumTapTarget, height: shellMinimumTapTarget)
-                        .contentShape(Rectangle())
+                    } label: {
+                        ShellAvatarView(user: user)
+                            .frame(width: shellMinimumTapTarget, height: shellMinimumTapTarget)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .menuOrder(.fixed)
+                    .accessibilityLabel("Mi cuenta")
                 }
-                .buttonStyle(.plain)
-                .menuOrder(.fixed)
-                .accessibilityLabel("Mi cuenta")
             }
         }
         .padding(.horizontal, 6)

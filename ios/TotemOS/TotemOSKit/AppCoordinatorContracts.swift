@@ -185,6 +185,25 @@ public struct NativeShellState: Equatable {
             unreadNotificationCount: unreadNotificationCount, notifications: notifications,
             overlayHidden: overlayHidden)
     }
+
+    public mutating func applyThemeVariant(_ variant: ShellThemeVariant) {
+        theme = variant
+        if themeId == "catppuccin" {
+            if variant == .dark {
+                backgroundColor = "#1E1E2E"; cardColor = "#181825"; foregroundColor = "#CDD6F4"
+                secondaryTextColor = "#A6ADC8"; surfaceColor = "#313244"; borderColor = "#45475A"
+            } else {
+                backgroundColor = "#EFF1F5"; cardColor = "#E6E9EF"; foregroundColor = "#4C4F69"
+                secondaryTextColor = "#6C6F85"; surfaceColor = "#CCD0DA"; borderColor = "#BCC0CC"
+            }
+        } else if variant == .dark {
+            backgroundColor = "#141220"; cardColor = "#1E1B2B"; foregroundColor = "#F5F3FA"
+            secondaryTextColor = "#B5B0C3"; surfaceColor = "#2A2638"; borderColor = "#3A3549"
+        } else {
+            backgroundColor = "#F7F7FA"; cardColor = "#FFFFFF"; foregroundColor = "#27221F"
+            secondaryTextColor = "#686371"; surfaceColor = "#EEEFF4"; borderColor = "#DADBE2"
+        }
+    }
 }
 
 public enum NativeShellCatalog {

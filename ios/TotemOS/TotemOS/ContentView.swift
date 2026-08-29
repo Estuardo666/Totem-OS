@@ -22,12 +22,13 @@ struct ContentView: View {
                 // Keep the WKWebView mounted while a native route is visible.
                 // It owns the authenticated session and must remain available
                 // so shell navigation can immediately open legacy React routes.
-                LegacyWebRouteView {
+                LegacyWebRouteView(isVisible: !appCoordinator.shouldUseNativeRoute && appCoordinator.hasLoadedState) {
+                    guard appCoordinator.hasLoadedState && !appCoordinator.shouldUseNativeRoute else { return }
                     withAnimation(.easeOut(duration: 0.25)) { isLaunching = false }
                 }
                 .ignoresSafeArea()
-                .opacity(appCoordinator.shouldUseNativeRoute ? 0 : 1)
-                .allowsHitTesting(!appCoordinator.shouldUseNativeRoute)
+                .opacity(0.001)
+                .allowsHitTesting(false)
 
                 if appCoordinator.shouldUseNativeRoute {
                     if appCoordinator.snapshot.route == AppRoute.home.path {
@@ -42,14 +43,14 @@ struct ContentView: View {
                             }
                         )
                         .task { await appCoordinator.loadDashboard() }
-                        .onAppear { isLaunching = false }
+                        .onAppear { if appCoordinator.hasLoadedState { isLaunching = false } }
                     } else {
                         NativeRouteView(route: appCoordinator.snapshot.route) {
                             if let route = AppRoute(path: appCoordinator.snapshot.route) {
                                 appCoordinator.rollbackToLegacyWeb(for: route)
                             }
                         }
-                        .onAppear { isLaunching = false }
+                        .onAppear { if appCoordinator.hasLoadedState { isLaunching = false } }
                     }
                 }
 
@@ -78,6 +79,11 @@ struct ContentView: View {
         }
         .background(Color.totemLaunchBackground.ignoresSafeArea())
         .preferredColorScheme(appCoordinator.snapshot.theme == .dark ? .dark : .light)
+        .onChange(of: appCoordinator.hasLoadedState) { _, loaded in
+            if loaded && !appCoordinator.shouldUseNativeRoute {
+                withAnimation(.easeOut(duration: 0.2)) { isLaunching = false }
+            }
+        }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
     }

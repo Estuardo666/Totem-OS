@@ -148,6 +148,18 @@ final class AppCoordinator: ObservableObject {
         navigate(to: route)
     }
 
+    /// Transaction forms remain React-owned. If the dashboard is currently
+    /// native, temporarily expose the already-mounted WebView before sending
+    /// the command so its modal is visible immediately instead of appearing on
+    /// a later navigation.
+    func openTransaction(tab: ShellTransactionTab) {
+        if state.route == .home && mode(for: .home) == .native {
+            localLegacyRollbackRoutes.insert(AppRoute.home.path)
+            objectWillChange.send()
+        }
+        send(.openTransaction(tab: tab))
+    }
+
     private func scheduleRefresh() {
         refreshTask?.cancel()
         refreshTask = Task {
@@ -171,9 +183,9 @@ final class AppCoordinator: ObservableObject {
     private func applyOptimistic(_ command: ShellCommand) {
         switch command {
         case .toggleTheme:
-            state.theme = state.theme == .dark ? .light : .dark
+            state.applyThemeVariant(state.theme == .dark ? .light : .dark)
         case .setTheme(let theme):
-            state.theme = theme
+            state.applyThemeVariant(theme)
         case .markNotificationRead(let id):
             state.notifications.removeAll { $0.id == id }
             state.unreadNotificationCount = max(0, state.unreadNotificationCount - 1)

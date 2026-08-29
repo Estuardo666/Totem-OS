@@ -7,6 +7,7 @@ const root = resolve(import.meta.dirname, "../..");
 const dashboardRoute = readFileSync(resolve(root, "src/app/(dashboard)/page.tsx"), "utf8");
 const nativeDashboard = readFileSync(resolve(root, "ios/TotemOS/TotemOS/NativeDashboardView.swift"), "utf8");
 const nativeContent = readFileSync(resolve(root, "ios/TotemOS/TotemOS/ContentView.swift"), "utf8");
+const nativeWebView = readFileSync(resolve(root, "ios/TotemOS/TotemOS/WebAppView.swift"), "utf8");
 const dashboardContract = readFileSync(resolve(root, "src/contracts/api-contracts.ts"), "utf8");
 
 test("la portada web conserva el dashboard completo mientras Swift usa la API nativa", () => {
@@ -20,8 +21,8 @@ test("la portada web conserva el dashboard completo mientras Swift usa la API na
 
 test("el shell conserva el WebView autenticado para navegar fuera del home nativo", () => {
   assert.match(nativeContent, /Keep the WKWebView mounted/);
-  assert.match(nativeContent, /\.opacity\(appCoordinator\.shouldUseNativeRoute \? 0 : 1\)/);
-  assert.match(nativeContent, /\.allowsHitTesting\(!appCoordinator\.shouldUseNativeRoute\)/);
+  assert.match(nativeContent, /LegacyWebRouteView\(isVisible: !appCoordinator\.shouldUseNativeRoute && appCoordinator\.hasLoadedState\)/);
+  assert.match(nativeWebView, /webView\.isHidden = !isVisible/);
 });
 
 test("el contrato nativo transporta paleta React e imágenes del dashboard", () => {

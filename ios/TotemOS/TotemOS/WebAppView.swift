@@ -5,6 +5,7 @@ import TotemOSKit
 struct LegacyWebRouteView: UIViewRepresentable {
     @EnvironmentObject private var appModel: AppModel
     @EnvironmentObject private var appCoordinator: AppCoordinator
+    let isVisible: Bool
     let onContentReady: () -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -30,6 +31,7 @@ struct LegacyWebRouteView: UIViewRepresentable {
         context.coordinator.webView = webView
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.keyboardDismissMode = .interactive
+        webView.isHidden = !isVisible
 
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(
@@ -45,7 +47,9 @@ struct LegacyWebRouteView: UIViewRepresentable {
         return webView
     }
 
-    func updateUIView(_ webView: WKWebView, context: Context) {}
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        webView.isHidden = !isVisible
+    }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         private let appModel: AppModel
