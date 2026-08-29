@@ -24,6 +24,12 @@ criterio de salida y una verificación antes de iniciar el siguiente.
 - [x] **CP07 — `AppCoordinator` Swift** (`931caa6`): deployment target iOS 26,
   rutas y estado tipados, bootstrap nativo de sesión/capacidades/contadores y
   shell Swift independiente del snapshot JavaScript.
+- [x] **CP08 — Router híbrido y rollback** (`f3679d9`): configuración remota
+  por usuario, `LegacyWebRouteView`, resolución nativa/web y rollback inmediato.
+- [x] **CP09 — Modelo de sync backend** (`3b919d1`): entidades versionadas,
+  tombstones, change feed y receipts idempotentes en transacciones PostgreSQL.
+- [x] **CP10 — API de sync** (`6d53f08`): bootstrap/pull/push, cursores opacos,
+  conflictos 409, cursor vencido 410 y compactación de 90 días.
 
 Los hashes son referencias del repositorio en la fecha de corte; si se continúa
 en otra rama, conservar el contenido de los documentos aunque cambie el hash.
