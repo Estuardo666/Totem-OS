@@ -82,6 +82,14 @@ struct ShellTabBarView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
+            // Apply the contrast at the label itself as well as in the style.
+            // This prevents a platform Button tint from replacing the WCAG
+            // foreground while Liquid Glass is resolving its material.
+            .foregroundStyle(
+                ownsLens
+                    ? Color.contrastForeground(on: snapshot.accentColor)
+                    : Color.primary.opacity(0.72)
+            )
             .frame(maxWidth: .infinity, minHeight: shellMinimumTapTarget)
             .padding(.horizontal, 4)
             .contentShape(Rectangle())
@@ -191,7 +199,10 @@ struct ShellTabBarView: View {
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Color.white)
+                // The action button uses the same contrast rule as the
+                // selected tab: pale Catppuccin accents get dark glyphs,
+                // saturated accents get white glyphs.
+                .foregroundStyle(Color.contrastForeground(on: snapshot.accentColor))
                 .frame(width: 52, height: 52)
                 .background {
                     Color.clear

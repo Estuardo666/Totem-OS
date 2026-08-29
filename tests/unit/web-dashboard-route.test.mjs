@@ -9,6 +9,7 @@ const nativeDashboard = readFileSync(resolve(root, "ios/TotemOS/TotemOS/NativeDa
 const nativeContent = readFileSync(resolve(root, "ios/TotemOS/TotemOS/ContentView.swift"), "utf8");
 const nativeWebView = readFileSync(resolve(root, "ios/TotemOS/TotemOS/WebAppView.swift"), "utf8");
 const nativeShellState = readFileSync(resolve(root, "ios/TotemOS/TotemOSKit/AppCoordinatorContracts.swift"), "utf8");
+const nativeVariableBlur = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/TotemVariableBlur.swift"), "utf8");
 const dashboardContract = readFileSync(resolve(root, "src/contracts/api-contracts.ts"), "utf8");
 
 test("la portada web conserva el dashboard completo mientras Swift usa la API nativa", () => {
@@ -37,6 +38,8 @@ test("las barras del shell limitan el glass activo a la selección", () => {
   assert.doesNotMatch(nativeTabBar, /matchedGeometryEffect\(id:/);
   assert.match(nativeTabBar, /ShellTabButtonStyle/);
   assert.match(nativeTabBar, /scaleEffect\(isInteracting \? 1\.12/);
+  assert.match(nativeTabBar, /Color\.contrastForeground\(on: snapshot\.accentColor\)/);
+  assert.doesNotMatch(nativeTabBar, /Image\(systemName: "plus"\)[\s\S]{0,160}foregroundStyle\(Color\.white\)/);
   assert.match(designSystem, /glassEffect\(\.regular, in: shape\)/);
   assert.match(designSystem, /glassEffect\(\.regular\.tint\(tint\)\.interactive\(\), in: shape\)/);
 });
@@ -49,9 +52,11 @@ test("el header deja controles libres bajo la isla con blur progresivo", () => {
   assert.doesNotMatch(nativeHeader, /ProgressiveHeaderBlur/);
   assert.doesNotMatch(nativeHeader, /totemShellGlass\(/);
   assert.match(nativeOverlay, /ProgressiveHeaderBlurView/);
-  assert.match(nativeOverlay, /UIVisualEffectView/);
-  assert.match(nativeOverlay, /CAGradientLayer/);
-  assert.match(nativeOverlay, /UIColor\.black\.cgColor/);
+  assert.match(nativeOverlay, /TotemVariableBlurView/);
+  assert.match(nativeVariableBlur, /CIFilter\.linearGradient\(\)/);
+  assert.match(nativeVariableBlur, /inputMaskImage/);
+  assert.match(nativeVariableBlur, /inputRadius/);
+  assert.match(nativeVariableBlur, /CABackdropLayer/);
   assert.doesNotMatch(nativeOverlay, /backgroundExtensionEffect/);
   assert.match(nativeOverlay, /ignoresSafeArea\(edges: \.top\)/);
   assert.match(nativeOverlay, /ignoresSafeArea\(edges: \.bottom\)/);
