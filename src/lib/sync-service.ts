@@ -1,11 +1,14 @@
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
+import { z } from "zod";
+import { decodeCursor, encodeCursor } from "./api-kernel.ts";
 import { db } from "./db.ts";
 
 export const SYNC_RETENTION_DAYS = 90;
 export const SYNC_MAX_MUTATIONS = 50;
 export const SYNC_MAX_BATCH_BYTES = 1024 * 1024;
 export const SYNC_MAX_PULL = 100;
+const syncCursorSchema = z.object({ version: z.literal(1), sequence: z.string().regex(/^\d+$/u) }).strict();
 
 const ENTITY_TYPE = /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/u;
 const ENTITY_ID = /^[A-Za-z0-9_-]{1,128}$/u;
@@ -72,6 +75,15 @@ export class SyncCursorExpiredError extends Error {
     this.name = "SyncCursorExpiredError";
     this.oldestSequence = oldestSequence;
   }
+}
+
+export function encodeSyncCursor(sequence: bigint | string | number): string {
+  return encodeCursor({ version: 1, sequence: String(sequence) });
+}
+
+export function decodeSyncCursor(cursor: string): bigint {
+  const payload = decodeCursor(cursor, syncCursorSchema);
+  return BigInt(payload.sequence);
 }
 
 export function validateSyncMutation(input: SyncMutationInput): void {
@@ -229,6 +241,10 @@ export async function pullSyncChanges(
   afterSequence: bigint,
   limit: number,
 ): Promise<{ changes: SyncChangeResult[]; hasMore: boolean; nextSequence: string | null }> {
+  const boundary = await db.syncCursorBoundary.findUnique({ where: { ownerId }, select: { oldestSequence: true } });
+  if (boundary && afterSequence < boundary.oldestSequence) {
+    throw new SyncCursorExpiredError(boundary.oldestSequence.toString());
+  }
   const oldest = await db.syncChange.findFirst({
     where: { ownerId }, orderBy: { sequence: "asc" }, select: { sequence: true, createdAt: true },
   });
@@ -269,6 +285,33 @@ export async function bootstrapSync(ownerId: string): Promise<{ entities: SyncCh
     })),
     latestSequence: latest?.sequence.toString() ?? null,
   };
+}
+
+/** Compacta cambios y receipts fuera de la ventana retenida y deja una
+ * frontera durable para que los cursores antiguos obliguen a un resync. */
+export async function compactSyncHistory(now = new Date()): Promise<{ changes: number; receipts: number; owners: number }> {
+  const cutoff = new Date(now.getTime() - SYNC_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  return db.$transaction(async (tx) => {
+    const oldChanges = await tx.syncChange.findMany({
+      where: { createdAt: { lt: cutoff } },
+      orderBy: [{ ownerId: "asc" }, { sequence: "desc" }],
+      select: { ownerId: true, sequence: true },
+    });
+    const maxByOwner = new Map<string, bigint>();
+    for (const change of oldChanges) {
+      if (!maxByOwner.has(change.ownerId)) maxByOwner.set(change.ownerId, change.sequence);
+    }
+    const deletedChanges = await tx.syncChange.deleteMany({ where: { createdAt: { lt: cutoff } } });
+    for (const [ownerId, sequence] of maxByOwner) {
+      await tx.syncCursorBoundary.upsert({
+        where: { ownerId },
+        update: { oldestSequence: sequence, updatedAt: now },
+        create: { id: `sync-boundary-${ownerId}`, ownerId, oldestSequence: sequence, updatedAt: now },
+      });
+    }
+    const deletedReceipts = await tx.syncMutationReceipt.deleteMany({ where: { createdAt: { lt: cutoff } } });
+    return { changes: deletedChanges.count, receipts: deletedReceipts.count, owners: maxByOwner.size };
+  });
 }
 
 export type SyncTransactionClient = Prisma.TransactionClient;

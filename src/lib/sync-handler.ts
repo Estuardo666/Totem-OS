@@ -10,6 +10,8 @@ import {
   applySyncMutation,
   bootstrapSync,
   pullSyncChanges,
+  decodeSyncCursor,
+  encodeSyncCursor,
   SYNC_MAX_BATCH_BYTES,
   SyncConflictError,
   SyncCursorExpiredError,
@@ -41,10 +43,18 @@ export async function handleSyncPull(context: ApiRequestContext): Promise<Respon
     throw new ApiProblem({ status: 400, code: "INVALID_PAGINATION", title: "Invalid sync cursor", detail: "cursor and limit must be valid integers." });
   }
   const limit = parsed.data.limit ?? parseCursorPage(url).limit;
-  const after = parsed.data.cursor ? BigInt(parsed.data.cursor) : 0n;
+  let after = 0n;
+  if (parsed.data.cursor) {
+    try {
+      after = decodeSyncCursor(parsed.data.cursor);
+    } catch {
+      throw new ApiProblem({ status: 400, code: "INVALID_CURSOR", title: "Invalid sync cursor", detail: "The sync cursor is malformed." });
+    }
+  }
   try {
     const result = await pullSyncChanges(context.actor.userId, after, limit);
-    return apiSuccess(context, { changes: result.changes, hasMore: result.hasMore, nextCursor: result.nextSequence, retentionDays: 90 });
+    return apiSuccess(context, { changes: result.changes, hasMore: result.hasMore,
+      nextCursor: result.nextSequence ? encodeSyncCursor(result.nextSequence) : null, retentionDays: 90 });
   } catch (error) {
     return syncProblem(error);
   }
@@ -65,5 +75,6 @@ export async function handleSyncPush(context: ApiRequestContext): Promise<Respon
 export async function handleSyncBootstrap(context: ApiRequestContext): Promise<Response> {
   if (!context.actor) throw new Error("Sync handler requires an authenticated actor.");
   const result = await bootstrapSync(context.actor.userId);
-  return apiSuccess(context, { entities: result.entities, latestCursor: result.latestSequence, retentionDays: 90 });
+  return apiSuccess(context, { entities: result.entities,
+    latestCursor: result.latestSequence ? encodeSyncCursor(result.latestSequence) : null, retentionDays: 90 });
 }

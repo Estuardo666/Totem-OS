@@ -774,6 +774,15 @@ model SyncMutationReceipt {
   @@index([ownerId, entityType, entityId])
 }
 
+model SyncCursorBoundary {
+  id            String   @id @default(cuid())
+  ownerId       String   @unique
+  oldestSequence BigInt
+  updatedAt     DateTime @updatedAt
+
+  @@index([oldestSequence])
+}
+
 // INTEGRACIÓN META GRAPH API (Facebook & Instagram)
 model AgencyMetaAccount {
   id             String   @id @default(cuid())

@@ -195,14 +195,14 @@ export const syncChangeSchema = z.object({
 }).strict();
 
 export const syncPullQuerySchema = z.object({
-  cursor: z.string().regex(/^\d+$/u).optional(),
+  cursor: z.string().regex(/^[A-Za-z0-9_-]{1,512}$/u).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 }).strict();
 
 export const syncPullDataSchema = z.object({
   changes: z.array(syncChangeSchema),
   hasMore: z.boolean(),
-  nextCursor: z.string().regex(/^\d+$/u).nullable(),
+  nextCursor: z.string().regex(/^[A-Za-z0-9_-]{1,512}$/u).nullable(),
   retentionDays: z.literal(90),
 }).strict();
 
@@ -224,7 +224,7 @@ export const syncPushDataSchema = z.object({
 
 export const syncBootstrapDataSchema = z.object({
   entities: z.array(syncChangeSchema),
-  latestCursor: z.string().regex(/^\d+$/u).nullable(),
+  latestCursor: z.string().regex(/^[A-Za-z0-9_-]{1,512}$/u).nullable(),
   retentionDays: z.literal(90),
 }).strict();
 
