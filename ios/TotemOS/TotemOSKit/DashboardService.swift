@@ -26,8 +26,9 @@ public final class DashboardStore: ObservableObject {
     @Published public private(set) var data: DashboardData?
     @Published public private(set) var lastUpdatedAt: Date?
     @Published public private(set) var lastErrorMessage: String?
+    @Published public private(set) var lastHTTPStatus: Int?
 
-    private let transport: DashboardAPITransport
+    private var transport: DashboardAPITransport
     private let cacheURL: URL?
 
     public init(transport: DashboardAPITransport, cacheURL: URL? = nil) {
@@ -38,6 +39,12 @@ public final class DashboardStore: ObservableObject {
 
     public var hasCachedData: Bool { data != nil }
 
+    /// Rebinds the API transport so callers can refresh authentication
+    /// headers (the WKWebView cookie store may rotate between requests).
+    public func updateTransport(_ transport: DashboardAPITransport) {
+        self.transport = transport
+    }
+
     public func load(forceRefresh: Bool = false) async {
         if data == nil || forceRefresh {
             state = .loading
@@ -46,6 +53,7 @@ public final class DashboardStore: ObservableObject {
             state = .loading
         }
         lastErrorMessage = nil
+        lastHTTPStatus = nil
 
         do {
             let response = try await transport.dashboard()
@@ -53,6 +61,10 @@ public final class DashboardStore: ObservableObject {
             lastUpdatedAt = Self.date(from: response.data.generatedAt)
             state = response.data.isEmpty ? .empty : .loaded
             persist(response)
+        } catch let TotemAPIError.http(status, problem) {
+            lastHTTPStatus = status
+            lastErrorMessage = problem?.detail ?? "La API respondió con HTTP \(status)."
+            state = Self.isOfflineStatus(status) ? .offline : .error
         } catch {
             lastErrorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             if Self.isOffline(error) {
@@ -107,11 +119,15 @@ public final class DashboardStore: ObservableObject {
     }
 
     private static func isOffline(_ error: Error) -> Bool {
-        if case TotemAPIError.http(let status, _) = error, status == 0 { return true }
+        if case TotemAPIError.http(let status, _) = error, isOfflineStatus(status) { return true }
         if let urlError = error as? URLError {
             return [.notConnectedToInternet, .networkConnectionLost, .timedOut].contains(urlError.code)
         }
         return false
+    }
+
+    private static func isOfflineStatus(_ status: Int) -> Bool {
+        status == 0
     }
 }
 

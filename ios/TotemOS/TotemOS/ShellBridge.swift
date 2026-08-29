@@ -99,9 +99,14 @@ final class AppCoordinator: ObservableObject {
     }
 
     func loadDashboard(forceRefresh: Bool = false) async {
-        if dashboardStore == nil, let webView {
+        if let webView {
             let headers = await cookieHeaders(from: webView.configuration.websiteDataStore.httpCookieStore)
-            configureDashboardStore(with: TotemAPIClient(baseURL: AppEnvironment.baseURL, additionalHeaders: headers))
+            let client = TotemAPIClient(baseURL: AppEnvironment.baseURL, additionalHeaders: headers)
+            if let dashboardStore {
+                dashboardStore.updateTransport(client)
+            } else {
+                configureDashboardStore(with: client)
+            }
         }
         guard let dashboardStore else {
             dashboardState = .error
@@ -110,6 +115,10 @@ final class AppCoordinator: ObservableObject {
         await dashboardStore.load(forceRefresh: forceRefresh)
         dashboardState = dashboardStore.state
         dashboardData = dashboardStore.data
+        if dashboardStore.lastHTTPStatus == 401 {
+            reset()
+            AppModel.shared.presentNativeLogin()
+        }
     }
 
     func send(_ command: ShellCommand) {

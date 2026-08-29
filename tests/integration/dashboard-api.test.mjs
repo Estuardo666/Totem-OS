@@ -31,3 +31,21 @@ test("PostgreSQL construye el dashboard compacto respetando el alcance del edito
   assert.equal(data.workloads[0]?.pendingTasksCount, 0);
   assert.equal(data.recentTransactions.length, 0);
 });
+
+test("el dashboard normaliza descripciones de transacciones vacías", async () => {
+  const { admin } = await seedTestDatabase();
+  await prisma.transaction.create({
+    data: { amount: 100, type: "INCOME", status: "PAID", description: "" },
+  });
+
+  const data = await loadDashboard({
+    userId: admin.id,
+    email: admin.email,
+    role: "ADMIN",
+    capabilities: apiCapabilitiesForRole("ADMIN"),
+    sessionExpiresAt: null,
+  });
+
+  assert.equal(dashboardDataSchema.safeParse(data).success, true);
+  assert.equal(data.recentTransactions[0]?.description, "Transacción");
+});

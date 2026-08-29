@@ -59,6 +59,21 @@ final class DashboardStoreTests: XCTestCase {
         XCTAssertEqual(errorStore.state, .error)
     }
 
+    func testCanRefreshTransportWithoutDroppingTheStore() async {
+        let firstTransport = FakeDashboardTransport()
+        firstTransport.response = response()
+        let secondTransport = FakeDashboardTransport()
+        secondTransport.response = response(empty: true)
+        let store = DashboardStore(transport: firstTransport, cacheURL: temporaryCacheURL())
+
+        await store.load()
+        store.updateTransport(secondTransport)
+        await store.load(forceRefresh: true)
+
+        XCTAssertEqual(store.state, .empty)
+        XCTAssertEqual(store.data?.summary.activeClients, 0)
+    }
+
     private func temporaryCacheURL() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent("totem-dashboard-\(UUID().uuidString).json")

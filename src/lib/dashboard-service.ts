@@ -230,7 +230,7 @@ export async function loadDashboard(actor: ApiActor): Promise<DashboardData> {
 
   const transactions: DashboardTransaction[] = recentTransactions.map((transaction) => ({
     id: transaction.id,
-    description: transaction.description ?? "Transacción",
+    description: transaction.description?.trim() || "Transacción",
     type: transaction.type as DashboardTransaction["type"],
     amount: transaction.amount,
     date: transaction.createdAt.toISOString(),
