@@ -19,6 +19,7 @@ import { SplashProvider } from "@/components/providers/splash-provider";
 import { AppBadgeProvider } from "@/components/providers/app-badge-provider";
 import { OfflineFinanceSyncProvider } from "@/components/providers/offline-finance-sync-provider";
 import { RemoteLogoutProvider } from "@/components/providers/remote-logout-provider";
+import { ApiQueryProvider } from "@/components/providers/api-query-provider";
 import { getBrandSettings } from "@/actions/admin-actions";
 import { unstable_cache } from "next/cache";
 import { PRIMARY_COLOR_COOKIE, resolvePrimaryColor } from "@/lib/theme";
@@ -171,23 +172,25 @@ export default async function RootLayout({
         <GoogleMapsScript />
         <PwaServiceWorker />
         <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
-        <NextAuthSessionProvider>
-          <OfflineFinanceSyncProvider />
-          <RemoteLogoutProvider>
-            <WebPushProvider>
-              <SplashProvider>
-                <AppBadgeProvider />
-                <ThemeProvider>
-                  <UploadThingProviderWrapper>
-                    <ConditionalLayout>
-                      {children}
-                    </ConditionalLayout>
-                  </UploadThingProviderWrapper>
-                </ThemeProvider>
-              </SplashProvider>
-            </WebPushProvider>
-          </RemoteLogoutProvider>
-        </NextAuthSessionProvider>
+        <ApiQueryProvider>
+          <NextAuthSessionProvider>
+            <OfflineFinanceSyncProvider />
+            <RemoteLogoutProvider>
+              <WebPushProvider>
+                <SplashProvider>
+                  <AppBadgeProvider />
+                  <ThemeProvider>
+                    <UploadThingProviderWrapper>
+                      <ConditionalLayout>
+                        {children}
+                      </ConditionalLayout>
+                    </UploadThingProviderWrapper>
+                  </ThemeProvider>
+                </SplashProvider>
+              </WebPushProvider>
+            </RemoteLogoutProvider>
+          </NextAuthSessionProvider>
+        </ApiQueryProvider>
         <Toaster />
         <SpeedInsights />
       </body>
