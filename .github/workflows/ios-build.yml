@@ -52,8 +52,8 @@ jobs:
       - name: Prepare iOS simulator runtime
         run: |
           xcodebuild -version
-          if ! xcrun simctl list runtimes | grep -q "iOS "; then
-            echo "No iOS runtime installed; downloading."
+          if ! xcrun simctl list runtimes | grep -q "iOS 26"; then
+            echo "iOS 26 runtime is not installed; downloading the current platform."
             xcodebuild -downloadPlatform iOS
           fi
           xcrun simctl list runtimes
@@ -72,10 +72,21 @@ jobs:
         id: simulator
         run: |
           udid="$(
-            xcrun simctl list devices available \
-              | sed -nE '/^-- iOS /,/^-- /p' \
-              | sed -nE 's/^ *iPhone[^(]*\(([0-9A-Fa-f-]{36})\).*/\1/p' \
-              | head -n 1
+            xcrun simctl list devices available --json \
+              | /usr/bin/python3 -c '
+          import json, re, sys
+          devices = json.load(sys.stdin)["devices"]
+          runtimes = sorted(
+              (key for key in devices if ".iOS-" in key),
+              key=lambda key: tuple(map(int, re.findall(r"\d+", key))),
+              reverse=True,
+          )
+          for runtime in runtimes:
+              for device in devices[runtime]:
+                  if device.get("isAvailable") and device["name"].startswith("iPhone"):
+                      print(device["udid"])
+                      raise SystemExit
+          '
           )"
 
           if [ -z "$udid" ]; then
