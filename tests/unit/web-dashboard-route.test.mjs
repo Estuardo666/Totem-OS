@@ -31,7 +31,15 @@ test("las barras del shell no crean una lente activa por cada item", () => {
   const nativeTabBar = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/ShellTabBarView.swift"), "utf8");
   const designSystem = readFileSync(resolve(root, "ios/TotemOS/TotemOS/TotemDesignSystem.swift"), "utf8");
   assert.doesNotMatch(nativeTabBar, /matchedGeometryEffect\(id: "shell-tab-selection"/);
-  assert.match(designSystem, /background\(Color\.clear, in: shape\)/);
+  assert.match(designSystem, /glassEffect\(\.regular, in: shape\)/);
+  assert.match(designSystem, /glassEffect\(\.regular\.tint\(tint\)\.interactive\(\), in: shape\)/);
+});
+
+test("el header usa dos islas Liquid Glass independientes", () => {
+  const nativeHeader = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/ShellHeaderView.swift"), "utf8");
+  assert.match(nativeHeader, /private var leftIsland/);
+  assert.match(nativeHeader, /private var rightIsland/);
+  assert.strictEqual((nativeHeader.match(/totemShellGlass\(/g) ?? []).length, 2);
 });
 
 test("la API tiene timeout para cerrar el refresh aunque el servidor no responda", () => {

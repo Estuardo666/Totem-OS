@@ -29,8 +29,8 @@ struct ShellTabBarView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .contentShape(Capsule())
-            // El platter es una capa pasiva independiente. No se agrupa con
-            // el lente activo porque ambos se superponen espacialmente.
+            // El platter es una capa pasiva independiente. Los botones
+            // seleccionados tienen su propio tinte Liquid Glass encima.
             .background {
                 Color.clear
                     .totemShellGlass(
@@ -75,6 +75,16 @@ struct ShellTabBarView: View {
             .frame(maxWidth: .infinity, minHeight: shellMinimumTapTarget)
             .padding(.horizontal, 4)
             .contentShape(Rectangle())
+            .background {
+                if isActive {
+                    Capsule()
+                        .totemInteractiveShellGlass(
+                            in: Capsule(),
+                            tint: snapshot.accent,
+                            reduceTransparency: reduceTransparency
+                        )
+                }
+            }
         }
         .buttonStyle(.plain)
         .foregroundStyle(Color.primary.opacity(isActive ? 0.95 : 0.65))
@@ -106,7 +116,14 @@ struct ShellTabBarView: View {
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(Color.white)
                 .frame(width: 52, height: 52)
-                .background(snapshot.accent, in: Circle())
+                .background {
+                    Color.clear
+                        .totemInteractiveShellGlass(
+                            in: Circle(),
+                            tint: snapshot.accent,
+                            reduceTransparency: reduceTransparency
+                        )
+                }
                 .shadow(color: snapshot.accent.opacity(0.36), radius: 10, y: 4)
         }
         .buttonStyle(.plain)

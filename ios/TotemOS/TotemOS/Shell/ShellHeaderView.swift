@@ -9,35 +9,52 @@ struct ShellHeaderView: View {
     private var snapshot: ShellSnapshot { shell.snapshot }
 
     var body: some View {
-        HStack(spacing: 0) {
-            // La isla está dividida espacialmente: marca y navegación a la
-            // izquierda; preferencias de sesión a la derecha.
-            HStack(spacing: 2) {
-                navigationMenu
-                logo
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 4)
+        HStack(alignment: .center, spacing: 10) {
+            // Dos islas físicas independientes: marca/menú a la izquierda y
+            // controles de sesión a la derecha, ambas ancladas arriba.
+            leftIsland
+            Spacer(minLength: 8)
+            rightIsland
+        }
+        .padding(.horizontal, 12)
+    }
+
+    private var leftIsland: some View {
+        HStack(spacing: 2) {
+            navigationMenu
+            logo
+                .padding(.leading, 4)
+        }
+        .padding(.horizontal, 6)
+        .frame(minHeight: 56)
+        .background {
+            Color.clear
+                .totemShellGlass(
+                    in: Capsule(),
+                    reduceTransparency: reduceTransparency
+                )
+        }
+    }
+
+    private var rightIsland: some View {
+        HStack(spacing: 2) {
+            ShellIconButton(
+                systemImage: snapshot.theme == .dark ? "sun.max" : "moon",
+                label: snapshot.theme == .dark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"
+            ) {
+                shell.send(.toggleTheme)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: 2) {
-                ShellIconButton(
-                    systemImage: snapshot.theme == .dark ? "sun.max" : "moon",
-                    label: snapshot.theme == .dark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"
-                ) {
-                    shell.send(.toggleTheme)
-                }
+            ShellIconButton(
+                systemImage: "bell",
+                label: "Notificaciones",
+                badge: snapshot.unreadNotificationCount
+            ) {
+                shell.isNotificationListOpen = true
+            }
 
-                ShellIconButton(
-                    systemImage: "bell",
-                    label: "Notificaciones",
-                    badge: snapshot.unreadNotificationCount
-                ) {
-                    shell.isNotificationListOpen = true
-                }
-
-                if let user = snapshot.user {
-                    Menu {
+            if let user = snapshot.user {
+                Menu {
                     Section {
                         Button {
                             shell.send(.openSettings)
@@ -72,9 +89,6 @@ struct ShellHeaderView: View {
         }
         .padding(.horizontal, 6)
         .frame(minHeight: 56)
-        // El vidrio vive en una vista hermana, no alrededor del árbol de
-        // controles. Así `Menu` transforma solo su botón de origen y no la
-        // cápsula completa del header.
         .background {
             Color.clear
                 .totemShellGlass(
@@ -82,7 +96,6 @@ struct ShellHeaderView: View {
                     reduceTransparency: reduceTransparency
                 )
         }
-        .padding(.horizontal, 12)
     }
 
     private var navigationMenu: some View {

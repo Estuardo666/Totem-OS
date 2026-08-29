@@ -105,25 +105,42 @@ extension View {
 // MARK: - Shell nativo
 
 extension View {
-    /// Chrome transparente y ligero para el shell.
+    /// Superficie Liquid Glass pasiva para un contenedor del shell.
     ///
-    /// Liquid Glass es apropiado para controles puntuales, pero una lente
-    /// sobre el header y otra sobre la barra inferior obliga a recalcular el
-    /// fondo completo durante el scroll. El shell deja el fondo transparente
-    /// y conserva únicamente un borde neutro; así el tema React sigue siendo
-    /// la fuente visual y el dashboard no pierde frames.
+    /// No recibe el color Catppuccin: el material se adapta al fondo que hay
+    /// detrás y conserva la jerarquía de iOS 26 sin teñir toda la navegación.
     @ViewBuilder
     func totemShellGlass(
         in shape: some InsettableShape,
-        interactive: Bool = false,
         reduceTransparency: Bool = false
     ) -> some View {
         if reduceTransparency {
             background(Color.totemShellSolid, in: shape)
                 .overlay { shape.stroke(.white.opacity(0.12), lineWidth: 1) }
+        } else if #available(iOS 26.0, *) {
+            glassEffect(.regular, in: shape)
         } else {
-            background(Color.clear, in: shape)
+            background(.ultraThinMaterial, in: shape)
                 .overlay { shape.stroke(.white.opacity(0.12), lineWidth: 1) }
+        }
+    }
+
+    /// Liquid Glass interactivo para una acción concreta de la barra.
+    /// El tinte se limita a la cápsula pulsada/seleccionada, nunca al platter.
+    @ViewBuilder
+    func totemInteractiveShellGlass(
+        in shape: some InsettableShape,
+        tint: Color,
+        reduceTransparency: Bool = false
+    ) -> some View {
+        if reduceTransparency {
+            background(tint.opacity(0.24), in: shape)
+                .overlay { shape.stroke(tint.opacity(0.58), lineWidth: 1) }
+        } else if #available(iOS 26.0, *) {
+            glassEffect(.regular.tint(tint).interactive(), in: shape)
+        } else {
+            background(.ultraThinMaterial, in: shape)
+                .overlay { shape.stroke(tint.opacity(0.58), lineWidth: 1) }
         }
     }
 }
