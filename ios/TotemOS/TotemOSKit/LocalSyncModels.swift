@@ -92,7 +92,9 @@ public final class LocalSyncEntityRecord {
     public var basePayloadData: Data?
     public var localPayloadData: Data?
     public var isDirty: Bool
-    public var isDeleted: Bool
+    // Evita colisionar con el estado interno `isDeleted` de algunos runtimes
+    // Core Data/SwiftData; el snapshot público sigue exponiendo `isDeleted`.
+    public var isTombstone: Bool
     public var createdAt: Date
     public var updatedAt: Date
 
@@ -105,7 +107,7 @@ public final class LocalSyncEntityRecord {
         basePayloadData: Data? = nil,
         localPayloadData: Data? = nil,
         isDirty: Bool = false,
-        isDeleted: Bool = false,
+        isTombstone: Bool = false,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -117,7 +119,7 @@ public final class LocalSyncEntityRecord {
         self.basePayloadData = basePayloadData
         self.localPayloadData = localPayloadData
         self.isDirty = isDirty
-        self.isDeleted = isDeleted
+        self.isTombstone = isTombstone
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -228,10 +230,10 @@ public final class LocalSyncStore {
         if existingEntity == nil { context.insert(entity) }
         if mutation.operation.rawValue == LocalSyncOperation.delete.rawValue {
             entity.localPayloadData = nil
-            entity.isDeleted = true
+            entity.isTombstone = true
         } else {
             entity.localPayloadData = payloadData
-            entity.isDeleted = false
+            entity.isTombstone = false
         }
         entity.isDirty = true
         entity.updatedAt = now
@@ -291,7 +293,7 @@ public final class LocalSyncStore {
         entity.basePayloadData = payloadData
         entity.localPayloadData = payloadData
         entity.isDirty = false
-        entity.isDeleted = deleted
+        entity.isTombstone = deleted
         entity.updatedAt = now
         record.state = OutboxMutationState.applied.rawValue
         record.lastError = nil
@@ -326,7 +328,7 @@ public final class LocalSyncStore {
         entity.basePayloadData = payloadData
         if !entity.isDirty {
             entity.localPayloadData = payloadData
-            entity.isDeleted = change.operation == "delete"
+            entity.isTombstone = change.operation == "delete"
         }
         entity.updatedAt = now
         try save()
@@ -343,7 +345,7 @@ public final class LocalSyncStore {
             base: try decode(entity.basePayloadData),
             local: try decode(entity.localPayloadData),
             isDirty: entity.isDirty,
-            isDeleted: entity.isDeleted
+            isDeleted: entity.isTombstone
         )
     }
 
