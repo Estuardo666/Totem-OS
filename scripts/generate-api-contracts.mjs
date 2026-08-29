@@ -109,6 +109,21 @@ function normalizeKnownReferences(schemas) {
     appConfigResponse.properties.data = schemaRef("AppConfigData");
     appConfigResponse.properties.meta = schemaRef("AppConfigMeta");
   }
+
+  // zod-to-json-schema emits local definition pointers when one field reuses
+  // the same schema instance. Keep generated clients self-contained by
+  // expanding those tiny scalar definitions in the sync DTOs.
+  const expandSyncScalarRefs = (value) => {
+    if (Array.isArray(value)) return value.map(expandSyncScalarRefs);
+    if (!value || typeof value !== "object") return value;
+    if (typeof value.$ref === "string" && value.$ref.endsWith("/properties/mutationId")) {
+      return { type: "string", pattern: "^[A-Za-z0-9_-]{1,128}$" };
+    }
+    return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, expandSyncScalarRefs(child)]));
+  };
+  for (const name of Object.keys(schemas).filter((entry) => entry.startsWith("Sync"))) {
+    schemas[name] = expandSyncScalarRefs(schemas[name]);
+  }
 }
 
 function queryParameters(schemaName, schemas) {
@@ -220,6 +235,7 @@ function tsType(schema) {
     return schema.type.map((type) => type === "null" ? "null" : tsType({ type })).join(" | ");
   }
   if (schema.type === "array") return `Array<${tsType(schema.items)}>`;
+  if (schema.type === "null") return "null";
   if (schema.type === "object") {
     const required = new Set(schema.required ?? []);
     const properties = Object.entries(schema.properties ?? {});
@@ -300,6 +316,28 @@ export class TotemApiClient {
   async appConfig(): Promise<AppConfigResponse> {
     return this.request<AppConfigResponse>(
       new URL(\`\${this.baseUrl}/api/v1/app-config\`, globalThis.location?.origin ?? "http://localhost"),
+      "GET",
+    );
+  }
+
+  async syncPull(params: SyncPullQuery = {}): Promise<SyncPullResponse> {
+    const url = new URL(\`\${this.baseUrl}/api/v1/sync/pull\`, globalThis.location?.origin ?? "http://localhost");
+    if (params.cursor) url.searchParams.set("cursor", params.cursor);
+    if (params.limit !== undefined) url.searchParams.set("limit", String(params.limit));
+    return this.request<SyncPullResponse>(url, "GET");
+  }
+
+  async syncPush(input: SyncPushBody): Promise<SyncPushResponse> {
+    return this.request<SyncPushResponse>(
+      new URL(\`\${this.baseUrl}/api/v1/sync/push\`, globalThis.location?.origin ?? "http://localhost"),
+      "POST",
+      input,
+    );
+  }
+
+  async syncBootstrap(): Promise<SyncBootstrapResponse> {
+    return this.request<SyncBootstrapResponse>(
+      new URL(\`\${this.baseUrl}/api/v1/sync/bootstrap\`, globalThis.location?.origin ?? "http://localhost"),
       "GET",
     );
   }
@@ -505,6 +543,119 @@ public struct AppConfigResponse: Codable, Equatable {
     public let meta: AppConfigMeta
 }
 
+public enum APIJSONValue: Codable, Equatable {
+    case string(String)
+    case number(Double)
+    case boolean(Bool)
+    case object([String: APIJSONValue])
+    case array([APIJSONValue])
+    case null
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() { self = .null }
+        else if let value = try? container.decode(Bool.self) { self = .boolean(value) }
+        else if let value = try? container.decode(Double.self) { self = .number(value) }
+        else if let value = try? container.decode(String.self) { self = .string(value) }
+        else if let value = try? container.decode([String: APIJSONValue].self) { self = .object(value) }
+        else { self = .array(try container.decode([APIJSONValue].self)) }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .string(let value): try container.encode(value)
+        case .number(let value): try container.encode(value)
+        case .boolean(let value): try container.encode(value)
+        case .object(let value): try container.encode(value)
+        case .array(let value): try container.encode(value)
+        case .null: try container.encodeNil()
+        }
+    }
+}
+
+public struct SyncMutation: Codable, Equatable {
+    public let mutationId: String
+    public let clientId: String
+    public let entityType: String
+    public let entityId: String
+    public let operation: String
+    public let baseVersion: Int?
+    public let data: [String: APIJSONValue]?
+}
+
+public struct SyncPushBody: Codable, Equatable {
+    public let mutations: [SyncMutation]
+}
+
+public struct SyncChange: Codable, Equatable {
+    public let sequence: String
+    public let entityType: String
+    public let entityId: String
+    public let operation: String
+    public let version: Int
+    public let data: [String: APIJSONValue]?
+    public let deletedAt: String?
+    public let changedAt: String
+}
+
+public struct SyncPullQuery: Codable, Equatable {
+    public let cursor: String?
+    public let limit: Int?
+    public init(cursor: String? = nil, limit: Int? = nil) {
+        self.cursor = cursor
+        self.limit = limit
+    }
+}
+
+public struct SyncPullData: Codable, Equatable {
+    public let changes: [SyncChange]
+    public let hasMore: Bool
+    public let nextCursor: String?
+    public let retentionDays: Int
+}
+
+public struct SyncPullResponse: Codable, Equatable {
+    public let data: SyncPullData
+    public let meta: SyncResponseMeta
+}
+
+public struct SyncMutationResult: Codable, Equatable {
+    public let mutationId: String
+    public let duplicate: Bool
+    public let entityType: String
+    public let entityId: String
+    public let operation: String
+    public let version: Int
+    public let deleted: Bool
+    public let data: [String: APIJSONValue]?
+    public let changedAt: String
+}
+
+public struct SyncPushData: Codable, Equatable {
+    public let results: [SyncMutationResult]
+}
+
+public struct SyncPushResponse: Codable, Equatable {
+    public let data: SyncPushData
+    public let meta: SyncResponseMeta
+}
+
+public struct SyncBootstrapData: Codable, Equatable {
+    public let entities: [SyncChange]
+    public let latestCursor: String?
+    public let retentionDays: Int
+}
+
+public struct SyncResponseMeta: Codable, Equatable {
+    public let requestId: String
+}
+
+public struct SyncBootstrapResponse: Codable, Equatable {
+    public let data: SyncBootstrapData
+    public let meta: SyncResponseMeta
+}
+
 public enum TotemAPIError: Error {
     case invalidURL
     case http(status: Int, problem: APIProblem?)
@@ -553,6 +704,25 @@ public final class TotemAPIClient {
     public func appConfig() async throws -> AppConfigResponse {
         let url = baseURL.appendingPathComponent("api/v1/app-config")
         return try await request(url: url, method: "GET", body: nil, as: AppConfigResponse.self)
+    }
+
+    public func syncPull(query: SyncPullQuery = SyncPullQuery()) async throws -> SyncPullResponse {
+        var components = URLComponents(url: baseURL.appendingPathComponent("api/v1/sync/pull"), resolvingAgainstBaseURL: false)
+        var items: [URLQueryItem] = []
+        if let cursor = query.cursor { items.append(URLQueryItem(name: "cursor", value: cursor)) }
+        if let limit = query.limit { items.append(URLQueryItem(name: "limit", value: String(limit))) }
+        components?.queryItems = items.isEmpty ? nil : items
+        guard let url = components?.url else { throw TotemAPIError.invalidURL }
+        return try await request(url: url, method: "GET", body: nil, as: SyncPullResponse.self)
+    }
+
+    public func syncPush(_ body: SyncPushBody) async throws -> SyncPushResponse {
+        let encodedBody = try JSONEncoder().encode(body)
+        return try await request(url: baseURL.appendingPathComponent("api/v1/sync/push"), method: "POST", body: encodedBody, as: SyncPushResponse.self)
+    }
+
+    public func syncBootstrap() async throws -> SyncBootstrapResponse {
+        return try await request(url: baseURL.appendingPathComponent("api/v1/sync/bootstrap"), method: "GET", body: nil, as: SyncBootstrapResponse.self)
     }
 
     private func request<T: Decodable>(url: URL, method: String, body: Data?, as type: T.Type) async throws -> T {

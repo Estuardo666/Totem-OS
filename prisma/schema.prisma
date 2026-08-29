@@ -717,6 +717,63 @@ model UserRouteOverride {
   @@index([path])
 }
 
+// ============================================================================
+// SYNC V1 — estado materializado, change feed y receipts idempotentes
+// ============================================================================
+
+model SyncEntity {
+  id         String    @id @default(cuid())
+  ownerId    String
+  entityType String
+  entityId   String
+  version    Int       @default(1)
+  payload    String?
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([ownerId, entityType, entityId])
+  @@index([ownerId, updatedAt, id])
+  @@index([ownerId, entityType, updatedAt])
+  @@index([ownerId, deletedAt])
+}
+
+model SyncChange {
+  id         String    @id @default(cuid())
+  sequence   BigInt    @default(autoincrement()) @unique
+  ownerId    String
+  entityType String
+  entityId   String
+  version    Int
+  operation  String
+  payload    String?
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([ownerId, entityType, entityId, version])
+  @@index([ownerId, sequence])
+  @@index([ownerId, createdAt, id])
+  @@index([ownerId, entityType, sequence])
+}
+
+model SyncMutationReceipt {
+  id            String   @id @default(cuid())
+  ownerId       String
+  clientId      String
+  mutationId    String
+  entityType    String
+  entityId      String
+  requestHash   String
+  status        String
+  response      String
+  resultVersion Int?
+  createdAt     DateTime @default(now())
+
+  @@unique([ownerId, clientId, mutationId])
+  @@index([ownerId, createdAt])
+  @@index([ownerId, entityType, entityId])
+}
+
 // INTEGRACIÓN META GRAPH API (Facebook & Instagram)
 model AgencyMetaAccount {
   id             String   @id @default(cuid())

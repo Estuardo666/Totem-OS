@@ -20,6 +20,9 @@ export type ApiProblemCode =
   | "INVALID_CURSOR"
   | "INVALID_PAGINATION"
   | "METHOD_NOT_ALLOWED"
+  | "CONFLICT"
+  | "CURSOR_EXPIRED"
+  | "MUTATION_REUSED"
   | "INTERNAL_ERROR";
 
 export interface ApiRequestContext {

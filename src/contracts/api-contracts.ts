@@ -33,6 +33,9 @@ export const apiProblemSchema = z.object({
     "INVALID_CURSOR",
     "INVALID_PAGINATION",
     "METHOD_NOT_ALLOWED",
+    "CONFLICT",
+    "CURSOR_EXPIRED",
+    "MUTATION_REUSED",
     "INTERNAL_ERROR",
   ]),
   requestId: z.string(),
@@ -162,6 +165,74 @@ export const appConfigResponseSchema = z.object({
   meta: appConfigMetaSchema,
 }).strict();
 
+const syncIdentifierSchema = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/u);
+const syncEntityTypeSchema = z.string().regex(/^[A-Za-z][A-Za-z0-9_.-]{0,63}$/u);
+const syncPayloadSchema = z.record(z.unknown()).nullable();
+
+export const syncMutationSchema = z.object({
+  mutationId: syncIdentifierSchema,
+  clientId: syncIdentifierSchema,
+  entityType: syncEntityTypeSchema,
+  entityId: syncIdentifierSchema,
+  operation: z.enum(["create", "update", "delete"]),
+  baseVersion: z.number().int().nonnegative().nullable(),
+  data: syncPayloadSchema,
+}).strict();
+
+export const syncPushBodySchema = z.object({
+  mutations: z.array(syncMutationSchema).min(1).max(50),
+}).strict();
+
+export const syncChangeSchema = z.object({
+  sequence: z.string().regex(/^\d+$/u),
+  entityType: syncEntityTypeSchema,
+  entityId: syncIdentifierSchema,
+  operation: z.enum(["create", "update", "delete"]),
+  version: z.number().int().positive(),
+  data: syncPayloadSchema,
+  deletedAt: z.string().datetime().nullable(),
+  changedAt: z.string().datetime(),
+}).strict();
+
+export const syncPullQuerySchema = z.object({
+  cursor: z.string().regex(/^\d+$/u).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+}).strict();
+
+export const syncPullDataSchema = z.object({
+  changes: z.array(syncChangeSchema),
+  hasMore: z.boolean(),
+  nextCursor: z.string().regex(/^\d+$/u).nullable(),
+  retentionDays: z.literal(90),
+}).strict();
+
+export const syncMutationResultSchema = z.object({
+  mutationId: syncIdentifierSchema,
+  duplicate: z.boolean(),
+  entityType: syncEntityTypeSchema,
+  entityId: syncIdentifierSchema,
+  operation: z.enum(["create", "update", "delete"]),
+  version: z.number().int().positive(),
+  deleted: z.boolean(),
+  data: syncPayloadSchema,
+  changedAt: z.string().datetime(),
+}).strict();
+
+export const syncPushDataSchema = z.object({
+  results: z.array(syncMutationResultSchema),
+}).strict();
+
+export const syncBootstrapDataSchema = z.object({
+  entities: z.array(syncChangeSchema),
+  latestCursor: z.string().regex(/^\d+$/u).nullable(),
+  retentionDays: z.literal(90),
+}).strict();
+
+export const syncResponseMetaSchema = z.object({ requestId: z.string() }).strict();
+export const syncPullResponseSchema = z.object({ data: syncPullDataSchema, meta: syncResponseMetaSchema }).strict();
+export const syncPushResponseSchema = z.object({ data: syncPushDataSchema, meta: syncResponseMetaSchema }).strict();
+export const syncBootstrapResponseSchema = z.object({ data: syncBootstrapDataSchema, meta: syncResponseMetaSchema }).strict();
+
 export type ApiProblem = z.infer<typeof apiProblemSchema>;
 export type KernelItem = z.infer<typeof kernelItemSchema>;
 export type KernelEchoQuery = z.infer<typeof kernelEchoQuerySchema>;
@@ -174,6 +245,13 @@ export type AppRouteMode = z.infer<typeof appRouteModeSchema>;
 export type AppRouteRule = z.infer<typeof appRouteRuleSchema>;
 export type AppConfigData = z.infer<typeof appConfigDataSchema>;
 export type AppConfigResponse = z.infer<typeof appConfigResponseSchema>;
+export type SyncMutation = z.infer<typeof syncMutationSchema>;
+export type SyncPushBody = z.infer<typeof syncPushBodySchema>;
+export type SyncChange = z.infer<typeof syncChangeSchema>;
+export type SyncPullQuery = z.infer<typeof syncPullQuerySchema>;
+export type SyncPullResponse = z.infer<typeof syncPullResponseSchema>;
+export type SyncPushResponse = z.infer<typeof syncPushResponseSchema>;
+export type SyncBootstrapResponse = z.infer<typeof syncBootstrapResponseSchema>;
 
 export type ApiContractResponse = {
   status: number;
@@ -182,7 +260,10 @@ export type ApiContractResponse = {
     | "KernelEchoGetResponse"
     | "KernelEchoPostResponse"
     | "ShellBootstrapResponse"
-    | "AppConfigResponse";
+    | "AppConfigResponse"
+    | "SyncPullResponse"
+    | "SyncPushResponse"
+    | "SyncBootstrapResponse";
 };
 
 export const apiContractRegistry = [
@@ -259,6 +340,60 @@ export const apiContractRegistry = [
       { status: 503, description: "Rate-limit store unavailable.", schemaName: "ApiProblem" },
     ] satisfies ApiContractResponse[],
   },
+  {
+    method: "get",
+    path: "/api/v1/sync/pull",
+    operationId: "syncPull",
+    summary: "Pull the sync change feed",
+    description: "Returns retained changes after an opaque sequence cursor.",
+    tag: "Sync",
+    requiredCapability: "dashboard.read",
+    querySchema: syncPullQuerySchema,
+    querySchemaName: "SyncPullQuery",
+    responses: [
+      { status: 200, description: "Changes after the cursor.", schemaName: "SyncPullResponse" },
+      { status: 400, description: "Invalid cursor or pagination.", schemaName: "ApiProblem" },
+      { status: 401, description: "Authentication required or session expired.", schemaName: "ApiProblem" },
+      { status: 403, description: "Dashboard capability is missing.", schemaName: "ApiProblem" },
+      { status: 410, description: "Cursor is older than retained history.", schemaName: "ApiProblem" },
+      { status: 429, description: "Rate limit exceeded.", schemaName: "ApiProblem" },
+    ] satisfies ApiContractResponse[],
+  },
+  {
+    method: "post",
+    path: "/api/v1/sync/push",
+    operationId: "syncPush",
+    summary: "Push idempotent sync mutations",
+    description: "Applies up to 50 mutations and returns one result for each mutation.",
+    tag: "Sync",
+    requiredCapability: "dashboard.read",
+    bodySchema: syncPushBodySchema,
+    bodySchemaName: "SyncPushBody",
+    responses: [
+      { status: 200, description: "Mutation results.", schemaName: "SyncPushResponse" },
+      { status: 400, description: "Invalid mutation payload.", schemaName: "ApiProblem" },
+      { status: 401, description: "Authentication required or session expired.", schemaName: "ApiProblem" },
+      { status: 403, description: "Dashboard capability is missing or CSRF token is missing.", schemaName: "ApiProblem" },
+      { status: 409, description: "A mutation conflicts with the server version.", schemaName: "ApiProblem" },
+      { status: 413, description: "Mutation batch exceeds one MiB.", schemaName: "ApiProblem" },
+      { status: 429, description: "Rate limit exceeded.", schemaName: "ApiProblem" },
+    ] satisfies ApiContractResponse[],
+  },
+  {
+    method: "get",
+    path: "/api/v1/sync/bootstrap",
+    operationId: "syncBootstrap",
+    summary: "Bootstrap the sync store",
+    description: "Returns the latest materialized entities and a cursor for subsequent pulls.",
+    tag: "Sync",
+    requiredCapability: "dashboard.read",
+    responses: [
+      { status: 200, description: "Materialized sync entities.", schemaName: "SyncBootstrapResponse" },
+      { status: 401, description: "Authentication required or session expired.", schemaName: "ApiProblem" },
+      { status: 403, description: "Dashboard capability is missing.", schemaName: "ApiProblem" },
+      { status: 429, description: "Rate limit exceeded.", schemaName: "ApiProblem" },
+    ] satisfies ApiContractResponse[],
+  },
 ] as const;
 
 export const generatedSchemaEntries = [
@@ -287,4 +422,16 @@ export const generatedSchemaEntries = [
   ["AppConfigData", appConfigDataSchema],
   ["AppConfigMeta", appConfigMetaSchema],
   ["AppConfigResponse", appConfigResponseSchema],
+  ["SyncMutation", syncMutationSchema],
+  ["SyncPushBody", syncPushBodySchema],
+  ["SyncChange", syncChangeSchema],
+  ["SyncPullQuery", syncPullQuerySchema],
+  ["SyncPullData", syncPullDataSchema],
+  ["SyncMutationResult", syncMutationResultSchema],
+  ["SyncPushData", syncPushDataSchema],
+  ["SyncBootstrapData", syncBootstrapDataSchema],
+  ["SyncResponseMeta", syncResponseMetaSchema],
+  ["SyncPullResponse", syncPullResponseSchema],
+  ["SyncPushResponse", syncPushResponseSchema],
+  ["SyncBootstrapResponse", syncBootstrapResponseSchema],
 ] as const;

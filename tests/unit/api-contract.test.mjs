@@ -52,6 +52,24 @@ test("el registro contiene operaciones y capacidades explícitas", () => {
         operationId: "appConfig",
         requiredCapability: "dashboard.read",
       },
+      {
+        method: "get",
+        path: "/api/v1/sync/pull",
+        operationId: "syncPull",
+        requiredCapability: "dashboard.read",
+      },
+      {
+        method: "post",
+        path: "/api/v1/sync/push",
+        operationId: "syncPush",
+        requiredCapability: "dashboard.read",
+      },
+      {
+        method: "get",
+        path: "/api/v1/sync/bootstrap",
+        operationId: "syncBootstrap",
+        requiredCapability: "dashboard.read",
+      },
     ],
   );
 });
