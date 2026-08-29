@@ -21,6 +21,9 @@ criterio de salida y una verificación antes de iniciar el siguiente.
 - [x] **CP06 — Contrato generado** (`ac99dc8`): registro Zod, OpenAPI 3.1,
   clientes TypeScript/Swift, fixtures compartidos y gate de breaking changes en
   CI.
+- [x] **CP07 — `AppCoordinator` Swift** (`931caa6`): deployment target iOS 26,
+  rutas y estado tipados, bootstrap nativo de sesión/capacidades/contadores y
+  shell Swift independiente del snapshot JavaScript.
 
 Los hashes son referencias del repositorio en la fecha de corte; si se continúa
 en otra rama, conservar el contenido de los documentos aunque cambie el hash.
