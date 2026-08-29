@@ -18,6 +18,9 @@ criterio de salida y una verificación antes de iniciar el siguiente.
 - [x] **CP05 — Roles canónicos** (`c951f76`): `roleCode`, backfill,
   dual-write, matriz de capacidades compartida y migración de Auth.js, React y
   Swift.
+- [x] **CP06 — Contrato generado** (`ac99dc8`): registro Zod, OpenAPI 3.1,
+  clientes TypeScript/Swift, fixtures compartidos y gate de breaking changes en
+  CI.
 
 Los hashes son referencias del repositorio en la fecha de corte; si se continúa
 en otra rama, conservar el contenido de los documentos aunque cambie el hash.
