@@ -74,6 +74,9 @@ next-env.d.ts
 !tsconfig.json
 !components.json
 !.eslintrc.json
+!contracts/openapi.json
+!contracts/openapi.baseline.json
+!contracts/fixtures/*.json
 !public/manifest.json
 !ios/TotemOS/TotemOS/Assets.xcassets/**/Contents.json
 ios/TotemOS/TotemOS/Info.plist

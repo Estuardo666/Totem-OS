@@ -24,6 +24,9 @@
     "test:worker-auth": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/worker-auth.test.mjs",
     "test:shell-contract": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/totem-shell-contract.test.mjs",
     "test:apns-contract": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/apns-device-contract.test.mjs",
+    "api:generate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/generate-api-contracts.mjs",
+    "api:check-breaking": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-openapi-breaking.mjs",
+    "test:api-contract": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/api-contract.test.mjs",
     "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/unit/*.test.mjs",
     "db:seed:test": "node tests/integration/seed-test-db.mjs",
     "test:integration": "node --test --test-concurrency=1 tests/integration/*.test.mjs"
@@ -105,7 +108,8 @@
     "prisma": "^5.19.0",
     "tailwindcss": "^3.4.13",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "zod-to-json-schema": "^3.25.2"
   },
   "overrides": {
     "@auth/core": "0.41.3",

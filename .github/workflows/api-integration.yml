@@ -46,6 +46,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate and verify API contract
+        run: |
+          npm run api:generate
+          npm run api:check-breaking
+          npm run test:api-contract
+          git diff --exit-code -- contracts/openapi.json src/generated/api-client.ts ios/TotemOS/TotemOSKit/GeneratedAPIClient.swift
+
       - name: Apply Prisma migrations
         run: npx prisma migrate deploy
 

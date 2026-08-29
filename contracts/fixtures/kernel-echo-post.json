@@ -1,0 +1,8 @@
+{
+  "data": {
+    "echo": "Hola desde fixture"
+  },
+  "meta": {
+    "requestId": "fixture-request-002"
+  }
+}

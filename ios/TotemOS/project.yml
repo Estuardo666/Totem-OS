@@ -70,6 +70,8 @@ targets:
     platform: iOS
     sources:
       - path: TotemOSTests
+    resources:
+      - path: ../../contracts/fixtures
     dependencies:
       - target: TotemOSKit
     settings:

@@ -2,6 +2,12 @@ import XCTest
 import TotemOSKit
 
 final class ShellContractTests: XCTestCase {
+    private func sharedFixture(named name: String) throws -> Data {
+        let bundle = Bundle(for: type(of: self))
+        let url = try XCTUnwrap(bundle.url(forResource: name, withExtension: "json"))
+        return try Data(contentsOf: url)
+    }
+
     private func snapshotJSON(
         version: Int = 1,
         route: String = "/finance/transactions",
@@ -146,5 +152,15 @@ final class ShellContractTests: XCTestCase {
         XCTAssertFalse(ShellRole.user.hasCapability(.clientsWrite))
         XCTAssertGreaterThan(ShellRole.admin.capabilities.count, ShellRole.editor.capabilities.count)
         XCTAssertGreaterThan(ShellRole.editor.capabilities.count, ShellRole.user.capabilities.count)
+    }
+
+    func testDecodesSharedKernelEchoFixture() throws {
+        let response = try JSONDecoder().decode(
+            KernelEchoPostResponse.self,
+            from: sharedFixture(named: "kernel-echo-post")
+        )
+
+        XCTAssertEqual(response.data.echo, "Hola desde fixture")
+        XCTAssertEqual(response.meta.requestId, "fixture-request-002")
     }
 }

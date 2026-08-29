@@ -1,4 +1,7 @@
-import { z } from "zod";
+import {
+  kernelEchoBodySchema,
+  kernelEchoCursorSchema,
+} from "../contracts/api-contracts.ts";
 import {
   ApiProblem,
   apiSuccess,
@@ -10,15 +13,6 @@ import {
   type ApiRequestContext,
 } from "./api-kernel.ts";
 
-const echoBodySchema = z.object({
-  message: z.string().trim().min(1).max(280),
-}).strict();
-
-const demoCursorSchema = z.object({
-  version: z.literal(1),
-  offset: z.number().int().min(0).max(60),
-});
-
 const DEMO_ITEMS = Array.from({ length: 60 }, (_, index) => ({
   id: `kernel-item-${String(index + 1).padStart(2, "0")}`,
   label: `Kernel item ${index + 1}`,
@@ -29,7 +23,7 @@ export async function handleKernelEcho(context: ApiRequestContext): Promise<Resp
   if (context.request.method === "GET") {
     const { cursor, limit } = parseCursorPage(new URL(context.request.url));
     const decoded = cursor
-      ? decodeCursor(cursor, demoCursorSchema)
+      ? decodeCursor(cursor, kernelEchoCursorSchema)
       : { version: 1 as const, offset: 0 };
 
     if (decoded.offset > DEMO_ITEMS.length) {
@@ -57,7 +51,7 @@ export async function handleKernelEcho(context: ApiRequestContext): Promise<Resp
   }
 
   if (context.request.method === "POST") {
-    const body = await readJsonBody(context, echoBodySchema);
+    const body = await readJsonBody(context, kernelEchoBodySchema);
     return apiSuccess(context, { echo: body.message });
   }
 

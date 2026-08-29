@@ -1,0 +1,14 @@
+{
+  "data": [
+    { "id": "kernel-item-01", "label": "Kernel item 1" },
+    { "id": "kernel-item-02", "label": "Kernel item 2" }
+  ],
+  "meta": {
+    "requestId": "fixture-request-001",
+    "pagination": {
+      "limit": 25,
+      "hasMore": true,
+      "nextCursor": "eyJ2ZXJzaW9uIjoxLCJvZmZzZXQiOjI1fQ"
+    }
+  }
+}
