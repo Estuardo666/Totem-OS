@@ -848,6 +848,9 @@ public final class TotemAPIClient {
     private func request<T: Decodable>(url: URL, method: String, body: Data?, as type: T.Type) async throws -> T {
         var request = URLRequest(url: url)
         request.httpMethod = method
+        // Never leave native refresh controls spinning forever when the API
+        // or a stale WebView cookie cannot complete the request.
+        request.timeoutInterval = 15
         request.setValue("application/json", forHTTPHeaderField: "accept")
         for (name, value) in additionalHeaders {
             request.setValue(value, forHTTPHeaderField: name)
