@@ -32,15 +32,17 @@ struct ContentView: View {
                             }
                         )
                         .task { await appCoordinator.loadDashboard() }
+                        .ignoresSafeArea()
+                        .onAppear { isLaunching = false }
                     } else {
                         NativeRouteView(route: appCoordinator.snapshot.route) {
                             if let route = AppRoute(path: appCoordinator.snapshot.route) {
                                 appCoordinator.rollbackToLegacyWeb(for: route)
                             }
                         }
+                        .ignoresSafeArea()
+                        .onAppear { isLaunching = false }
                     }
-                    .ignoresSafeArea()
-                    .onAppear { isLaunching = false }
                 } else {
                     LegacyWebRouteView {
                         withAnimation(.easeOut(duration: 0.25)) {
