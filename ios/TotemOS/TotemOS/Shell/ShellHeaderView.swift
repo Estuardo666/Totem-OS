@@ -123,7 +123,8 @@ struct ShellHeaderView: View {
                     endPoint: .bottom
                 )
             )
-            .frame(maxWidth: .infinity, height: 112)
+            .frame(height: 112)
+            .frame(maxWidth: .infinity)
             .allowsHitTesting(false)
         }
     }
