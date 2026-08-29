@@ -8,10 +8,13 @@ struct NativeDashboardView: View {
     let rollback: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @EnvironmentObject private var coordinator: AppCoordinator
+
+    private var palette: TotemThemePalette { coordinator.themePalette }
 
     var body: some View {
         ZStack {
-            Color(uiColor: .systemGroupedBackground)
+            palette.background
                 .ignoresSafeArea()
 
             ScrollView {
@@ -41,12 +44,15 @@ struct NativeDashboardView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 76)
+                // Clear the floating native header instead of drawing beneath it.
+                .padding(.top, 92)
                 .padding(.bottom, 112)
             }
             .scrollIndicators(.hidden)
         }
         .accessibilityIdentifier("native-dashboard")
+        .foregroundStyle(palette.foreground)
+        .tint(palette.accent)
         .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.9), value: state)
     }
 
@@ -55,13 +61,13 @@ struct NativeDashboardView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text("Command center")
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
                 Text("Buenos días, \(firstName)")
-                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                    .foregroundStyle(.primary)
+                    .font(.system(.largeTitle, design: .default).weight(.bold))
+                    .foregroundStyle(palette.foreground)
                 Text(todaySummary)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
             Spacer(minLength: 8)
             HStack(spacing: 8) {
@@ -102,7 +108,7 @@ struct NativeDashboardView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .totemDashboardCard(palette: palette, cornerRadius: 16)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(state == .offline ? "dashboard-offline" : "dashboard-error")
     }
@@ -192,6 +198,7 @@ struct NativeDashboardView: View {
                     ForEach(dashboard.workloads, id: \.userId) { workload in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
+                                DashboardRemoteAvatar(urlValue: workload.userImageUrl, name: workload.userName, circular: true)
                                 Text(workload.userName).font(.subheadline.weight(.medium))
                                 Spacer()
                                 Text("\(Int(workload.utilizationPct))%").font(.caption.weight(.semibold)).foregroundStyle(workloadColor(workload.utilizationPct))
@@ -261,6 +268,7 @@ private struct MetricCard: View {
     let detail: String
     let icon: String
     var tint: Color = .accentColor
+    @EnvironmentObject private var coordinator: AppCoordinator
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -270,7 +278,7 @@ private struct MetricCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .totemDashboardCard(palette: coordinator.themePalette, cornerRadius: 22)
     }
 }
 
@@ -279,6 +287,7 @@ private struct DashboardSection<Content: View>: View {
     let subtitle: String
     let icon: String
     @ViewBuilder var content: Content
+    @EnvironmentObject private var coordinator: AppCoordinator
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -287,7 +296,7 @@ private struct DashboardSection<Content: View>: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .totemDashboardCard(palette: coordinator.themePalette, cornerRadius: 26)
     }
 }
 
@@ -296,10 +305,14 @@ private struct TaskRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "circle.fill").font(.system(size: 7)).foregroundStyle(task.priority == "URGENT" || task.priority == "HIGH" ? .orange : .secondary)
+            DashboardRemoteAvatar(urlValue: task.client.logoUrl, name: task.client.name, circular: false)
             VStack(alignment: .leading, spacing: 3) { Text(task.title).font(.subheadline.weight(.medium)).lineLimit(1); Text("\(task.client.name) · \(dateLabel)").font(.caption).foregroundStyle(.secondary).lineLimit(1) }
             Spacer(minLength: 4)
-            Text(task.priority).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+            if let assignee = task.assignedTo {
+                DashboardRemoteAvatar(urlValue: assignee.imageUrl, name: assignee.name, circular: true)
+            } else {
+                Text(task.priority).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+            }
         }
         .padding(12)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -317,10 +330,7 @@ private struct ApprovalRow: View {
 
     var body: some View {
         HStack(spacing: 11) {
-            Image(systemName: approval.kind == "feedback" ? "bubble.left.and.bubble.right" : "doc.badge.clock")
-                .foregroundStyle(.blue)
-                .frame(width: 28, height: 28)
-                .background(.blue.opacity(0.1), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            DashboardRemoteAvatar(urlValue: approval.clientLogoUrl, name: approval.clientName, circular: false)
             VStack(alignment: .leading, spacing: 3) {
                 Text(approval.title).font(.subheadline.weight(.medium)).lineLimit(1)
                 Text("\(approval.clientName) · \(relativeDate(approval.updatedAt))")
@@ -340,6 +350,45 @@ private struct ApprovalRow: View {
     private func relativeDate(_ value: String) -> String {
         guard let date = parsed(value) else { return "Sin fecha" }
         return date.formatted(.relative(presentation: .named))
+    }
+}
+
+private struct DashboardRemoteAvatar: View {
+    let urlValue: String?
+    let name: String
+    let circular: Bool
+
+    var body: some View {
+        Group {
+            if let urlValue, let url = ShellAsset.url(for: urlValue) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image): image.resizable().scaledToFill()
+                    default: fallback
+                    }
+                }
+            } else {
+                fallback
+            }
+        }
+        .frame(width: 30, height: 30)
+        .clipShape(circular ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 8, style: .continuous)))
+        .overlay {
+            if circular { Circle().stroke(.white.opacity(0.16), lineWidth: 0.75) }
+            else { RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(.white.opacity(0.16), lineWidth: 0.75) }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var fallback: some View {
+        Text(initials)
+            .font(.system(size: 10, weight: .semibold))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(.quaternary)
+    }
+
+    private var initials: String {
+        String(name.split(separator: " ").compactMap(\.first).prefix(2)).uppercased()
     }
 }
 

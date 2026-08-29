@@ -20,7 +20,15 @@
     ],
     "preferences": {
       "theme": "dark",
-      "accentColor": "#CBA6F7"
+      "themeId": "catppuccin",
+      "catppuccinAccent": "mauve",
+      "accentColor": "#CBA6F7",
+      "backgroundColor": "#1E1E2E",
+      "cardColor": "#181825",
+      "foregroundColor": "#CDD6F4",
+      "secondaryTextColor": "#A6ADC8",
+      "surfaceColor": "#313244",
+      "borderColor": "#45475A"
     },
     "brand": {
       "logoLight": "/logo-light.png",

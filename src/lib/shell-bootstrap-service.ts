@@ -1,6 +1,7 @@
 import type { ApiActor } from "./api-actor.ts";
 import { db } from "./db.ts";
 import type { ShellBootstrapData } from "../contracts/api-contracts.ts";
+import { CATPPUCCIN_PALETTES, DEFAULT_CATPPUCCIN_ACCENT, isCatppuccinAccent } from "./theme.ts";
 
 const MAX_BADGE_COUNT = 999;
 const MAX_NOTIFICATIONS = 5;
@@ -37,6 +38,41 @@ function assetURL(value: unknown): string | null {
 
 function accentColor(value: string): string {
   return /^#[0-9A-Fa-f]{6}$/u.test(value) ? value.toUpperCase() : "#3B82F6";
+}
+
+function resolvedPreferences(user: {
+  darkMode: boolean;
+  primaryColor: string | null;
+  themeId: string | null;
+  catppuccinAccent: string | null;
+}): ShellBootstrapData["preferences"] {
+  const theme = user.darkMode ? "dark" : "light";
+  const themeId = user.themeId === "catppuccin" ? "catppuccin" : "default";
+  const accent = isCatppuccinAccent(user.catppuccinAccent)
+    ? user.catppuccinAccent : DEFAULT_CATPPUCCIN_ACCENT;
+  if (themeId === "catppuccin") {
+    const palette = CATPPUCCIN_PALETTES[theme];
+    return {
+      theme, themeId, catppuccinAccent: accent,
+      accentColor: accentColor(palette[accent] ?? palette.mauve),
+      backgroundColor: accentColor(palette.base),
+      cardColor: accentColor(palette.mantle),
+      foregroundColor: accentColor(palette.text),
+      secondaryTextColor: accentColor(palette.subtext0),
+      surfaceColor: accentColor(palette.surface0),
+      borderColor: accentColor(palette.surface1),
+    };
+  }
+  return {
+    theme, themeId, catppuccinAccent: accent,
+    accentColor: accentColor(user.primaryColor || "#3B82F6"),
+    backgroundColor: theme === "dark" ? "#141220" : "#F7F7FA",
+    cardColor: theme === "dark" ? "#1E1B2B" : "#FFFFFF",
+    foregroundColor: theme === "dark" ? "#F5F3FA" : "#27221F",
+    secondaryTextColor: theme === "dark" ? "#B5B0C3" : "#686371",
+    surfaceColor: theme === "dark" ? "#2A2638" : "#EEEFF4",
+    borderColor: theme === "dark" ? "#3A3549" : "#DADBE2",
+  };
 }
 
 function brandSettings(value: string | undefined): ShellBootstrapData["brand"] {
@@ -97,6 +133,8 @@ export async function loadShellBootstrap(actor: ApiActor): Promise<ShellBootstra
         specialty: true,
         primaryColor: true,
         darkMode: true,
+        themeId: true,
+        catppuccinAccent: true,
       },
     }),
     db.notification.count({
@@ -137,10 +175,7 @@ export async function loadShellBootstrap(actor: ApiActor): Promise<ShellBootstra
       initials: initials(name),
     },
     capabilities: Array.from(actor.capabilities).sort().slice(0, 64),
-    preferences: {
-      theme: user.darkMode ? "dark" : "light",
-      accentColor: accentColor(user.primaryColor),
-    },
+    preferences: resolvedPreferences(user),
     brand: brandSettings(brand?.value),
     counters: {
       pendingTasks: clampCount(pendingTasks),

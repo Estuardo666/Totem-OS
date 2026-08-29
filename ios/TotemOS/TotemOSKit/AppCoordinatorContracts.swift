@@ -58,6 +58,14 @@ public struct NativeShellState: Equatable {
     public var route: AppRoute
     public var theme: ShellThemeVariant
     public var accentColor: String
+    public var themeId: String
+    public var catppuccinAccent: String
+    public var backgroundColor: String
+    public var cardColor: String
+    public var foregroundColor: String
+    public var secondaryTextColor: String
+    public var surfaceColor: String
+    public var borderColor: String
     public var user: ShellUser?
     public var capabilities: Set<ShellCapability>
     public var logoLight: String?
@@ -107,11 +115,23 @@ public struct NativeShellState: Equatable {
         route: AppRoute, theme: ShellThemeVariant, accentColor: String, user: ShellUser?,
         capabilities: Set<ShellCapability>, logoLight: String?, logoDark: String?,
         navigation: [ShellNavItem], tabs: [ShellTabItem], taskCount: Int,
-        unreadNotificationCount: Int, notifications: [ShellNotification], overlayHidden: Bool
+        unreadNotificationCount: Int, notifications: [ShellNotification], overlayHidden: Bool,
+        themeId: String = "default", catppuccinAccent: String = "mauve",
+        backgroundColor: String = "#F7F7FA", cardColor: String = "#FFFFFF",
+        foregroundColor: String = "#27221F", secondaryTextColor: String = "#686371",
+        surfaceColor: String = "#EEEFF4", borderColor: String = "#DADBE2"
     ) {
         self.route = route
         self.theme = theme
         self.accentColor = accentColor
+        self.themeId = themeId
+        self.catppuccinAccent = catppuccinAccent
+        self.backgroundColor = backgroundColor
+        self.cardColor = cardColor
+        self.foregroundColor = foregroundColor
+        self.secondaryTextColor = secondaryTextColor
+        self.surfaceColor = surfaceColor
+        self.borderColor = borderColor
         self.user = user
         self.capabilities = capabilities
         self.logoLight = logoLight
@@ -146,7 +166,15 @@ public struct NativeShellState: Equatable {
                 ShellNotification(id: $0.id, message: $0.message, createdAt: $0.createdAt,
                     authorName: $0.authorName, avatarUrl: $0.avatarUrl, read: $0.read)
             },
-            overlayHidden: false
+            overlayHidden: false,
+            themeId: bootstrap.preferences.themeId,
+            catppuccinAccent: bootstrap.preferences.catppuccinAccent,
+            backgroundColor: bootstrap.preferences.backgroundColor,
+            cardColor: bootstrap.preferences.cardColor,
+            foregroundColor: bootstrap.preferences.foregroundColor,
+            secondaryTextColor: bootstrap.preferences.secondaryTextColor,
+            surfaceColor: bootstrap.preferences.surfaceColor,
+            borderColor: bootstrap.preferences.borderColor
         )
     }
 

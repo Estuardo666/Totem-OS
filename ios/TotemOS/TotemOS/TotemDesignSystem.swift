@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import TotemOSKit
 
 enum TotemTypography {
     static func regular(_ size: CGFloat, relativeTo style: Font.TextStyle) -> Font {
@@ -64,6 +65,42 @@ extension View {
 
 extension Color {
     static let totemLime = Color(red: 159 / 255, green: 232 / 255, blue: 66 / 255)
+}
+
+struct TotemThemePalette {
+    let background: Color
+    let card: Color
+    let foreground: Color
+    let secondaryText: Color
+    let surface: Color
+    let border: Color
+    let accent: Color
+
+    init(state: NativeShellState) {
+        background = Color(shellHex: state.backgroundColor) ?? Color(uiColor: .systemGroupedBackground)
+        card = Color(shellHex: state.cardColor) ?? Color(uiColor: .secondarySystemGroupedBackground)
+        foreground = Color(shellHex: state.foregroundColor) ?? .primary
+        secondaryText = Color(shellHex: state.secondaryTextColor) ?? .secondary
+        surface = Color(shellHex: state.surfaceColor) ?? Color(uiColor: .tertiarySystemFill)
+        border = Color(shellHex: state.borderColor) ?? Color(uiColor: .separator)
+        accent = Color(shellHex: state.accentColor) ?? .accentColor
+    }
+}
+
+extension AppCoordinator {
+    var themePalette: TotemThemePalette { TotemThemePalette(state: state) }
+}
+
+extension View {
+    /// Cards are content, so Apple recommends an adaptive solid/material
+    /// surface rather than stacking Liquid Glass throughout the page.
+    @ViewBuilder
+    func totemDashboardCard(palette: TotemThemePalette, cornerRadius: CGFloat) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        background(palette.card.opacity(0.92), in: shape)
+            .overlay { shape.stroke(palette.border.opacity(0.72), lineWidth: 0.75) }
+            .shadow(color: .black.opacity(0.06), radius: 18, y: 8)
+    }
 }
 
 // MARK: - Shell nativo

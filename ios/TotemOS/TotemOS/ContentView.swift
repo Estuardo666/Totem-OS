@@ -19,6 +19,16 @@ struct ContentView: View {
                 .ignoresSafeArea()
                 .transition(.opacity)
             } else {
+                // Keep the WKWebView mounted while a native route is visible.
+                // It owns the authenticated session and must remain available
+                // so shell navigation can immediately open legacy React routes.
+                LegacyWebRouteView {
+                    withAnimation(.easeOut(duration: 0.25)) { isLaunching = false }
+                }
+                .ignoresSafeArea()
+                .opacity(appCoordinator.shouldUseNativeRoute ? 0 : 1)
+                .allowsHitTesting(!appCoordinator.shouldUseNativeRoute)
+
                 if appCoordinator.shouldUseNativeRoute {
                     if appCoordinator.snapshot.route == AppRoute.home.path {
                         NativeDashboardView(
@@ -32,7 +42,6 @@ struct ContentView: View {
                             }
                         )
                         .task { await appCoordinator.loadDashboard() }
-                        .ignoresSafeArea()
                         .onAppear { isLaunching = false }
                     } else {
                         NativeRouteView(route: appCoordinator.snapshot.route) {
@@ -40,16 +49,8 @@ struct ContentView: View {
                                 appCoordinator.rollbackToLegacyWeb(for: route)
                             }
                         }
-                        .ignoresSafeArea()
                         .onAppear { isLaunching = false }
                     }
-                } else {
-                    LegacyWebRouteView {
-                        withAnimation(.easeOut(duration: 0.25)) {
-                            isLaunching = false
-                        }
-                    }
-                    .ignoresSafeArea()
                 }
 
                 // Shell nativo superpuesto: header, menús y barra inferior.
@@ -76,6 +77,7 @@ struct ContentView: View {
             }
         }
         .background(Color.totemLaunchBackground.ignoresSafeArea())
+        .preferredColorScheme(appCoordinator.snapshot.theme == .dark ? .dark : .light)
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
     }
@@ -101,8 +103,8 @@ private struct NativeRouteView: View {
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.totemLaunchBackground)
-        .foregroundStyle(.white)
+        .background(Color(uiColor: .systemBackground))
+        .foregroundStyle(.primary)
     }
 }
 

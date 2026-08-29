@@ -9,6 +9,7 @@ import type {
 import { resolveRoleCode } from "./roles.ts";
 import type { ApiActor } from "./api-actor.ts";
 import { db } from "./db.ts";
+import { getReceivablesFromDb } from "./finance-transaction-service.ts";
 
 const EDITOR_PENDING_STATUSES = new Set(["RECORDED", "EDITING", "REVIEW_CLIENT"]);
 const COMMUNITY_PENDING_STATUSES = new Set(["IDEA", "SCRIPT", "CLIENT_APPROVED"]);
@@ -62,9 +63,9 @@ function mapTask(task: {
   dueDate: Date | null;
   scheduledAt: Date | null;
   updatedAt: Date;
-  client: { id: string; name: string };
-  assignedEditor: { id: string; name: string } | null;
-  assignedCommunity: { id: string; name: string } | null;
+  client: { id: string; name: string; logo: string | null };
+  assignedEditor: { id: string; name: string; image: string | null } | null;
+  assignedCommunity: { id: string; name: string; image: string | null } | null;
 }): DashboardTask {
   const assignee = task.assignedEditor ?? task.assignedCommunity;
   return {
@@ -76,8 +77,8 @@ function mapTask(task: {
     dueDate: iso(task.dueDate),
     scheduledAt: iso(task.scheduledAt),
     updatedAt: task.updatedAt.toISOString(),
-    client: task.client,
-    assignedTo: assignee ? { id: assignee.id, name: assignee.name } : null,
+    client: { id: task.client.id, name: task.client.name, logoUrl: task.client.logo },
+    assignedTo: assignee ? { id: assignee.id, name: assignee.name, imageUrl: assignee.image } : null,
   };
 }
 
@@ -107,7 +108,7 @@ export async function loadDashboard(actor: ApiActor): Promise<DashboardData> {
   const [user, activeClients, tasks, pendingFeedbacks, users, paidInvoiceTotal, paidIncomeTotal, receivableInvoices, receivableTransactions, recentTransactions] = await Promise.all([
     db.user.findUnique({
       where: { id: actor.userId },
-      select: { id: true, name: true, roleCode: true, roleLegacy: true, specialty: true },
+      select: { id: true, name: true, image: true, roleCode: true, roleLegacy: true, specialty: true },
     }),
     db.client.count({ where: clientWhere }),
     db.contentTask.findMany({
@@ -125,20 +126,20 @@ export async function loadDashboard(actor: ApiActor): Promise<DashboardData> {
         updatedAt: true,
         assignedEditorId: true,
         assignedCommunityId: true,
-        client: { select: { id: true, name: true } },
-        assignedEditor: { select: { id: true, name: true } },
-        assignedCommunity: { select: { id: true, name: true } },
+        client: { select: { id: true, name: true, logo: true } },
+        assignedEditor: { select: { id: true, name: true, image: true } },
+        assignedCommunity: { select: { id: true, name: true, image: true } },
       },
       orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
     }),
     db.clientFeedback.findMany({
       where: { viewed: false, client: activeClientFilter },
-      select: { id: true, clientId: true, createdAt: true, client: { select: { name: true } } },
+      select: { id: true, clientId: true, createdAt: true, client: { select: { name: true, logo: true } } },
       orderBy: { createdAt: "desc" },
     }),
     actor.role === "ADMIN"
       ? db.user.findMany({
-          select: { id: true, name: true, roleCode: true, roleLegacy: true, specialty: true },
+          select: { id: true, name: true, image: true, roleCode: true, roleLegacy: true, specialty: true },
           orderBy: { name: "asc" },
         })
       : Promise.resolve([]),
@@ -172,6 +173,13 @@ export async function loadDashboard(actor: ApiActor): Promise<DashboardData> {
 
   if (!user) throw new Error("Dashboard actor does not exist");
 
+  const receivablesResult = actor.role === "ADMIN"
+    ? await getReceivablesFromDb(actor.userId, now)
+    : null;
+  const authoritativeReceivable = receivablesResult?.success
+    ? receivablesResult.data?.totalReceivable ?? 0
+    : (receivableInvoices._sum.amount ?? 0) + (receivableTransactions._sum.amount ?? 0);
+
   const taskRows = tasks;
   const dashboardTasks = taskRows.map(mapTask);
   const agenda = dashboardTasks
@@ -192,6 +200,7 @@ export async function loadDashboard(actor: ApiActor): Promise<DashboardData> {
       kind: "feedback" as const,
       clientId: feedback.clientId,
       clientName: feedback.client.name,
+      clientLogoUrl: feedback.client.logo,
       updatedAt: feedback.createdAt.toISOString(),
     })),
     ...pendingApprovalTasks.map((task) => ({
@@ -200,6 +209,7 @@ export async function loadDashboard(actor: ApiActor): Promise<DashboardData> {
       kind: "task" as const,
       clientId: task.client.id,
       clientName: task.client.name,
+      clientLogoUrl: task.client.logo,
       updatedAt: task.updatedAt.toISOString(),
     })),
   ].sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
@@ -220,6 +230,7 @@ export async function loadDashboard(actor: ApiActor): Promise<DashboardData> {
         userName: workloadUser.name,
         userRole: workloadRole,
         userSpecialty: workloadUser.specialty,
+        userImageUrl: "image" in workloadUser ? workloadUser.image : user.image,
         pendingTasksCount,
         weeklyCapacity,
         utilizationPct: Math.round((pendingTasksCount / weeklyCapacity) * 100),
@@ -249,7 +260,7 @@ export async function loadDashboard(actor: ApiActor): Promise<DashboardData> {
       scheduledToday: agenda.length,
       priorityTasks: priorityTasks.length,
       totalIncome: actor.role === "ADMIN" ? (paidInvoiceTotal._sum.amount ?? 0) + (paidIncomeTotal._sum.amount ?? 0) : null,
-      totalReceivable: actor.role === "ADMIN" ? (receivableInvoices._sum.amount ?? 0) + (receivableTransactions._sum.amount ?? 0) : null,
+      totalReceivable: actor.role === "ADMIN" ? authoritativeReceivable : null,
     },
     pipeline: PIPELINE_STAGES.map(([key, label]) => ({
       key,

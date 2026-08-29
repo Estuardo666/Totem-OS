@@ -1225,14 +1225,58 @@
               "dark"
             ]
           },
+          "themeId": {
+            "type": "string",
+            "enum": [
+              "default",
+              "catppuccin"
+            ]
+          },
+          "catppuccinAccent": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24
+          },
           "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9A-F]{6}$"
+          },
+          "backgroundColor": {
+            "type": "string",
+            "pattern": "^#[0-9A-F]{6}$"
+          },
+          "cardColor": {
+            "type": "string",
+            "pattern": "^#[0-9A-F]{6}$"
+          },
+          "foregroundColor": {
+            "type": "string",
+            "pattern": "^#[0-9A-F]{6}$"
+          },
+          "secondaryTextColor": {
+            "type": "string",
+            "pattern": "^#[0-9A-F]{6}$"
+          },
+          "surfaceColor": {
+            "type": "string",
+            "pattern": "^#[0-9A-F]{6}$"
+          },
+          "borderColor": {
             "type": "string",
             "pattern": "^#[0-9A-F]{6}$"
           }
         },
         "required": [
           "theme",
-          "accentColor"
+          "themeId",
+          "catppuccinAccent",
+          "accentColor",
+          "backgroundColor",
+          "cardColor",
+          "foregroundColor",
+          "secondaryTextColor",
+          "surfaceColor",
+          "borderColor"
         ],
         "additionalProperties": false
       },
@@ -2544,11 +2588,23 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 128
+              },
+              "logoUrl": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 2048
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "required": [
               "id",
-              "name"
+              "name",
+              "logoUrl"
             ],
             "additionalProperties": false
           },
@@ -2565,11 +2621,23 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 128
+                  },
+                  "imageUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2048
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
                   "id",
-                  "name"
+                  "name",
+                  "imageUrl"
                 ],
                 "additionalProperties": false
               },
@@ -2646,6 +2714,17 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "clientLogoUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "updatedAt": {
             "type": "string",
             "format": "date-time"
@@ -2657,6 +2736,7 @@
           "kind",
           "clientId",
           "clientName",
+          "clientLogoUrl",
           "updatedAt"
         ],
         "additionalProperties": false
@@ -2692,6 +2772,17 @@
               }
             ]
           },
+          "userImageUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "pendingTasksCount": {
             "type": "integer",
             "minimum": 0
@@ -2711,6 +2802,7 @@
           "userName",
           "userRole",
           "userSpecialty",
+          "userImageUrl",
           "pendingTasksCount",
           "weeklyCapacity",
           "utilizationPct"
@@ -2958,11 +3050,23 @@
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 128
+                    },
+                    "logoUrl": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 2048
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
                     "id",
-                    "name"
+                    "name",
+                    "logoUrl"
                   ],
                   "additionalProperties": false
                 },
@@ -2979,11 +3083,23 @@
                           "type": "string",
                           "minLength": 1,
                           "maxLength": 128
+                        },
+                        "imageUrl": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 2048
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
                         "id",
-                        "name"
+                        "name",
+                        "imageUrl"
                       ],
                       "additionalProperties": false
                     },
@@ -3075,11 +3191,23 @@
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 128
+                    },
+                    "logoUrl": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 2048
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
                     "id",
-                    "name"
+                    "name",
+                    "logoUrl"
                   ],
                   "additionalProperties": false
                 },
@@ -3096,11 +3224,23 @@
                           "type": "string",
                           "minLength": 1,
                           "maxLength": 128
+                        },
+                        "imageUrl": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 2048
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
                         "id",
-                        "name"
+                        "name",
+                        "imageUrl"
                       ],
                       "additionalProperties": false
                     },
@@ -3156,6 +3296,17 @@
                   "minLength": 1,
                   "maxLength": 128
                 },
+                "clientLogoUrl": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 2048
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "updatedAt": {
                   "type": "string",
                   "format": "date-time"
@@ -3167,6 +3318,7 @@
                 "kind",
                 "clientId",
                 "clientName",
+                "clientLogoUrl",
                 "updatedAt"
               ],
               "additionalProperties": false
@@ -3206,6 +3358,17 @@
                     }
                   ]
                 },
+                "userImageUrl": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 2048
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "pendingTasksCount": {
                   "type": "integer",
                   "minimum": 0
@@ -3225,6 +3388,7 @@
                 "userName",
                 "userRole",
                 "userSpecialty",
+                "userImageUrl",
                 "pendingTasksCount",
                 "weeklyCapacity",
                 "utilizationPct"
@@ -3495,11 +3659,23 @@
                           "type": "string",
                           "minLength": 1,
                           "maxLength": 128
+                        },
+                        "logoUrl": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 2048
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
                         "id",
-                        "name"
+                        "name",
+                        "logoUrl"
                       ],
                       "additionalProperties": false
                     },
@@ -3516,11 +3692,23 @@
                               "type": "string",
                               "minLength": 1,
                               "maxLength": 128
+                            },
+                            "imageUrl": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 2048
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
                             }
                           },
                           "required": [
                             "id",
-                            "name"
+                            "name",
+                            "imageUrl"
                           ],
                           "additionalProperties": false
                         },
@@ -3612,11 +3800,23 @@
                           "type": "string",
                           "minLength": 1,
                           "maxLength": 128
+                        },
+                        "logoUrl": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 2048
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
                         "id",
-                        "name"
+                        "name",
+                        "logoUrl"
                       ],
                       "additionalProperties": false
                     },
@@ -3633,11 +3833,23 @@
                               "type": "string",
                               "minLength": 1,
                               "maxLength": 128
+                            },
+                            "imageUrl": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 2048
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
                             }
                           },
                           "required": [
                             "id",
-                            "name"
+                            "name",
+                            "imageUrl"
                           ],
                           "additionalProperties": false
                         },
@@ -3693,6 +3905,17 @@
                       "minLength": 1,
                       "maxLength": 128
                     },
+                    "clientLogoUrl": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 2048
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "updatedAt": {
                       "type": "string",
                       "format": "date-time"
@@ -3704,6 +3927,7 @@
                     "kind",
                     "clientId",
                     "clientName",
+                    "clientLogoUrl",
                     "updatedAt"
                   ],
                   "additionalProperties": false
@@ -3743,6 +3967,17 @@
                         }
                       ]
                     },
+                    "userImageUrl": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 2048
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "pendingTasksCount": {
                       "type": "integer",
                       "minimum": 0
@@ -3762,6 +3997,7 @@
                     "userName",
                     "userRole",
                     "userSpecialty",
+                    "userImageUrl",
                     "pendingTasksCount",
                     "weeklyCapacity",
                     "utilizationPct"

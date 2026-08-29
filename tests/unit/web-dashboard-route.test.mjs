@@ -6,6 +6,8 @@ import test from "node:test";
 const root = resolve(import.meta.dirname, "../..");
 const dashboardRoute = readFileSync(resolve(root, "src/app/(dashboard)/page.tsx"), "utf8");
 const nativeDashboard = readFileSync(resolve(root, "ios/TotemOS/TotemOS/NativeDashboardView.swift"), "utf8");
+const nativeContent = readFileSync(resolve(root, "ios/TotemOS/TotemOS/ContentView.swift"), "utf8");
+const dashboardContract = readFileSync(resolve(root, "src/contracts/api-contracts.ts"), "utf8");
 
 test("la portada web conserva el dashboard completo mientras Swift usa la API nativa", () => {
   assert.match(dashboardRoute, /HomeCommandCenter/);
@@ -14,6 +16,22 @@ test("la portada web conserva el dashboard completo mientras Swift usa la API na
   assert.match(dashboardRoute, /getFinancialStats\(\)/);
   assert.match(dashboardRoute, /getReceivables\(\)/);
   assert.doesNotMatch(dashboardRoute, /ApiDashboardView/);
+});
+
+test("el shell conserva el WebView autenticado para navegar fuera del home nativo", () => {
+  assert.match(nativeContent, /Keep the WKWebView mounted/);
+  assert.match(nativeContent, /\.opacity\(appCoordinator\.shouldUseNativeRoute \? 0 : 1\)/);
+  assert.match(nativeContent, /\.allowsHitTesting\(!appCoordinator\.shouldUseNativeRoute\)/);
+});
+
+test("el contrato nativo transporta paleta React e imágenes del dashboard", () => {
+  for (const field of [
+    "themeId", "catppuccinAccent", "backgroundColor", "cardColor",
+    "foregroundColor", "secondaryTextColor", "surfaceColor", "borderColor",
+    "logoUrl", "imageUrl", "clientLogoUrl", "userImageUrl",
+  ]) {
+    assert.match(dashboardContract, new RegExp(field));
+  }
 });
 
 test("el dashboard Swift conserva los bloques funcionales del dashboard React", () => {

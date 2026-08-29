@@ -103,7 +103,15 @@ export const shellBootstrapUserSchema = z.object({
 
 export const shellBootstrapPreferencesSchema = z.object({
   theme: z.enum(["light", "dark"]),
+  themeId: z.enum(["default", "catppuccin"]),
+  catppuccinAccent: z.string().min(1).max(24),
   accentColor: z.string().regex(/^#[0-9A-F]{6}$/u),
+  backgroundColor: z.string().regex(/^#[0-9A-F]{6}$/u),
+  cardColor: z.string().regex(/^#[0-9A-F]{6}$/u),
+  foregroundColor: z.string().regex(/^#[0-9A-F]{6}$/u),
+  secondaryTextColor: z.string().regex(/^#[0-9A-F]{6}$/u),
+  surfaceColor: z.string().regex(/^#[0-9A-F]{6}$/u),
+  borderColor: z.string().regex(/^#[0-9A-F]{6}$/u),
 }).strict();
 
 export const shellBootstrapBrandSchema = z.object({
@@ -266,8 +274,8 @@ export const dashboardTaskSchema = z.object({
   dueDate: z.string().datetime().nullable(),
   scheduledAt: z.string().datetime().nullable(),
   updatedAt: z.string().datetime(),
-  client: z.object({ id: z.string().min(1), name: z.string().min(1).max(128) }).strict(),
-  assignedTo: z.object({ id: z.string().min(1), name: z.string().min(1).max(128) }).strict().nullable(),
+  client: z.object({ id: z.string().min(1), name: z.string().min(1).max(128), logoUrl: z.string().max(2048).nullable() }).strict(),
+  assignedTo: z.object({ id: z.string().min(1), name: z.string().min(1).max(128), imageUrl: z.string().max(2048).nullable() }).strict().nullable(),
 }).strict();
 
 // Keep this object structurally independent from `agenda` so the OpenAPI
@@ -282,8 +290,8 @@ const dashboardPriorityTaskSchema = z.object({
   dueDate: z.string().datetime().nullable(),
   scheduledAt: z.string().datetime().nullable(),
   updatedAt: z.string().datetime(),
-  client: z.object({ id: z.string().min(1), name: z.string().min(1).max(128) }).strict(),
-  assignedTo: z.object({ id: z.string().min(1), name: z.string().min(1).max(128) }).strict().nullable(),
+  client: z.object({ id: z.string().min(1), name: z.string().min(1).max(128), logoUrl: z.string().max(2048).nullable() }).strict(),
+  assignedTo: z.object({ id: z.string().min(1), name: z.string().min(1).max(128), imageUrl: z.string().max(2048).nullable() }).strict().nullable(),
 }).strict();
 
 export const dashboardPipelineStageSchema = z.object({
@@ -298,6 +306,7 @@ export const dashboardApprovalSchema = z.object({
   kind: z.enum(["feedback", "task"]),
   clientId: z.string().min(1),
   clientName: z.string().min(1).max(128),
+  clientLogoUrl: z.string().max(2048).nullable(),
   updatedAt: z.string().datetime(),
 }).strict();
 
@@ -306,6 +315,7 @@ export const dashboardWorkloadSchema = z.object({
   userName: z.string().min(1).max(128),
   userRole: z.enum(["ADMIN", "EDITOR", "USER"]),
   userSpecialty: z.string().max(128).nullable(),
+  userImageUrl: z.string().max(2048).nullable(),
   pendingTasksCount: z.number().int().nonnegative(),
   weeklyCapacity: z.number().int().positive(),
   utilizationPct: z.number().nonnegative().max(999),

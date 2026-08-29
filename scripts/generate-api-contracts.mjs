@@ -489,7 +489,15 @@ public struct ShellBootstrapUser: Codable, Equatable {
 
 public struct ShellBootstrapPreferences: Codable, Equatable {
     public let theme: String
+    public let themeId: String
+    public let catppuccinAccent: String
     public let accentColor: String
+    public let backgroundColor: String
+    public let cardColor: String
+    public let foregroundColor: String
+    public let secondaryTextColor: String
+    public let surfaceColor: String
+    public let borderColor: String
 }
 
 public struct ShellBootstrapBrand: Codable, Equatable {
@@ -690,11 +698,13 @@ public struct DashboardSummary: Codable, Equatable {
 public struct DashboardTaskClient: Codable, Equatable {
     public let id: String
     public let name: String
+    public let logoUrl: String?
 }
 
 public struct DashboardAssignee: Codable, Equatable {
     public let id: String
     public let name: String
+    public let imageUrl: String?
 }
 
 public struct DashboardTask: Codable, Equatable {
@@ -722,6 +732,7 @@ public struct DashboardApproval: Codable, Equatable {
     public let kind: String
     public let clientId: String
     public let clientName: String
+    public let clientLogoUrl: String?
     public let updatedAt: String
 }
 
@@ -730,6 +741,7 @@ public struct DashboardWorkload: Codable, Equatable {
     public let userName: String
     public let userRole: String
     public let userSpecialty: String?
+    public let userImageUrl: String?
     public let pendingTasksCount: Int
     public let weeklyCapacity: Int
     public let utilizationPct: Double
