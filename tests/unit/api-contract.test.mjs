@@ -7,6 +7,7 @@ import {
   kernelEchoGetResponseSchema,
   kernelEchoPostResponseSchema,
   shellBootstrapResponseSchema,
+  appConfigResponseSchema,
 } from "../../src/contracts/api-contracts.ts";
 import { TotemApiClient } from "../../src/generated/api-client.ts";
 
@@ -20,6 +21,7 @@ test("los fixtures compartidos cumplen los DTOs Zod registrados", () => {
   assert.equal(kernelEchoGetResponseSchema.safeParse(readFixture("kernel-echo-get.json")).success, true);
   assert.equal(kernelEchoPostResponseSchema.safeParse(readFixture("kernel-echo-post.json")).success, true);
   assert.equal(shellBootstrapResponseSchema.safeParse(readFixture("shell-bootstrap.json")).success, true);
+  assert.equal(appConfigResponseSchema.safeParse(readFixture("app-config.json")).success, true);
 });
 
 test("el registro contiene operaciones y capacidades explícitas", () => {
@@ -44,6 +46,12 @@ test("el registro contiene operaciones y capacidades explícitas", () => {
         operationId: "shellBootstrap",
         requiredCapability: "dashboard.read",
       },
+      {
+        method: "get",
+        path: "/api/v1/app-config",
+        operationId: "appConfig",
+        requiredCapability: "dashboard.read",
+      },
     ],
   );
 });
@@ -54,10 +62,12 @@ test("el artefacto OpenAPI 3.1 refleja el registro", () => {
   assert.ok(openapi.paths["/api/v1/_kernel/echo"].get);
   assert.ok(openapi.paths["/api/v1/_kernel/echo"].post);
   assert.ok(openapi.paths["/api/v1/shell/bootstrap"].get);
+  assert.ok(openapi.paths["/api/v1/app-config"].get);
   assert.equal(openapi.paths["/api/v1/_kernel/echo"].get["x-required-capability"], "kernel.echo.read");
   assert.equal(openapi.paths["/api/v1/_kernel/echo"].post["x-required-capability"], "kernel.echo.write");
   assert.ok(openapi.components.schemas.KernelEchoGetResponse);
   assert.ok(openapi.components.schemas.ShellBootstrapResponse);
+  assert.ok(openapi.components.schemas.AppConfigResponse);
   assert.ok(openapi.components.securitySchemes.csrfToken);
 });
 

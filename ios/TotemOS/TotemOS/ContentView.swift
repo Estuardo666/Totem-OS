@@ -1,7 +1,9 @@
 import SwiftUI
+import TotemOSKit
 
 struct ContentView: View {
     @EnvironmentObject private var appModel: AppModel
+    @EnvironmentObject private var appCoordinator: AppCoordinator
     @State private var isLaunching = true
 
     var body: some View {
@@ -17,12 +19,22 @@ struct ContentView: View {
                 .ignoresSafeArea()
                 .transition(.opacity)
             } else {
-                WebAppView {
-                    withAnimation(.easeOut(duration: 0.25)) {
-                        isLaunching = false
+                if appCoordinator.shouldUseNativeRoute {
+                    NativeRouteView(route: appCoordinator.snapshot.route) {
+                        if let route = AppRoute(path: appCoordinator.snapshot.route) {
+                            appCoordinator.rollbackToLegacyWeb(for: route)
+                        }
                     }
+                    .ignoresSafeArea()
+                    .onAppear { isLaunching = false }
+                } else {
+                    LegacyWebRouteView {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            isLaunching = false
+                        }
+                    }
+                    .ignoresSafeArea()
                 }
-                .ignoresSafeArea()
 
                 // Shell nativo superpuesto: header, menús y barra inferior.
                 NativeShellOverlay()
@@ -50,6 +62,31 @@ struct ContentView: View {
         .background(Color.totemLaunchBackground.ignoresSafeArea())
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
+    }
+}
+
+private struct NativeRouteView: View {
+    let route: String
+    let rollback: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "swift")
+                .font(.system(size: 42, weight: .semibold))
+                .foregroundStyle(.tint)
+            Text("Pantalla nativa en migración")
+                .font(.title3.weight(.semibold))
+            Text(route)
+                .font(.footnote.monospaced())
+                .foregroundStyle(.secondary)
+            Button("Usar versión web") { rollback() }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("legacy-route-rollback")
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.totemLaunchBackground)
+        .foregroundStyle(.white)
     }
 }
 

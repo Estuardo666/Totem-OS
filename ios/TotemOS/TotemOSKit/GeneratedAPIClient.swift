@@ -152,6 +152,31 @@ public struct ShellBootstrapResponse: Codable, Equatable {
     public let meta: ShellBootstrapMeta
 }
 
+public enum AppRouteMode: String, Codable, Equatable {
+    case native
+    case web
+}
+
+public struct AppRouteRule: Codable, Equatable {
+    public let path: String
+    public let mode: AppRouteMode
+}
+
+public struct AppConfigData: Codable, Equatable {
+    public let version: Int
+    public let defaultMode: AppRouteMode
+    public let routes: [AppRouteRule]
+}
+
+public struct AppConfigMeta: Codable, Equatable {
+    public let requestId: String
+}
+
+public struct AppConfigResponse: Codable, Equatable {
+    public let data: AppConfigData
+    public let meta: AppConfigMeta
+}
+
 public enum TotemAPIError: Error {
     case invalidURL
     case http(status: Int, problem: APIProblem?)
@@ -195,6 +220,11 @@ public final class TotemAPIClient {
     public func shellBootstrap() async throws -> ShellBootstrapResponse {
         let url = baseURL.appendingPathComponent("api/v1/shell/bootstrap")
         return try await request(url: url, method: "GET", body: nil, as: ShellBootstrapResponse.self)
+    }
+
+    public func appConfig() async throws -> AppConfigResponse {
+        let url = baseURL.appendingPathComponent("api/v1/app-config")
+        return try await request(url: url, method: "GET", body: nil, as: AppConfigResponse.self)
     }
 
     private func request<T: Decodable>(url: URL, method: String, body: Data?, as type: T.Type) async throws -> T {

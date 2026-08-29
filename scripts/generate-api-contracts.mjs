@@ -90,6 +90,25 @@ function normalizeKnownReferences(schemas) {
     shellResponse.properties.data = schemaRef("ShellBootstrapData");
     shellResponse.properties.meta = schemaRef("ShellBootstrapMeta");
   }
+
+  const appConfigData = schemas.AppConfigData;
+  if (appConfigData?.properties) {
+    appConfigData.properties.defaultMode = schemaRef("AppRouteMode");
+    if (appConfigData.properties.routes?.items) {
+      appConfigData.properties.routes.items = schemaRef("AppRouteRule");
+    }
+  }
+
+  const appConfigRule = schemas.AppRouteRule;
+  if (appConfigRule?.properties) {
+    appConfigRule.properties.mode = schemaRef("AppRouteMode");
+  }
+
+  const appConfigResponse = schemas.AppConfigResponse;
+  if (appConfigResponse?.properties) {
+    appConfigResponse.properties.data = schemaRef("AppConfigData");
+    appConfigResponse.properties.meta = schemaRef("AppConfigMeta");
+  }
 }
 
 function queryParameters(schemaName, schemas) {
@@ -278,6 +297,13 @@ export class TotemApiClient {
     );
   }
 
+  async appConfig(): Promise<AppConfigResponse> {
+    return this.request<AppConfigResponse>(
+      new URL(\`\${this.baseUrl}/api/v1/app-config\`, globalThis.location?.origin ?? "http://localhost"),
+      "GET",
+    );
+  }
+
   private async request<T>(url: URL, method: "GET" | "POST", body?: unknown): Promise<T> {
     const headers = new Headers({ "accept": "application/json" });
     if (body !== undefined) headers.set("content-type", "application/json");
@@ -454,6 +480,31 @@ public struct ShellBootstrapResponse: Codable, Equatable {
     public let meta: ShellBootstrapMeta
 }
 
+public enum AppRouteMode: String, Codable, Equatable {
+    case native
+    case web
+}
+
+public struct AppRouteRule: Codable, Equatable {
+    public let path: String
+    public let mode: AppRouteMode
+}
+
+public struct AppConfigData: Codable, Equatable {
+    public let version: Int
+    public let defaultMode: AppRouteMode
+    public let routes: [AppRouteRule]
+}
+
+public struct AppConfigMeta: Codable, Equatable {
+    public let requestId: String
+}
+
+public struct AppConfigResponse: Codable, Equatable {
+    public let data: AppConfigData
+    public let meta: AppConfigMeta
+}
+
 public enum TotemAPIError: Error {
     case invalidURL
     case http(status: Int, problem: APIProblem?)
@@ -497,6 +548,11 @@ public final class TotemAPIClient {
     public func shellBootstrap() async throws -> ShellBootstrapResponse {
         let url = baseURL.appendingPathComponent("api/v1/shell/bootstrap")
         return try await request(url: url, method: "GET", body: nil, as: ShellBootstrapResponse.self)
+    }
+
+    public func appConfig() async throws -> AppConfigResponse {
+        let url = baseURL.appendingPathComponent("api/v1/app-config")
+        return try await request(url: url, method: "GET", body: nil, as: AppConfigResponse.self)
     }
 
     private func request<T: Decodable>(url: URL, method: String, body: Data?, as type: T.Type) async throws -> T {

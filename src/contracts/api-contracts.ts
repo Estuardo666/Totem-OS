@@ -140,6 +140,28 @@ export const shellBootstrapResponseSchema = z.object({
   meta: shellBootstrapMetaSchema,
 }).strict();
 
+export const appRouteModeSchema = z.enum(["native", "web"]);
+
+export const appRouteRuleSchema = z.object({
+  path: z.string().regex(/^\/(?:[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*)?$/u),
+  mode: appRouteModeSchema,
+}).strict();
+
+export const appConfigDataSchema = z.object({
+  version: z.literal(1),
+  defaultMode: appRouteModeSchema,
+  routes: z.array(appRouteRuleSchema).max(64),
+}).strict();
+
+export const appConfigMetaSchema = z.object({
+  requestId: z.string(),
+}).strict();
+
+export const appConfigResponseSchema = z.object({
+  data: appConfigDataSchema,
+  meta: appConfigMetaSchema,
+}).strict();
+
 export type ApiProblem = z.infer<typeof apiProblemSchema>;
 export type KernelItem = z.infer<typeof kernelItemSchema>;
 export type KernelEchoQuery = z.infer<typeof kernelEchoQuerySchema>;
@@ -148,6 +170,10 @@ export type KernelEchoGetResponse = z.infer<typeof kernelEchoGetResponseSchema>;
 export type KernelEchoPostResponse = z.infer<typeof kernelEchoPostResponseSchema>;
 export type ShellBootstrapData = z.infer<typeof shellBootstrapDataSchema>;
 export type ShellBootstrapResponse = z.infer<typeof shellBootstrapResponseSchema>;
+export type AppRouteMode = z.infer<typeof appRouteModeSchema>;
+export type AppRouteRule = z.infer<typeof appRouteRuleSchema>;
+export type AppConfigData = z.infer<typeof appConfigDataSchema>;
+export type AppConfigResponse = z.infer<typeof appConfigResponseSchema>;
 
 export type ApiContractResponse = {
   status: number;
@@ -155,7 +181,8 @@ export type ApiContractResponse = {
   schemaName: "ApiProblem"
     | "KernelEchoGetResponse"
     | "KernelEchoPostResponse"
-    | "ShellBootstrapResponse";
+    | "ShellBootstrapResponse"
+    | "AppConfigResponse";
 };
 
 export const apiContractRegistry = [
@@ -216,6 +243,22 @@ export const apiContractRegistry = [
       { status: 503, description: "Rate-limit store unavailable.", schemaName: "ApiProblem" },
     ] satisfies ApiContractResponse[],
   },
+  {
+    method: "get",
+    path: "/api/v1/app-config",
+    operationId: "appConfig",
+    summary: "Resolve hybrid app routes",
+    description: "Returns the native or legacy-web mode for each route after applying the authenticated user's rollback overrides.",
+    tag: "App",
+    requiredCapability: "dashboard.read",
+    responses: [
+      { status: 200, description: "Resolved hybrid routing configuration.", schemaName: "AppConfigResponse" },
+      { status: 401, description: "Authentication required or session expired.", schemaName: "ApiProblem" },
+      { status: 403, description: "Dashboard capability is missing.", schemaName: "ApiProblem" },
+      { status: 429, description: "Rate limit exceeded.", schemaName: "ApiProblem" },
+      { status: 503, description: "Rate-limit store unavailable.", schemaName: "ApiProblem" },
+    ] satisfies ApiContractResponse[],
+  },
 ] as const;
 
 export const generatedSchemaEntries = [
@@ -239,4 +282,9 @@ export const generatedSchemaEntries = [
   ["ShellBootstrapData", shellBootstrapDataSchema],
   ["ShellBootstrapMeta", shellBootstrapMetaSchema],
   ["ShellBootstrapResponse", shellBootstrapResponseSchema],
+  ["AppRouteMode", appRouteModeSchema],
+  ["AppRouteRule", appRouteRuleSchema],
+  ["AppConfigData", appConfigDataSchema],
+  ["AppConfigMeta", appConfigMetaSchema],
+  ["AppConfigResponse", appConfigResponseSchema],
 ] as const;

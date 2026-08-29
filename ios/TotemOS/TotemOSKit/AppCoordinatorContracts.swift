@@ -181,3 +181,39 @@ public enum NativeShellCatalog {
         ShellNavItem(id: id, route: route.path, label: label, icon: icon, children: children)
     }
 }
+
+/// Configuración remota que decide si una ruta se presenta de forma nativa o
+/// mediante la pantalla React heredada. Las rutas más específicas ganan.
+public struct HybridRouteConfiguration: Equatable, Sendable {
+    public let version: Int
+    public let defaultMode: AppRouteMode
+    public let routes: [AppRouteRule]
+
+    public init(data: AppConfigData) {
+        self.version = data.version
+        self.defaultMode = data.defaultMode
+        self.routes = data.routes
+    }
+
+    public static let fallback = HybridRouteConfiguration(
+        version: 1,
+        defaultMode: .web,
+        routes: []
+    )
+
+    private init(version: Int, defaultMode: AppRouteMode, routes: [AppRouteRule]) {
+        self.version = version
+        self.defaultMode = defaultMode
+        self.routes = routes
+    }
+
+    public func mode(for path: String) -> AppRouteMode {
+        if let exact = routes.first(where: { $0.path == path }) {
+            return exact.mode
+        }
+        return routes
+            .filter { path.hasPrefix($0.path + "/") }
+            .max { $0.path.count < $1.path.count }?
+            .mode ?? defaultMode
+    }
+}

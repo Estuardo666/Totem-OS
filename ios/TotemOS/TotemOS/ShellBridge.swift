@@ -6,14 +6,28 @@ import TotemOSKit
 @MainActor
 final class AppCoordinator: ObservableObject {
     @Published private(set) var state: NativeShellState = .empty
+    @Published private(set) var routeConfiguration = HybridRouteConfiguration.fallback
     @Published private(set) var hasLoadedState = false
     @Published var isNotificationListOpen = false
 
     private weak var webView: WKWebView?
     private var refreshTask: Task<Void, Never>?
+    private var localLegacyRollbackRoutes = Set<String>()
 
     var snapshot: ShellSnapshot { state.snapshot }
     var isVisible: Bool { hasLoadedState && state.user != nil && !state.overlayHidden }
+
+    func mode(for route: AppRoute) -> AppRouteMode {
+        if localLegacyRollbackRoutes.contains(route.path) { return .web }
+        return routeConfiguration.mode(for: route.path)
+    }
+
+    var shouldUseNativeRoute: Bool { mode(for: state.route) == .native }
+
+    func rollbackToLegacyWeb(for route: AppRoute) {
+        localLegacyRollbackRoutes.insert(route.path)
+        objectWillChange.send()
+    }
 
     func attach(webView: WKWebView) {
         self.webView = webView
@@ -23,6 +37,8 @@ final class AppCoordinator: ObservableObject {
         refreshTask?.cancel()
         refreshTask = nil
         state = .empty
+        routeConfiguration = .fallback
+        localLegacyRollbackRoutes.removeAll()
         hasLoadedState = false
         isNotificationListOpen = false
     }
@@ -39,7 +55,12 @@ final class AppCoordinator: ObservableObject {
         do {
             let headers = await cookieHeaders(from: webView.configuration.websiteDataStore.httpCookieStore)
             let client = TotemAPIClient(baseURL: AppEnvironment.baseURL, additionalHeaders: headers)
-            let response = try await client.shellBootstrap()
+            async let bootstrapResponse = client.shellBootstrap()
+            async let appConfigResponse = client.appConfig()
+            let response = try await bootstrapResponse
+            if let config = try? await appConfigResponse {
+                routeConfiguration = HybridRouteConfiguration(data: config.data)
+            }
             let currentRoute = state.route
             state = NativeShellState(bootstrap: response.data, route: currentRoute)
             hasLoadedState = true
@@ -71,6 +92,7 @@ final class AppCoordinator: ObservableObject {
     func navigate(to route: AppRoute) {
         isNotificationListOpen = false
         state.route = route
+        guard mode(for: route) == .web else { return }
         send(.navigate(route: route.path))
     }
 

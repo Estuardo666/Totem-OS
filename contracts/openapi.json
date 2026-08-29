@@ -381,6 +381,94 @@
         },
         "x-required-capability": "dashboard.read"
       }
+    },
+    "/api/v1/app-config": {
+      "get": {
+        "operationId": "appConfig",
+        "summary": "Resolve hybrid app routes",
+        "description": "Returns the native or legacy-web mode for each route after applying the authenticated user's rollback overrides.",
+        "tags": [
+          "App"
+        ],
+        "security": [
+          {
+            "authjsSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resolved hybrid routing configuration.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required or session expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Dashboard capability is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rate-limit store unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "dashboard.read"
+      }
     }
   },
   "components": {
@@ -895,6 +983,83 @@
           },
           "meta": {
             "$ref": "#/components/schemas/ShellBootstrapMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "additionalProperties": false
+      },
+      "AppRouteMode": {
+        "type": "string",
+        "enum": [
+          "native",
+          "web"
+        ]
+      },
+      "AppRouteRule": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^\\/(?:[A-Za-z0-9._-]+(?:\\/[A-Za-z0-9._-]+)*)?$"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/AppRouteMode"
+          }
+        },
+        "required": [
+          "path",
+          "mode"
+        ],
+        "additionalProperties": false
+      },
+      "AppConfigData": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "const": 1
+          },
+          "defaultMode": {
+            "$ref": "#/components/schemas/AppRouteMode"
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppRouteRule"
+            },
+            "maxItems": 64
+          }
+        },
+        "required": [
+          "version",
+          "defaultMode",
+          "routes"
+        ],
+        "additionalProperties": false
+      },
+      "AppConfigMeta": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId"
+        ],
+        "additionalProperties": false
+      },
+      "AppConfigResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AppConfigData"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/AppConfigMeta"
           }
         },
         "required": [

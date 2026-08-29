@@ -95,6 +95,7 @@ model User {
   electronicRetentions    ElectronicRetention[]    @relation("ElectronicRetentionUser")
   pushSubscriptions       PushSubscription[] // Web Push suscripciones propias
   apnsInstallations       ApnsDeviceInstallation[] // Instalaciones de la app nativa iOS
+  routeOverrides           UserRouteOverride[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -696,6 +697,24 @@ model GlobalConfig {
   updatedAt DateTime @updatedAt
 
   @@map("global_config")
+}
+
+// Rollback por usuario para el router híbrido iOS. La configuración global
+// decide el valor inicial y estas filas permiten desactivar una ruta nativa
+// sin publicar una nueva versión de la app.
+model UserRouteOverride {
+  id        String   @id @default(cuid())
+  userId    String
+  path      String
+  mode      String   @default("web")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, path])
+  @@index([userId])
+  @@index([path])
 }
 
 // INTEGRACIÓN META GRAPH API (Facebook & Instagram)

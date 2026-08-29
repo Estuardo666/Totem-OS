@@ -21,6 +21,11 @@ export type ShellBootstrapNotification = { id: string; message: string; createdA
 export type ShellBootstrapData = { user: ShellBootstrapUser; capabilities: Array<string>; preferences: ShellBootstrapPreferences; brand: ShellBootstrapBrand; counters: ShellBootstrapCounters; notifications: Array<ShellBootstrapNotification> };
 export type ShellBootstrapMeta = { requestId: string };
 export type ShellBootstrapResponse = { data: ShellBootstrapData; meta: ShellBootstrapMeta };
+export type AppRouteMode = "native" | "web";
+export type AppRouteRule = { path: string; mode: AppRouteMode };
+export type AppConfigData = { version: number; defaultMode: AppRouteMode; routes: Array<AppRouteRule> };
+export type AppConfigMeta = { requestId: string };
+export type AppConfigResponse = { data: AppConfigData; meta: AppConfigMeta };
 
 export interface TotemApiClientOptions {
   baseUrl?: string;
@@ -72,6 +77,13 @@ export class TotemApiClient {
   async shellBootstrap(): Promise<ShellBootstrapResponse> {
     return this.request<ShellBootstrapResponse>(
       new URL(`${this.baseUrl}/api/v1/shell/bootstrap`, globalThis.location?.origin ?? "http://localhost"),
+      "GET",
+    );
+  }
+
+  async appConfig(): Promise<AppConfigResponse> {
+    return this.request<AppConfigResponse>(
+      new URL(`${this.baseUrl}/api/v1/app-config`, globalThis.location?.origin ?? "http://localhost"),
       "GET",
     );
   }

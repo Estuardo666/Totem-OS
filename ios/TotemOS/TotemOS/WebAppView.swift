@@ -2,7 +2,7 @@ import SwiftUI
 import WebKit
 import TotemOSKit
 
-struct WebAppView: UIViewRepresentable {
+struct LegacyWebRouteView: UIViewRepresentable {
     @EnvironmentObject private var appModel: AppModel
     @EnvironmentObject private var appCoordinator: AppCoordinator
     let onContentReady: () -> Void

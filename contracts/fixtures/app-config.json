@@ -1,0 +1,11 @@
+{
+  "data": {
+    "version": 1,
+    "defaultMode": "web",
+    "routes": [
+      { "path": "/", "mode": "web" },
+      { "path": "/clients", "mode": "native" }
+    ]
+  },
+  "meta": { "requestId": "cp08-fixture" }
+}
