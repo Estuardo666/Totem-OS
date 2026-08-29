@@ -4,7 +4,6 @@ import TotemOSKit
 /// Header flotante: menús nativos, logo, tema y notificaciones.
 struct ShellHeaderView: View {
     @EnvironmentObject private var shell: AppCoordinator
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     private var snapshot: ShellSnapshot { shell.snapshot }
 
@@ -17,10 +16,6 @@ struct ShellHeaderView: View {
             rightControls
         }
         .padding(.horizontal, 12)
-        .background(alignment: .top) {
-            ProgressiveHeaderBlur(reduceTransparency: reduceTransparency)
-                .offset(y: -28)
-        }
     }
 
     private var leftControls: some View {
@@ -92,41 +87,6 @@ struct ShellHeaderView: View {
         .buttonStyle(.plain)
         .menuOrder(.fixed)
         .accessibilityLabel("Mi cuenta")
-    }
-
-    /// A progressive, untinted blur gives the loose controls legibility while
-    /// allowing the dashboard to remain visible underneath them.
-    private struct ProgressiveHeaderBlur: View {
-        let reduceTransparency: Bool
-
-        var body: some View {
-            Group {
-                if reduceTransparency {
-                    Rectangle().fill(Color.clear)
-                } else if #available(iOS 26.0, *) {
-                    Rectangle()
-                        .fill(.regularMaterial)
-                        .backgroundExtensionEffect()
-                } else {
-                    Rectangle().fill(.ultraThinMaterial)
-                }
-            }
-            .mask(
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .black.opacity(0.9), location: 0.30),
-                        .init(color: .black.opacity(0.72), location: 0.68),
-                        .init(color: .clear, location: 1),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .frame(height: 112)
-            .frame(maxWidth: .infinity)
-            .allowsHitTesting(false)
-        }
     }
 
     private var navigationMenu: some View {

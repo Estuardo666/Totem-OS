@@ -135,11 +135,19 @@ extension Color {
               let rgb = UInt64(hex.dropFirst(), radix: 16)
         else { return .white }
 
-        let red = Double((rgb >> 16) & 0xFF) / 255
-        let green = Double((rgb >> 8) & 0xFF) / 255
-        let blue = Double(rgb & 0xFF) / 255
-        let perceivedBrightness = (0.299 * red) + (0.587 * green) + (0.114 * blue)
-        return perceivedBrightness > 0.62 ? .black : .white
+        let channels = [
+            Double((rgb >> 16) & 0xFF) / 255,
+            Double((rgb >> 8) & 0xFF) / 255,
+            Double(rgb & 0xFF) / 255,
+        ].map { channel in
+            channel <= 0.03928
+                ? channel / 12.92
+                : pow((channel + 0.055) / 1.055, 2.4)
+        }
+        let luminance = (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2])
+        let whiteContrast = 1.05 / (luminance + 0.05)
+        let blackContrast = (luminance + 0.05) / 0.05
+        return blackContrast >= whiteContrast ? .black : .white
     }
 }
 

@@ -6,10 +6,20 @@ import TotemOSKit
 struct NativeShellOverlay: View {
     @EnvironmentObject private var shell: AppCoordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         ZStack(alignment: .top) {
             if shell.isVisible {
+                // The blur is a full-width layer, independent from the loose
+                // controls. It extends into the unsafe area so its strongest
+                // point starts at the physical top edge, including the island.
+                ProgressiveHeaderBlurView(reduceTransparency: reduceTransparency)
+                    .frame(height: 176)
+                    .frame(maxWidth: .infinity)
+                    .ignoresSafeArea(edges: .top)
+                    .allowsHitTesting(false)
+
                 VStack(spacing: 0) {
                     ShellHeaderView()
                         .padding(.top, 4)
@@ -35,5 +45,35 @@ struct NativeShellOverlay: View {
                 .environmentObject(shell)
                 .presentationDetents([.medium, .large])
         }
+    }
+}
+
+/// A single, untinted system material that feathers from the physical top edge
+/// into the dashboard. This is intentionally not a capsule or a second glass
+/// container; the header buttons remain visually free.
+private struct ProgressiveHeaderBlurView: View {
+    let reduceTransparency: Bool
+
+    var body: some View {
+        Group {
+            if reduceTransparency {
+                Rectangle().fill(Color.totemShellSolid)
+            } else {
+                Rectangle().fill(.regularMaterial)
+            }
+        }
+        .mask(
+            LinearGradient(
+                stops: [
+                    .init(color: .black, location: 0),
+                    .init(color: .black.opacity(0.94), location: 0.16),
+                    .init(color: .black.opacity(0.72), location: 0.42),
+                    .init(color: .black.opacity(0.34), location: 0.72),
+                    .init(color: .clear, location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
     }
 }

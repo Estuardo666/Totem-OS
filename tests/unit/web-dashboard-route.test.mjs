@@ -30,7 +30,11 @@ test("el shell conserva el WebView autenticado para navegar fuera del home nativ
 test("las barras del shell limitan el glass activo a la selección", () => {
   const nativeTabBar = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/ShellTabBarView.swift"), "utf8");
   const designSystem = readFileSync(resolve(root, "ios/TotemOS/TotemOS/TotemDesignSystem.swift"), "utf8");
-  assert.match(nativeTabBar, /matchedGeometryEffect\(id: "shell-tab-selection"/);
+  assert.match(nativeTabBar, /glassEffectID\(isSelected \? "shell-tab-selection"/);
+  assert.match(nativeTabBar, /TotemGlassContainer\(spacing: 8\)/);
+  assert.doesNotMatch(nativeTabBar, /matchedGeometryEffect\(id:/);
+  assert.match(nativeTabBar, /ShellTabButtonStyle/);
+  assert.match(nativeTabBar, /scaleEffect\(isInteracting \? 1\.12/);
   assert.match(designSystem, /glassEffect\(\.regular, in: shape\)/);
   assert.match(designSystem, /glassEffect\(\.regular\.tint\(tint\)\.interactive\(\), in: shape\)/);
 });
@@ -40,8 +44,11 @@ test("el header deja controles libres bajo la isla con blur progresivo", () => {
   const nativeOverlay = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/NativeShellOverlay.swift"), "utf8");
   assert.match(nativeHeader, /private var leftControls/);
   assert.match(nativeHeader, /private var rightControls/);
-  assert.match(nativeHeader, /ProgressiveHeaderBlur/);
+  assert.doesNotMatch(nativeHeader, /ProgressiveHeaderBlur/);
   assert.doesNotMatch(nativeHeader, /totemShellGlass\(/);
+  assert.match(nativeOverlay, /ProgressiveHeaderBlurView/);
+  assert.match(nativeOverlay, /color: \.black, location: 0/);
+  assert.doesNotMatch(nativeOverlay, /backgroundExtensionEffect/);
   assert.match(nativeOverlay, /ignoresSafeArea\(edges: \.bottom\)/);
 });
 

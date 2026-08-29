@@ -12,6 +12,7 @@ struct ShellTabBarView: View {
     @Namespace private var selectionNamespace
     @State private var previewTabID: String?
     @State private var dragOriginIndex: Int?
+    @State private var hoveredTabID: String?
 
     private var snapshot: ShellSnapshot { shell.snapshot }
 
@@ -20,18 +21,21 @@ struct ShellTabBarView: View {
         let split = min(2, tabs.count)
 
         GeometryReader { proxy in
-            HStack(spacing: 4) {
-                ForEach(tabs.prefix(split)) { tab in tabButton(tab) }
+            TotemGlassContainer(spacing: 8) {
+                HStack(spacing: 4) {
+                    ForEach(tabs.prefix(split)) { tab in tabButton(tab) }
 
-                centerAction
+                    centerAction
 
-                ForEach(tabs.dropFirst(split)) { tab in tabButton(tab) }
+                    ForEach(tabs.dropFirst(split)) { tab in tabButton(tab) }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .contentShape(Capsule())
+                .simultaneousGesture(selectionDrag(tabs: tabs, width: proxy.size.width))
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .contentShape(Capsule())
-            // El platter es una capa pasiva independiente. Los botones
-            // seleccionados tienen su propio tinte Liquid Glass encima.
+            // El platter es una capa pasiva independiente. El contenedor
+            // Liquid Glass solo coordina la lente activa que se desplaza.
             .background {
                 Color.clear
                     .totemShellGlass(
@@ -39,7 +43,6 @@ struct ShellTabBarView: View {
                         reduceTransparency: reduceTransparency
                     )
             }
-            .simultaneousGesture(selectionDrag(tabs: tabs, width: proxy.size.width))
         }
         .frame(height: 64)
         .padding(.horizontal, 16)
@@ -55,6 +58,7 @@ struct ShellTabBarView: View {
 
     private func tabButton(_ tab: ShellTabItem) -> some View {
         let isActive = selectedTabID == tab.id
+        let isHovered = hoveredTabID == tab.id
 
         return Button {
             select(tab)
@@ -76,30 +80,85 @@ struct ShellTabBarView: View {
             .frame(maxWidth: .infinity, minHeight: shellMinimumTapTarget)
             .padding(.horizontal, 4)
             .contentShape(Rectangle())
-            .background {
-                if isActive {
-                    Capsule()
-                        .totemInteractiveShellGlass(
-                            in: Capsule(),
-                            tint: snapshot.accent,
-                            reduceTransparency: reduceTransparency
-                        )
-                        .matchedGeometryEffect(id: "shell-tab-selection", in: selectionNamespace)
-                }
+        }
+        .buttonStyle(
+            ShellTabButtonStyle(
+                isSelected: isActive,
+                isHighlighted: isHovered,
+                accentColor: snapshot.accentColor,
+                tint: snapshot.accent,
+                reduceTransparency: reduceTransparency,
+                reduceMotion: reduceMotion,
+                selectionNamespace: selectionNamespace
+            )
+        )
+        .onHover { hovering in
+            if hovering {
+                hoveredTabID = tab.id
+            } else if hoveredTabID == tab.id {
+                hoveredTabID = nil
             }
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(
-            isActive
-                ? Color.contrastForeground(on: snapshot.accentColor)
-                : Color.primary.opacity(0.65)
-        )
         .accessibilityLabel(
             tab.route == "/content" && snapshot.taskCount > 0
                 ? "\(tab.label), \(snapshot.taskCount) pendientes"
                 : tab.label
         )
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
+    }
+
+    /// One lens is rendered for each item (selected or pressed/hovered). The
+    /// selected lens uses Apple's glassEffectID transition inside the shared
+    /// GlassEffectContainer, avoiding a second copy during the morph.
+    private struct ShellTabButtonStyle: ButtonStyle {
+        let isSelected: Bool
+        let isHighlighted: Bool
+        let accentColor: String?
+        let tint: Color
+        let reduceTransparency: Bool
+        let reduceMotion: Bool
+        let selectionNamespace: Namespace.ID
+
+        func makeBody(configuration: Configuration) -> some View {
+            let isInteracting = isHighlighted || configuration.isPressed
+            let shouldShowLens = isSelected || isInteracting
+
+            configuration.label
+                .foregroundStyle(
+                    isSelected || isInteracting
+                        ? Color.contrastForeground(on: accentColor)
+                        : Color.primary.opacity(0.65)
+                )
+                .background {
+                    if shouldShowLens {
+                        selectionLens(isInteracting: isInteracting)
+                    }
+                }
+                .zIndex(isInteracting ? 2 : (isSelected ? 1 : 0))
+                .animation(
+                    reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.86),
+                    value: isInteracting
+                )
+        }
+
+        @ViewBuilder
+        private func selectionLens(isInteracting: Bool) -> some View {
+            let lens = Capsule()
+                .totemInteractiveShellGlass(
+                    in: Capsule(),
+                    tint: tint,
+                    reduceTransparency: reduceTransparency
+                )
+                .scaleEffect(isInteracting ? 1.12 : 1)
+
+            if #available(iOS 26.0, *) {
+                lens
+                    .glassEffectID(isSelected ? "shell-tab-selection" : nil, in: selectionNamespace)
+                    .glassEffectTransition(.matchedGeometry)
+            } else {
+                lens
+            }
+        }
     }
 
     private var selectedTabID: String? {
