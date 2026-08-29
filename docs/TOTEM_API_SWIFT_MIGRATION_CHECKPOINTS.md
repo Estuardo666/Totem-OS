@@ -40,6 +40,9 @@ criterio de salida y una verificación antes de iniciar el siguiente.
   exclusión de backups y uploads de background fuera de SwiftData.
 - [x] **CP15 — React API foundation** (`cdc1cf3`): TanStack Query, cliente
   generado, query keys, Problem Details, retries e invalidaciones.
+- [x] **CP16 — Dashboard nativo** (`4137335`): proyección `/api/v1/dashboard`,
+  migración React API-only, `DashboardStore` Swift cacheado, estados loading/
+  empty/offline/error y feature flag remoto con rollback a WebView.
 
 Los hashes son referencias del repositorio en la fecha de corte; si se continúa
 en otra rama, conservar el contenido de los documentos aunque cambie el hash.
