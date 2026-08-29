@@ -54,37 +54,7 @@ struct ShellHeaderView: View {
             }
 
             if let user = snapshot.user {
-                Menu {
-                    Section {
-                        Button {
-                            shell.send(.openSettings)
-                        } label: {
-                            Label("Configuración", systemImage: "gearshape")
-                        }
-
-                        Button {
-                            shell.send(.openIntegrations)
-                        } label: {
-                            Label("Integraciones", systemImage: "powerplug")
-                        }
-                    } header: {
-                        Text("\(user.name) · \(user.roleLabel)")
-                    }
-
-                    Button(role: .destructive) {
-                        shell.send(.signOut)
-                    } label: {
-                        Label("Cerrar Sesión", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
-                    } label: {
-                        ShellAvatarView(user: user)
-                            .frame(width: shellMinimumTapTarget, height: shellMinimumTapTarget)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .menuOrder(.fixed)
-                    .accessibilityLabel("Mi cuenta")
-                }
+                accountMenu(user: user)
             }
         }
         .padding(.horizontal, 6)
@@ -96,6 +66,42 @@ struct ShellHeaderView: View {
                     reduceTransparency: reduceTransparency
                 )
         }
+    }
+
+    private func accountMenu(user: ShellUser) -> some View {
+        Menu(
+            content: {
+                Section {
+                    Button {
+                        shell.send(.openSettings)
+                    } label: {
+                        Label("Configuración", systemImage: "gearshape")
+                    }
+
+                    Button {
+                        shell.send(.openIntegrations)
+                    } label: {
+                        Label("Integraciones", systemImage: "powerplug")
+                    }
+                } header: {
+                    Text("\(user.name) · \(user.roleLabel)")
+                }
+
+                Button(role: .destructive) {
+                    shell.send(.signOut)
+                } label: {
+                    Label("Cerrar Sesión", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+            },
+            label: {
+                ShellAvatarView(user: user)
+                    .frame(width: shellMinimumTapTarget, height: shellMinimumTapTarget)
+                    .contentShape(Rectangle())
+            }
+        )
+        .buttonStyle(.plain)
+        .menuOrder(.fixed)
+        .accessibilityLabel("Mi cuenta")
     }
 
     private var navigationMenu: some View {
