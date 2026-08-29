@@ -160,3 +160,29 @@ test("el cliente TypeScript generado solicita el dashboard compartido", async ()
   assert.equal(requestedUrl, "https://api.example.test/api/v1/dashboard");
   assert.equal(dashboardResponseSchema.safeParse(response).success, true);
 });
+
+test("el cliente enlaza fetch nativo cuando se invoca como método", async () => {
+  const originalFetch = globalThis.fetch;
+  let receiver;
+
+  globalThis.fetch = async function (input) {
+    receiver = this;
+    return new Response(JSON.stringify({
+      data: {
+        generatedAt: "2026-08-28T00:00:00.000Z",
+        user: { id: "u1", name: "Ada Lovelace", role: "EDITOR", specialty: null },
+        summary: { activeClients: 0, assignedTasks: 0, overdueEditingTasks: 0, overduePublicationTasks: 0, publishedThisMonth: 0, pendingApprovals: 0, scheduledToday: 0, priorityTasks: 0, totalIncome: null, totalReceivable: null },
+        pipeline: [], agenda: [], priorityTasks: [], approvals: [], workloads: [], recentTransactions: [],
+      },
+      meta: { requestId: "bound-fetch-test" },
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  try {
+    const client = new TotemApiClient({ baseUrl: "https://api.example.test" });
+    await client.dashboard();
+    assert.equal(receiver, globalThis);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

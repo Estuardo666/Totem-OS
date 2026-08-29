@@ -75,7 +75,11 @@ export class TotemApiClient {
 
   constructor(options: TotemApiClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? "").replace(/\/$/, "");
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    // Native fetch requires a global receiver in browser/WebView runtimes.
+    // Bind the default implementation because request() invokes fetchImpl as
+    // a TotemApiClient property; custom implementations keep their own call
+    // semantics for tests and platform adapters.
+    this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
     this.credentials = options.credentials ?? "include";
     this.csrfToken = options.csrfToken;
   }
