@@ -4,6 +4,21 @@ Este documento conserva el plan aprobado para continuar la implementación por
 checkpoints. No se debe saltar un checkpoint: cada uno necesita código, pruebas,
 criterio de salida y una verificación antes de iniciar el siguiente.
 
+## Regla de fuente de verdad UI/UX
+
+- Los dashboards y las páginas internas actuales de React/Next.js son la fuente
+  de verdad funcional, visual y de experiencia de usuario.
+- Cada implementación nueva en Swift debe partir de la pantalla React/Next.js
+  vigente: mismas funciones, información, métricas, estados, jerarquía y flujos.
+- La migración nativa puede adaptar patrones de interacción a iOS, pero no puede
+  eliminar, simplificar, sustituir ni rediseñar capacidades existentes sin una
+  aprobación explícita.
+- Implementar una pantalla Swift no autoriza a reemplazar o retirar su pantalla
+  React/Next.js. La versión web/PWA se conserva operativa durante la migración.
+- Antes de completar cada checkpoint nativo se debe documentar y verificar la
+  paridad contra la pantalla React/Next.js actual, incluyendo roles, estados
+  loading/empty/offline/error, datos, acciones y rollback a WebView.
+
 ## Estado de ejecución
 
 - [x] **CP01 — Inventario del sistema** (`2f34c7d`): inventario técnico y matriz
@@ -40,9 +55,10 @@ criterio de salida y una verificación antes de iniciar el siguiente.
   exclusión de backups y uploads de background fuera de SwiftData.
 - [x] **CP15 — React API foundation** (`cdc1cf3`): TanStack Query, cliente
   generado, query keys, Problem Details, retries e invalidaciones.
-- [x] **CP16 — Dashboard nativo** (`4137335`): proyección `/api/v1/dashboard`,
-  migración React API-only, `DashboardStore` Swift cacheado, estados loading/
-  empty/offline/error y feature flag remoto con rollback a WebView.
+- [x] **CP16 — Dashboard nativo** (`4137335`, corrección web `099f582`):
+  proyección `/api/v1/dashboard`, dashboard React/Next.js completo preservado,
+  `DashboardStore` Swift cacheado, estados loading/empty/offline/error y feature
+  flag remoto con rollback a WebView.
 
 Los hashes son referencias del repositorio en la fecha de corte; si se continúa
 en otra rama, conservar el contenido de los documentos aunque cambie el hash.
@@ -188,10 +204,12 @@ Salida: una pantalla React funciona únicamente mediante `/api/v1`.
 
 ### CP16 — Dashboard nativo
 
-Extraer servicio, crear endpoint, migrar React, implementar Swift cacheado y
-activar con feature flag.
+Extraer servicio y crear endpoint tomando el dashboard React/Next.js vigente como
+contrato funcional y visual. Implementar Swift cacheado sin sustituir ni reducir
+la pantalla web/PWA, y activar la ruta nativa con feature flag reversible.
 
-Salida: dashboard Swift sustituible y reversible.
+Salida: dashboard Swift sustituible y reversible, con paridad documentada frente
+al dashboard React/Next.js y con la versión web completa todavía operativa.
 
 ### CP17 — Clientes nativos
 

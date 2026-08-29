@@ -1,6 +1,6 @@
 # CP16 — Dashboard nativo
 
-CP16 convierte el dashboard raíz (`/`) en una proyección API compartida por React y Swift. El endpoint es de solo lectura, usa la misma sesión Auth.js y aplica `dashboard.read` antes de consultar datos.
+CP16 crea una proyección API del dashboard para la implementación nativa Swift. El dashboard React/Next.js actual permanece como fuente de verdad funcional y visual, y continúa operativo en la ruta raíz (`/`). El endpoint es de solo lectura, usa la misma sesión Auth.js y aplica `dashboard.read` antes de consultar datos.
 
 ## Contrato
 
@@ -19,16 +19,24 @@ El contrato canónico vive en `src/contracts/api-contracts.ts`. `npm run api:gen
 
 ## Web React
 
-`src/app/(dashboard)/page.tsx` ya no llama Server Actions ni Prisma. Usa `useDashboard()` y `ApiDashboardView`, por lo que la vista web y la nativa leen el mismo DTO.
+`src/app/(dashboard)/page.tsx` conserva `HomeCommandCenter` y su carga mediante
+Server Actions. Mantiene todas las cards, métricas, gráficas, pipeline, agenda,
+capacidad, aprobaciones, rendimiento y finanzas de la PWA existente.
 
-La vista contempla:
+La proyección `/api/v1/dashboard` y `NativeDashboardView` se derivan de esa
+pantalla. No autorizan a reemplazarla por `ApiDashboardView` ni por una versión
+reducida. React/Next.js es la referencia de paridad para Swift.
+
+La implementación nativa contempla:
 
 - `loading`: skeleton y `aria-busy`.
 - `empty`: estado “Todo despejado” cuando no hay clientes, tareas ni pipeline.
 - `offline`: banner persistente y tarjeta de reintento cuando el navegador pierde conexión.
 - `error`: mensaje de sesión/servidor y reintento.
 
-El cliente React conserva datos durante una revalidación y vuelve a consultar al recuperar la conexión.
+La corrección `099f582` restauró la pantalla web completa después de que CP16 la
+reemplazara indebidamente. La prueba `web-dashboard-route.test.mjs` protege esta
+separación: web usa `HomeCommandCenter`; Swift consume la API nativa.
 
 ## Swift y cache
 
