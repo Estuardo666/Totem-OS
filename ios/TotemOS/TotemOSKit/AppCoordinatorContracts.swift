@@ -189,6 +189,11 @@ public struct NativeShellState: Equatable {
     public mutating func applyThemeVariant(_ variant: ShellThemeVariant) {
         theme = variant
         if themeId == "catppuccin" {
+            // React changes both the semantic surfaces and the selected
+            // Catppuccin accent when the appearance toggles. Keep the native
+            // lens on the same palette so its text contrast matches the web
+            // bottom bar in both light and dark modes.
+            accentColor = Self.catppuccinAccentHex(catppuccinAccent, variant: variant) ?? accentColor
             if variant == .dark {
                 backgroundColor = "#1E1E2E"; cardColor = "#181825"; foregroundColor = "#CDD6F4"
                 secondaryTextColor = "#A6ADC8"; surfaceColor = "#313244"; borderColor = "#45475A"
@@ -202,6 +207,47 @@ public struct NativeShellState: Equatable {
         } else {
             backgroundColor = "#F7F7FA"; cardColor = "#FFFFFF"; foregroundColor = "#27221F"
             secondaryTextColor = "#686371"; surfaceColor = "#EEEFF4"; borderColor = "#DADBE2"
+        }
+    }
+
+    private static func catppuccinAccentHex(_ accent: String, variant: ShellThemeVariant) -> String? {
+        switch variant {
+        case .light:
+            switch accent.lowercased() {
+            case "rosewater": return "#DC8A78"
+            case "flamingo": return "#DD7878"
+            case "pink": return "#EA76CB"
+            case "mauve": return "#8839EF"
+            case "red": return "#D20F39"
+            case "maroon": return "#E64553"
+            case "peach": return "#FE640B"
+            case "yellow": return "#DF8E1D"
+            case "green": return "#40A02B"
+            case "teal": return "#179299"
+            case "sky": return "#04A5E5"
+            case "sapphire": return "#209FB5"
+            case "blue": return "#1E66F5"
+            case "lavender": return "#7287FD"
+            default: return nil
+            }
+        case .dark:
+            switch accent.lowercased() {
+            case "rosewater": return "#F5E0DC"
+            case "flamingo": return "#F2CDCD"
+            case "pink": return "#F5C2E7"
+            case "mauve": return "#CBA6F7"
+            case "red": return "#F38BA8"
+            case "maroon": return "#EBA0AC"
+            case "peach": return "#FAB387"
+            case "yellow": return "#F9E2AF"
+            case "green": return "#A6E3A1"
+            case "teal": return "#94E2D5"
+            case "sky": return "#89DCEB"
+            case "sapphire": return "#74C7EC"
+            case "blue": return "#89B4FA"
+            case "lavender": return "#B4BEFE"
+            default: return nil
+            }
         }
     }
 }

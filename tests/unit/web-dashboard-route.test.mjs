@@ -8,6 +8,7 @@ const dashboardRoute = readFileSync(resolve(root, "src/app/(dashboard)/page.tsx"
 const nativeDashboard = readFileSync(resolve(root, "ios/TotemOS/TotemOS/NativeDashboardView.swift"), "utf8");
 const nativeContent = readFileSync(resolve(root, "ios/TotemOS/TotemOS/ContentView.swift"), "utf8");
 const nativeWebView = readFileSync(resolve(root, "ios/TotemOS/TotemOS/WebAppView.swift"), "utf8");
+const nativeShellState = readFileSync(resolve(root, "ios/TotemOS/TotemOSKit/AppCoordinatorContracts.swift"), "utf8");
 const dashboardContract = readFileSync(resolve(root, "src/contracts/api-contracts.ts"), "utf8");
 
 test("la portada web conserva el dashboard completo mientras Swift usa la API nativa", () => {
@@ -30,7 +31,8 @@ test("el shell conserva el WebView autenticado para navegar fuera del home nativ
 test("las barras del shell limitan el glass activo a la selección", () => {
   const nativeTabBar = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/ShellTabBarView.swift"), "utf8");
   const designSystem = readFileSync(resolve(root, "ios/TotemOS/TotemOS/TotemDesignSystem.swift"), "utf8");
-  assert.match(nativeTabBar, /glassEffectID\(isSelected \? "shell-tab-selection"/);
+  assert.match(nativeTabBar, /let ownsLens = activeLensID == tab\.id/);
+  assert.match(nativeTabBar, /glassEffectID\(isLensOwner \? "shell-tab-selection"/);
   assert.match(nativeTabBar, /TotemGlassContainer\(spacing: 8\)/);
   assert.doesNotMatch(nativeTabBar, /matchedGeometryEffect\(id:/);
   assert.match(nativeTabBar, /ShellTabButtonStyle/);
@@ -47,9 +49,17 @@ test("el header deja controles libres bajo la isla con blur progresivo", () => {
   assert.doesNotMatch(nativeHeader, /ProgressiveHeaderBlur/);
   assert.doesNotMatch(nativeHeader, /totemShellGlass\(/);
   assert.match(nativeOverlay, /ProgressiveHeaderBlurView/);
-  assert.match(nativeOverlay, /color: \.black, location: 0/);
+  assert.match(nativeOverlay, /UIVisualEffectView/);
+  assert.match(nativeOverlay, /CAGradientLayer/);
+  assert.match(nativeOverlay, /UIColor\.black\.cgColor/);
   assert.doesNotMatch(nativeOverlay, /backgroundExtensionEffect/);
   assert.match(nativeOverlay, /ignoresSafeArea\(edges: \.bottom\)/);
+});
+
+test("el acento Catppuccin se mantiene idéntico al cambiar el tema", () => {
+  assert.match(nativeShellState, /accentColor = Self\.catppuccinAccentHex\(catppuccinAccent, variant: variant\)/);
+  assert.match(nativeShellState, /case "mauve": return "#8839EF"/);
+  assert.match(nativeShellState, /case "mauve": return "#CBA6F7"/);
 });
 
 test("la transacción React informa a Swift para restaurar el dashboard nativo al cerrar", () => {

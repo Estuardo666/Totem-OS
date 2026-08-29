@@ -59,6 +59,11 @@ struct ShellTabBarView: View {
     private func tabButton(_ tab: ShellTabItem) -> some View {
         let isActive = selectedTabID == tab.id
         let isHovered = hoveredTabID == tab.id
+        // There is exactly one lens in the bar. A pointer hover temporarily
+        // owns it; when the pointer leaves, it returns to the selected item.
+        // This prevents a second selected-looking item from appearing below
+        // the enlarged hover lens.
+        let ownsLens = activeLensID == tab.id
 
         return Button {
             select(tab)
@@ -84,6 +89,7 @@ struct ShellTabBarView: View {
         .buttonStyle(
             ShellTabButtonStyle(
                 isSelected: isActive,
+                isLensOwner: ownsLens,
                 isHighlighted: isHovered,
                 accentColor: snapshot.accentColor,
                 tint: snapshot.accent,
@@ -107,11 +113,12 @@ struct ShellTabBarView: View {
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
     }
 
-    /// One lens is rendered for each item (selected or pressed/hovered). The
-    /// selected lens uses Apple's glassEffectID transition inside the shared
-    /// GlassEffectContainer, avoiding a second copy during the morph.
+    /// The active item owns the single lens. Its glassEffectID lets Apple morph
+    /// that lens between selected and hovered destinations in the shared
+    /// GlassEffectContainer, avoiding a second copy during the transition.
     private struct ShellTabButtonStyle: ButtonStyle {
         let isSelected: Bool
+        let isLensOwner: Bool
         let isHighlighted: Bool
         let accentColor: String?
         let tint: Color
@@ -120,23 +127,24 @@ struct ShellTabBarView: View {
         let selectionNamespace: Namespace.ID
 
         func makeBody(configuration: Configuration) -> some View {
-            let isInteracting = isHighlighted || configuration.isPressed
-            let shouldShowLens = isSelected || isInteracting
+            // Touch feedback expands the selected lens; pointer hover moves
+            // the single lens to the hovered item.
+            let isInteracting = isHighlighted || (configuration.isPressed && isSelected)
 
             configuration.label
                 .foregroundStyle(
-                    isSelected || isInteracting
+                    isLensOwner
                         ? Color.contrastForeground(on: accentColor)
                         : Color.primary.opacity(0.65)
                 )
                 .background {
-                    if shouldShowLens {
+                    if isLensOwner {
                         selectionLens(isInteracting: isInteracting)
                     }
                 }
-                .zIndex(isInteracting ? 2 : (isSelected ? 1 : 0))
+                .zIndex(isInteracting ? 2 : (isLensOwner ? 1 : 0))
                 .animation(
-                    reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.86),
+                    reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 1),
                     value: isInteracting
                 )
         }
@@ -153,7 +161,7 @@ struct ShellTabBarView: View {
 
             if #available(iOS 26.0, *) {
                 lens
-                    .glassEffectID(isSelected ? "shell-tab-selection" : nil, in: selectionNamespace)
+                    .glassEffectID(isLensOwner ? "shell-tab-selection" : nil, in: selectionNamespace)
                     .glassEffectTransition(.matchedGeometry)
             } else {
                 lens
@@ -164,6 +172,10 @@ struct ShellTabBarView: View {
     private var selectedTabID: String? {
         previewTabID
             ?? snapshot.tabs.first(where: { snapshot.isActive(route: $0.route) })?.id
+    }
+
+    private var activeLensID: String? {
+        hoveredTabID ?? selectedTabID
     }
 
     private var centerAction: some View {
