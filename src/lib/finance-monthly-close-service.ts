@@ -1,8 +1,8 @@
 "use server";
 
-import { db } from "@/lib/db";
-import { clientMonthlyClosureSchema } from "@/schemas/finance";
-import type { ApiResponse } from "@/types";
+import { db } from "./db.ts";
+import { clientMonthlyClosureSchema } from "../schemas/finance.ts";
+import type { ApiResponse } from "../types/index.ts";
 
 export type MonthlyClosureAccrualStatus = "FULL" | "PARTIAL" | "NONE";
 export type MonthlyClosureRecommendation = "FULL" | "PARTIAL" | "NONE";

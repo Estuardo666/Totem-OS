@@ -1,13 +1,16 @@
 "use strict";
 
-import { db } from "@/lib/db";
-import { createTransactionSchema, updateTransactionSchema } from "@/schemas/finance";
-import { sendNotification } from "@/actions/notification-actions";
-import { revalidatePath } from "next/cache";
+import { db } from "./db.ts";
+import { createTransactionSchema, updateTransactionSchema } from "../schemas/finance.ts";
 import { Prisma } from "@prisma/client";
-import { getClientMonthlyClosureRows } from "@/lib/finance-monthly-close-service";
+import { getClientMonthlyClosureRows } from "./finance-monthly-close-service.ts";
 import type { Transaction } from "@prisma/client";
-import type { ApiResponse } from "@/types";
+import type { ApiResponse } from "../types/index.ts";
+
+async function revalidateFinancePaths(paths: string[]): Promise<void> {
+  const { revalidatePath } = await import("next/cache");
+  paths.forEach((path) => revalidatePath(path));
+}
 
 /**
  * Crea una nueva transacción en la base de datos
@@ -76,8 +79,7 @@ export async function createTransactionInDb(
       }
     }
 
-    revalidatePath("/finance");
-    revalidatePath("/");
+    await revalidateFinancePaths(["/finance", "/"]);
 
     return { success: true, data: transaction };
   } catch (error) {
@@ -115,9 +117,7 @@ export async function updateTransactionInDb(
       },
     });
 
-    revalidatePath("/");
-    revalidatePath("/finance");
-    revalidatePath("/finance/receivables");
+    await revalidateFinancePaths(["/", "/finance", "/finance/receivables"]);
 
     return { success: true, data: transaction };
   } catch (error) {
@@ -231,6 +231,7 @@ export async function markTransactionAsPaidInDb(
     // Notificar si es pago de honorarios
     if (result.success && transactionBefore.type === "HONORARIOS" && transactionBefore.userId) {
       try {
+        const { sendNotification } = await import("../actions/notification-actions.ts");
         await sendNotification({
           userId: transactionBefore.userId,
           message: `Se ha procesado el pago de tus honorarios por $${transactionBefore.amount}.`,
