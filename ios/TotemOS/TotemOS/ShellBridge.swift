@@ -15,6 +15,7 @@ final class AppCoordinator: ObservableObject {
 
     private weak var webView: WKWebView?
     private var refreshTask: Task<Void, Never>?
+    private var transactionMonitorTask: Task<Void, Never>?
     private var localLegacyRollbackRoutes = Set<String>()
     private var dashboardStore: DashboardStore?
 
@@ -40,6 +41,8 @@ final class AppCoordinator: ObservableObject {
     func reset() {
         refreshTask?.cancel()
         refreshTask = nil
+        transactionMonitorTask?.cancel()
+        transactionMonitorTask = nil
         state = .empty
         routeConfiguration = .fallback
         dashboardStore = nil
@@ -74,7 +77,13 @@ final class AppCoordinator: ObservableObject {
                 routeConfiguration = HybridRouteConfiguration(data: config.data)
             }
             let currentRoute = state.route
-            state = NativeShellState(bootstrap: response.data, route: currentRoute)
+            let currentOverlayHidden = state.overlayHidden
+            var nextState = NativeShellState(bootstrap: response.data, route: currentRoute)
+            // The bootstrap endpoint does not know about a locally-opened
+            // transaction sheet. Preserve that presentation state while the
+            // React dialog owns the visible WebView.
+            nextState.overlayHidden = currentOverlayHidden
+            state = nextState
             hasLoadedState = true
             setWebChromeReplacementActive(true)
         } catch TotemAPIError.http(let status, _) where status == 401 {
@@ -155,9 +164,60 @@ final class AppCoordinator: ObservableObject {
     func openTransaction(tab: ShellTransactionTab) {
         if state.route == .home && mode(for: .home) == .native {
             localLegacyRollbackRoutes.insert(AppRoute.home.path)
+            state.overlayHidden = true
             objectWillChange.send()
         }
         send(.openTransaction(tab: tab))
+        monitorTransactionDialog()
+    }
+
+    /// React controls the transaction sheet's lifecycle. Polling a tiny,
+    /// explicit bridge flag avoids leaving the native shell in the WebView
+    /// after the user dismisses the dialog.
+    private func monitorTransactionDialog() {
+        transactionMonitorTask?.cancel()
+        transactionMonitorTask = Task { @MainActor [weak self] in
+            var hasOpened = false
+            for _ in 0..<240 { // 60 seconds, enough for a slow first render
+                guard !Task.isCancelled, let self, let webView = self.webView else { return }
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled else { return }
+
+                let result = try? await webView.callAsyncJavaScript(
+                    "return typeof window.__totemTransactionOpen === 'boolean' ? window.__totemTransactionOpen : null;",
+                    arguments: [:], in: nil, contentWorld: .page
+                )
+                let isOpen: Bool
+                if let bool = result as? Bool {
+                    isOpen = bool
+                } else if let number = result as? NSNumber {
+                    // WebKit can bridge a JavaScript boolean as NSNumber on
+                    // some iOS runtimes; accept both representations.
+                    isOpen = number.boolValue
+                } else {
+                    continue
+                }
+
+                if isOpen {
+                    hasOpened = true
+                } else if hasOpened {
+                    self.restoreNativeDashboardAfterTransaction()
+                    return
+                }
+            }
+        }
+    }
+
+    private func restoreNativeDashboardAfterTransaction() {
+        transactionMonitorTask?.cancel()
+        transactionMonitorTask = nil
+        localLegacyRollbackRoutes.remove(AppRoute.home.path)
+        state.route = .home
+        state.overlayHidden = false
+        objectWillChange.send()
+
+        // Revalidate the cached dashboard after a successful transaction.
+        Task { await loadDashboard(forceRefresh: true) }
     }
 
     private func scheduleRefresh() {

@@ -9,6 +9,7 @@ struct ShellTabBarView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    @Namespace private var selectionNamespace
     @State private var previewTabID: String?
     @State private var dragOriginIndex: Int?
 
@@ -83,11 +84,16 @@ struct ShellTabBarView: View {
                             tint: snapshot.accent,
                             reduceTransparency: reduceTransparency
                         )
+                        .matchedGeometryEffect(id: "shell-tab-selection", in: selectionNamespace)
                 }
             }
         }
         .buttonStyle(.plain)
-        .foregroundStyle(isActive ? snapshot.accent : Color.primary.opacity(0.65))
+        .foregroundStyle(
+            isActive
+                ? Color.contrastForeground(on: snapshot.accentColor)
+                : Color.primary.opacity(0.65)
+        )
         .accessibilityLabel(
             tab.route == "/content" && snapshot.taskCount > 0
                 ? "\(tab.label), \(snapshot.taskCount) pendientes"

@@ -72,6 +72,16 @@ function NativeShellBridge() {
   const [isTransactionOpen, setIsTransactionOpen] = useState(false);
   const [transactionTab, setTransactionTab] = useState<ShellTransactionTab>("expense");
 
+  // Swift polls this explicit bridge flag while the React-owned transaction
+  // sheet is visible, so dismissing it can restore the native dashboard.
+  useEffect(() => {
+    const scope = window as unknown as Record<string, unknown>;
+    scope.__totemTransactionOpen = isTransactionOpen;
+    return () => {
+      delete scope.__totemTransactionOpen;
+    };
+  }, [isTransactionOpen]);
+
   // El tema vive en el DOM: se observa igual que en navbar y sidebar web.
   useEffect(() => {
     const root = document.documentElement;

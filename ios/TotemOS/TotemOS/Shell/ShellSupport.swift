@@ -128,6 +128,19 @@ extension Color {
             blue: Double(rgb & 0xFF) / 255
         )
     }
+
+    static func contrastForeground(on hex: String?) -> Color {
+        guard let hex,
+              ShellContract.isValidHexColor(hex),
+              let rgb = UInt64(hex.dropFirst(), radix: 16)
+        else { return .white }
+
+        let red = Double((rgb >> 16) & 0xFF) / 255
+        let green = Double((rgb >> 8) & 0xFF) / 255
+        let blue = Double(rgb & 0xFF) / 255
+        let perceivedBrightness = (0.299 * red) + (0.587 * green) + (0.114 * blue)
+        return perceivedBrightness > 0.62 ? .black : .white
+    }
 }
 
 extension ShellSnapshot {

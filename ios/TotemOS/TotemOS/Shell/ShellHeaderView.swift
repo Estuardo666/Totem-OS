@@ -10,16 +10,20 @@ struct ShellHeaderView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            // Dos islas físicas independientes: marca/menú a la izquierda y
-            // controles de sesión a la derecha, ambas ancladas arriba.
-            leftIsland
+            // Los controles quedan sueltos bajo la isla del dispositivo: no
+            // hay una cápsula que los encierre ni un color de superficie.
+            leftControls
             Spacer(minLength: 8)
-            rightIsland
+            rightControls
         }
         .padding(.horizontal, 12)
+        .background(alignment: .top) {
+            ProgressiveHeaderBlur(reduceTransparency: reduceTransparency)
+                .offset(y: -28)
+        }
     }
 
-    private var leftIsland: some View {
+    private var leftControls: some View {
         HStack(spacing: 2) {
             navigationMenu
             logo
@@ -27,16 +31,9 @@ struct ShellHeaderView: View {
         }
         .padding(.horizontal, 6)
         .frame(minHeight: 56)
-        .background {
-            Color.clear
-                .totemShellGlass(
-                    in: Capsule(),
-                    reduceTransparency: reduceTransparency
-                )
-        }
     }
 
-    private var rightIsland: some View {
+    private var rightControls: some View {
         HStack(spacing: 2) {
             ShellIconButton(
                 systemImage: snapshot.theme == .dark ? "sun.max" : "moon",
@@ -59,13 +56,6 @@ struct ShellHeaderView: View {
         }
         .padding(.horizontal, 6)
         .frame(minHeight: 56)
-        .background {
-            Color.clear
-                .totemShellGlass(
-                    in: Capsule(),
-                    reduceTransparency: reduceTransparency
-                )
-        }
     }
 
     private func accountMenu(user: ShellUser) -> some View {
@@ -102,6 +92,40 @@ struct ShellHeaderView: View {
         .buttonStyle(.plain)
         .menuOrder(.fixed)
         .accessibilityLabel("Mi cuenta")
+    }
+
+    /// A progressive, untinted blur gives the loose controls legibility while
+    /// allowing the dashboard to remain visible underneath them.
+    private struct ProgressiveHeaderBlur: View {
+        let reduceTransparency: Bool
+
+        var body: some View {
+            Group {
+                if reduceTransparency {
+                    Rectangle().fill(Color.clear)
+                } else if #available(iOS 26.0, *) {
+                    Rectangle()
+                        .fill(.regularMaterial)
+                        .backgroundExtensionEffect()
+                } else {
+                    Rectangle().fill(.ultraThinMaterial)
+                }
+            }
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black.opacity(0.9), location: 0.30),
+                        .init(color: .black.opacity(0.72), location: 0.68),
+                        .init(color: .clear, location: 1),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .frame(maxWidth: .infinity, height: 112)
+            .allowsHitTesting(false)
+        }
     }
 
     private var navigationMenu: some View {
