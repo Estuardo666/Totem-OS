@@ -37,9 +37,11 @@ test("las barras del shell no crean una lente activa por cada item", () => {
 
 test("el header usa dos islas Liquid Glass independientes", () => {
   const nativeHeader = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/ShellHeaderView.swift"), "utf8");
+  const nativeOverlay = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/NativeShellOverlay.swift"), "utf8");
   assert.match(nativeHeader, /private var leftIsland/);
   assert.match(nativeHeader, /private var rightIsland/);
   assert.strictEqual((nativeHeader.match(/totemShellGlass\(/g) ?? []).length, 2);
+  assert.match(nativeOverlay, /ignoresSafeArea\(edges: \[\.top, \.bottom\]\)/);
 });
 
 test("la API tiene timeout para cerrar el refresh aunque el servidor no responda", () => {

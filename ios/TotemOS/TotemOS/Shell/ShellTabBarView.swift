@@ -87,7 +87,7 @@ struct ShellTabBarView: View {
             }
         }
         .buttonStyle(.plain)
-        .foregroundStyle(Color.primary.opacity(isActive ? 0.95 : 0.65))
+        .foregroundStyle(isActive ? snapshot.accent : Color.primary.opacity(0.65))
         .accessibilityLabel(
             tab.route == "/content" && snapshot.taskCount > 0
                 ? "\(tab.label), \(snapshot.taskCount) pendientes"

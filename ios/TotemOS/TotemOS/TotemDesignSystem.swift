@@ -137,9 +137,14 @@ extension View {
             background(tint.opacity(0.24), in: shape)
                 .overlay { shape.stroke(tint.opacity(0.58), lineWidth: 1) }
         } else if #available(iOS 26.0, *) {
+            // `.tint` changes the specular response, while this very light
+            // wash guarantees that the accent remains legible in both light
+            // and dark appearances instead of collapsing to white/black.
             glassEffect(.regular.tint(tint).interactive(), in: shape)
+                .overlay { shape.fill(tint.opacity(0.14)) }
         } else {
             background(.ultraThinMaterial, in: shape)
+                .overlay { shape.fill(tint.opacity(0.14)) }
                 .overlay { shape.stroke(tint.opacity(0.58), lineWidth: 1) }
         }
     }

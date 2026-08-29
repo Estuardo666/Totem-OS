@@ -27,7 +27,10 @@ struct NativeShellOverlay: View {
         }
         // El margen inferior se mide desde el borde físico, no encima del
         // safe area. El header conserva su safe area superior.
-        .ignoresSafeArea(edges: .bottom)
+        // The two header islands belong to the device's top chrome. Let them
+        // reach the Dynamic Island/safe-area edge while the dashboard keeps
+        // its own top breathing room below them.
+        .ignoresSafeArea(edges: [.top, .bottom])
         .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: shell.isVisible)
         .preferredColorScheme(shell.snapshot.theme == .dark ? .dark : .light)
         .sheet(isPresented: $shell.isNotificationListOpen) {
