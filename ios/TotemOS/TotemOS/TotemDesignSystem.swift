@@ -99,17 +99,19 @@ extension View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         background(palette.card.opacity(0.92), in: shape)
             .overlay { shape.stroke(palette.border.opacity(0.72), lineWidth: 0.75) }
-            .shadow(color: .black.opacity(0.06), radius: 18, y: 8)
     }
 }
 
 // MARK: - Shell nativo
 
 extension View {
-    /// Una sola superficie de vidrio por contenedor del shell.
+    /// Chrome transparente y ligero para el shell.
     ///
-    /// - `interactive`: reservado para controles pulsables; los contenedores
-    ///   (menús y barra base) se mantienen pasivos para no apilar capas.
+    /// Liquid Glass es apropiado para controles puntuales, pero una lente
+    /// sobre el header y otra sobre la barra inferior obliga a recalcular el
+    /// fondo completo durante el scroll. El shell deja el fondo transparente
+    /// y conserva únicamente un borde neutro; así el tema React sigue siendo
+    /// la fuente visual y el dashboard no pierde frames.
     @ViewBuilder
     func totemShellGlass(
         in shape: some InsettableShape,
@@ -119,10 +121,8 @@ extension View {
         if reduceTransparency {
             background(Color.totemShellSolid, in: shape)
                 .overlay { shape.stroke(.white.opacity(0.12), lineWidth: 1) }
-        } else if #available(iOS 26.0, *) {
-            glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
         } else {
-            background(.ultraThinMaterial, in: shape)
+            background(Color.clear, in: shape)
                 .overlay { shape.stroke(.white.opacity(0.12), lineWidth: 1) }
         }
     }

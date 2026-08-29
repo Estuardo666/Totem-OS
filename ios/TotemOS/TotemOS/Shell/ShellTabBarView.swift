@@ -9,7 +9,6 @@ struct ShellTabBarView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @Namespace private var selectionNamespace
     @State private var previewTabID: String?
     @State private var dragOriginIndex: Int?
 
@@ -76,17 +75,6 @@ struct ShellTabBarView: View {
             .frame(maxWidth: .infinity, minHeight: shellMinimumTapTarget)
             .padding(.horizontal, 4)
             .contentShape(Rectangle())
-            .background {
-                if isActive {
-                    Capsule()
-                        .totemShellGlass(
-                            in: Capsule(),
-                            interactive: true,
-                            reduceTransparency: reduceTransparency
-                        )
-                        .matchedGeometryEffect(id: "shell-tab-selection", in: selectionNamespace)
-                }
-            }
         }
         .buttonStyle(.plain)
         .foregroundStyle(Color.primary.opacity(isActive ? 0.95 : 0.65))

@@ -5,7 +5,7 @@ import TotemOSKit
 struct NativeDashboardView: View {
     let state: DashboardLoadState
     let data: DashboardData?
-    let retry: () -> Void
+    let retry: () async -> Void
     let rollback: () -> Void
 
     @EnvironmentObject private var coordinator: AppCoordinator
@@ -78,7 +78,10 @@ struct NativeDashboardView: View {
                     guard state != .loading, !isRefreshing else { return }
                     isRefreshing = true
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    retry()
+                    Task { @MainActor in
+                        await retry()
+                        isRefreshing = false
+                    }
                 } label: {
                     Group {
                         if isRefreshing {
@@ -152,7 +155,10 @@ struct NativeDashboardView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            Button("Actualizar", action: retry).buttonStyle(.borderedProminent)
+            Button("Actualizar") {
+                Task { @MainActor in await retry() }
+            }
+            .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 44)
@@ -174,7 +180,10 @@ struct NativeDashboardView: View {
             Image(systemName: icon).font(.system(size: 36, weight: .medium)).foregroundStyle(.secondary)
             Text(title).font(.title3.weight(.semibold))
             Text(message).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            Button("Reintentar", action: retry).buttonStyle(.borderedProminent)
+            Button("Reintentar") {
+                Task { @MainActor in await retry() }
+            }
+            .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 44)

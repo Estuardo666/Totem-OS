@@ -27,15 +27,18 @@ struct ContentView: View {
                     withAnimation(.easeOut(duration: 0.25)) { isLaunching = false }
                 }
                 .ignoresSafeArea()
-                .opacity(0.001)
-                .allowsHitTesting(false)
+                // The web route must become a real, interactive layer when a
+                // legacy page or React modal is selected. It only stays
+                // visually hidden while the native dashboard owns the route.
+                .opacity(appCoordinator.shouldUseNativeRoute ? 0.001 : 1)
+                .allowsHitTesting(!appCoordinator.shouldUseNativeRoute)
 
                 if appCoordinator.shouldUseNativeRoute {
                     if appCoordinator.snapshot.route == AppRoute.home.path {
                         NativeDashboardView(
                             state: appCoordinator.dashboardState,
                             data: appCoordinator.dashboardData,
-                            retry: { Task { await appCoordinator.loadDashboard(forceRefresh: true) } },
+                            retry: { await appCoordinator.loadDashboard(forceRefresh: true) },
                             rollback: {
                                 if let route = AppRoute(path: appCoordinator.snapshot.route) {
                                     appCoordinator.rollbackToLegacyWeb(for: route)

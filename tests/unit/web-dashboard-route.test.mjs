@@ -22,7 +22,21 @@ test("la portada web conserva el dashboard completo mientras Swift usa la API na
 test("el shell conserva el WebView autenticado para navegar fuera del home nativo", () => {
   assert.match(nativeContent, /Keep the WKWebView mounted/);
   assert.match(nativeContent, /LegacyWebRouteView\(isVisible: !appCoordinator\.shouldUseNativeRoute && appCoordinator\.hasLoadedState\)/);
+  assert.match(nativeContent, /opacity\(appCoordinator\.shouldUseNativeRoute \? 0\.001 : 1\)/);
+  assert.match(nativeContent, /allowsHitTesting\(!appCoordinator\.shouldUseNativeRoute\)/);
   assert.match(nativeWebView, /webView\.isHidden = !isVisible/);
+});
+
+test("las barras del shell no crean una lente activa por cada item", () => {
+  const nativeTabBar = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/ShellTabBarView.swift"), "utf8");
+  const designSystem = readFileSync(resolve(root, "ios/TotemOS/TotemOS/TotemDesignSystem.swift"), "utf8");
+  assert.doesNotMatch(nativeTabBar, /matchedGeometryEffect\(id: "shell-tab-selection"/);
+  assert.match(designSystem, /background\(Color\.clear, in: shape\)/);
+});
+
+test("la API tiene timeout para cerrar el refresh aunque el servidor no responda", () => {
+  const apiClient = readFileSync(resolve(root, "ios/TotemOS/TotemOSKit/GeneratedAPIClient.swift"), "utf8");
+  assert.match(apiClient, /request\.timeoutInterval = 15/);
 });
 
 test("el contrato nativo transporta paleta React e imágenes del dashboard", () => {
