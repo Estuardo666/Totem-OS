@@ -795,6 +795,94 @@
         },
         "x-required-capability": "dashboard.read"
       }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "operationId": "dashboard",
+        "summary": "Load the authenticated dashboard",
+        "description": "Returns the compact command-center projection consumed by React and the native Swift dashboard.",
+        "tags": [
+          "Dashboard"
+        ],
+        "security": [
+          {
+            "authjsSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard projection with short lists and summary cards.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required or session expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Dashboard capability is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rate-limit store unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "dashboard.read"
+      }
     }
   },
   "components": {
@@ -2268,6 +2356,1472 @@
               "entities",
               "latestCursor",
               "retentionDays"
+            ],
+            "additionalProperties": false
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "requestId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "EDITOR",
+              "USER"
+            ]
+          },
+          "specialty": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role",
+          "specialty"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardSummary": {
+        "type": "object",
+        "properties": {
+          "activeClients": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "assignedTasks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "overdueEditingTasks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "overduePublicationTasks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "publishedThisMonth": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pendingApprovals": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "scheduledToday": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "priorityTasks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalIncome": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "totalReceivable": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "activeClients",
+          "assignedTasks",
+          "overdueEditingTasks",
+          "overduePublicationTasks",
+          "publishedThisMonth",
+          "pendingApprovals",
+          "scheduledToday",
+          "priorityTasks",
+          "totalIncome",
+          "totalReceivable"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardTask": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 280
+          },
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 48
+          },
+          "priority": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scheduledAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "client": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "assignedTo": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "type",
+          "status",
+          "priority",
+          "dueDate",
+          "scheduledAt",
+          "updatedAt",
+          "client",
+          "assignedTo"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardPipelineStage": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 48
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "count"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardApproval": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 280
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "feedback",
+              "task"
+            ]
+          },
+          "clientId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "clientName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "clientId",
+          "clientName",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardWorkload": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "userName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "userRole": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "EDITOR",
+              "USER"
+            ]
+          },
+          "userSpecialty": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pendingTasksCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "weeklyCapacity": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "utilizationPct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999
+          }
+        },
+        "required": [
+          "userId",
+          "userName",
+          "userRole",
+          "userSpecialty",
+          "pendingTasksCount",
+          "weeklyCapacity",
+          "utilizationPct"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardTransaction": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 280
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "EXPENSE",
+              "HONORARIOS"
+            ]
+          },
+          "amount": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "type",
+          "amount",
+          "date"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardData": {
+        "type": "object",
+        "properties": {
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "ADMIN",
+                  "EDITOR",
+                  "USER"
+                ]
+              },
+              "specialty": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "role",
+              "specialty"
+            ],
+            "additionalProperties": false
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "activeClients": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "assignedTasks": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "overdueEditingTasks": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "overduePublicationTasks": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "publishedThisMonth": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pendingApprovals": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "scheduledToday": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "priorityTasks": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "totalIncome": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "totalReceivable": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "activeClients",
+              "assignedTasks",
+              "overdueEditingTasks",
+              "overduePublicationTasks",
+              "publishedThisMonth",
+              "pendingApprovals",
+              "scheduledToday",
+              "priorityTasks",
+              "totalIncome",
+              "totalReceivable"
+            ],
+            "additionalProperties": false
+          },
+          "pipeline": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 48
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "count"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 6
+          },
+          "agenda": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 280
+                },
+                "type": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "status": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 48
+                },
+                "priority": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 24
+                },
+                "dueDate": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "scheduledAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "client": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                },
+                "assignedTo": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "type",
+                "status",
+                "priority",
+                "dueDate",
+                "scheduledAt",
+                "updatedAt",
+                "client",
+                "assignedTo"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 6
+          },
+          "priorityTasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 280
+                },
+                "type": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "status": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 48
+                },
+                "priority": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 24
+                },
+                "dueDate": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "scheduledAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "client": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                },
+                "assignedTo": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "type",
+                "status",
+                "priority",
+                "dueDate",
+                "scheduledAt",
+                "updatedAt",
+                "client",
+                "assignedTo"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 6
+          },
+          "approvals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 280
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "feedback",
+                    "task"
+                  ]
+                },
+                "clientId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "clientName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "kind",
+                "clientId",
+                "clientName",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 6
+          },
+          "workloads": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "userName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "userRole": {
+                  "type": "string",
+                  "enum": [
+                    "ADMIN",
+                    "EDITOR",
+                    "USER"
+                  ]
+                },
+                "userSpecialty": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "pendingTasksCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "weeklyCapacity": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "utilizationPct": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 999
+                }
+              },
+              "required": [
+                "userId",
+                "userName",
+                "userRole",
+                "userSpecialty",
+                "pendingTasksCount",
+                "weeklyCapacity",
+                "utilizationPct"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 5
+          },
+          "recentTransactions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 280
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "INCOME",
+                    "EXPENSE",
+                    "HONORARIOS"
+                  ]
+                },
+                "amount": {
+                  "type": "number"
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "description",
+                "type",
+                "amount",
+                "date"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 3
+          }
+        },
+        "required": [
+          "generatedAt",
+          "user",
+          "summary",
+          "pipeline",
+          "agenda",
+          "priorityTasks",
+          "approvals",
+          "workloads",
+          "recentTransactions"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "generatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "user": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "ADMIN",
+                      "EDITOR",
+                      "USER"
+                    ]
+                  },
+                  "specialty": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 128
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "role",
+                  "specialty"
+                ],
+                "additionalProperties": false
+              },
+              "summary": {
+                "type": "object",
+                "properties": {
+                  "activeClients": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "assignedTasks": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "overdueEditingTasks": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "overduePublicationTasks": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "publishedThisMonth": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "pendingApprovals": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "scheduledToday": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "priorityTasks": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "totalIncome": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "totalReceivable": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "activeClients",
+                  "assignedTasks",
+                  "overdueEditingTasks",
+                  "overduePublicationTasks",
+                  "publishedThisMonth",
+                  "pendingApprovals",
+                  "scheduledToday",
+                  "priorityTasks",
+                  "totalIncome",
+                  "totalReceivable"
+                ],
+                "additionalProperties": false
+              },
+              "pipeline": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 48
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "label",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 6
+              },
+              "agenda": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 280
+                    },
+                    "type": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 32
+                    },
+                    "status": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 48
+                    },
+                    "priority": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 24
+                    },
+                    "dueDate": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "scheduledAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "client": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "assignedTo": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "type",
+                    "status",
+                    "priority",
+                    "dueDate",
+                    "scheduledAt",
+                    "updatedAt",
+                    "client",
+                    "assignedTo"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 6
+              },
+              "priorityTasks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 280
+                    },
+                    "type": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 32
+                    },
+                    "status": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 48
+                    },
+                    "priority": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 24
+                    },
+                    "dueDate": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "scheduledAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "client": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "assignedTo": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "type",
+                    "status",
+                    "priority",
+                    "dueDate",
+                    "scheduledAt",
+                    "updatedAt",
+                    "client",
+                    "assignedTo"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 6
+              },
+              "approvals": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 280
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "feedback",
+                        "task"
+                      ]
+                    },
+                    "clientId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "clientName": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "kind",
+                    "clientId",
+                    "clientName",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 6
+              },
+              "workloads": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "userName": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "userRole": {
+                      "type": "string",
+                      "enum": [
+                        "ADMIN",
+                        "EDITOR",
+                        "USER"
+                      ]
+                    },
+                    "userSpecialty": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "pendingTasksCount": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "weeklyCapacity": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "utilizationPct": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 999
+                    }
+                  },
+                  "required": [
+                    "userId",
+                    "userName",
+                    "userRole",
+                    "userSpecialty",
+                    "pendingTasksCount",
+                    "weeklyCapacity",
+                    "utilizationPct"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 5
+              },
+              "recentTransactions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 280
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "INCOME",
+                        "EXPENSE",
+                        "HONORARIOS"
+                      ]
+                    },
+                    "amount": {
+                      "type": "number"
+                    },
+                    "date": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "description",
+                    "type",
+                    "amount",
+                    "date"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 3
+              }
+            },
+            "required": [
+              "generatedAt",
+              "user",
+              "summary",
+              "pipeline",
+              "agenda",
+              "priorityTasks",
+              "approvals",
+              "workloads",
+              "recentTransactions"
             ],
             "additionalProperties": false
           },

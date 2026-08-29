@@ -233,6 +233,109 @@ export const syncPullResponseSchema = z.object({ data: syncPullDataSchema, meta:
 export const syncPushResponseSchema = z.object({ data: syncPushDataSchema, meta: syncResponseMetaSchema }).strict();
 export const syncBootstrapResponseSchema = z.object({ data: syncBootstrapDataSchema, meta: syncResponseMetaSchema }).strict();
 
+// Dashboard contract shared by the web app and the native Swift shell. The
+// payload is intentionally compact: it contains the cards and short lists
+// needed to render the command center, while detail screens keep their own
+// endpoints and pagination contracts.
+export const dashboardUserSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(128),
+  role: z.enum(["ADMIN", "EDITOR", "USER"]),
+  specialty: z.string().max(128).nullable(),
+}).strict();
+
+export const dashboardSummarySchema = z.object({
+  activeClients: z.number().int().nonnegative(),
+  assignedTasks: z.number().int().nonnegative(),
+  overdueEditingTasks: z.number().int().nonnegative(),
+  overduePublicationTasks: z.number().int().nonnegative(),
+  publishedThisMonth: z.number().int().nonnegative(),
+  pendingApprovals: z.number().int().nonnegative(),
+  scheduledToday: z.number().int().nonnegative(),
+  priorityTasks: z.number().int().nonnegative(),
+  totalIncome: z.number().nullable(),
+  totalReceivable: z.number().nullable(),
+}).strict();
+
+export const dashboardTaskSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1).max(280),
+  type: z.string().min(1).max(32),
+  status: z.string().min(1).max(48),
+  priority: z.string().min(1).max(24),
+  dueDate: z.string().datetime().nullable(),
+  scheduledAt: z.string().datetime().nullable(),
+  updatedAt: z.string().datetime(),
+  client: z.object({ id: z.string().min(1), name: z.string().min(1).max(128) }).strict(),
+  assignedTo: z.object({ id: z.string().min(1), name: z.string().min(1).max(128) }).strict().nullable(),
+}).strict();
+
+// Keep this object structurally independent from `agenda` so the OpenAPI
+// renderer does not emit a nested `$ref` (the generated Swift/TypeScript
+// clients must be self-contained for both lists).
+const dashboardPriorityTaskSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1).max(280),
+  type: z.string().min(1).max(32),
+  status: z.string().min(1).max(48),
+  priority: z.string().min(1).max(24),
+  dueDate: z.string().datetime().nullable(),
+  scheduledAt: z.string().datetime().nullable(),
+  updatedAt: z.string().datetime(),
+  client: z.object({ id: z.string().min(1), name: z.string().min(1).max(128) }).strict(),
+  assignedTo: z.object({ id: z.string().min(1), name: z.string().min(1).max(128) }).strict().nullable(),
+}).strict();
+
+export const dashboardPipelineStageSchema = z.object({
+  key: z.string().min(1).max(48),
+  label: z.string().min(1).max(64),
+  count: z.number().int().nonnegative(),
+}).strict();
+
+export const dashboardApprovalSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1).max(280),
+  kind: z.enum(["feedback", "task"]),
+  clientId: z.string().min(1),
+  clientName: z.string().min(1).max(128),
+  updatedAt: z.string().datetime(),
+}).strict();
+
+export const dashboardWorkloadSchema = z.object({
+  userId: z.string().min(1),
+  userName: z.string().min(1).max(128),
+  userRole: z.enum(["ADMIN", "EDITOR", "USER"]),
+  userSpecialty: z.string().max(128).nullable(),
+  pendingTasksCount: z.number().int().nonnegative(),
+  weeklyCapacity: z.number().int().positive(),
+  utilizationPct: z.number().nonnegative().max(999),
+}).strict();
+
+export const dashboardTransactionSchema = z.object({
+  id: z.string().min(1),
+  description: z.string().min(1).max(280),
+  type: z.enum(["INCOME", "EXPENSE", "HONORARIOS"]),
+  amount: z.number(),
+  date: z.string().datetime(),
+}).strict();
+
+export const dashboardDataSchema = z.object({
+  generatedAt: z.string().datetime(),
+  user: dashboardUserSchema,
+  summary: dashboardSummarySchema,
+  pipeline: z.array(dashboardPipelineStageSchema).max(6),
+  agenda: z.array(dashboardTaskSchema).max(6),
+  priorityTasks: z.array(dashboardPriorityTaskSchema).max(6),
+  approvals: z.array(dashboardApprovalSchema).max(6),
+  workloads: z.array(dashboardWorkloadSchema).max(5),
+  recentTransactions: z.array(dashboardTransactionSchema).max(3),
+}).strict();
+
+export const dashboardResponseSchema = z.object({
+  data: dashboardDataSchema,
+  meta: syncResponseMetaSchema,
+}).strict();
+
 export type ApiProblem = z.infer<typeof apiProblemSchema>;
 export type KernelItem = z.infer<typeof kernelItemSchema>;
 export type KernelEchoQuery = z.infer<typeof kernelEchoQuerySchema>;
@@ -252,6 +355,15 @@ export type SyncPullQuery = z.infer<typeof syncPullQuerySchema>;
 export type SyncPullResponse = z.infer<typeof syncPullResponseSchema>;
 export type SyncPushResponse = z.infer<typeof syncPushResponseSchema>;
 export type SyncBootstrapResponse = z.infer<typeof syncBootstrapResponseSchema>;
+export type DashboardUser = z.infer<typeof dashboardUserSchema>;
+export type DashboardSummary = z.infer<typeof dashboardSummarySchema>;
+export type DashboardTask = z.infer<typeof dashboardTaskSchema>;
+export type DashboardPipelineStage = z.infer<typeof dashboardPipelineStageSchema>;
+export type DashboardApproval = z.infer<typeof dashboardApprovalSchema>;
+export type DashboardWorkload = z.infer<typeof dashboardWorkloadSchema>;
+export type DashboardTransaction = z.infer<typeof dashboardTransactionSchema>;
+export type DashboardData = z.infer<typeof dashboardDataSchema>;
+export type DashboardResponse = z.infer<typeof dashboardResponseSchema>;
 
 export type ApiContractResponse = {
   status: number;
@@ -263,7 +375,8 @@ export type ApiContractResponse = {
     | "AppConfigResponse"
     | "SyncPullResponse"
     | "SyncPushResponse"
-    | "SyncBootstrapResponse";
+    | "SyncBootstrapResponse"
+    | "DashboardResponse";
 };
 
 export const apiContractRegistry = [
@@ -394,6 +507,22 @@ export const apiContractRegistry = [
       { status: 429, description: "Rate limit exceeded.", schemaName: "ApiProblem" },
     ] satisfies ApiContractResponse[],
   },
+  {
+    method: "get",
+    path: "/api/v1/dashboard",
+    operationId: "dashboard",
+    summary: "Load the authenticated dashboard",
+    description: "Returns the compact command-center projection consumed by React and the native Swift dashboard.",
+    tag: "Dashboard",
+    requiredCapability: "dashboard.read",
+    responses: [
+      { status: 200, description: "Dashboard projection with short lists and summary cards.", schemaName: "DashboardResponse" },
+      { status: 401, description: "Authentication required or session expired.", schemaName: "ApiProblem" },
+      { status: 403, description: "Dashboard capability is missing.", schemaName: "ApiProblem" },
+      { status: 429, description: "Rate limit exceeded.", schemaName: "ApiProblem" },
+      { status: 503, description: "Rate-limit store unavailable.", schemaName: "ApiProblem" },
+    ] satisfies ApiContractResponse[],
+  },
 ] as const;
 
 export const generatedSchemaEntries = [
@@ -434,4 +563,13 @@ export const generatedSchemaEntries = [
   ["SyncPullResponse", syncPullResponseSchema],
   ["SyncPushResponse", syncPushResponseSchema],
   ["SyncBootstrapResponse", syncBootstrapResponseSchema],
+  ["DashboardUser", dashboardUserSchema],
+  ["DashboardSummary", dashboardSummarySchema],
+  ["DashboardTask", dashboardTaskSchema],
+  ["DashboardPipelineStage", dashboardPipelineStageSchema],
+  ["DashboardApproval", dashboardApprovalSchema],
+  ["DashboardWorkload", dashboardWorkloadSchema],
+  ["DashboardTransaction", dashboardTransactionSchema],
+  ["DashboardData", dashboardDataSchema],
+  ["DashboardResponse", dashboardResponseSchema],
 ] as const;

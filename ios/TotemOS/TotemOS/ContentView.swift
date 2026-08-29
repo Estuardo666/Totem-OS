@@ -20,9 +20,23 @@ struct ContentView: View {
                 .transition(.opacity)
             } else {
                 if appCoordinator.shouldUseNativeRoute {
-                    NativeRouteView(route: appCoordinator.snapshot.route) {
-                        if let route = AppRoute(path: appCoordinator.snapshot.route) {
-                            appCoordinator.rollbackToLegacyWeb(for: route)
+                    if appCoordinator.snapshot.route == AppRoute.home.path {
+                        NativeDashboardView(
+                            state: appCoordinator.dashboardState,
+                            data: appCoordinator.dashboardData,
+                            retry: { Task { await appCoordinator.loadDashboard(forceRefresh: true) } },
+                            rollback: {
+                                if let route = AppRoute(path: appCoordinator.snapshot.route) {
+                                    appCoordinator.rollbackToLegacyWeb(for: route)
+                                }
+                            }
+                        )
+                        .task { await appCoordinator.loadDashboard() }
+                    } else {
+                        NativeRouteView(route: appCoordinator.snapshot.route) {
+                            if let route = AppRoute(path: appCoordinator.snapshot.route) {
+                                appCoordinator.rollbackToLegacyWeb(for: route)
+                            }
                         }
                     }
                     .ignoresSafeArea()

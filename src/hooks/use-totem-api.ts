@@ -18,6 +18,15 @@ export function useAppConfig() {
   });
 }
 
+export function useDashboard() {
+  return useQuery({
+    queryKey: queryKeys.dashboard.detail(),
+    queryFn: () => totemApiClient.dashboard(),
+    staleTime: 30_000,
+    refetchOnReconnect: true,
+  });
+}
+
 export function useSyncBootstrap() {
   return useQuery({
     queryKey: queryKeys.sync.bootstrap(),

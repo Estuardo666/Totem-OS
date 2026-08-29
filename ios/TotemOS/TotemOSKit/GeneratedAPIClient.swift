@@ -290,6 +290,99 @@ public struct SyncBootstrapResponse: Codable, Equatable {
     public let meta: SyncResponseMeta
 }
 
+public struct DashboardUser: Codable, Equatable {
+    public let id: String
+    public let name: String
+    public let role: String
+    public let specialty: String?
+}
+
+public struct DashboardSummary: Codable, Equatable {
+    public let activeClients: Int
+    public let assignedTasks: Int
+    public let overdueEditingTasks: Int
+    public let overduePublicationTasks: Int
+    public let publishedThisMonth: Int
+    public let pendingApprovals: Int
+    public let scheduledToday: Int
+    public let priorityTasks: Int
+    public let totalIncome: Double?
+    public let totalReceivable: Double?
+}
+
+public struct DashboardTaskClient: Codable, Equatable {
+    public let id: String
+    public let name: String
+}
+
+public struct DashboardAssignee: Codable, Equatable {
+    public let id: String
+    public let name: String
+}
+
+public struct DashboardTask: Codable, Equatable {
+    public let id: String
+    public let title: String
+    public let type: String
+    public let status: String
+    public let priority: String
+    public let dueDate: String?
+    public let scheduledAt: String?
+    public let updatedAt: String
+    public let client: DashboardTaskClient
+    public let assignedTo: DashboardAssignee?
+}
+
+public struct DashboardPipelineStage: Codable, Equatable {
+    public let key: String
+    public let label: String
+    public let count: Int
+}
+
+public struct DashboardApproval: Codable, Equatable {
+    public let id: String
+    public let title: String
+    public let kind: String
+    public let clientId: String
+    public let clientName: String
+    public let updatedAt: String
+}
+
+public struct DashboardWorkload: Codable, Equatable {
+    public let userId: String
+    public let userName: String
+    public let userRole: String
+    public let userSpecialty: String?
+    public let pendingTasksCount: Int
+    public let weeklyCapacity: Int
+    public let utilizationPct: Double
+}
+
+public struct DashboardTransaction: Codable, Equatable {
+    public let id: String
+    public let description: String
+    public let type: String
+    public let amount: Double
+    public let date: String
+}
+
+public struct DashboardData: Codable, Equatable {
+    public let generatedAt: String
+    public let user: DashboardUser
+    public let summary: DashboardSummary
+    public let pipeline: [DashboardPipelineStage]
+    public let agenda: [DashboardTask]
+    public let priorityTasks: [DashboardTask]
+    public let approvals: [DashboardApproval]
+    public let workloads: [DashboardWorkload]
+    public let recentTransactions: [DashboardTransaction]
+}
+
+public struct DashboardResponse: Codable, Equatable {
+    public let data: DashboardData
+    public let meta: SyncResponseMeta
+}
+
 public enum TotemAPIError: Error {
     case invalidURL
     case http(status: Int, problem: APIProblem?)
@@ -357,6 +450,10 @@ public final class TotemAPIClient {
 
     public func syncBootstrap() async throws -> SyncBootstrapResponse {
         return try await request(url: baseURL.appendingPathComponent("api/v1/sync/bootstrap"), method: "GET", body: nil, as: SyncBootstrapResponse.self)
+    }
+
+    public func dashboard() async throws -> DashboardResponse {
+        return try await request(url: baseURL.appendingPathComponent("api/v1/dashboard"), method: "GET", body: nil, as: DashboardResponse.self)
     }
 
     private func request<T: Decodable>(url: URL, method: String, body: Data?, as type: T.Type) async throws -> T {

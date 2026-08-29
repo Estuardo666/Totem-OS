@@ -3,6 +3,7 @@ import type { ApiActor } from "./api-actor.ts";
 import { db } from "./db.ts";
 
 const APP_CONFIG_KEY = "ios_app_config";
+export const DASHBOARD_ROUTE_PATH = "/";
 const DEFAULT_CONFIG: AppConfigData = {
   version: 1,
   defaultMode: "web",
@@ -65,6 +66,13 @@ export function routeModeForPath(config: AppConfigData, path: string): "native" 
     .filter((route) => path.startsWith(`${route.path}/`))
     .sort((left, right) => right.path.length - left.path.length)[0];
   return prefix?.mode ?? config.defaultMode;
+}
+
+/** Feature flag used by CP16. A route rule of `{ path: "/", mode: "native" }`
+ * enables the native dashboard; a user override with `mode: "web"` is the
+ * instant rollback switch and always wins in `loadAppConfig`. */
+export function isDashboardNativeEnabled(config: AppConfigData): boolean {
+  return routeModeForPath(config, DASHBOARD_ROUTE_PATH) === "native";
 }
 
 export { APP_CONFIG_KEY };

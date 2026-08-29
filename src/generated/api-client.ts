@@ -38,6 +38,15 @@ export type SyncResponseMeta = { requestId: string };
 export type SyncPullResponse = { data: { changes: Array<{ sequence: string; entityType: string; entityId: string; operation: "create" | "update" | "delete"; version: number; data: Record<string, unknown> | null; deletedAt: string | null; changedAt: string }>; hasMore: boolean; nextCursor: string | null; retentionDays: number }; meta: { requestId: string } };
 export type SyncPushResponse = { data: { results: Array<{ mutationId: string; duplicate: boolean; entityType: string; entityId: string; operation: "create" | "update" | "delete"; version: number; deleted: boolean; data: Record<string, unknown> | null; changedAt: string }> }; meta: { requestId: string } };
 export type SyncBootstrapResponse = { data: { entities: Array<{ sequence: string; entityType: string; entityId: string; operation: "create" | "update" | "delete"; version: number; data: Record<string, unknown> | null; deletedAt: string | null; changedAt: string }>; latestCursor: string | null; retentionDays: number }; meta: { requestId: string } };
+export type DashboardUser = { id: string; name: string; role: "ADMIN" | "EDITOR" | "USER"; specialty: string | null };
+export type DashboardSummary = { activeClients: number; assignedTasks: number; overdueEditingTasks: number; overduePublicationTasks: number; publishedThisMonth: number; pendingApprovals: number; scheduledToday: number; priorityTasks: number; totalIncome: number | null; totalReceivable: number | null };
+export type DashboardTask = { id: string; title: string; type: string; status: string; priority: string; dueDate: string | null; scheduledAt: string | null; updatedAt: string; client: { id: string; name: string }; assignedTo: { id: string; name: string } | null };
+export type DashboardPipelineStage = { key: string; label: string; count: number };
+export type DashboardApproval = { id: string; title: string; kind: "feedback" | "task"; clientId: string; clientName: string; updatedAt: string };
+export type DashboardWorkload = { userId: string; userName: string; userRole: "ADMIN" | "EDITOR" | "USER"; userSpecialty: string | null; pendingTasksCount: number; weeklyCapacity: number; utilizationPct: number };
+export type DashboardTransaction = { id: string; description: string; type: "INCOME" | "EXPENSE" | "HONORARIOS"; amount: number; date: string };
+export type DashboardData = { generatedAt: string; user: { id: string; name: string; role: "ADMIN" | "EDITOR" | "USER"; specialty: string | null }; summary: { activeClients: number; assignedTasks: number; overdueEditingTasks: number; overduePublicationTasks: number; publishedThisMonth: number; pendingApprovals: number; scheduledToday: number; priorityTasks: number; totalIncome: number | null; totalReceivable: number | null }; pipeline: Array<{ key: string; label: string; count: number }>; agenda: Array<{ id: string; title: string; type: string; status: string; priority: string; dueDate: string | null; scheduledAt: string | null; updatedAt: string; client: { id: string; name: string }; assignedTo: { id: string; name: string } | null }>; priorityTasks: Array<{ id: string; title: string; type: string; status: string; priority: string; dueDate: string | null; scheduledAt: string | null; updatedAt: string; client: { id: string; name: string }; assignedTo: { id: string; name: string } | null }>; approvals: Array<{ id: string; title: string; kind: "feedback" | "task"; clientId: string; clientName: string; updatedAt: string }>; workloads: Array<{ userId: string; userName: string; userRole: "ADMIN" | "EDITOR" | "USER"; userSpecialty: string | null; pendingTasksCount: number; weeklyCapacity: number; utilizationPct: number }>; recentTransactions: Array<{ id: string; description: string; type: "INCOME" | "EXPENSE" | "HONORARIOS"; amount: number; date: string }> };
+export type DashboardResponse = { data: { generatedAt: string; user: { id: string; name: string; role: "ADMIN" | "EDITOR" | "USER"; specialty: string | null }; summary: { activeClients: number; assignedTasks: number; overdueEditingTasks: number; overduePublicationTasks: number; publishedThisMonth: number; pendingApprovals: number; scheduledToday: number; priorityTasks: number; totalIncome: number | null; totalReceivable: number | null }; pipeline: Array<{ key: string; label: string; count: number }>; agenda: Array<{ id: string; title: string; type: string; status: string; priority: string; dueDate: string | null; scheduledAt: string | null; updatedAt: string; client: { id: string; name: string }; assignedTo: { id: string; name: string } | null }>; priorityTasks: Array<{ id: string; title: string; type: string; status: string; priority: string; dueDate: string | null; scheduledAt: string | null; updatedAt: string; client: { id: string; name: string }; assignedTo: { id: string; name: string } | null }>; approvals: Array<{ id: string; title: string; kind: "feedback" | "task"; clientId: string; clientName: string; updatedAt: string }>; workloads: Array<{ userId: string; userName: string; userRole: "ADMIN" | "EDITOR" | "USER"; userSpecialty: string | null; pendingTasksCount: number; weeklyCapacity: number; utilizationPct: number }>; recentTransactions: Array<{ id: string; description: string; type: "INCOME" | "EXPENSE" | "HONORARIOS"; amount: number; date: string }> }; meta: { requestId: string } };
 
 export interface TotemApiClientOptions {
   baseUrl?: string;
@@ -118,6 +127,13 @@ export class TotemApiClient {
   async syncBootstrap(): Promise<SyncBootstrapResponse> {
     return this.request<SyncBootstrapResponse>(
       new URL(`${this.baseUrl}/api/v1/sync/bootstrap`, globalThis.location?.origin ?? "http://localhost"),
+      "GET",
+    );
+  }
+
+  async dashboard(): Promise<DashboardResponse> {
+    return this.request<DashboardResponse>(
+      new URL(`${this.baseUrl}/api/v1/dashboard`, globalThis.location?.origin ?? "http://localhost"),
       "GET",
     );
   }

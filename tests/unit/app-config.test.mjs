@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { routeModeForPath } from "../../src/lib/app-config-service.ts";
+import { isDashboardNativeEnabled, routeModeForPath } from "../../src/lib/app-config-service.ts";
 
 test("el router híbrido prioriza la regla más específica", () => {
   const config = {
@@ -22,4 +22,10 @@ test("el router híbrido mantiene web para rutas inválidas", () => {
   const config = { version: 1, defaultMode: "web", routes: [] };
   assert.equal(routeModeForPath(config, "https://evil.example"), "web");
   assert.equal(routeModeForPath(config, "/finance/../admin"), "web");
+});
+
+test("la bandera del dashboard nativo se activa por configuración remota", () => {
+  assert.equal(isDashboardNativeEnabled({ version: 1, defaultMode: "web", routes: [] }), false);
+  assert.equal(isDashboardNativeEnabled({ version: 1, defaultMode: "web", routes: [{ path: "/", mode: "native" }] }), true);
+  assert.equal(isDashboardNativeEnabled({ version: 1, defaultMode: "web", routes: [{ path: "/", mode: "web" }] }), false);
 });

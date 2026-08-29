@@ -15,6 +15,10 @@ export const queryKeys = {
     bootstrap: () => ["sync", "bootstrap"] as const,
     pull: (cursor: string | undefined) => ["sync", "pull", cursor ?? "head"] as const,
   },
+  dashboard: {
+    all: ["dashboard"] as const,
+    detail: () => ["dashboard", "detail"] as const,
+  },
 } as const;
 
 export const totemApiClient = new TotemApiClient({

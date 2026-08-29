@@ -1,4 +1,5 @@
 import Combine
+import Combine
 import Foundation
 import WebKit
 import TotemOSKit
@@ -8,11 +9,14 @@ final class AppCoordinator: ObservableObject {
     @Published private(set) var state: NativeShellState = .empty
     @Published private(set) var routeConfiguration = HybridRouteConfiguration.fallback
     @Published private(set) var hasLoadedState = false
+    @Published private(set) var dashboardState: DashboardLoadState = .idle
+    @Published private(set) var dashboardData: DashboardData?
     @Published var isNotificationListOpen = false
 
     private weak var webView: WKWebView?
     private var refreshTask: Task<Void, Never>?
     private var localLegacyRollbackRoutes = Set<String>()
+    private var dashboardStore: DashboardStore?
 
     var snapshot: ShellSnapshot { state.snapshot }
     var isVisible: Bool { hasLoadedState && state.user != nil && !state.overlayHidden }
@@ -38,6 +42,9 @@ final class AppCoordinator: ObservableObject {
         refreshTask = nil
         state = .empty
         routeConfiguration = .fallback
+        dashboardStore = nil
+        dashboardState = .idle
+        dashboardData = nil
         localLegacyRollbackRoutes.removeAll()
         hasLoadedState = false
         isNotificationListOpen = false
@@ -59,6 +66,7 @@ final class AppCoordinator: ObservableObject {
         let headers = await cookieHeaders(from: webView.configuration.websiteDataStore.httpCookieStore)
         do {
             let client = TotemAPIClient(baseURL: AppEnvironment.baseURL, additionalHeaders: headers)
+            configureDashboardStore(with: client)
             async let bootstrapResponse = client.shellBootstrap()
             async let appConfigResponse = client.appConfig()
             let response = try await bootstrapResponse
@@ -88,6 +96,20 @@ final class AppCoordinator: ObservableObject {
             print("Native shell bootstrap failed: \(error.localizedDescription)")
             #endif
         }
+    }
+
+    func loadDashboard(forceRefresh: Bool = false) async {
+        if dashboardStore == nil, let webView {
+            let headers = await cookieHeaders(from: webView.configuration.websiteDataStore.httpCookieStore)
+            configureDashboardStore(with: TotemAPIClient(baseURL: AppEnvironment.baseURL, additionalHeaders: headers))
+        }
+        guard let dashboardStore else {
+            dashboardState = .error
+            return
+        }
+        await dashboardStore.load(forceRefresh: forceRefresh)
+        dashboardState = dashboardStore.state
+        dashboardData = dashboardStore.data
     }
 
     func send(_ command: ShellCommand) {
@@ -127,6 +149,14 @@ final class AppCoordinator: ObservableObject {
                 await refresh()
             }
         }
+    }
+
+    private func configureDashboardStore(with client: TotemAPIClient) {
+        guard dashboardStore == nil else { return }
+        let store = DashboardStore(transport: client)
+        dashboardStore = store
+        dashboardState = store.state
+        dashboardData = store.data
     }
 
     private func applyOptimistic(_ command: ShellCommand) {
