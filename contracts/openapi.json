@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Totem OS API",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Versioned REST contract shared by the Next.js API, React and Swift clients."
   },
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
@@ -293,6 +293,94 @@
         },
         "x-required-capability": "kernel.echo.write"
       }
+    },
+    "/api/v1/shell/bootstrap": {
+      "get": {
+        "operationId": "shellBootstrap",
+        "summary": "Load native shell state",
+        "description": "Returns the authenticated session, capabilities, preferences, branding and counters owned by the Swift shell.",
+        "tags": [
+          "Shell"
+        ],
+        "security": [
+          {
+            "authjsSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Native shell bootstrap state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShellBootstrapResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required or session expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Dashboard capability is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rate-limit store unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "dashboard.read"
+      }
     }
   },
   "components": {
@@ -550,6 +638,263 @@
           },
           "meta": {
             "$ref": "#/components/schemas/KernelEchoPostMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "additionalProperties": false
+      },
+      "ShellBootstrapUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "EDITOR",
+              "USER"
+            ]
+          },
+          "roleLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "avatarUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "initials": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "role",
+          "roleLabel",
+          "avatarUrl",
+          "initials"
+        ],
+        "additionalProperties": false
+      },
+      "ShellBootstrapPreferences": {
+        "type": "object",
+        "properties": {
+          "theme": {
+            "type": "string",
+            "enum": [
+              "light",
+              "dark"
+            ]
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9A-F]{6}$"
+          }
+        },
+        "required": [
+          "theme",
+          "accentColor"
+        ],
+        "additionalProperties": false
+      },
+      "ShellBootstrapBrand": {
+        "type": "object",
+        "properties": {
+          "logoLight": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "logoDark": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "logoLight",
+          "logoDark"
+        ],
+        "additionalProperties": false
+      },
+      "ShellBootstrapCounters": {
+        "type": "object",
+        "properties": {
+          "pendingTasks": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 999
+          },
+          "unreadNotifications": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 999
+          }
+        },
+        "required": [
+          "pendingTasks",
+          "unreadNotifications"
+        ],
+        "additionalProperties": false
+      },
+      "ShellBootstrapNotification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 280
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "authorName": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avatarUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "read": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "message",
+          "createdAt",
+          "authorName",
+          "avatarUrl",
+          "read"
+        ],
+        "additionalProperties": false
+      },
+      "ShellBootstrapData": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/ShellBootstrapUser"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "maxItems": 64
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/ShellBootstrapPreferences"
+          },
+          "brand": {
+            "$ref": "#/components/schemas/ShellBootstrapBrand"
+          },
+          "counters": {
+            "$ref": "#/components/schemas/ShellBootstrapCounters"
+          },
+          "notifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShellBootstrapNotification"
+            },
+            "maxItems": 5
+          }
+        },
+        "required": [
+          "user",
+          "capabilities",
+          "preferences",
+          "brand",
+          "counters",
+          "notifications"
+        ],
+        "additionalProperties": false
+      },
+      "ShellBootstrapMeta": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId"
+        ],
+        "additionalProperties": false
+      },
+      "ShellBootstrapResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ShellBootstrapData"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ShellBootstrapMeta"
           }
         },
         "required": [

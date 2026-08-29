@@ -4,7 +4,7 @@ import TotemOSKit
 /// Shell SwiftUI superpuesto al `WKWebView`. Se oculta mientras la web muestra
 /// el formulario de transacción para dejarle el viewport completo.
 struct NativeShellOverlay: View {
-    @EnvironmentObject private var shell: ShellModel
+    @EnvironmentObject private var shell: AppCoordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {

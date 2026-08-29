@@ -73,10 +73,27 @@ function normalizeKnownReferences(schemas) {
   if (postResponse?.properties?.meta) {
     postResponse.properties.meta = schemaRef("KernelEchoPostMeta");
   }
+
+  const shellData = schemas.ShellBootstrapData;
+  if (shellData?.properties) {
+    shellData.properties.user = schemaRef("ShellBootstrapUser");
+    shellData.properties.preferences = schemaRef("ShellBootstrapPreferences");
+    shellData.properties.brand = schemaRef("ShellBootstrapBrand");
+    shellData.properties.counters = schemaRef("ShellBootstrapCounters");
+    if (shellData.properties.notifications?.items) {
+      shellData.properties.notifications.items = schemaRef("ShellBootstrapNotification");
+    }
+  }
+
+  const shellResponse = schemas.ShellBootstrapResponse;
+  if (shellResponse?.properties) {
+    shellResponse.properties.data = schemaRef("ShellBootstrapData");
+    shellResponse.properties.meta = schemaRef("ShellBootstrapMeta");
+  }
 }
 
-function queryParameters(schema, schemas) {
-  const query = schemas.KernelEchoQuery ?? {};
+function queryParameters(schemaName, schemas) {
+  const query = schemas[schemaName] ?? {};
   const required = new Set(query.required ?? []);
   return Object.entries(query.properties ?? {}).map(([name, value]) => ({
     name,
@@ -100,14 +117,14 @@ function buildOpenApi() {
       security: contract.method === "post"
         ? [{ authjsSession: [], csrfToken: [] }]
         : [{ authjsSession: [] }],
-      ...(contract.querySchema ? { parameters: queryParameters(contract.querySchema, schemas) } : {}),
+      ...(contract.querySchemaName ? { parameters: queryParameters(contract.querySchemaName, schemas) } : {}),
       ...(contract.bodySchema
         ? {
             requestBody: {
               required: true,
               content: {
                 "application/json": {
-                  schema: schemaRef("KernelEchoBody"),
+                  schema: schemaRef(contract.bodySchemaName),
                 },
               },
             },
@@ -254,6 +271,13 @@ export class TotemApiClient {
     );
   }
 
+  async shellBootstrap(): Promise<ShellBootstrapResponse> {
+    return this.request<ShellBootstrapResponse>(
+      new URL(\`\${this.baseUrl}/api/v1/shell/bootstrap\`, globalThis.location?.origin ?? "http://localhost"),
+      "GET",
+    );
+  }
+
   private async request<T>(url: URL, method: "GET" | "POST", body?: unknown): Promise<T> {
     const headers = new Headers({ "accept": "application/json" });
     if (body !== undefined) headers.set("content-type", "application/json");
@@ -378,6 +402,58 @@ public struct KernelEchoPostResponse: Codable, Equatable {
     public let meta: KernelEchoPostMeta
 }
 
+public struct ShellBootstrapUser: Codable, Equatable {
+    public let id: String
+    public let name: String
+    public let email: String?
+    public let role: String
+    public let roleLabel: String
+    public let avatarUrl: String?
+    public let initials: String
+}
+
+public struct ShellBootstrapPreferences: Codable, Equatable {
+    public let theme: String
+    public let accentColor: String
+}
+
+public struct ShellBootstrapBrand: Codable, Equatable {
+    public let logoLight: String?
+    public let logoDark: String?
+}
+
+public struct ShellBootstrapCounters: Codable, Equatable {
+    public let pendingTasks: Int
+    public let unreadNotifications: Int
+}
+
+public struct ShellBootstrapNotification: Codable, Equatable {
+    public let id: String
+    public let message: String
+    public let createdAt: String
+    public let authorName: String?
+    public let avatarUrl: String?
+    public let read: Bool
+}
+
+public struct ShellBootstrapData: Codable, Equatable {
+    public let user: ShellBootstrapUser
+    public let capabilities: [String]
+    public let preferences: ShellBootstrapPreferences
+    public let brand: ShellBootstrapBrand
+    public let counters: ShellBootstrapCounters
+    public let notifications: [ShellBootstrapNotification]
+}
+
+public struct ShellBootstrapMeta: Codable, Equatable {
+    public let requestId: String
+}
+
+public struct ShellBootstrapResponse: Codable, Equatable {
+    public let data: ShellBootstrapData
+    public let meta: ShellBootstrapMeta
+}
+
 public enum TotemAPIError: Error {
     case invalidURL
     case http(status: Int, problem: APIProblem?)
@@ -388,11 +464,18 @@ public final class TotemAPIClient {
     private let baseURL: URL
     private let session: URLSession
     private let csrfToken: String?
+    private let additionalHeaders: [String: String]
 
-    public init(baseURL: URL, session: URLSession = .shared, csrfToken: String? = nil) {
+    public init(
+        baseURL: URL,
+        session: URLSession = .shared,
+        csrfToken: String? = nil,
+        additionalHeaders: [String: String] = [:]
+    ) {
         self.baseURL = baseURL
         self.session = session
         self.csrfToken = csrfToken
+        self.additionalHeaders = additionalHeaders
     }
 
     public func kernelEchoList(query: KernelEchoQuery = KernelEchoQuery()) async throws -> KernelEchoGetResponse {
@@ -411,10 +494,18 @@ public final class TotemAPIClient {
         return try await request(url: url, method: "POST", body: encodedBody, as: KernelEchoPostResponse.self)
     }
 
+    public func shellBootstrap() async throws -> ShellBootstrapResponse {
+        let url = baseURL.appendingPathComponent("api/v1/shell/bootstrap")
+        return try await request(url: url, method: "GET", body: nil, as: ShellBootstrapResponse.self)
+    }
+
     private func request<T: Decodable>(url: URL, method: String, body: Data?, as type: T.Type) async throws -> T {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "accept")
+        for (name, value) in additionalHeaders {
+            request.setValue(value, forHTTPHeaderField: name)
+        }
         if let body {
             request.httpBody = body
             request.setValue("application/json", forHTTPHeaderField: "content-type")

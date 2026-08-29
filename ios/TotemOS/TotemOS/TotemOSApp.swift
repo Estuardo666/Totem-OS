@@ -6,13 +6,13 @@ import UserNotifications
 struct TotemOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var appModel = AppModel.shared
-    @StateObject private var shellModel = ShellModel()
+    @StateObject private var appCoordinator = AppCoordinator()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(appModel)
-                .environmentObject(shellModel)
+                .environmentObject(appCoordinator)
         }
     }
 }
@@ -52,4 +52,3 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         [.banner, .badge, .sound]
     }
 }
-

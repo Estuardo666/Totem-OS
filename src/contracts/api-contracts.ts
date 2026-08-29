@@ -5,7 +5,7 @@ import { z } from "zod";
  * Swift. Las rutas futuras se incorporan aquí antes de generar clientes.
  */
 
-export const API_CONTRACT_VERSION = "0.1.0";
+export const API_CONTRACT_VERSION = "0.2.0";
 
 export const apiProblemIssueSchema = z.object({
   path: z.array(z.union([z.string(), z.number().int()])),
@@ -88,19 +88,74 @@ export const kernelEchoPostResponseSchema = z.object({
   meta: kernelEchoPostMetaSchema,
 }).strict();
 
+export const shellBootstrapUserSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(64),
+  email: z.string().email().nullable(),
+  role: z.enum(["ADMIN", "EDITOR", "USER"]),
+  roleLabel: z.string().min(1).max(64),
+  avatarUrl: z.string().max(2048).nullable(),
+  initials: z.string().min(1).max(2),
+}).strict();
+
+export const shellBootstrapPreferencesSchema = z.object({
+  theme: z.enum(["light", "dark"]),
+  accentColor: z.string().regex(/^#[0-9A-F]{6}$/u),
+}).strict();
+
+export const shellBootstrapBrandSchema = z.object({
+  logoLight: z.string().max(2048).nullable(),
+  logoDark: z.string().max(2048).nullable(),
+}).strict();
+
+export const shellBootstrapCountersSchema = z.object({
+  pendingTasks: z.number().int().min(0).max(999),
+  unreadNotifications: z.number().int().min(0).max(999),
+}).strict();
+
+export const shellBootstrapNotificationSchema = z.object({
+  id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/u),
+  message: z.string().max(280),
+  createdAt: z.string().datetime(),
+  authorName: z.string().max(64).nullable(),
+  avatarUrl: z.string().max(2048).nullable(),
+  read: z.boolean(),
+}).strict();
+
+export const shellBootstrapDataSchema = z.object({
+  user: shellBootstrapUserSchema,
+  capabilities: z.array(z.string().min(1)).max(64),
+  preferences: shellBootstrapPreferencesSchema,
+  brand: shellBootstrapBrandSchema,
+  counters: shellBootstrapCountersSchema,
+  notifications: z.array(shellBootstrapNotificationSchema).max(5),
+}).strict();
+
+export const shellBootstrapMetaSchema = z.object({
+  requestId: z.string(),
+}).strict();
+
+export const shellBootstrapResponseSchema = z.object({
+  data: shellBootstrapDataSchema,
+  meta: shellBootstrapMetaSchema,
+}).strict();
+
 export type ApiProblem = z.infer<typeof apiProblemSchema>;
 export type KernelItem = z.infer<typeof kernelItemSchema>;
 export type KernelEchoQuery = z.infer<typeof kernelEchoQuerySchema>;
 export type KernelEchoBody = z.infer<typeof kernelEchoBodySchema>;
 export type KernelEchoGetResponse = z.infer<typeof kernelEchoGetResponseSchema>;
 export type KernelEchoPostResponse = z.infer<typeof kernelEchoPostResponseSchema>;
+export type ShellBootstrapData = z.infer<typeof shellBootstrapDataSchema>;
+export type ShellBootstrapResponse = z.infer<typeof shellBootstrapResponseSchema>;
 
 export type ApiContractResponse = {
   status: number;
   description: string;
   schemaName: "ApiProblem"
     | "KernelEchoGetResponse"
-    | "KernelEchoPostResponse";
+    | "KernelEchoPostResponse"
+    | "ShellBootstrapResponse";
 };
 
 export const apiContractRegistry = [
@@ -113,6 +168,7 @@ export const apiContractRegistry = [
     tag: "Kernel",
     requiredCapability: "kernel.echo.read",
     querySchema: kernelEchoQuerySchema,
+    querySchemaName: "KernelEchoQuery",
     responses: [
       { status: 200, description: "Paginated kernel items.", schemaName: "KernelEchoGetResponse" },
       { status: 400, description: "Invalid pagination or cursor.", schemaName: "ApiProblem" },
@@ -132,6 +188,7 @@ export const apiContractRegistry = [
     tag: "Kernel",
     requiredCapability: "kernel.echo.write",
     bodySchema: kernelEchoBodySchema,
+    bodySchemaName: "KernelEchoBody",
     responses: [
       { status: 200, description: "Validated echo response.", schemaName: "KernelEchoPostResponse" },
       { status: 400, description: "Invalid JSON or body fields.", schemaName: "ApiProblem" },
@@ -139,6 +196,22 @@ export const apiContractRegistry = [
       { status: 403, description: "Capability or CSRF token is missing.", schemaName: "ApiProblem" },
       { status: 405, description: "HTTP method is not allowed.", schemaName: "ApiProblem" },
       { status: 413, description: "Payload exceeds the endpoint limit.", schemaName: "ApiProblem" },
+      { status: 429, description: "Rate limit exceeded.", schemaName: "ApiProblem" },
+      { status: 503, description: "Rate-limit store unavailable.", schemaName: "ApiProblem" },
+    ] satisfies ApiContractResponse[],
+  },
+  {
+    method: "get",
+    path: "/api/v1/shell/bootstrap",
+    operationId: "shellBootstrap",
+    summary: "Load native shell state",
+    description: "Returns the authenticated session, capabilities, preferences, branding and counters owned by the Swift shell.",
+    tag: "Shell",
+    requiredCapability: "dashboard.read",
+    responses: [
+      { status: 200, description: "Native shell bootstrap state.", schemaName: "ShellBootstrapResponse" },
+      { status: 401, description: "Authentication required or session expired.", schemaName: "ApiProblem" },
+      { status: 403, description: "Dashboard capability is missing.", schemaName: "ApiProblem" },
       { status: 429, description: "Rate limit exceeded.", schemaName: "ApiProblem" },
       { status: 503, description: "Rate-limit store unavailable.", schemaName: "ApiProblem" },
     ] satisfies ApiContractResponse[],
@@ -158,4 +231,12 @@ export const generatedSchemaEntries = [
   ["KernelEchoPostMeta", kernelEchoPostMetaSchema],
   ["KernelEchoGetResponse", kernelEchoGetResponseSchema],
   ["KernelEchoPostResponse", kernelEchoPostResponseSchema],
+  ["ShellBootstrapUser", shellBootstrapUserSchema],
+  ["ShellBootstrapPreferences", shellBootstrapPreferencesSchema],
+  ["ShellBootstrapBrand", shellBootstrapBrandSchema],
+  ["ShellBootstrapCounters", shellBootstrapCountersSchema],
+  ["ShellBootstrapNotification", shellBootstrapNotificationSchema],
+  ["ShellBootstrapData", shellBootstrapDataSchema],
+  ["ShellBootstrapMeta", shellBootstrapMetaSchema],
+  ["ShellBootstrapResponse", shellBootstrapResponseSchema],
 ] as const;

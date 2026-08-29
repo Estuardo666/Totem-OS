@@ -26,19 +26,12 @@ import {
   SHELL_INTEGRATIONS_ROUTE,
   SHELL_NOTIFICATIONS_ROUTE,
   SHELL_SETTINGS_ROUTE,
-  TOTEM_SHELL_BRIDGE_NAME,
   type ShellSnapshot,
   type ShellTransactionTab,
 } from "@/lib/totem-shell-contract";
 
 const SHELL_DISPATCH_FUNCTION = "__totemShellDispatch";
 const REFRESH_INTERVAL_MS = 60_000;
-
-type WebKitBridge = {
-  webkit?: {
-    messageHandlers?: Record<string, { postMessage: (value: unknown) => void }>;
-  };
-};
 
 type ShellNotificationSource = {
   id: string;
@@ -195,19 +188,6 @@ function NativeShellBridge() {
 
   const snapshotRef = useRef(snapshot);
   snapshotRef.current = snapshot;
-
-  // Publicar el snapshot hacia Swift.
-  useEffect(() => {
-    const handler = (window as Window & WebKitBridge)
-      .webkit?.messageHandlers?.[TOTEM_SHELL_BRIDGE_NAME];
-    if (!handler) return;
-
-    try {
-      handler.postMessage(JSON.stringify(snapshot));
-    } catch {
-      // Un fallo de serialización no debe romper la navegación web.
-    }
-  }, [snapshot]);
 
   const applyThemeVariant = useCallback(async (variant: ThemeVariant) => {
     const current: ThemeVariant = document.documentElement.classList.contains("dark")

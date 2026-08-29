@@ -100,6 +100,58 @@ public struct KernelEchoPostResponse: Codable, Equatable {
     public let meta: KernelEchoPostMeta
 }
 
+public struct ShellBootstrapUser: Codable, Equatable {
+    public let id: String
+    public let name: String
+    public let email: String?
+    public let role: String
+    public let roleLabel: String
+    public let avatarUrl: String?
+    public let initials: String
+}
+
+public struct ShellBootstrapPreferences: Codable, Equatable {
+    public let theme: String
+    public let accentColor: String
+}
+
+public struct ShellBootstrapBrand: Codable, Equatable {
+    public let logoLight: String?
+    public let logoDark: String?
+}
+
+public struct ShellBootstrapCounters: Codable, Equatable {
+    public let pendingTasks: Int
+    public let unreadNotifications: Int
+}
+
+public struct ShellBootstrapNotification: Codable, Equatable {
+    public let id: String
+    public let message: String
+    public let createdAt: String
+    public let authorName: String?
+    public let avatarUrl: String?
+    public let read: Bool
+}
+
+public struct ShellBootstrapData: Codable, Equatable {
+    public let user: ShellBootstrapUser
+    public let capabilities: [String]
+    public let preferences: ShellBootstrapPreferences
+    public let brand: ShellBootstrapBrand
+    public let counters: ShellBootstrapCounters
+    public let notifications: [ShellBootstrapNotification]
+}
+
+public struct ShellBootstrapMeta: Codable, Equatable {
+    public let requestId: String
+}
+
+public struct ShellBootstrapResponse: Codable, Equatable {
+    public let data: ShellBootstrapData
+    public let meta: ShellBootstrapMeta
+}
+
 public enum TotemAPIError: Error {
     case invalidURL
     case http(status: Int, problem: APIProblem?)
@@ -110,11 +162,18 @@ public final class TotemAPIClient {
     private let baseURL: URL
     private let session: URLSession
     private let csrfToken: String?
+    private let additionalHeaders: [String: String]
 
-    public init(baseURL: URL, session: URLSession = .shared, csrfToken: String? = nil) {
+    public init(
+        baseURL: URL,
+        session: URLSession = .shared,
+        csrfToken: String? = nil,
+        additionalHeaders: [String: String] = [:]
+    ) {
         self.baseURL = baseURL
         self.session = session
         self.csrfToken = csrfToken
+        self.additionalHeaders = additionalHeaders
     }
 
     public func kernelEchoList(query: KernelEchoQuery = KernelEchoQuery()) async throws -> KernelEchoGetResponse {
@@ -133,10 +192,18 @@ public final class TotemAPIClient {
         return try await request(url: url, method: "POST", body: encodedBody, as: KernelEchoPostResponse.self)
     }
 
+    public func shellBootstrap() async throws -> ShellBootstrapResponse {
+        let url = baseURL.appendingPathComponent("api/v1/shell/bootstrap")
+        return try await request(url: url, method: "GET", body: nil, as: ShellBootstrapResponse.self)
+    }
+
     private func request<T: Decodable>(url: URL, method: String, body: Data?, as type: T.Type) async throws -> T {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "accept")
+        for (name, value) in additionalHeaders {
+            request.setValue(value, forHTTPHeaderField: name)
+        }
         if let body {
             request.httpBody = body
             request.setValue("application/json", forHTTPHeaderField: "content-type")

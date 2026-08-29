@@ -1,0 +1,47 @@
+{
+  "data": {
+    "user": {
+      "id": "fixture-user-001",
+      "name": "Ana Pérez",
+      "email": "ana@totem.test",
+      "role": "EDITOR",
+      "roleLabel": "Editor",
+      "avatarUrl": null,
+      "initials": "AP"
+    },
+    "capabilities": [
+      "clients.read",
+      "clients.write",
+      "content.read",
+      "content.write",
+      "dashboard.read",
+      "finance.personal.read",
+      "notifications.self"
+    ],
+    "preferences": {
+      "theme": "dark",
+      "accentColor": "#CBA6F7"
+    },
+    "brand": {
+      "logoLight": "/logo-light.png",
+      "logoDark": null
+    },
+    "counters": {
+      "pendingTasks": 3,
+      "unreadNotifications": 1
+    },
+    "notifications": [
+      {
+        "id": "fixture-notification-001",
+        "message": "Nueva factura registrada",
+        "createdAt": "2026-08-28T12:00:00.000Z",
+        "authorName": "Totem",
+        "avatarUrl": null,
+        "read": false
+      }
+    ]
+  },
+  "meta": {
+    "requestId": "fixture-request-shell-001"
+  }
+}

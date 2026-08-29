@@ -13,6 +13,14 @@ export type KernelEchoPostData = { echo: string };
 export type KernelEchoPostMeta = { requestId: string };
 export type KernelEchoGetResponse = { data: Array<KernelItem>; meta: KernelEchoMeta };
 export type KernelEchoPostResponse = { data: KernelEchoPostData; meta: KernelEchoPostMeta };
+export type ShellBootstrapUser = { id: string; name: string; email: string | unknown; role: "ADMIN" | "EDITOR" | "USER"; roleLabel: string; avatarUrl: string | unknown; initials: string };
+export type ShellBootstrapPreferences = { theme: "light" | "dark"; accentColor: string };
+export type ShellBootstrapBrand = { logoLight: string | unknown; logoDark: string | unknown };
+export type ShellBootstrapCounters = { pendingTasks: number; unreadNotifications: number };
+export type ShellBootstrapNotification = { id: string; message: string; createdAt: string; authorName: string | unknown; avatarUrl: string | unknown; read: boolean };
+export type ShellBootstrapData = { user: ShellBootstrapUser; capabilities: Array<string>; preferences: ShellBootstrapPreferences; brand: ShellBootstrapBrand; counters: ShellBootstrapCounters; notifications: Array<ShellBootstrapNotification> };
+export type ShellBootstrapMeta = { requestId: string };
+export type ShellBootstrapResponse = { data: ShellBootstrapData; meta: ShellBootstrapMeta };
 
 export interface TotemApiClientOptions {
   baseUrl?: string;
@@ -58,6 +66,13 @@ export class TotemApiClient {
       new URL(`${this.baseUrl}/api/v1/_kernel/echo`, globalThis.location?.origin ?? "http://localhost"),
       "POST",
       input,
+    );
+  }
+
+  async shellBootstrap(): Promise<ShellBootstrapResponse> {
+    return this.request<ShellBootstrapResponse>(
+      new URL(`${this.baseUrl}/api/v1/shell/bootstrap`, globalThis.location?.origin ?? "http://localhost"),
+      "GET",
     );
   }
 

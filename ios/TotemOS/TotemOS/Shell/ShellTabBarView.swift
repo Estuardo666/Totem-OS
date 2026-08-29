@@ -5,7 +5,7 @@ import TotemOSKit
 /// Barra inferior: Inicio, Tareas, acción central, Finanzas, Clientes.
 /// La acción central abre el formulario financiero web existente.
 struct ShellTabBarView: View {
-    @EnvironmentObject private var shell: ShellModel
+    @EnvironmentObject private var shell: AppCoordinator
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

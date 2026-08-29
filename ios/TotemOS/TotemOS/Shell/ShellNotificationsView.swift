@@ -4,7 +4,7 @@ import TotemOSKit
 /// Listado de notificaciones recientes con paridad respecto a la web:
 /// marcar como leída y acceso a "Ver todas".
 struct ShellNotificationsView: View {
-    @EnvironmentObject private var shell: ShellModel
+    @EnvironmentObject private var shell: AppCoordinator
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {

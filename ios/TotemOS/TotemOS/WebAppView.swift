@@ -4,11 +4,11 @@ import TotemOSKit
 
 struct WebAppView: UIViewRepresentable {
     @EnvironmentObject private var appModel: AppModel
-    @EnvironmentObject private var shellModel: ShellModel
+    @EnvironmentObject private var appCoordinator: AppCoordinator
     let onContentReady: () -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(appModel: appModel, shellModel: shellModel, onContentReady: onContentReady)
+        Coordinator(appModel: appModel, appCoordinator: appCoordinator, onContentReady: onContentReady)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -16,10 +16,8 @@ struct WebAppView: UIViewRepresentable {
         configuration.websiteDataStore = .default()
         configuration.applicationNameForUserAgent = "TotemOS-iOS"
 
-        // Canal `totemShell`: solo frame principal y solo el dominio configurado.
         let controller = WKUserContentController()
         controller.addUserScript(ShellUserScript.marker())
-        controller.add(context.coordinator.shellMessageHandler, name: ShellContract.bridgeName)
         configuration.userContentController = controller
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
@@ -42,7 +40,7 @@ struct WebAppView: UIViewRepresentable {
         webView.scrollView.refreshControl = refreshControl
 
         appModel.attach(webView: webView)
-        shellModel.attach(webView: webView)
+        appCoordinator.attach(webView: webView)
         webView.load(URLRequest(url: AppEnvironment.baseURL))
         return webView
     }
@@ -51,15 +49,13 @@ struct WebAppView: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         private let appModel: AppModel
-        private let shellModel: ShellModel
+        private let appCoordinator: AppCoordinator
         private let onContentReady: () -> Void
-        let shellMessageHandler: ShellMessageHandler
         weak var webView: WKWebView?
 
-        init(appModel: AppModel, shellModel: ShellModel, onContentReady: @escaping () -> Void) {
+        init(appModel: AppModel, appCoordinator: AppCoordinator, onContentReady: @escaping () -> Void) {
             self.appModel = appModel
-            self.shellModel = shellModel
-            self.shellMessageHandler = ShellMessageHandler(model: shellModel)
+            self.appCoordinator = appCoordinator
             self.onContentReady = onContentReady
         }
 
@@ -75,6 +71,7 @@ struct WebAppView: UIViewRepresentable {
             webView.scrollView.refreshControl?.endRefreshing()
             appModel.updateConnection(isOffline: false)
             appModel.webViewDidFinish(url: webView.url)
+            appCoordinator.webViewDidFinish(url: webView.url)
             onContentReady()
         }
 
@@ -92,7 +89,7 @@ struct WebAppView: UIViewRepresentable {
             }
 
             // Al salir de la sesión el shell nativo se vacía junto con la web.
-            shellModel.reset()
+            appCoordinator.reset()
             appModel.webViewDidFinish(url: url)
             onContentReady()
             decisionHandler(.cancel)

@@ -3,107 +3,127 @@ import Foundation
 import WebKit
 import TotemOSKit
 
-/// Estado del shell nativo alimentado por el canal `totemShell`.
 @MainActor
-final class ShellModel: ObservableObject {
-    @Published private(set) var snapshot: ShellSnapshot = .empty
-    @Published private(set) var hasSnapshot = false
+final class AppCoordinator: ObservableObject {
+    @Published private(set) var state: NativeShellState = .empty
+    @Published private(set) var hasLoadedState = false
     @Published var isNotificationListOpen = false
 
     private weak var webView: WKWebView?
+    private var refreshTask: Task<Void, Never>?
+
+    var snapshot: ShellSnapshot { state.snapshot }
+    var isVisible: Bool { hasLoadedState && state.user != nil && !state.overlayHidden }
 
     func attach(webView: WKWebView) {
         self.webView = webView
     }
 
-    /// Descarta el snapshot al salir de la sesión para no filtrar datos.
     func reset() {
-        snapshot = .empty
-        hasSnapshot = false
+        refreshTask?.cancel()
+        refreshTask = nil
+        state = .empty
+        hasLoadedState = false
         isNotificationListOpen = false
     }
 
-    var isVisible: Bool {
-        hasSnapshot && snapshot.user != nil && !snapshot.overlayHidden
+    func webViewDidFinish(url: URL?) {
+        guard let url, url.host == AppEnvironment.baseURL.host,
+              let route = AppRoute(path: url.path) else { return }
+        state.route = route
+        scheduleRefresh()
     }
 
-    func receive(rawMessage: Any) {
-        let data: Data?
-        switch rawMessage {
-        case let text as String:
-            data = text.data(using: .utf8)
-        case let dictionary as [String: Any]:
-            data = try? JSONSerialization.data(withJSONObject: dictionary)
-        default:
-            data = nil
-        }
-
-        guard let data, let decoded = try? ShellSnapshotDecoder.decode(data) else {
+    func refresh() async {
+        guard let webView else { return }
+        do {
+            let headers = await cookieHeaders(from: webView.configuration.websiteDataStore.httpCookieStore)
+            let client = TotemAPIClient(baseURL: AppEnvironment.baseURL, additionalHeaders: headers)
+            let response = try await client.shellBootstrap()
+            let currentRoute = state.route
+            state = NativeShellState(bootstrap: response.data, route: currentRoute)
+            hasLoadedState = true
+        } catch TotemAPIError.http(let status, _) where status == 401 {
+            reset()
+            AppModel.shared.presentNativeLogin()
+        } catch {
             #if DEBUG
-            print("totemShell: snapshot inválido, se conserva el anterior.")
+            print("Native shell bootstrap failed: \(error.localizedDescription)")
             #endif
-            return
-        }
-
-        snapshot = decoded
-        hasSnapshot = true
-        if decoded.overlayHidden {
-            isNotificationListOpen = false
         }
     }
 
     func send(_ command: ShellCommand) {
         guard let webView, let payload = command.payload else { return }
-
+        applyOptimistic(command)
         Task {
             _ = try? await webView.callAsyncJavaScript(
                 """
                 if (typeof window.\(ShellContract.dispatchFunction) !== "function") { return false; }
                 return await window.\(ShellContract.dispatchFunction)(command);
                 """,
-                arguments: ["command": payload],
-                in: nil,
-                contentWorld: .page
+                arguments: ["command": payload], in: nil, contentWorld: .page
             )
+            await refresh()
         }
     }
 
-    func navigate(to route: String) {
+    func navigate(to route: AppRoute) {
         isNotificationListOpen = false
-        send(.navigate(route: route))
-    }
-}
-
-/// Recibe los snapshots publicados por React, limitado al frame principal y al
-/// dominio configurado en `TOTEM_BASE_URL`.
-final class ShellMessageHandler: NSObject, WKScriptMessageHandler {
-    private let model: ShellModel
-
-    init(model: ShellModel) {
-        self.model = model
-        super.init()
+        state.route = route
+        send(.navigate(route: route.path))
     }
 
-    func userContentController(
-        _ userContentController: WKUserContentController,
-        didReceive message: WKScriptMessage
-    ) {
-        guard message.name == ShellContract.bridgeName,
-              message.frameInfo.isMainFrame,
-              message.frameInfo.securityOrigin.host == AppEnvironment.baseURL.host,
-              message.frameInfo.securityOrigin.`protocol` == "https"
-        else { return }
+    func navigate(to path: String) {
+        guard let route = AppRoute(path: path) else { return }
+        navigate(to: route)
+    }
 
-        let body = message.body
-        Task { @MainActor in
-            model.receive(rawMessage: body)
+    private func scheduleRefresh() {
+        refreshTask?.cancel()
+        refreshTask = Task {
+            await refresh()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                guard !Task.isCancelled else { return }
+                await refresh()
+            }
         }
+    }
+
+    private func applyOptimistic(_ command: ShellCommand) {
+        switch command {
+        case .toggleTheme:
+            state.theme = state.theme == .dark ? .light : .dark
+        case .setTheme(let theme):
+            state.theme = theme
+        case .markNotificationRead(let id):
+            state.notifications.removeAll { $0.id == id }
+            state.unreadNotificationCount = max(0, state.unreadNotificationCount - 1)
+        case .signOut:
+            reset()
+        default:
+            break
+        }
+    }
+
+    private func cookieHeaders(from store: WKHTTPCookieStore) async -> [String: String] {
+        let cookies = await withCheckedContinuation { continuation in
+            store.getAllCookies { continuation.resume(returning: $0) }
+        }
+        let validCookies = cookies.filter { cookie in
+            let domain = cookie.domain.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+            guard let host = AppEnvironment.baseURL.host else { return false }
+            return host == domain || host.hasSuffix(".\(domain)")
+        }
+        guard !validCookies.isEmpty,
+              let header = HTTPCookie.requestHeaderFields(with: validCookies)["Cookie"]
+        else { return [:] }
+        return ["Cookie": header]
     }
 }
 
 enum ShellUserScript {
-    /// Marca el documento antes de renderizar para que React oculte el chrome
-    /// web sin parpadeo. Sin esta marca la web se comporta como siempre.
     static func marker() -> WKUserScript {
         WKUserScript(
             source: """

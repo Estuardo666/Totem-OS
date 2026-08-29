@@ -1,6 +1,6 @@
 # Totem OS para iOS
 
-Base SwiftUI para `com.totemmassmedia.totemos`. El login es nativo y reutiliza el contrato CSRF, proveedor `credentials` y cookie de sesión de Auth.js; no mantiene un segundo sistema de autenticación ni duplica las reglas de usuarios y roles.
+Base SwiftUI para iOS 26 y `com.totemmassmedia.totemos`. El login es nativo y reutiliza el contrato CSRF, proveedor `credentials` y cookie de sesión de Auth.js; no mantiene un segundo sistema de autenticación ni duplica las reglas de usuarios y roles.
 
 ## Qué incluye
 
@@ -9,6 +9,10 @@ Base SwiftUI para `com.totemmassmedia.totemos`. El login es nativo y reutiliza e
 - Inicio de sesión SwiftUI por correo y contraseña. La app obtiene el CSRF oficial, valida la sesión y transfiere las cookies HTTPS al `WKWebView`.
 - Login con Google Sans, controles Liquid Glass nativos en iOS 26 y material compatible en iOS 17–18.
 - Los campos usan vidrio pasivo; solo los botones accionables reciben la respuesta física al toque.
+- `AppCoordinator` obtiene sesión, capacidades, tema y contadores desde
+  `/api/v1/shell/bootstrap`; el shell no depende de snapshots JavaScript.
+- Las rutas tipadas y el catálogo nativo viven en
+  `TotemOSKit/AppCoordinatorContracts.swift`.
 - Los estilos reutilizables para futuras pantallas Swift viven en `TotemDesignSystem.swift`.
 - Las contraseñas permanecen solo durante la petición y no se guardan en `UserDefaults`, Keychain ni el repositorio.
 - Google OAuth no se ofrece todavía en iOS; requiere Google Sign-In nativo y su propio contrato de backend.
@@ -51,14 +55,14 @@ escritorio conservan los componentes React actuales.
 
 - El `WKWebView` inyecta `ShellUserScript.marker()` en `atDocumentStart`. Solo
   con esa marca React oculta la navbar móvil y el botón flotante.
-- React publica un snapshot versionado por `webkit.messageHandlers.totemShell`
-  (`src/lib/totem-shell-contract.ts`) con ruta, tema, usuario, navegación ya
-  filtrada por permisos, contadores y cinco notificaciones recientes.
-- Swift envía comandos tipados con `callAsyncJavaScript` hacia
+- Swift carga su estado mediante el cliente OpenAPI y construye navegación
+  filtrada por capacidades sin esperar a que React renderice.
+- Swift envía temporalmente comandos tipados con `callAsyncJavaScript` hacia
   `window.__totemShellDispatch`; ambos lados validan rutas, identificadores y
-  enums antes de actuar (`TotemOSKit/ShellContracts.swift`).
-- iOS 26 usa Liquid Glass real; iOS 17–18 cae a materiales nativos y
-  "Reducir transparencia" cambia a una superficie sólida.
+  enums antes de actuar (`TotemOSKit/ShellContracts.swift`). CP08 reemplazará
+  esta frontera por el router híbrido.
+- iOS 26 usa Liquid Glass real y "Reducir transparencia" cambia a una
+  superficie sólida.
 - La navegación superior se abre desde tres puntos en un menú compacto; la
   barra inferior permite arrastrar la selección y queda a 16 puntos del borde.
 - Web Push se desactiva dentro de `TotemOS-iOS`: la app usa APNs y nunca muestra

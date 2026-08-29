@@ -163,4 +163,52 @@ final class ShellContractTests: XCTestCase {
         XCTAssertEqual(response.data.echo, "Hola desde fixture")
         XCTAssertEqual(response.meta.requestId, "fixture-request-002")
     }
+
+    func testTypedRoutesRejectExternalAndPreserveLegacyInternalRoutes() throws {
+        XCTAssertEqual(AppRoute(path: "/clients"), .clients)
+        XCTAssertEqual(AppRoute(path: "/future/native")?.path, "/future/native")
+        XCTAssertTrue(AppRoute.content.contains(.contentDashboard))
+        XCTAssertFalse(AppRoute.home.contains(.clients))
+        XCTAssertNil(AppRoute(path: "https://evil.example.com"))
+        XCTAssertNil(AppRoute(path: "//evil.example.com"))
+    }
+
+    func testNativeShellStateDecodesBootstrapWithoutJavaScriptSnapshot() throws {
+        let response = try JSONDecoder().decode(
+            ShellBootstrapResponse.self,
+            from: sharedFixture(named: "shell-bootstrap")
+        )
+        let state = NativeShellState(bootstrap: response.data, route: .content)
+
+        XCTAssertEqual(state.route, .content)
+        XCTAssertEqual(state.user?.role, .editor)
+        XCTAssertEqual(state.taskCount, 3)
+        XCTAssertEqual(state.unreadNotificationCount, 1)
+        XCTAssertTrue(state.capabilities.contains(.contentWrite))
+        XCTAssertFalse(state.capabilities.contains(.adminUsers))
+        XCTAssertTrue(state.tabs.contains { $0.route == AppRoute.content.path })
+        XCTAssertFalse(state.navigation.contains { $0.route == AppRoute.users.path })
+    }
+
+    func testNativeCatalogUsesCapabilitiesInsteadOfRolePresentation() {
+        let editor = ShellRole.editor.capabilities
+        let admin = ShellRole.admin.capabilities
+
+        XCTAssertFalse(NativeShellCatalog.navigation(capabilities: editor).contains {
+            $0.route == AppRoute.users.path
+        })
+        XCTAssertTrue(NativeShellCatalog.navigation(capabilities: admin).contains {
+            $0.route == AppRoute.users.path
+        })
+        XCTAssertEqual(
+            NativeShellCatalog.tabs(capabilities: editor)
+                .first { $0.id == "tab-finance" }?.route,
+            AppRoute.personalFinance.path
+        )
+        XCTAssertEqual(
+            NativeShellCatalog.tabs(capabilities: admin)
+                .first { $0.id == "tab-finance" }?.route,
+            AppRoute.finance.path
+        )
+    }
 }

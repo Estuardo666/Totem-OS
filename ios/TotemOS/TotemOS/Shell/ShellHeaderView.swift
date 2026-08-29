@@ -3,7 +3,7 @@ import TotemOSKit
 
 /// Header flotante: menús nativos, logo, tema y notificaciones.
 struct ShellHeaderView: View {
-    @EnvironmentObject private var shell: ShellModel
+    @EnvironmentObject private var shell: AppCoordinator
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     private var snapshot: ShellSnapshot { shell.snapshot }
