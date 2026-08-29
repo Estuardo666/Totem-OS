@@ -41,12 +41,16 @@ final class AppCoordinator: ObservableObject {
         localLegacyRollbackRoutes.removeAll()
         hasLoadedState = false
         isNotificationListOpen = false
+        setWebChromeReplacementActive(false)
     }
 
     func webViewDidFinish(url: URL?) {
         guard let url, url.host == AppEnvironment.baseURL.host,
               let route = AppRoute(path: url.path) else { return }
         state.route = route
+        if isVisible {
+            setWebChromeReplacementActive(true)
+        }
         scheduleRefresh()
     }
 
@@ -64,16 +68,21 @@ final class AppCoordinator: ObservableObject {
             let currentRoute = state.route
             state = NativeShellState(bootstrap: response.data, route: currentRoute)
             hasLoadedState = true
+            setWebChromeReplacementActive(true)
         } catch TotemAPIError.http(let status, _) where status == 401 {
             reset()
             AppModel.shared.presentNativeLogin()
         } catch {
-            // El rate limiter/API puede estar temporalmente indisponible. Si
-            // existe la cookie de sesión, mantenemos el chrome nativo visible
-            // con datos mínimos en vez de desmontarlo por completo.
-            if hasSessionCookie(in: headers), state.user == nil {
+            // `refresh()` solo se agenda después de que WKWebView terminó una
+            // ruta protegida válida. Si el bootstrap falla, esa navegación ya
+            // confirmó la sesión y podemos conservar un shell de mínimo
+            // privilegio mientras la API se recupera.
+            if state.user == nil {
                 state = .offlineFallback(route: state.route)
                 hasLoadedState = true
+            }
+            if isVisible {
+                setWebChromeReplacementActive(true)
             }
             #if DEBUG
             print("Native shell bootstrap failed: \(error.localizedDescription)")
@@ -151,21 +160,11 @@ final class AppCoordinator: ObservableObject {
         return ["Cookie": header]
     }
 
-    private func hasSessionCookie(in headers: [String: String]) -> Bool {
-        guard let cookieHeader = headers["Cookie"] else { return false }
-        let sessionCookieNames = Set([
-            "authjs.session-token",
-            "next-auth.session-token",
-            "__Secure-authjs.session-token",
-            "__Secure-next-auth.session-token",
-        ])
-
-        return cookieHeader.split(separator: ";").contains { pair in
-            let name = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
-                .first?
-                .map { String($0).trimmingCharacters(in: .whitespaces) }
-            return name.map { sessionCookieNames.contains($0) } ?? false
-        }
+    private func setWebChromeReplacementActive(_ active: Bool) {
+        let script = active
+            ? "document.documentElement.setAttribute('data-totem-native-shell-ready', '1');"
+            : "document.documentElement.removeAttribute('data-totem-native-shell-ready');"
+        webView?.evaluateJavaScript(script)
     }
 }
 

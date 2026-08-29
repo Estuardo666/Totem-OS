@@ -8,8 +8,8 @@ const NATIVE_USER_AGENT =
  * Reproduce lo que hace el `WKWebView`: marca el documento antes de renderizar
  * y expone el canal `totemShell` para recibir los snapshots.
  */
-async function installNativeShellBridge(page: Page) {
-  await page.addInitScript(() => {
+async function installNativeShellBridge(page: Page, ready = true) {
+  await page.addInitScript((shellReady) => {
     const scope = window as unknown as Record<string, unknown>;
     scope.__TOTEM_NATIVE_SHELL__ = true;
     scope.__totemShellSnapshots = [] as string[];
@@ -23,7 +23,10 @@ async function installNativeShellBridge(page: Page) {
       },
     };
     document.documentElement.setAttribute("data-totem-native-shell", "1");
-  });
+    if (shellReady) {
+      document.documentElement.setAttribute("data-totem-native-shell-ready", "1");
+    }
+  }, ready);
 }
 
 async function latestSnapshot(page: Page) {
@@ -55,8 +58,8 @@ test.describe("app nativa TotemOS-iOS", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    await expect(page.locator("[data-mobile-navbar]")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Registrar transacción" })).toHaveCount(0);
+    await expect(page.locator("[data-mobile-navbar]")).toBeHidden();
+    await expect(page.getByRole("button", { name: "Registrar transacción" })).toBeHidden();
     await expect(page.getByText(/añade esta app a tu pantalla de inicio/i)).toHaveCount(0);
 
     await expect.poll(async () => (await latestSnapshot(page))?.version).toBe(1);
@@ -71,6 +74,15 @@ test.describe("app nativa TotemOS-iOS", () => {
       "Finanzas",
       "Clientes",
     ]);
+  });
+
+  test("conserva el chrome web hasta que Swift confirma que está listo", async ({ page }) => {
+    await installNativeShellBridge(page, false);
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.locator("[data-mobile-navbar]")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Registrar transacción" })).toBeVisible();
   });
 
   test("responde a los comandos de navegación y transacción", async ({ page }) => {

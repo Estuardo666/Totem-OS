@@ -6,7 +6,6 @@ import { Navbar } from "@/components/shared/navbar";
 import { FloatingExpenseButton } from "@/components/features/global/floating-expense-button";
 import { Footer } from "@/components/shared/footer";
 import { NativeShellProvider } from "@/components/providers/native-shell-provider";
-import { useNativeShell } from "@/hooks/use-native-shell";
 
 export function ConditionalLayout({
   children,
@@ -14,8 +13,6 @@ export function ConditionalLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  // Solo la app nativa TotemOS-iOS reemplaza el chrome web por el shell SwiftUI.
-  const isNativeShell = useNativeShell();
 
   // Rutas que NO deben tener sidebar (auth, privacy, terms)
   const isAuthRoute = pathname?.startsWith("/sign-in") || pathname?.startsWith("/sign-up");
@@ -49,11 +46,9 @@ export function ConditionalLayout({
         {/* Sidebar tiene w-56 (224px) + m-4 izquierdo (16px) = 240px total */}
         <main className="flex-1 md:pl-[240px] w-full overflow-x-hidden pt-[calc(4rem+var(--sat,0px))] md:pt-0">
           {/* Navbar móvil visible solo en móvil */}
-          {!isNativeShell && (
-            <div data-mobile-navbar data-totem-web-chrome className="md:hidden">
-              <Navbar />
-            </div>
-          )}
+          <div data-mobile-navbar data-totem-web-chrome className="md:hidden">
+            <Navbar />
+          </div>
 
           {/* Contenido de la página */}
           <div className="overflow-x-hidden px-[0.34rem] pb-24 pt-0 md:px-4 md:py-4">
@@ -62,7 +57,7 @@ export function ConditionalLayout({
         </main>
 
         {/* Botón flotante de gastos */}
-        {!isNativeShell && <FloatingExpenseButton />}
+        <FloatingExpenseButton />
       </div>
 
       {/* Puente y diálogo controlado del shell nativo */}
