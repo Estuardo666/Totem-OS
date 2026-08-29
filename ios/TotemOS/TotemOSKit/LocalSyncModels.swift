@@ -226,7 +226,7 @@ public final class LocalSyncStore {
             )
 
         if existingEntity == nil { context.insert(entity) }
-        if mutation.operation == .delete {
+        if mutation.operation.rawValue == LocalSyncOperation.delete.rawValue {
             entity.localPayloadData = nil
             entity.isDeleted = true
         } else {
