@@ -71,7 +71,7 @@ final class AppCoordinator: ObservableObject {
             // El rate limiter/API puede estar temporalmente indisponible. Si
             // existe la cookie de sesión, mantenemos el chrome nativo visible
             // con datos mínimos en vez de desmontarlo por completo.
-            if headers["Cookie"] != nil, state.user == nil {
+            if hasSessionCookie(in: headers), state.user == nil {
                 state = .offlineFallback(route: state.route)
                 hasLoadedState = true
             }
@@ -149,6 +149,23 @@ final class AppCoordinator: ObservableObject {
               let header = HTTPCookie.requestHeaderFields(with: validCookies)["Cookie"]
         else { return [:] }
         return ["Cookie": header]
+    }
+
+    private func hasSessionCookie(in headers: [String: String]) -> Bool {
+        guard let cookieHeader = headers["Cookie"] else { return false }
+        let sessionCookieNames = Set([
+            "authjs.session-token",
+            "next-auth.session-token",
+            "__Secure-authjs.session-token",
+            "__Secure-next-auth.session-token",
+        ])
+
+        return cookieHeader.split(separator: ";").contains { pair in
+            let name = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+                .first?
+                .map { String($0).trimmingCharacters(in: .whitespaces) }
+            return name.map { sessionCookieNames.contains($0) } ?? false
+        }
     }
 }
 
