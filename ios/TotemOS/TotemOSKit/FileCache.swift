@@ -115,7 +115,8 @@ public final class LocalFileCache {
     public static func excludeFromBackup(_ url: URL) throws {
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
-        try url.setResourceValues(values)
+        var target = url
+        try target.setResourceValues(values)
     }
 
     private func touch(key: String, kind: FileCacheKind) -> FileCacheEntry? {
