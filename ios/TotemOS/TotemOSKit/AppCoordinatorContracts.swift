@@ -75,6 +75,34 @@ public struct NativeShellState: Equatable {
         taskCount: 0, unreadNotificationCount: 0, notifications: [], overlayHidden: false
     )
 
+    /// Shell mínimo para una sesión con red temporalmente indisponible. No
+    /// inventa datos de negocio: conserva únicamente navegación segura y deja
+    /// que el siguiente refresh reemplace el estado por el bootstrap real.
+    public static func offlineFallback(route: AppRoute) -> NativeShellState {
+        let role = ShellRole.user
+        return NativeShellState(
+            route: route,
+            theme: .light,
+            accentColor: "#3B82F6",
+            user: ShellUser(
+                name: "Usuario",
+                role: role,
+                roleLabel: "Usuario",
+                avatarUrl: nil,
+                initials: "U"
+            ),
+            capabilities: role.capabilities,
+            logoLight: nil,
+            logoDark: nil,
+            navigation: NativeShellCatalog.navigation(capabilities: role.capabilities),
+            tabs: NativeShellCatalog.tabs(capabilities: role.capabilities),
+            taskCount: 0,
+            unreadNotificationCount: 0,
+            notifications: [],
+            overlayHidden: false
+        )
+    }
+
     public init(
         route: AppRoute, theme: ShellThemeVariant, accentColor: String, user: ShellUser?,
         capabilities: Set<ShellCapability>, logoLight: String?, logoDark: String?,

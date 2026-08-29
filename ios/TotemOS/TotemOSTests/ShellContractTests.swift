@@ -211,4 +211,15 @@ final class ShellContractTests: XCTestCase {
             AppRoute.finance.path
         )
     }
+
+    func testOfflineFallbackKeepsSafeNativeChromeAvailable() {
+        let state = NativeShellState.offlineFallback(route: .clients)
+
+        XCTAssertEqual(state.route, .clients)
+        XCTAssertEqual(state.user?.role, .user)
+        XCTAssertFalse(state.navigation.isEmpty)
+        XCTAssertFalse(state.tabs.isEmpty)
+        XCTAssertEqual(state.taskCount, 0)
+        XCTAssertEqual(state.unreadNotificationCount, 0)
+    }
 }

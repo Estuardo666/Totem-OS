@@ -52,8 +52,8 @@ final class AppCoordinator: ObservableObject {
 
     func refresh() async {
         guard let webView else { return }
+        let headers = await cookieHeaders(from: webView.configuration.websiteDataStore.httpCookieStore)
         do {
-            let headers = await cookieHeaders(from: webView.configuration.websiteDataStore.httpCookieStore)
             let client = TotemAPIClient(baseURL: AppEnvironment.baseURL, additionalHeaders: headers)
             async let bootstrapResponse = client.shellBootstrap()
             async let appConfigResponse = client.appConfig()
@@ -68,6 +68,13 @@ final class AppCoordinator: ObservableObject {
             reset()
             AppModel.shared.presentNativeLogin()
         } catch {
+            // El rate limiter/API puede estar temporalmente indisponible. Si
+            // existe la cookie de sesión, mantenemos el chrome nativo visible
+            // con datos mínimos en vez de desmontarlo por completo.
+            if headers["Cookie"] != nil, state.user == nil {
+                state = .offlineFallback(route: state.route)
+                hasLoadedState = true
+            }
             #if DEBUG
             print("Native shell bootstrap failed: \(error.localizedDescription)")
             #endif
