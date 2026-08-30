@@ -8,16 +8,14 @@ criterio de salida y una verificación antes de iniciar el siguiente.
 
 - Los dashboards y las páginas internas actuales de React/Next.js son la fuente
   de verdad funcional, visual y de experiencia de usuario.
-- Cada implementación nueva en Swift debe partir de la pantalla React/Next.js
-  vigente: mismas funciones, información, métricas, estados, jerarquía y flujos.
-- La migración nativa puede adaptar patrones de interacción a iOS, pero no puede
-  eliminar, simplificar, sustituir ni rediseñar capacidades existentes sin una
-  aprobación explícita.
+- Cualquier UI nativa que se añada al shell debe respetar la pantalla React/Next.js
+  vigente: mismos tokens, estados, jerarquía y flujos de navegación.
+- No se crearán pantallas Swift de negocio en esta fase. Una futura excepción
+  requerirá aprobación explícita, paridad documentada y un plan de rollback.
 - Implementar una pantalla Swift no autoriza a reemplazar o retirar su pantalla
   React/Next.js. La versión web/PWA se conserva operativa durante la migración.
-- Antes de completar cada checkpoint nativo se debe documentar y verificar la
-  paridad contra la pantalla React/Next.js actual, incluyendo roles, estados
-  loading/empty/offline/error, datos, acciones y rollback a WebView.
+- Antes de cambiar el shell nativo se debe verificar que no altera roles,
+  estados, loading/empty/offline/error, datos, acciones ni popups de React.
 
 ## Replanteamiento de alcance — 2026-08-30
 
@@ -33,6 +31,10 @@ criterio de salida y una verificación antes de iniciar el siguiente.
 - El router híbrido y los contratos API permanecen para una posible decisión
   futura; hasta entonces `nativeScreenMigrationsEnabled` está fijado en `false`
   en iOS y todas las rutas privadas se envían al WebView React.
+- CP09–CP10 siguen siendo infraestructura de sync reutilizable por API/React.
+  CP11–CP14 (SwiftData, outbox, coordinador y caché de archivos) quedan
+  archivados: el código no se elimina, pero no se amplía ni condiciona ninguna
+  pantalla React mientras no exista un cliente nativo de negocio.
 - CP30 cambia de objetivo: no se retirará el WebView. La salida del programa es
   una app híbrida estable con React como fuente de verdad y shell Swift nativo.
 
@@ -93,8 +95,10 @@ en otra rama, conservar el contenido de los documentos aunque cambie el hash.
 - React/Next.js es dueño de las pantallas privadas, su UI/UX y sus flujos; Swift
   es dueño del login y del shell (topbar, bottom bar, menús y puente). El
   `WKWebView` es el renderer privado principal, no un fallback temporal.
-- Sync offline usa REST normal más change feed transaccional, outbox SwiftData,
-  receipts idempotentes, tombstones y conflictos `409` visibles.
+- La API conserva REST, change feed, receipts idempotentes, tombstones y
+  conflictos `409` para los consumidores React/PWA. SwiftData/outbox no forman
+  parte del runtime de pantallas actual y solo se reactivarán con un cliente
+  nativo aprobado.
 - Historial de sync: 90 días; cursor vencido produce resync conservando outbox.
 - Paginación por cursor: 25 por defecto, 100 máximo.
 - Push offline: máximo 50 mutaciones o 1 MiB por lote, con resultado individual.
@@ -186,28 +190,33 @@ cursor vencido `410`, lotes acotados y retención/compactación de 90 días.
 
 Salida: create/update/delete, duplicado, conflicto y resync pasan integración.
 
-### CP11 — SwiftData y outbox
+> **Alcance archivado CP11–CP14:** estos checkpoints describen infraestructura
+> local Swift ya construida, pero no se ejecutan como parte de las pantallas
+> React/PWA. No se agregan nuevos modelos ni flujos Swift hasta aprobar un
+> cliente nativo de negocio.
+
+### CP11 — SwiftData y outbox (archivado)
 
 Crear modelos locales separados de DTOs, mappers, outbox persistente, snapshots
 base, estados de mutación y recuperación tras cierre forzado.
 
 Salida: una edición offline sobrevive al reinicio y se aplica una sola vez.
 
-### CP12 — Coordinador de sync Swift
+### CP12 — Coordinador de sync Swift (archivado)
 
 Sincronizar en inicio, foreground, conectividad y edición; pausar ante `401`,
 procesar FIFO por recurso y limitar concurrencia global.
 
 Salida: todas las transiciones de outbox tienen pruebas deterministas.
 
-### CP13 — Resolución de conflictos
+### CP13 — Resolución de conflictos (archivado para Swift)
 
 Comparar base/local/servidor, combinar campos no superpuestos, mostrar decisión
 para campos superpuestos y resolver delete-vs-edit.
 
 Salida: dos dispositivos convergen sin sobrescribir silenciosamente datos.
 
-### CP14 — Caché de archivos
+### CP14 — Caché de archivos (archivado para Swift)
 
 Mantener binarios fuera de SwiftData, caché LRU de 250 MiB, thumbnails, limpieza
 manual, uploads de background y exclusión de documentos sensibles de backups.
