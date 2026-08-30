@@ -3,14 +3,15 @@
 ## Resultado
 
 El cliente iOS consulta `GET /api/v1/app-config` después del bootstrap y
-resuelve cada ruta como `native` o `web`. Las reglas más específicas ganan y
-las filas `UserRouteOverride` permiten devolver una ruta al WebView sin
-publicar una nueva aplicación.
+conserva la resolución tipada `native`/`web` para compatibilidad futura. Las
+reglas más específicas ganan y las filas `UserRouteOverride` siguen disponibles
+para rollback, pero el runtime actual mantiene todas las pantallas privadas en
+React/WebView.
 
 `LegacyWebRouteView` encapsula el contenido React existente. Cuando una ruta se
-marca como nativa pero todavía no tiene una pantalla de negocio migrada, el
-shell muestra una pantalla nativa explícita con la acción **Usar versión web**;
-el rollback es inmediato y queda acotado a la sesión del dispositivo.
+marca como nativa en una configuración antigua, `nativeScreenMigrationsEnabled`
+la neutraliza y el WebView continúa visible. No se muestra una pantalla nativa
+de negocio ni una vista de placeholder durante esta fase.
 
 ## Configuración
 

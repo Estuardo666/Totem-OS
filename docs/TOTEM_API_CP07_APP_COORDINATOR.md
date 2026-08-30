@@ -37,7 +37,7 @@ desaparezca por una pérdida temporal de conectividad.
 | Tema y color | PostgreSQL → API bootstrap → Swift |
 | Tareas y notificaciones | PostgreSQL → API bootstrap → Swift |
 | Marca | `GlobalConfig` → API bootstrap → Swift |
-| Pantallas de negocio | React en `WKWebView`, hasta su checkpoint nativo |
+| Pantallas de negocio | React en `WKWebView`, fuente de verdad permanente en esta fase |
 
 El backend continúa siendo la autoridad de autorización. Ocultar una ruta en
 Swift mejora la interfaz, pero cada operación del API mantiene su guard

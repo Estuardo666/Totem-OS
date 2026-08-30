@@ -19,17 +19,17 @@ struct ContentView: View {
                 .ignoresSafeArea()
                 .transition(.opacity)
             } else {
-                // Keep the WKWebView mounted while a native route is visible.
-                // It owns the authenticated session and must remain available
-                // so shell navigation can immediately open legacy React routes.
+                // Keep the WKWebView mounted as the authenticated renderer for
+                // every private React/Next.js screen. The native shell remains
+                // available above it for navigation and session actions.
                 LegacyWebRouteView(isVisible: !appCoordinator.shouldUseNativeRoute && appCoordinator.hasLoadedState) {
                     guard appCoordinator.hasLoadedState && !appCoordinator.shouldUseNativeRoute else { return }
                     withAnimation(.easeOut(duration: 0.25)) { isLaunching = false }
                 }
                 .ignoresSafeArea()
-                // The web route must become a real, interactive layer when a
-                // legacy page or React modal is selected. It only stays
-                // visually hidden while the native dashboard owns the route.
+                // React must always be a real, interactive layer while the
+                // native-screen migration gate is paused. The opacity branch is
+                // retained only for a future, explicitly approved migration.
                 .opacity(appCoordinator.shouldUseNativeRoute ? 0.001 : 1)
                 .allowsHitTesting(!appCoordinator.shouldUseNativeRoute)
 

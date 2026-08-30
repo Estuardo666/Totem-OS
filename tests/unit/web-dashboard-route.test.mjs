@@ -21,12 +21,19 @@ test("la portada web conserva el dashboard completo mientras Swift usa la API na
   assert.doesNotMatch(dashboardRoute, /ApiDashboardView/);
 });
 
-test("el shell conserva el WebView autenticado para navegar fuera del home nativo", () => {
+test("React conserva todas las pantallas privadas y el shell sigue superpuesto", () => {
   assert.match(nativeContent, /Keep the WKWebView mounted/);
   assert.match(nativeContent, /LegacyWebRouteView\(isVisible: !appCoordinator\.shouldUseNativeRoute && appCoordinator\.hasLoadedState\)/);
   assert.match(nativeContent, /opacity\(appCoordinator\.shouldUseNativeRoute \? 0\.001 : 1\)/);
   assert.match(nativeContent, /allowsHitTesting\(!appCoordinator\.shouldUseNativeRoute\)/);
   assert.match(nativeWebView, /webView\.isHidden = !isVisible/);
+});
+
+test("las banderas nativas quedan pausadas hasta una aprobación explícita", () => {
+  const coordinator = readFileSync(resolve(root, "ios/TotemOS/TotemOS/ShellBridge.swift"), "utf8");
+  assert.match(coordinator, /private let nativeScreenMigrationsEnabled = false/);
+  assert.match(coordinator, /nativeScreenMigrationsEnabled && mode\(for: state\.route\) == \.native/);
+  assert.match(coordinator, /guard !nativeScreenMigrationsEnabled \|\| mode\(for: route\) == \.web else \{ return \}/);
 });
 
 test("las barras del shell limitan el glass activo a la selección", () => {

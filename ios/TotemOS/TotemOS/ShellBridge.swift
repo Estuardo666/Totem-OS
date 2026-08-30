@@ -19,6 +19,12 @@ final class AppCoordinator: ObservableObject {
     private var localLegacyRollbackRoutes = Set<String>()
     private var dashboardStore: DashboardStore?
 
+    /// Las pantallas privadas siguen siendo React/Next.js: Swift solo posee
+    /// el login y el chrome nativo (topbar/bottom bar). El router híbrido se
+    /// conserva para una futura migración explícita, pero no puede activar una
+    /// pantalla Swift por configuración remota mientras esta fase está pausada.
+    private let nativeScreenMigrationsEnabled = false
+
     var snapshot: ShellSnapshot { state.snapshot }
     var isVisible: Bool { hasLoadedState && state.user != nil && !state.overlayHidden }
 
@@ -27,7 +33,9 @@ final class AppCoordinator: ObservableObject {
         return routeConfiguration.mode(for: route.path)
     }
 
-    var shouldUseNativeRoute: Bool { mode(for: state.route) == .native }
+    var shouldUseNativeRoute: Bool {
+        nativeScreenMigrationsEnabled && mode(for: state.route) == .native
+    }
 
     func rollbackToLegacyWeb(for route: AppRoute) {
         localLegacyRollbackRoutes.insert(route.path)
@@ -148,7 +156,10 @@ final class AppCoordinator: ObservableObject {
     func navigate(to route: AppRoute) {
         isNotificationListOpen = false
         state.route = route
-        guard mode(for: route) == .web else { return }
+        // When native screen migrations are paused, every private route must
+        // still be dispatched to the mounted React WebView—even if an older
+        // server-side app-config record says `native`.
+        guard !nativeScreenMigrationsEnabled || mode(for: route) == .web else { return }
         send(.navigate(route: route.path))
     }
 
@@ -162,7 +173,7 @@ final class AppCoordinator: ObservableObject {
     /// the command so its modal is visible immediately instead of appearing on
     /// a later navigation.
     func openTransaction(tab: ShellTransactionTab) {
-        if state.route == .home && mode(for: .home) == .native {
+        if state.route == .home && shouldUseNativeRoute {
             localLegacyRollbackRoutes.insert(AppRoute.home.path)
             state.overlayHidden = true
             objectWillChange.send()
@@ -201,7 +212,13 @@ final class AppCoordinator: ObservableObject {
                 if isOpen {
                     hasOpened = true
                 } else if hasOpened {
-                    self.restoreNativeDashboardAfterTransaction()
+                    if self.shouldUseNativeRoute {
+                        self.restoreNativeDashboardAfterTransaction()
+                    } else {
+                        // React remains the owner of the current route when
+                        // native screen migrations are paused.
+                        self.transactionMonitorTask = nil
+                    }
                     return
                 }
             }

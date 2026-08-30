@@ -211,9 +211,9 @@ protegidos para jobs y rutas de webhook con verificación de firma propia.
 | `AppModel` | Login, conexión y APNs | Coordinar sesión/API/sync además del push |
 | `NativeAuthService` | Credentials Auth.js y cookies | Reutilizar para cliente API |
 | `ShellModel` | Snapshot JavaScript y comandos WebView | Convertirse en estado nativo; bridge legacy |
-| `WebAppView` | WebView principal | Fallback temporal, eliminar en CP30 |
+| `WebAppView` | WebView principal | Renderer permanente de las pantallas React |
 | `NativeShellOverlay` | Header, tabs, menú, notificaciones | Conservar visualmente; consumir AppCoordinator |
-| `ShellContracts` | Rutas/snapshot/comandos web↔Swift | Mantener solo mientras exista legacy |
+| `ShellContracts` | Rutas/snapshot/comandos web↔Swift | Mantener para navegación, sesión y shell React |
 | `PushRegistrationService` | APNs | Reutilizar con API/estado de sesión |
 | Tests XCTest | Shell y APNs | Añadir API, SwiftData, sync y UI tests |
 

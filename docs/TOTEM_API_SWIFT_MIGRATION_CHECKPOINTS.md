@@ -1,4 +1,4 @@
-# Totem OS — Plan maestro de migración API + SwiftUI
+# Totem OS — Plan maestro de API + shell SwiftUI
 
 Este documento conserva el plan aprobado para continuar la implementación por
 checkpoints. No se debe saltar un checkpoint: cada uno necesita código, pruebas,
@@ -18,6 +18,23 @@ criterio de salida y una verificación antes de iniciar el siguiente.
 - Antes de completar cada checkpoint nativo se debe documentar y verificar la
   paridad contra la pantalla React/Next.js actual, incluyendo roles, estados
   loading/empty/offline/error, datos, acciones y rollback a WebView.
+
+## Replanteamiento de alcance — 2026-08-30
+
+- **React/Next.js/PWA es la implementación de todas las pantallas privadas.**
+  Home, clientes, contenido, rodajes, finanzas, administración y cualquier
+  pantalla interna continúan renderizándose desde React.
+- **Swift no migrará esas pantallas en esta fase.** El trabajo nativo queda
+  limitado al login existente y al shell compartido: topbar, bottom bar,
+  menús, navegación y puente con el WebView.
+- El dashboard Swift de CP16 se retira del runtime. Su código y el endpoint
+  cacheado pueden conservarse como prototipo documentado, pero no pueden
+  reemplazar Home ni activarse por una bandera remota antigua.
+- El router híbrido y los contratos API permanecen para una posible decisión
+  futura; hasta entonces `nativeScreenMigrationsEnabled` está fijado en `false`
+  en iOS y todas las rutas privadas se envían al WebView React.
+- CP30 cambia de objetivo: no se retirará el WebView. La salida del programa es
+  una app híbrida estable con React como fuente de verdad y shell Swift nativo.
 
 ## Estado de ejecución
 
@@ -55,10 +72,9 @@ criterio de salida y una verificación antes de iniciar el siguiente.
   exclusión de backups y uploads de background fuera de SwiftData.
 - [x] **CP15 — React API foundation** (`cdc1cf3`): TanStack Query, cliente
   generado, query keys, Problem Details, retries e invalidaciones.
-- [x] **CP16 — Dashboard nativo** (`4137335`, corrección web `099f582`):
-  proyección `/api/v1/dashboard`, dashboard React/Next.js completo preservado,
-  `DashboardStore` Swift cacheado, estados loading/empty/offline/error y feature
-  flag remoto con rollback a WebView.
+- [x] **CP16 — Contrato de dashboard + shell híbrido** (`98497b7`):
+  proyección `/api/v1/dashboard` y shell nativo conservados, pero Home Swift
+  retirado del runtime; Home y el resto de pantallas usan React/Next.js.
 
 Los hashes son referencias del repositorio en la fecha de corte; si se continúa
 en otra rama, conservar el contenido de los documentos aunque cambie el hash.
@@ -74,8 +90,9 @@ en otra rama, conservar el contenido de los documentos aunque cambie el hash.
 - Guard central default-deny por capacidades; roles canónicos `ADMIN`, `EDITOR`
   y `USER`.
 - React migra gradualmente a la API con TanStack Query.
-- Swift es dueño de navegación, sesión, permisos y shell; `WKWebView` queda como
-  fallback temporal.
+- React/Next.js es dueño de las pantallas privadas, su UI/UX y sus flujos; Swift
+  es dueño del login y del shell (topbar, bottom bar, menús y puente). El
+  `WKWebView` es el renderer privado principal, no un fallback temporal.
 - Sync offline usa REST normal más change feed transaccional, outbox SwiftData,
   receipts idempotentes, tombstones y conflictos `409` visibles.
 - Historial de sync: 90 días; cursor vencido produce resync conservando outbox.
@@ -85,8 +102,8 @@ en otra rama, conservar el contenido de los documentos aunque cambie el hash.
   migra por dominio.
 - iPhone únicamente, iOS 26+, sin iPad/macOS/Android en este programa.
 - El shell Swift actual (barra inferior, header, menús y sidebar) se conserva.
-- Primera fase nativa: dashboard, clientes, contenido, rodajes, Chronos y
-  notificaciones.
+- Primera fase nativa: login y shell compartido. No se migran dashboards ni
+  páginas internas a Swift sin una nueva aprobación de alcance.
 - PostgreSQL efímero en CI; XCUITest en simulador macOS de GitHub; Codemagic para
   builds firmados y TestFlight.
 
@@ -151,7 +168,9 @@ Salida: el shell no depende de un snapshot JavaScript para existir.
 Crear `LegacyWebRouteView`, resolver rutas nativas o web mediante `/app-config`,
 mantener sesión y permitir activar/desactivar rutas por usuario.
 
-Salida: cualquier pantalla puede volver al WebView sin publicar una nueva app.
+Salida original conservada para compatibilidad, pero el runtime actual mantiene
+las rutas privadas en WebView mediante `nativeScreenMigrationsEnabled = false`.
+No se activará una ruta nativa sin aprobación explícita y pruebas de paridad.
 
 ### CP09 — Modelo de sync backend
 
@@ -202,55 +221,61 @@ mapear Problem Details, definir retries e invalidaciones.
 
 Salida: una pantalla React funciona únicamente mediante `/api/v1`.
 
-### CP16 — Dashboard nativo
+### CP16 — Contrato de dashboard + shell híbrido
 
-Extraer servicio y crear endpoint tomando el dashboard React/Next.js vigente como
-contrato funcional y visual. Implementar Swift cacheado sin sustituir ni reducir
-la pantalla web/PWA, y activar la ruta nativa con feature flag reversible.
+Mantener la proyección `/api/v1/dashboard` como contrato de datos y conservar el
+dashboard React/Next.js vigente como única implementación de Home. El shell Swift
+(topbar, bottom bar, menús y navegación) se superpone al WebView; la pantalla
+`NativeDashboardView` queda fuera del runtime y no puede activarse por una
+configuración remota antigua.
 
-Salida: dashboard Swift sustituible y reversible, con paridad documentada frente
-al dashboard React/Next.js y con la versión web completa todavía operativa.
+Salida: Home, páginas internas y PWA siguen renderizándose en React; el shell
+nativo no altera sus funciones, estilos ni popups.
 
-### CP17 — Clientes nativos
+### CP17 — Clientes React sobre API
 
-CRUD, detalle, paginación, métricas y assets; edición offline de campos seguros;
-secretos excluidos de sync y SwiftData.
+Mantener CRUD, detalle, paginación, métricas y assets en las pantallas React
+actuales, conectándolas gradualmente al contrato API. Los campos offline seguros
+se resuelven en la capa web; no se crea una pantalla Swift equivalente.
 
-Salida: CRUD, offline, paginación y conflictos pasan pruebas.
+Salida: CRUD, offline, paginación y conflictos pasan pruebas en React/PWA.
 
-### CP18 — Contenido nativo
+### CP18 — Contenido React sobre API
 
-Tareas, estados, asignaciones, notas, métricas, bulk y estrategias; React y Swift
-usan API y las mutaciones son idempotentes.
+Tareas, estados, asignaciones, notas, métricas, bulk y estrategias permanecen en
+React; las mutaciones son idempotentes y consumen el cliente generado.
 
-Salida: un editor completa el flujo de una tarea sin WebView.
+Salida: un editor completa el flujo de una tarea en la PWA/WebView.
 
-### CP19 — Rodajes nativos
+### CP19 — Rodajes React sobre API
 
 CRUD, duplicación, cancelación, estados, validación de solapamientos y Calendar
-como efecto idempotente posterior.
+como efecto idempotente posterior, todo desde React.
 
-Salida: una caída de Calendar no duplica ni revierte el rodaje.
+Salida: una caída de Calendar no duplica ni revierte el rodaje en la PWA.
 
-### CP20 — Chronos nativo
+### CP20 — Chronos React sobre API
 
 Start, stop, entradas manuales y estadísticas; exclusividad validada por servidor
-y recuperación offline.
+y recuperación offline desde React.
 
-Salida: una sesión offline produce una sola entrada válida.
+Salida: una sesión offline produce una sola entrada válida en la PWA.
 
-### CP21 — Notificaciones nativas
+### CP21 — Notificaciones React + shell
 
-Lista, contador, marcar una/todas, APNs y sincronización con el shell.
+La lista y las acciones permanecen en React; el shell Swift solo muestra el
+contador, abre el acceso y coordina APNs.
 
-Salida: contador, lista, lectura y push convergen.
+Salida: contador, lista, lectura y push convergen sin duplicar pantallas.
 
-### CP22 — Primera TestFlight operativa
+### CP22 — Primera TestFlight operativa (shell + React)
 
-Activar CP16–CP21 para allowlist, ejecutar XCTest/XCUITest en CI, validar APNs en
-iPhone físico y practicar rollback por ruta.
+Activar el shell y las pantallas React existentes para allowlist, ejecutar
+XCTest/XCUITest en CI, validar APNs en iPhone físico y practicar rollback por
+ruta.
 
-Salida: un `EDITOR` completa su operación diaria sin WebView.
+Salida: un `EDITOR` completa su operación diaria usando React/WebView con shell
+nativo estable.
 
 ### CP23 — Migración Decimal
 
@@ -259,24 +284,24 @@ strings decimales.
 
 Salida: no existen diferencias financieras sin explicación.
 
-### CP24 — Finanzas básicas
+### CP24 — Finanzas React básicas
 
 Transacciones, gastos, reembolsos, facturas internas, receivables y finanzas
-personales.
+personales continúan en las pantallas React actuales.
 
-Salida: React y Swift producen totales idénticos.
+Salida: las pantallas React producen totales idénticos contra la API.
 
-### CP25 — Finanzas avanzadas
+### CP25 — Finanzas React avanzadas
 
 Resumen mensual, cierres, honorarios, liquidación, utilidades, fondo de emergencia,
-alertas y analítica.
+alertas y analítica permanecen en React.
 
 Salida: aprobaciones, pagos y cierres siguen online-only y auditados.
 
-### CP26 — Administración
+### CP26 — Administración React
 
 Usuarios, especialidades, configuración, archivos, push administrativo y permisos
-ADMIN.
+ADMIN se mantienen en React/Next.js.
 
 Salida: toda operación administrativa requiere capacidad y auditoría.
 
@@ -300,19 +325,22 @@ compatibilidad de dos releases iOS y 90 días.
 
 Salida: se puede identificar regresión por endpoint, versión o ruta.
 
-### CP30 — Retirar WebView
+### CP30 — Consolidar React y estabilizar shell
 
-Confirmar cero rutas privadas legacy, desactivar fallback, retirar bridge, shell
-snapshot, `WebAppView` y acciones sin consumidores.
+Confirmar que todas las rutas privadas continúan en React/Next.js, que el bridge
+solo expone navegación/sesión/shell y que topbar, bottom bar y login no dependen
+de pantallas Swift. No se retira `WebAppView`.
 
-Salida: toda la app privada funciona nativamente.
+Salida: toda la app privada funciona mediante React/PWA con shell Swift estable.
 
 ### CP31 — Limpieza final
 
-Eliminar role legacy, Float antiguos, JSON string migrado, contratos vencidos,
-flags obsoletos y documentación temporal.
+Eliminar role legacy, Float antiguos, JSON string migrado, contratos vencidos y
+flags obsoletos, manteniendo el bridge del shell y el WebView React como partes
+del producto.
 
-Salida: no quedan dual-writes, fallbacks ni contratos temporales.
+Salida: no quedan dual-writes ni contratos temporales; React sigue siendo la
+fuente de verdad de las pantallas privadas.
 
 ## Formato de entrega de cada checkpoint
 
