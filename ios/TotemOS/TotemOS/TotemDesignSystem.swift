@@ -126,7 +126,11 @@ extension View {
     }
 
     /// Liquid Glass interactivo para una acción concreta de la barra.
-    /// El tinte se limita a la cápsula pulsada/seleccionada, nunca al platter.
+    ///
+    /// La cápsula seleccionada es una superficie de acento real, no un velo
+    /// del 28 %: `Color.contrastForeground(on:)` calcula el contraste contra
+    /// el acento, así que el fondo tiene que ser ese acento para que el
+    /// glifo y la etiqueta cumplan WCAG sobre el vidrio.
     @ViewBuilder
     func totemInteractiveShellGlass(
         in shape: some InsettableShape,
@@ -134,18 +138,17 @@ extension View {
         reduceTransparency: Bool = false
     ) -> some View {
         if reduceTransparency {
-            background(tint.opacity(0.24), in: shape)
-                .overlay { shape.stroke(tint.opacity(0.58), lineWidth: 1) }
+            background(tint, in: shape)
+                .overlay { shape.stroke(.white.opacity(0.22), lineWidth: 1) }
         } else if #available(iOS 26.0, *) {
-            // `.tint` changes the specular response, while this very light
-            // wash guarantees that the accent remains legible in both light
-            // and dark appearances instead of collapsing to white/black.
-            glassEffect(.regular.tint(tint).interactive(), in: shape)
-                .overlay { shape.fill(tint.opacity(0.28)) }
+            // `.tint` da la respuesta especular; la capa de acento por debajo
+            // garantiza que el fondo del glifo sea el acento y no el material.
+            background(tint.opacity(0.9), in: shape)
+                .glassEffect(.regular.tint(tint).interactive(), in: shape)
         } else {
-            background(.ultraThinMaterial, in: shape)
-                .overlay { shape.fill(tint.opacity(0.28)) }
-                .overlay { shape.stroke(tint.opacity(0.58), lineWidth: 1) }
+            background(tint.opacity(0.9), in: shape)
+                .background(.ultraThinMaterial, in: shape)
+                .overlay { shape.stroke(.white.opacity(0.22), lineWidth: 1) }
         }
     }
 }

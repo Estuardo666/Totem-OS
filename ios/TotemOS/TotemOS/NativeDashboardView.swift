@@ -192,14 +192,12 @@ struct NativeDashboardView: View {
     private func dashboardContent(_ dashboard: DashboardData) -> some View {
         VStack(alignment: .leading, spacing: 22) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                if dashboard.user.role == "ADMIN" {
-                    MetricCard(title: "Ingresos del mes", value: currency(dashboard.summary.totalIncome), detail: "Cobrado este mes", icon: "wallet.pass", tint: .green)
-                    MetricCard(title: "Saldo pendiente", value: currency(dashboard.summary.totalReceivable), detail: "Total por cobrar", icon: "doc.text", tint: .orange)
+                // Stable identity per card. Building the grid from an `if`
+                // branch made the cells lose identity when the role arrived
+                // with the payload, leaving blank slots in the layout.
+                ForEach(metricCards(dashboard)) { card in
+                    MetricCard(model: card)
                 }
-                MetricCard(title: "Vencidas en edición", value: "\(dashboard.summary.overdueEditingTasks)", detail: dashboard.summary.overdueEditingTasks == 0 ? "Edición al día" : "Siguen en edición", icon: "exclamationmark.triangle", tint: dashboard.summary.overdueEditingTasks == 0 ? .green : .red)
-                MetricCard(title: "Vencidas publicación", value: "\(dashboard.summary.overduePublicationTasks)", detail: dashboard.summary.overduePublicationTasks == 0 ? "Publicación al día" : "Pendientes de publicar", icon: "doc.badge.clock", tint: dashboard.summary.overduePublicationTasks == 0 ? .green : .red)
-                MetricCard(title: "Contenido publicado", value: "\(dashboard.summary.publishedThisMonth)", detail: "Este mes", icon: "rectangle.stack.badge.checkmark", tint: .blue)
-                MetricCard(title: dashboard.user.role == "ADMIN" ? "Clientes activos" : "Tareas asignadas", value: "\(dashboard.user.role == "ADMIN" ? dashboard.summary.activeClients : dashboard.summary.assignedTasks)", detail: dashboard.user.role == "ADMIN" ? "En el sistema" : roleLabel(dashboard.user.specialty), icon: dashboard.user.role == "ADMIN" ? "person.2" : "checklist")
             }
 
             DashboardSection(title: "Agenda de hoy", subtitle: "\(dashboard.summary.scheduledToday) actividades programadas", icon: "calendar") {
@@ -262,6 +260,52 @@ struct NativeDashboardView: View {
         }
     }
 
+    private func metricCards(_ dashboard: DashboardData) -> [MetricCardModel] {
+        let summary = dashboard.summary
+        let isAdmin = dashboard.user.role == "ADMIN"
+        var cards: [MetricCardModel] = []
+
+        if isAdmin {
+            cards.append(MetricCardModel(id: "income", title: "Ingresos del mes", value: currency(summary.totalIncome), detail: "Cobrado este mes", icon: "wallet.pass", tint: .green))
+            cards.append(MetricCardModel(id: "receivable", title: "Saldo pendiente", value: currency(summary.totalReceivable), detail: "Total por cobrar", icon: "doc.text", tint: .orange))
+        }
+
+        cards.append(MetricCardModel(
+            id: "overdue-editing",
+            title: "Vencidas en edición",
+            value: "\(summary.overdueEditingTasks)",
+            detail: summary.overdueEditingTasks == 0 ? "Edición al día" : "Siguen en edición",
+            icon: "exclamationmark.triangle",
+            tint: summary.overdueEditingTasks == 0 ? .green : .red
+        ))
+        cards.append(MetricCardModel(
+            id: "overdue-publication",
+            title: "Vencidas publicación",
+            value: "\(summary.overduePublicationTasks)",
+            detail: summary.overduePublicationTasks == 0 ? "Publicación al día" : "Pendientes de publicar",
+            icon: "doc.badge.clock",
+            tint: summary.overduePublicationTasks == 0 ? .green : .red
+        ))
+        cards.append(MetricCardModel(
+            id: "published",
+            title: "Contenido publicado",
+            value: "\(summary.publishedThisMonth)",
+            detail: "Este mes",
+            icon: "checkmark.seal",
+            tint: .blue
+        ))
+        cards.append(MetricCardModel(
+            id: "roster",
+            title: isAdmin ? "Clientes activos" : "Tareas asignadas",
+            value: "\(isAdmin ? summary.activeClients : summary.assignedTasks)",
+            detail: isAdmin ? "En el sistema" : roleLabel(dashboard.user.specialty),
+            icon: isAdmin ? "person.2" : "checklist",
+            tint: .accentColor
+        ))
+
+        return cards
+    }
+
     private func currency(_ value: Double?) -> String {
         value?.formatted(.currency(code: "USD")) ?? "—"
     }
@@ -285,23 +329,34 @@ struct NativeDashboardView: View {
     }
 }
 
-private struct MetricCard: View {
+private struct MetricCardModel: Identifiable {
+    let id: String
     let title: String
     let value: String
     let detail: String
     let icon: String
     var tint: Color = .accentColor
+}
+
+private struct MetricCard: View {
+    let model: MetricCardModel
     @EnvironmentObject private var coordinator: AppCoordinator
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack { Image(systemName: icon).foregroundStyle(tint); Spacer(); Text(value).font(.title2.weight(.bold)).foregroundStyle(tint) }
-            Text(title).font(.caption.weight(.medium)).foregroundStyle(.secondary)
-            Text(detail).font(.caption2).foregroundStyle(.secondary)
+            HStack {
+                Image(systemName: model.icon).foregroundStyle(model.tint)
+                Spacer()
+                Text(model.value).font(.title2.weight(.bold)).foregroundStyle(model.tint)
+            }
+            Text(model.title).font(.caption.weight(.medium)).foregroundStyle(.secondary)
+            Text(model.detail).font(.caption2).foregroundStyle(.secondary)
         }
         .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 118, alignment: .leading)
         .totemDashboardCard(palette: coordinator.themePalette, cornerRadius: 22)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(model.title): \(model.value). \(model.detail)")
     }
 }
 

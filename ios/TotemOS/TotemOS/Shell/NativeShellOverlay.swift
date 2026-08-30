@@ -22,7 +22,7 @@ struct NativeShellOverlay: View {
                     // at the physical top edge (above the safe-area inset) and
                     // feathers out below the island instead of forming a bar.
                     ProgressiveHeaderBlurView(reduceTransparency: reduceTransparency)
-                        .frame(height: topInset + 176)
+                        .frame(height: topInset + 210)
                         .frame(maxWidth: .infinity)
                         .offset(y: -topInset)
                         .allowsHitTesting(false)
@@ -68,14 +68,21 @@ private struct ProgressiveHeaderBlurView: View {
 
     var body: some View {
         if reduceTransparency {
-            Color.totemShellSolid
+            // Still a gradient, so the opaque fallback does not end on a
+            // hard edge either.
+            LinearGradient(
+                colors: [Color.totemShellSolid, Color.totemShellSolid.opacity(0)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
         } else {
             TotemVariableBlurView(
                 maxBlurRadius: 28,
                 direction: .blurredTopClearBottom,
-                // Start with a non-zero radius at the Dynamic Island so the
-                // top never reads as a flat translucent gradient.
-                startOffset: -0.12
+                // The gradient has to reach fully clear inside the layer.
+                // A negative offset left ~11% of the mask still opaque at the
+                // bottom edge, which is what made the blur end on a hard line.
+                startOffset: 0
             )
         }
     }

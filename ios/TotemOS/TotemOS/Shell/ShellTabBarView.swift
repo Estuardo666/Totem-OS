@@ -88,7 +88,7 @@ struct ShellTabBarView: View {
             .foregroundStyle(
                 ownsLens
                     ? Color.contrastForeground(on: snapshot.accentColor)
-                    : Color.primary.opacity(0.72)
+                    : Color.primary.opacity(0.85)
             )
             .frame(maxWidth: .infinity, minHeight: shellMinimumTapTarget)
             .padding(.horizontal, 4)
@@ -143,7 +143,7 @@ struct ShellTabBarView: View {
                 .foregroundStyle(
                     isLensOwner
                         ? Color.contrastForeground(on: accentColor)
-                        : Color.primary.opacity(0.65)
+                        : Color.primary.opacity(0.85)
                 )
                 .background {
                     if isLensOwner {
@@ -159,7 +159,10 @@ struct ShellTabBarView: View {
 
         @ViewBuilder
         private func selectionLens(isInteracting: Bool) -> some View {
-            let lens = Capsule()
+            // `Capsule()` como vista es una forma rellena con el color de
+            // primer plano heredado: pintaba un blob opaco bajo el glifo.
+            // La lente sólo debe aportar el material y el acento.
+            let lens = Color.clear
                 .totemInteractiveShellGlass(
                     in: Capsule(),
                     tint: tint,
