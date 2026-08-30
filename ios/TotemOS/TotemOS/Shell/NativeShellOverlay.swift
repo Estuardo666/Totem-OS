@@ -67,14 +67,31 @@ private struct ProgressiveHeaderBlurView: View {
     let reduceTransparency: Bool
 
     var body: some View {
-        if reduceTransparency {
-            // Still a gradient, so the opaque fallback does not end on a
-            // hard edge either.
-            LinearGradient(
-                colors: [Color.totemShellSolid, Color.totemShellSolid.opacity(0)],
-                startPoint: .top,
-                endPoint: .bottom
+        content
+            // The variable-radius filter is resolved through the Objective-C
+            // runtime and is allowed to fail: when it does, the view stays a
+            // uniform UIBlurEffect and ends on a hard line. This mask makes
+            // the fade-out a property of the layer itself, so the bottom edge
+            // is soft whether or not the filter was installed.
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .black, location: 0),
+                        .init(color: .black, location: 0.42),
+                        .init(color: .black.opacity(0.55), location: 0.66),
+                        .init(color: .black.opacity(0.18), location: 0.85),
+                        .init(color: .clear, location: 1),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             )
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if reduceTransparency {
+            Color.totemShellSolid
         } else {
             TotemVariableBlurView(
                 maxBlurRadius: 28,

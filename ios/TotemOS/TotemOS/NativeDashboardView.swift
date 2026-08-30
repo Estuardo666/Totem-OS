@@ -191,12 +191,22 @@ struct NativeDashboardView: View {
 
     private func dashboardContent(_ dashboard: DashboardData) -> some View {
         VStack(alignment: .leading, spacing: 22) {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                // Stable identity per card. Building the grid from an `if`
-                // branch made the cells lose identity when the role arrived
-                // with the payload, leaving blank slots in the layout.
-                ForEach(metricCards(dashboard)) { card in
-                    MetricCard(model: card)
+            // Deliberately NOT a LazyVGrid. The grid was the only lazy
+            // container on this screen and the only one that failed: it
+            // reserved the space for the first two rows and never
+            // materialised them, because the laziness is measured against a
+            // viewport the floating native overlay has already distorted.
+            // Six cards do not need to be lazy.
+            VStack(spacing: 12) {
+                ForEach(metricRows(dashboard)) { row in
+                    HStack(alignment: .top, spacing: 12) {
+                        MetricCard(model: row.leading)
+                        if let trailing = row.trailing {
+                            MetricCard(model: trailing)
+                        } else {
+                            Color.clear.frame(maxWidth: .infinity)
+                        }
+                    }
                 }
             }
 
@@ -257,6 +267,16 @@ struct NativeDashboardView: View {
             DashboardSection(title: "Rendimiento del mes", subtitle: "Señales rápidas del período", icon: "chart.line.uptrend.xyaxis") {
                 PerformanceGrid(summary: dashboard.summary)
             }
+        }
+    }
+
+    private func metricRows(_ dashboard: DashboardData) -> [MetricCardRow] {
+        let cards = metricCards(dashboard)
+        return stride(from: 0, to: cards.count, by: 2).map { index in
+            MetricCardRow(
+                leading: cards[index],
+                trailing: index + 1 < cards.count ? cards[index + 1] : nil
+            )
         }
     }
 
@@ -327,6 +347,12 @@ struct NativeDashboardView: View {
         if utilization >= 50 { return "Ocupación saludable" }
         return "Disponible"
     }
+}
+
+private struct MetricCardRow: Identifiable {
+    let leading: MetricCardModel
+    let trailing: MetricCardModel?
+    var id: String { leading.id }
 }
 
 private struct MetricCardModel: Identifiable {

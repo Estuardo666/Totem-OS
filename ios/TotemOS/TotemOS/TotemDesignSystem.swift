@@ -143,10 +143,10 @@ extension View {
         } else if #available(iOS 26.0, *) {
             // `.tint` da la respuesta especular; la capa de acento por debajo
             // garantiza que el fondo del glifo sea el acento y no el material.
-            background(tint.opacity(0.9), in: shape)
+            background(tint, in: shape)
                 .glassEffect(.regular.tint(tint).interactive(), in: shape)
         } else {
-            background(tint.opacity(0.9), in: shape)
+            background(tint, in: shape)
                 .background(.ultraThinMaterial, in: shape)
                 .overlay { shape.stroke(.white.opacity(0.22), lineWidth: 1) }
         }
