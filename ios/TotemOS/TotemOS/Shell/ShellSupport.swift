@@ -129,24 +129,33 @@ extension Color {
         )
     }
 
+    /// Canal sRGB linealizado según WCAG 2.1.
+    ///
+    /// Se mantiene aparte y con tipos explícitos: escrito en línea dentro del
+    /// literal de array, el inferidor de tipos superaba su límite de tiempo.
+    private static func linearized(_ channel: Double) -> Double {
+        if channel <= 0.03928 {
+            return channel / 12.92
+        }
+        return pow((channel + 0.055) / 1.055, 2.4)
+    }
+
     static func contrastForeground(on hex: String?) -> Color {
         guard let hex,
               ShellContract.isValidHexColor(hex),
               let rgb = UInt64(hex.dropFirst(), radix: 16)
         else { return .white }
 
-        let channels = [
-            Double((rgb >> 16) & 0xFF) / 255,
-            Double((rgb >> 8) & 0xFF) / 255,
-            Double(rgb & 0xFF) / 255,
-        ].map { channel in
-            channel <= 0.03928
-                ? channel / 12.92
-                : pow((channel + 0.055) / 1.055, 2.4)
-        }
-        let luminance = (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2])
-        let whiteContrast = 1.05 / (luminance + 0.05)
-        let blackContrast = (luminance + 0.05) / 0.05
+        let red: Double = Double((rgb >> 16) & 0xFF) / 255
+        let green: Double = Double((rgb >> 8) & 0xFF) / 255
+        let blue: Double = Double(rgb & 0xFF) / 255
+
+        let luminance: Double = (0.2126 * linearized(red))
+            + (0.7152 * linearized(green))
+            + (0.0722 * linearized(blue))
+
+        let whiteContrast: Double = 1.05 / (luminance + 0.05)
+        let blackContrast: Double = (luminance + 0.05) / 0.05
         return blackContrast >= whiteContrast ? .black : .white
     }
 }
