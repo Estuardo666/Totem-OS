@@ -21,12 +21,17 @@ test("la portada web conserva el dashboard completo mientras Swift usa la API na
   assert.doesNotMatch(dashboardRoute, /ApiDashboardView/);
 });
 
-test("React conserva todas las pantallas privadas y el shell sigue superpuesto", () => {
-  assert.match(nativeContent, /Keep the WKWebView mounted/);
-  assert.match(nativeContent, /LegacyWebRouteView\(isVisible: !appCoordinator\.shouldUseNativeRoute && appCoordinator\.hasLoadedState\)/);
+test("React conserva las pantallas privadas dentro de cada tab nativo", () => {
+  assert.match(nativeContent, /ShellTabBarView \{ tab, isActive in/);
+  assert.match(nativeContent, /authenticatedRoute\(tab: tab, isActive: isActive\)/);
+  assert.match(nativeContent, /LegacyWebRouteView\([\s\S]*isActive: isActive,[\s\S]*initialRoute: tab\.route/);
   assert.match(nativeContent, /opacity\(appCoordinator\.shouldUseNativeRoute \? 0\.001 : 1\)/);
   assert.match(nativeContent, /allowsHitTesting\(!appCoordinator\.shouldUseNativeRoute\)/);
   assert.match(nativeWebView, /webView\.isHidden = !isVisible/);
+  assert.match(nativeWebView, /if isActive \{[\s\S]*appCoordinator\.attach\(webView: webView\)/);
+  assert.match(nativeWebView, /URL\(string: initialRoute, relativeTo: AppEnvironment\.baseURL\)/);
+  assert.match(nativeWebView, /context\.coordinator\.isActive = isActive/);
+  assert.match(nativeWebView, /didFinish navigation:[\s\S]*guard isActive else \{ return \}/);
 });
 
 test("las banderas nativas quedan pausadas hasta una aprobación explícita", () => {
