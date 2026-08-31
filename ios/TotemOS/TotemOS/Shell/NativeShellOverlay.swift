@@ -33,7 +33,7 @@ struct NativeShellOverlay: View {
                             // remain below the Dynamic Island/notch.
                             .padding(.top, topInset + 4)
 
-                        ShellTabBarView()
+                        Spacer(minLength: 0)
                     }
                     .transition(reduceMotion ? .identity : .opacity)
                 }

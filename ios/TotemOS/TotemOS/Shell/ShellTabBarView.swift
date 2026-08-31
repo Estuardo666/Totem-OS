@@ -3,20 +3,40 @@ import TotemOSKit
 
 /// Navegación principal basada en el `TabView` del sistema. iOS 26 es el
 /// único responsable de dibujar, animar y adaptar el Liquid Glass del tab bar.
-struct ShellTabBarView: View {
+struct ShellTabBarView<Content: View>: View {
     @EnvironmentObject private var shell: AppCoordinator
+    private let content: (ShellTabItem, Bool) -> Content
+
+    init(@ViewBuilder content: @escaping (ShellTabItem, Bool) -> Content) {
+        self.content = content
+    }
 
     private var snapshot: ShellSnapshot { shell.snapshot }
+
+    private var tabs: [ShellTabItem] {
+        if snapshot.tabs.isEmpty {
+            return [ShellTabItem(
+                id: "tab-home",
+                route: AppRoute.home.path,
+                label: "Inicio",
+                icon: "house"
+            )]
+        }
+        return snapshot.tabs
+    }
+
+    private var selectedTabID: String {
+        tabs.first(where: { snapshot.isActive(route: $0.route) })?.id
+            ?? tabs[0].id
+    }
 
     private var selection: Binding<String> {
         Binding(
             get: {
-                snapshot.tabs.first(where: { snapshot.isActive(route: $0.route) })?.id
-                    ?? snapshot.tabs.first?.id
-                    ?? ""
+                selectedTabID
             },
             set: { tabID in
-                guard let tab = snapshot.tabs.first(where: { $0.id == tabID }),
+                guard let tab = tabs.first(where: { $0.id == tabID }),
                       !snapshot.isActive(route: tab.route)
                 else { return }
                 shell.navigate(to: tab.route)
@@ -26,13 +46,9 @@ struct ShellTabBarView: View {
 
     var body: some View {
         TabView(selection: selection) {
-            ForEach(snapshot.tabs) { tab in
+            ForEach(tabs) { tab in
                 Tab(tab.label, systemImage: tab.icon, value: tab.id) {
-                    // El contenido real sigue perteneciendo al renderer híbrido
-                    // situado debajo del shell. Esta vista transparente permite
-                    // que el TabView posea exclusivamente el chrome del sistema.
-                    Color.clear
-                        .allowsHitTesting(false)
+                    content(tab, selectedTabID == tab.id)
                 }
                 .badge(tab.route == "/content" ? snapshot.taskCount : 0)
             }
@@ -45,8 +61,7 @@ struct ShellTabBarView: View {
     }
 }
 
-/// Acción contextual situada en la zona que iOS reserva encima del tab bar.
-/// No forma parte ni recrea la barra; su vidrio también lo proporciona iOS.
+/// Acción contextual compacta situada a la derecha del accesorio nativo.
 private struct TransactionAccessory: View {
     @EnvironmentObject private var shell: AppCoordinator
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
@@ -57,18 +72,15 @@ private struct TransactionAccessory: View {
             Button {
                 presentsTransactions = true
             } label: {
-                if placement == .inline {
-                    Image(systemName: "plus")
-                        .frame(minWidth: 44, minHeight: 44)
-                } else {
-                    Label("Registrar transacción", systemImage: "plus")
-                        .frame(minHeight: 44)
-                }
+                Image(systemName: "plus")
+                    .font(.system(size: placement == .inline ? 17 : 19, weight: .semibold))
+                    .frame(width: 44, height: 44)
             }
             .buttonStyle(.glass)
             .accessibilityLabel("Registrar transacción")
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(.trailing, 8)
         .confirmationDialog(
             "Registrar transacción",
             isPresented: $presentsTransactions,
