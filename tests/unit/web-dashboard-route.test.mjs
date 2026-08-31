@@ -36,19 +36,19 @@ test("las banderas nativas quedan pausadas hasta una aprobación explícita", ()
   assert.match(coordinator, /guard !nativeScreenMigrationsEnabled \|\| mode\(for: route\) == \.web else \{ return \}/);
 });
 
-test("las barras del shell limitan el glass activo a la selección", () => {
+test("la navegación inferior usa exclusivamente el TabView nativo de iOS 26", () => {
   const nativeTabBar = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/ShellTabBarView.swift"), "utf8");
-  const designSystem = readFileSync(resolve(root, "ios/TotemOS/TotemOS/TotemDesignSystem.swift"), "utf8");
-  assert.match(nativeTabBar, /let ownsLens = activeLensID == tab\.id/);
-  assert.match(nativeTabBar, /glassEffectID\(isLensOwner \? "shell-tab-selection"/);
-  assert.match(nativeTabBar, /TotemGlassContainer\(spacing: 8\)/);
-  assert.doesNotMatch(nativeTabBar, /matchedGeometryEffect\(id:/);
-  assert.match(nativeTabBar, /ShellTabButtonStyle/);
-  assert.match(nativeTabBar, /scaleEffect\(isInteracting \? 1\.12/);
-  assert.match(nativeTabBar, /Color\.contrastForeground\(on: snapshot\.accentColor\)/);
-  assert.doesNotMatch(nativeTabBar, /Image\(systemName: "plus"\)[\s\S]{0,160}foregroundStyle\(Color\.white\)/);
-  assert.match(designSystem, /glassEffect\(\.regular, in: shape\)/);
-  assert.match(designSystem, /glassEffect\(\.regular\.tint\(tint\)\.interactive\(\), in: shape\)/);
+  assert.match(nativeTabBar, /TabView\(selection: selection\)/);
+  assert.match(nativeTabBar, /Tab\(tab\.label, systemImage: tab\.icon, value: tab\.id\)/);
+  assert.match(nativeTabBar, /tabBarMinimizeBehavior\(\.onScrollDown\)/);
+  assert.match(nativeTabBar, /tabViewBottomAccessory\s*\{/);
+  assert.match(nativeTabBar, /@Environment\(\\\.tabViewBottomAccessoryPlacement\)/);
+  assert.match(nativeTabBar, /GlassEffectContainer\(spacing: 8\)/);
+  assert.match(nativeTabBar, /buttonStyle\(\.glass\)/);
+  assert.doesNotMatch(nativeTabBar, /HStack\s*\(/);
+  assert.doesNotMatch(nativeTabBar, /ultraThinMaterial/);
+  assert.doesNotMatch(nativeTabBar, /TotemGlassContainer/);
+  assert.doesNotMatch(nativeTabBar, /ShellTabButtonStyle/);
 });
 
 test("el header deja controles libres bajo la isla con blur progresivo", () => {
@@ -66,7 +66,7 @@ test("el header deja controles libres bajo la isla con blur progresivo", () => {
   assert.match(nativeVariableBlur, /CABackdropLayer/);
   assert.doesNotMatch(nativeOverlay, /backgroundExtensionEffect/);
   assert.match(nativeOverlay, /ignoresSafeArea\(edges: \.top\)/);
-  assert.match(nativeOverlay, /ignoresSafeArea\(edges: \.bottom\)/);
+  assert.doesNotMatch(nativeOverlay, /ignoresSafeArea\(edges: \.bottom\)/);
 });
 
 test("el acento Catppuccin se mantiene idéntico al cambiar el tema", () => {
