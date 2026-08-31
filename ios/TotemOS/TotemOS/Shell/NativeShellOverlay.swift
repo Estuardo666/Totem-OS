@@ -33,12 +33,7 @@ struct NativeShellOverlay: View {
                             // remain below the Dynamic Island/notch.
                             .padding(.top, topInset + 4)
 
-                        Spacer(minLength: 0)
-
                         ShellTabBarView()
-                            // El mismo margen que a izquierda y derecha hace que la
-                            // cápsula siga visualmente el borde del iPhone.
-                            .padding(.bottom, 16)
                     }
                     .transition(reduceMotion ? .identity : .opacity)
                 }
@@ -47,9 +42,8 @@ struct NativeShellOverlay: View {
         // Let only the background layer reach the physical top. The header's
         // explicit safe-area padding above keeps its controls below the island.
         .ignoresSafeArea(edges: .top)
-        // La barra inferior se mide desde el borde físico; el header conserva
-        // su margen seguro debajo de la isla del dispositivo.
-        .ignoresSafeArea(edges: .bottom)
+        // El borde inferior queda bajo control de TabView para que UIKit
+        // resuelva la safe area y la geometría flotante de iOS 26.
         .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: shell.isVisible)
         .preferredColorScheme(shell.snapshot.theme == .dark ? .dark : .light)
         .sheet(isPresented: $shell.isNotificationListOpen) {
