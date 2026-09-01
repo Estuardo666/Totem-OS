@@ -21,17 +21,12 @@ test("la portada web conserva el dashboard completo mientras Swift usa la API na
   assert.doesNotMatch(dashboardRoute, /ApiDashboardView/);
 });
 
-test("React conserva las pantallas privadas dentro de cada tab nativo", () => {
-  assert.match(nativeContent, /ShellTabBarView \{ tab, isActive in/);
-  assert.match(nativeContent, /authenticatedRoute\(tab: tab, isActive: isActive\)/);
-  assert.match(nativeContent, /LegacyWebRouteView\([\s\S]*isActive: isActive,[\s\S]*initialRoute: tab\.route/);
+test("React conserva todas las pantallas privadas y el shell sigue superpuesto", () => {
+  assert.match(nativeContent, /Keep the WKWebView mounted/);
+  assert.match(nativeContent, /LegacyWebRouteView\(isVisible: !appCoordinator\.shouldUseNativeRoute && appCoordinator\.hasLoadedState\)/);
   assert.match(nativeContent, /opacity\(appCoordinator\.shouldUseNativeRoute \? 0\.001 : 1\)/);
   assert.match(nativeContent, /allowsHitTesting\(!appCoordinator\.shouldUseNativeRoute\)/);
   assert.match(nativeWebView, /webView\.isHidden = !isVisible/);
-  assert.match(nativeWebView, /if isActive \{[\s\S]*appCoordinator\.attach\(webView: webView\)/);
-  assert.match(nativeWebView, /URL\(string: initialRoute, relativeTo: AppEnvironment\.baseURL\)/);
-  assert.match(nativeWebView, /context\.coordinator\.isActive = isActive/);
-  assert.match(nativeWebView, /didFinish navigation:[\s\S]*guard isActive else \{ return \}/);
 });
 
 test("las banderas nativas quedan pausadas hasta una aprobación explícita", () => {
@@ -41,19 +36,17 @@ test("las banderas nativas quedan pausadas hasta una aprobación explícita", ()
   assert.match(coordinator, /guard !nativeScreenMigrationsEnabled \|\| mode\(for: route\) == \.web else \{ return \}/);
 });
 
-test("la navegación inferior usa exclusivamente el TabView nativo de iOS 26", () => {
+test("la barra inferior mantiene la lente detrás del icono y del texto", () => {
   const nativeTabBar = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/ShellTabBarView.swift"), "utf8");
-  assert.match(nativeTabBar, /TabView\(selection: selection\)/);
-  assert.match(nativeTabBar, /Tab\(tab\.label, systemImage: tab\.icon, value: tab\.id\)/);
-  assert.match(nativeTabBar, /tabBarMinimizeBehavior\(\.onScrollDown\)/);
-  assert.match(nativeTabBar, /tabViewBottomAccessory\s*\{/);
-  assert.match(nativeTabBar, /@Environment\(\\\.tabViewBottomAccessoryPlacement\)/);
-  assert.match(nativeTabBar, /GlassEffectContainer\(spacing: 8\)/);
-  assert.match(nativeTabBar, /buttonStyle\(\.glass\)/);
-  assert.doesNotMatch(nativeTabBar, /HStack\s*\(/);
-  assert.doesNotMatch(nativeTabBar, /ultraThinMaterial/);
-  assert.doesNotMatch(nativeTabBar, /TotemGlassContainer/);
-  assert.doesNotMatch(nativeTabBar, /ShellTabButtonStyle/);
+  const designSystem = readFileSync(resolve(root, "ios/TotemOS/TotemOS/TotemDesignSystem.swift"), "utf8");
+  assert.match(nativeTabBar, /let ownsLens = activeLensID == tab\.id/);
+  assert.match(nativeTabBar, /TotemGlassContainer\(spacing: 8\)/);
+  assert.match(nativeTabBar, /selectionLens\(isInteracting: isInteracting\)[\s\S]*\.zIndex\(0\)/);
+  assert.match(nativeTabBar, /configuration\.label[\s\S]*\.zIndex\(1\)/);
+  assert.match(nativeTabBar, /glassEffectID\(isLensOwner \? "shell-tab-selection"/);
+  assert.match(nativeTabBar, /ShellTabButtonStyle/);
+  assert.doesNotMatch(nativeTabBar, /TabView\(selection:/);
+  assert.match(designSystem, /glassEffect\(\.regular\.tint\(tint\)\.interactive\(\), in: shape\)/);
 });
 
 test("el header deja controles libres bajo la isla con blur progresivo", () => {
@@ -71,7 +64,7 @@ test("el header deja controles libres bajo la isla con blur progresivo", () => {
   assert.match(nativeVariableBlur, /CABackdropLayer/);
   assert.doesNotMatch(nativeOverlay, /backgroundExtensionEffect/);
   assert.match(nativeOverlay, /ignoresSafeArea\(edges: \.top\)/);
-  assert.doesNotMatch(nativeOverlay, /ignoresSafeArea\(edges: \.bottom\)/);
+  assert.match(nativeOverlay, /ignoresSafeArea\(edges: \.bottom\)/);
 });
 
 test("el acento Catppuccin se mantiene idéntico al cambiar el tema", () => {
