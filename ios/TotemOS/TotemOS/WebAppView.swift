@@ -6,17 +6,10 @@ struct LegacyWebRouteView: UIViewRepresentable {
     @EnvironmentObject private var appModel: AppModel
     @EnvironmentObject private var appCoordinator: AppCoordinator
     let isVisible: Bool
-    let isActive: Bool
-    let initialRoute: String
     let onContentReady: () -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(
-            appModel: appModel,
-            appCoordinator: appCoordinator,
-            isActive: isActive,
-            onContentReady: onContentReady
-        )
+        Coordinator(appModel: appModel, appCoordinator: appCoordinator, onContentReady: onContentReady)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -48,41 +41,25 @@ struct LegacyWebRouteView: UIViewRepresentable {
         )
         webView.scrollView.refreshControl = refreshControl
 
-        if isActive {
-            appModel.attach(webView: webView)
-            appCoordinator.attach(webView: webView)
-        }
-        let initialURL = URL(string: initialRoute, relativeTo: AppEnvironment.baseURL)?.absoluteURL
-            ?? AppEnvironment.baseURL
-        webView.load(URLRequest(url: initialURL))
+        appModel.attach(webView: webView)
+        appCoordinator.attach(webView: webView)
+        webView.load(URLRequest(url: AppEnvironment.baseURL))
         return webView
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         webView.isHidden = !isVisible
-        context.coordinator.isActive = isActive
-        if isActive {
-            appModel.attach(webView: webView)
-            appCoordinator.attach(webView: webView)
-        }
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         private let appModel: AppModel
         private let appCoordinator: AppCoordinator
         private let onContentReady: () -> Void
-        var isActive: Bool
         weak var webView: WKWebView?
 
-        init(
-            appModel: AppModel,
-            appCoordinator: AppCoordinator,
-            isActive: Bool,
-            onContentReady: @escaping () -> Void
-        ) {
+        init(appModel: AppModel, appCoordinator: AppCoordinator, onContentReady: @escaping () -> Void) {
             self.appModel = appModel
             self.appCoordinator = appCoordinator
-            self.isActive = isActive
             self.onContentReady = onContentReady
         }
 
@@ -96,7 +73,6 @@ struct LegacyWebRouteView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation?) {
             webView.scrollView.refreshControl?.endRefreshing()
-            guard isActive else { return }
             appModel.updateConnection(isOffline: false)
             appModel.webViewDidFinish(url: webView.url)
             appCoordinator.webViewDidFinish(url: webView.url)
@@ -108,10 +84,6 @@ struct LegacyWebRouteView: UIViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction,
             decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
         ) {
-            guard isActive else {
-                decisionHandler(.allow)
-                return
-            }
             guard let url = navigationAction.request.url,
                   url.host == AppEnvironment.baseURL.host,
                   url.path.hasPrefix("/sign-in")
@@ -133,7 +105,6 @@ struct LegacyWebRouteView: UIViewRepresentable {
             withError error: Error
         ) {
             webView.scrollView.refreshControl?.endRefreshing()
-            guard isActive else { return }
             appModel.updateConnection(isOffline: true)
         }
 
@@ -143,7 +114,6 @@ struct LegacyWebRouteView: UIViewRepresentable {
             withError error: Error
         ) {
             webView.scrollView.refreshControl?.endRefreshing()
-            guard isActive else { return }
             appModel.updateConnection(isOffline: true)
         }
 

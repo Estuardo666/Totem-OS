@@ -1,8 +1,32 @@
 import SwiftUI
+import UIKit
 import TotemOSKit
 
 /// Área táctil mínima recomendada por Apple.
 let shellMinimumTapTarget: CGFloat = 44
+
+/// Generadores persistentes y preparados para evitar que la primera respuesta
+/// háptica llegue tarde o resulte imperceptible.
+@MainActor
+enum ShellHaptics {
+    private static let selectionGenerator = UISelectionFeedbackGenerator()
+    private static let tapGenerator = UIImpactFeedbackGenerator(style: .light)
+
+    static func prepare() {
+        selectionGenerator.prepare()
+        tapGenerator.prepare()
+    }
+
+    static func selectionChanged() {
+        selectionGenerator.selectionChanged()
+        selectionGenerator.prepare()
+    }
+
+    static func tap() {
+        tapGenerator.impactOccurred(intensity: 0.82)
+        tapGenerator.prepare()
+    }
+}
 
 struct ShellBadge: View {
     let count: Int

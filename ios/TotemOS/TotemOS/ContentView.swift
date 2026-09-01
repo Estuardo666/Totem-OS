@@ -19,15 +19,45 @@ struct ContentView: View {
                 .ignoresSafeArea()
                 .transition(.opacity)
             } else {
-                // TabView owns the route surface. Keeping the WKWebView inside
-                // each native Tab prevents an opaque tab container from
-                // covering the web renderer and preserves native hit testing.
-                ShellTabBarView { tab, isActive in
-                    authenticatedRoute(tab: tab, isActive: isActive)
+                // Keep the WKWebView mounted as the authenticated renderer for
+                // every private React/Next.js screen. The native shell remains
+                // available above it for navigation and session actions.
+                LegacyWebRouteView(isVisible: !appCoordinator.shouldUseNativeRoute && appCoordinator.hasLoadedState) {
+                    guard appCoordinator.hasLoadedState && !appCoordinator.shouldUseNativeRoute else { return }
+                    withAnimation(.easeOut(duration: 0.25)) { isLaunching = false }
+                }
+                .ignoresSafeArea()
+                // React must always be a real, interactive layer while the
+                // native-screen migration gate is paused. The opacity branch is
+                // retained only for a future, explicitly approved migration.
+                .opacity(appCoordinator.shouldUseNativeRoute ? 0.001 : 1)
+                .allowsHitTesting(!appCoordinator.shouldUseNativeRoute)
+
+                if appCoordinator.shouldUseNativeRoute {
+                    if appCoordinator.snapshot.route == AppRoute.home.path {
+                        NativeDashboardView(
+                            state: appCoordinator.dashboardState,
+                            data: appCoordinator.dashboardData,
+                            retry: { await appCoordinator.loadDashboard(forceRefresh: true) },
+                            rollback: {
+                                if let route = AppRoute(path: appCoordinator.snapshot.route) {
+                                    appCoordinator.rollbackToLegacyWeb(for: route)
+                                }
+                            }
+                        )
+                        .task { await appCoordinator.loadDashboard() }
+                        .onAppear { if appCoordinator.hasLoadedState { isLaunching = false } }
+                    } else {
+                        NativeRouteView(route: appCoordinator.snapshot.route) {
+                            if let route = AppRoute(path: appCoordinator.snapshot.route) {
+                                appCoordinator.rollbackToLegacyWeb(for: route)
+                            }
+                        }
+                        .onAppear { if appCoordinator.hasLoadedState { isLaunching = false } }
+                    }
                 }
 
-                // El overlay contiene solo el header; el tab bar pertenece al
-                // TabView que contiene las pantallas.
+                // Shell nativo superpuesto: header, menús y barra inferior.
                 NativeShellOverlay()
                     .zIndex(3)
             }
@@ -59,47 +89,6 @@ struct ContentView: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
-    }
-
-    @ViewBuilder
-    private func authenticatedRoute(tab: ShellTabItem, isActive: Bool) -> some View {
-        ZStack {
-            LegacyWebRouteView(
-                isVisible: !appCoordinator.shouldUseNativeRoute && appCoordinator.hasLoadedState,
-                isActive: isActive,
-                initialRoute: tab.route
-            ) {
-                guard appCoordinator.hasLoadedState && !appCoordinator.shouldUseNativeRoute else { return }
-                withAnimation(.easeOut(duration: 0.25)) { isLaunching = false }
-            }
-            .ignoresSafeArea(edges: [.top, .horizontal])
-            .opacity(appCoordinator.shouldUseNativeRoute ? 0.001 : 1)
-            .allowsHitTesting(!appCoordinator.shouldUseNativeRoute)
-
-            if appCoordinator.shouldUseNativeRoute && isActive {
-                if appCoordinator.snapshot.route == AppRoute.home.path {
-                    NativeDashboardView(
-                        state: appCoordinator.dashboardState,
-                        data: appCoordinator.dashboardData,
-                        retry: { await appCoordinator.loadDashboard(forceRefresh: true) },
-                        rollback: {
-                            if let route = AppRoute(path: appCoordinator.snapshot.route) {
-                                appCoordinator.rollbackToLegacyWeb(for: route)
-                            }
-                        }
-                    )
-                    .task { await appCoordinator.loadDashboard() }
-                    .onAppear { if appCoordinator.hasLoadedState { isLaunching = false } }
-                } else {
-                    NativeRouteView(route: appCoordinator.snapshot.route) {
-                        if let route = AppRoute(path: appCoordinator.snapshot.route) {
-                            appCoordinator.rollbackToLegacyWeb(for: route)
-                        }
-                    }
-                    .onAppear { if appCoordinator.hasLoadedState { isLaunching = false } }
-                }
-            }
-        }
     }
 }
 
