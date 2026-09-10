@@ -32,7 +32,7 @@ export function MetricsChart({ data }: MetricsChartProps) {
     return (
       <Card className="border shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base font-semibold">Evolución de Impresiones</CardTitle>
+          <CardTitle className="text-base font-semibold">Evolución de visualizaciones</CardTitle>
           <CardDescription className="text-xs">
             No hay datos disponibles para mostrar
           </CardDescription>
@@ -49,7 +49,7 @@ export function MetricsChart({ data }: MetricsChartProps) {
   return (
     <Card className="border shadow-sm">
       <CardHeader>
-        <CardTitle className="text-base font-semibold">Evolución de Impresiones</CardTitle>
+        <CardTitle className="text-base font-semibold">Evolución de visualizaciones</CardTitle>
         <CardDescription className="text-xs">
           Últimos {data.length} días disponibles
         </CardDescription>
