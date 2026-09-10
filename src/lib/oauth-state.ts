@@ -67,3 +67,4 @@ export async function clearOAuthCookies(...names: string[]): Promise<void> {
 export const GOOGLE_STATE_COOKIE = "gcal_oauth_state";
 export const GOOGLE_VERIFIER_COOKIE = "gcal_oauth_verifier";
 export const META_STATE_COOKIE = "meta_oauth_state";
+export const TIKTOK_STATE_COOKIE = "tiktok_oauth_state";

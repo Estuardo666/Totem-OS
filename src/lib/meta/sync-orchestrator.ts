@@ -25,6 +25,12 @@ import {
   type AdMetricRow,
 } from "./ads-service.ts";
 import { getAgencyToken, readPageToken } from "./token-store.ts";
+import { getValidTikTokToken } from "../tiktok/token-store.ts";
+import {
+  fetchTikTokProfileStats,
+  fetchTikTokVideos,
+  transformTikTokForStorage,
+} from "../tiktok/metrics-service.ts";
 import type {
   PlatformSyncResult,
   SyncOptions,
@@ -148,6 +154,33 @@ async function syncInstagram(
     console.warn("[Sync] Instagram: no se pudo leer followers_count:", error);
   }
 
+  if (rows.length === 0) return 0;
+  return persistOrganicMetrics(rows);
+}
+
+/**
+ * Sincroniza las métricas orgánicas de TikTok.
+ *
+ * La Display API no expone serie histórica, solo totales actuales, así que
+ * esto guarda un snapshot fechado hoy. Los deltas se calculan al leer,
+ * diferenciando snapshots de días consecutivos — y por eso conviene empezar a
+ * recolectar aunque el informe llegue después: lo que no se guarde hoy no se
+ * puede recuperar mañana.
+ */
+async function syncTikTok(clientId: string): Promise<number> {
+  const token = await getValidTikTokToken();
+  const stats = await fetchTikTokProfileStats(token);
+
+  // Los videos son complementarios: si fallan, el snapshot del perfil igual
+  // debe guardarse.
+  let videos: Awaited<ReturnType<typeof fetchTikTokVideos>> = [];
+  try {
+    videos = await fetchTikTokVideos(token, 20);
+  } catch (error) {
+    console.warn("[Sync] TikTok: no se pudieron leer los videos:", error);
+  }
+
+  const rows = transformTikTokForStorage(stats, videos, clientId);
   if (rows.length === 0) return 0;
   return persistOrganicMetrics(rows);
 }
@@ -415,8 +448,13 @@ export async function runClientSync(
               skip("Sin cuenta de TikTok vinculada.");
               break;
             }
-            // Implementado en la Fase 6.
-            skip("Integración de TikTok aún no disponible.");
+            const count = await syncTikTok(clientId);
+            results.push({
+              platform,
+              status: "OK",
+              count,
+              durationMs: Date.now() - startedAt,
+            });
             break;
           }
         }

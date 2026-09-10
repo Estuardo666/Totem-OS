@@ -5,6 +5,7 @@ import { getConnectedMetaAccount } from "@/actions/meta-actions";
 import { ConnectMetaButton } from "@/components/features/admin/connect-meta-button";
 import { DetectedPagesList } from "@/components/features/admin/detected-pages-list";
 import { DisconnectMetaButton } from "@/components/features/admin/disconnect-meta-button";
+import { TikTokIntegrationCard } from "@/components/features/admin/tiktok-integration-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, AlertCircle, Info } from "lucide-react";
@@ -113,6 +114,8 @@ async function IntegrationsContent() {
           )}
         </CardContent>
       </Card>
+
+      <TikTokIntegrationCard />
     </div>
   );
 }
