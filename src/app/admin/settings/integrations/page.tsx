@@ -73,6 +73,10 @@ async function IntegrationsContent() {
                               pages_show_list: "Ver páginas",
                               pages_read_engagement: "Leer comentarios/likes",
                               read_insights: "Leer métricas de Insights",
+                              instagram_basic: "Ver cuentas de Instagram",
+                              instagram_manage_insights: "Leer métricas de Instagram",
+                              ads_read: "Leer métricas de anuncios",
+                              business_management: "Acceder al Business Manager",
                             };
                             return (
                               <li key={perm}>
@@ -82,8 +86,12 @@ async function IntegrationsContent() {
                           })}
                         </ul>
                         <p className="text-sm mt-2">
-                          Por favor, reconecta tu cuenta de Facebook y otorga todos los permisos necesarios.
+                          Reconecta tu cuenta de Facebook y otorga todos los permisos.
+                          Se te volverán a pedir los que falten; no perderás las páginas ya vinculadas.
                         </p>
+                        <div className="mt-3">
+                          <ConnectMetaButton label="Reconectar y otorgar permisos" size="sm" />
+                        </div>
                       </div>
                     </AlertDescription>
                   </Alert>

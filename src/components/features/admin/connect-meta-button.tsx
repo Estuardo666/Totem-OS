@@ -6,7 +6,16 @@ import { Facebook, Loader2 } from "lucide-react";
 import { getMetaAuthUrl } from "@/actions/meta-actions";
 import { useToast } from "@/components/ui/use-toast";
 
-export function ConnectMetaButton() {
+interface ConnectMetaButtonProps {
+  /** Texto del botón. Cambia según sea una conexión nueva o una reconexión. */
+  label?: string;
+  size?: "sm" | "lg";
+}
+
+export function ConnectMetaButton({
+  label = "Conectar con Facebook",
+  size = "lg",
+}: ConnectMetaButtonProps = {}) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
@@ -23,7 +32,7 @@ export function ConnectMetaButton() {
             description: result.error || "Error al generar URL de autorización",
           });
         }
-      } catch (error) {
+      } catch {
         toast({
           variant: "destructive",
           title: "Error",
@@ -34,7 +43,7 @@ export function ConnectMetaButton() {
   };
 
   return (
-    <Button onClick={handleConnect} size="lg" className="w-full sm:w-auto" disabled={isPending}>
+    <Button onClick={handleConnect} size={size} className="w-full sm:w-auto" disabled={isPending}>
       {isPending ? (
         <>
           <Loader2 className="h-5 w-5 mr-2 animate-spin" />
