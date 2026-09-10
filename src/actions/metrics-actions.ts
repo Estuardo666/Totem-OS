@@ -963,23 +963,23 @@ export async function getClientFacebookMetrics(
 
     // 4. Calcular totales para el overview
     const impressions = metrics
-      .filter((m) => m.metricName === "page_impressions")
+      .filter((m) => m.metricName === "page_media_view")
       .reduce((sum, m) => sum + m.value, 0);
 
     // Nota: page_engaged_users puede no estar disponible, usar 0 como fallback
     const engagements = metrics
-      .filter((m) => m.metricName === "page_engaged_users")
+      .filter((m) => m.metricName === "page_post_engagements")
       .reduce((sum, m) => sum + m.value, 0);
 
     // page_fans es lifetime, tomar el valor más reciente
     const fansMetrics = metrics
-      .filter((m) => m.metricName === "page_fans")
+      .filter((m) => m.metricName === "page_follows")
       .sort((a, b) => b.date.getTime() - a.date.getTime());
     const fans = fansMetrics.length > 0 ? fansMetrics[0].value : 0;
 
     // 5. Preparar datos para el gráfico (últimos 28 días de impresiones)
     const impressionsByDate = metrics
-      .filter((m) => m.metricName === "page_impressions")
+      .filter((m) => m.metricName === "page_media_view")
       .reduce((acc, m) => {
         const dateKey = m.date.toISOString().split("T")[0];
         if (!acc[dateKey]) {

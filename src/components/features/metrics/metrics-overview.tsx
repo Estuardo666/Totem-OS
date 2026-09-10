@@ -23,12 +23,12 @@ export function MetricsOverview({ impressions, engagements, fans }: MetricsOverv
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {/* Alcance/Impresiones */}
+      {/* Alcance/Visualizaciones */}
       <Card className="border shadow-sm h-full">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
             <Eye className="h-4 w-4" />
-            Alcance / Impresiones
+            Visualizaciones
           </CardTitle>
         </CardHeader>
         <CardContent>

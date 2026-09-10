@@ -55,189 +55,35 @@ export async function fetchPageMetrics(
   accessToken: string,
   days: number = 28
 ): Promise<PageMetricsResponse> {
-  // Timeout de seguridad para evitar bloqueos infinitos
-  const TIMEOUT_MS = 10000; // 10 segundos
-
-  // Helper para fetch con timeout
-  const fetchWithTimeout = async (url: string): Promise<Response> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-    try {
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      return response;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Meta API Timeout: La solicitud tardó demasiado');
-      }
-      throw error;
-    }
-  };
-
-  // 1. Calcular fechas de forma segura (Meta no acepta fechas futuras o presentes para period=day)
-  // Until debe ser anteayer (2 días antes) para asegurar que pedimos datos cerrados y disponibles
-  const today = new Date();
-  today.setDate(today.getDate() - 2); // Restamos 2 días para asegurar que pedimos datos cerrados (anteayer)
-  today.setHours(23, 59, 59, 999); // Fin del día de anteayer
-  const until = Math.floor(today.getTime() / 1000);
-
-  // Since se calcula desde el until menos los días solicitados
-  const sinceDate = new Date(today);
-  sinceDate.setDate(sinceDate.getDate() - days);
-  sinceDate.setHours(0, 0, 0, 0); // Inicio del día
-  const since = Math.floor(sinceDate.getTime() / 1000);
-
-  console.log(`🔍 [Meta Fetch] Intentando obtener métricas para Page ID: ${pageId}`);
-  console.log(`📅 [Meta Fetch] Rango de fechas: ${sinceDate.toISOString().split('T')[0]} hasta ${today.toISOString().split('T')[0]} (${days} días)`);
-  console.log(`📊 [Meta Fetch] Timestamps: since=${since}, until=${until}`);
-  console.log(`⏱️ [Meta Fetch] Timeout configurado: ${TIMEOUT_MS}ms`);
-
-  try {
-    // PRIMERO: Verificar que el token tenga permisos y que la página sea accesible
-    const pageInfoUrl = `https://graph.facebook.com/v21.0/${pageId}?fields=name,access_token&access_token=${accessToken}`;
-    const pageInfoRes = await fetchWithTimeout(pageInfoUrl);
-    const pageInfo = await pageInfoRes.json();
-
-    if (pageInfo.error) {
-      const errorCode = pageInfo.error.code;
-      const errorMessage = pageInfo.error.message;
-
-      console.error("❌ Error al verificar página:", pageInfo.error);
-
-      if (errorCode === 190 || errorCode === 102) {
-        throw new TokenExpiredError(
-          `Token caducado o inválido: ${errorMessage}. Por favor, reconecta tu cuenta de Facebook.`
-        );
-      }
-
-      if (errorCode === 200) {
-        throw new InsufficientPermissionsError(
-          `Permisos insuficientes: ${errorMessage}. Verifica que la página tenga los permisos necesarios.`
-        );
-      }
-
-      throw new Error(`Error al verificar página: ${errorMessage} (Code: ${errorCode})`);
-    }
-
-    // Usar el page access token si está disponible (más seguro)
-    const tokenToUse = pageInfo.access_token || accessToken;
-
-    // INTENTO 1: Impresiones (period=day)
-    const impressionsUrl = `https://graph.facebook.com/v21.0/${pageId}/insights?metric=page_impressions&period=day&since=${since}&until=${until}&access_token=${tokenToUse}`;
-    
-    // INTENTO 2: Fans (Lifetime)
-    const fansUrl = `https://graph.facebook.com/v21.0/${pageId}/insights?metric=page_fans&period=lifetime&access_token=${tokenToUse}`;
-    
-    console.log("👉 [Meta Fetch] URLs generadas (token oculto)");
-    console.log("   Impresiones:", impressionsUrl.replace(tokenToUse, "***"));
-    console.log("   Fans:", fansUrl.replace(tokenToUse, "***"));
-
-    const [impRes, fansRes] = await Promise.all([
-      fetchWithTimeout(impressionsUrl),
-      fetchWithTimeout(fansUrl)
-    ]);
-
-    const impData = await impRes.json();
-    const fansData = await fansRes.json();
-
-    // Verificación de errores granular
-    if (impData.error) {
-      const errorCode = impData.error.code;
-      const errorMessage = impData.error.message;
-
-      console.error("❌ Error en Impresiones:", impData.error);
-
-      // Si es error #100, significa que las métricas no están disponibles
-      if (errorCode === 100) {
-        throw new InsufficientPermissionsError(
-          `Las métricas de Insights no están disponibles para esta página. Error: ${errorMessage}. Verifica que la página tenga habilitados los Insights y que el token tenga el permiso 'read_insights'.`
-        );
-      }
-
-      if (errorCode === 190 || errorCode === 102) {
-        throw new TokenExpiredError(
-          `Token caducado o inválido: ${errorMessage}. Por favor, reconecta tu cuenta de Facebook.`
-        );
-      }
-
-      if (errorCode === 200) {
-        throw new InsufficientPermissionsError(
-          `Permisos insuficientes: ${errorMessage}. Verifica que la página tenga los permisos necesarios.`
-        );
-      }
-
-      // Para otros errores, continuamos con fans
-      console.warn("⚠️ Error al obtener impresiones, continuando con fans si están disponibles:", errorMessage);
-    }
-    
-    if (fansData.error) {
-      const errorCode = fansData.error.code;
-      const errorMessage = fansData.error.message;
-
-      console.error("❌ Error en Fans:", fansData.error);
-
-      // Si es error #100, significa que las métricas no están disponibles
-      if (errorCode === 100) {
-        // Si ya tuvimos error #100 en impresiones, lanzamos el error
-        if (impData.error?.code === 100) {
-          throw new InsufficientPermissionsError(
-            `Las métricas de Insights no están disponibles para esta página. Error: ${errorMessage}. Verifica que la página tenga habilitados los Insights y que el token tenga el permiso 'read_insights'.`
-          );
-        }
-        // Si solo fans falla con #100, continuamos con impresiones
-        console.warn("⚠️ Error #100 en fans, continuando con impresiones si están disponibles:", errorMessage);
-      } else if (errorCode === 190 || errorCode === 102) {
-        throw new TokenExpiredError(
-          `Token caducado o inválido: ${errorMessage}. Por favor, reconecta tu cuenta de Facebook.`
-        );
-      } else if (errorCode === 200) {
-        throw new InsufficientPermissionsError(
-          `Permisos insuficientes: ${errorMessage}. Verifica que la página tenga los permisos necesarios.`
-        );
-      } else {
-        console.warn("⚠️ Error al obtener fans, continuando con impresiones si están disponibles:", errorMessage);
-      }
-    }
-
-    // Combinar resultados válidos
-    const combinedData = [
-      ...(impData.data || []),
-      ...(fansData.data || [])
-    ];
-
-    if (combinedData.length === 0) {
-      throw new InsufficientPermissionsError(
-        "No se pudieron obtener métricas válidas de Meta. Verifica que la página tenga habilitados los Insights y que el token tenga el permiso 'read_insights'."
-      );
-    }
-
-    console.log("✅ [Meta Fetch] Éxito. Datos recibidos:", combinedData.length, "métricas");
-
-    return { data: combinedData };
-
-  } catch (error) {
-    // Re-lanzar errores específicos
-    if (error instanceof TokenExpiredError || error instanceof InsufficientPermissionsError) {
-      throw error;
-    }
-
-    // Manejar timeout explícitamente
-    if (error instanceof Error && error.message.includes('Meta API Timeout')) {
-      console.error("⏱️ [Meta Service Timeout]:", error.message);
-      throw new Error("Meta API Timeout: La solicitud a Meta API tardó demasiado. Por favor, inténtalo de nuevo.");
-    }
-
-    console.error("🚨 [Meta Service Critical]:", error);
-
-    // Manejar errores de red u otros
-    if (error instanceof Error) {
-      throw error;
-    }
-
-    throw new Error("Error desconocido al obtener métricas");
+  if (!Number.isInteger(days) || days < 1 || days > 90) {
+    throw new Error("El período debe estar entre 1 y 90 días.");
   }
+  const until = Math.floor(Date.now() / 1000);
+  const since = until - days * 86400;
+  const url = new URL(`https://graph.facebook.com/v21.0/${pageId}/insights`);
+  url.search = new URLSearchParams({
+    metric: "page_media_view,page_post_engagements,page_follows",
+    period: "day",
+    since: String(since),
+    until: String(until),
+  }).toString();
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(10000),
+    cache: "no-store",
+  });
+  const result = await response.json();
+  if (!response.ok || result.error) {
+    const code = result.error?.code;
+    if (code === 190 || code === 102) throw new TokenExpiredError();
+    if (code === 10 || code === 200) throw new InsufficientPermissionsError();
+    // Invalid metrics (#100) are not permission failures.
+    throw new Error(`Meta Insights: ${result.error?.message || response.statusText}`);
+  }
+  if (!Array.isArray(result.data) || result.data.length === 0) {
+    throw new Error("Meta no devolvió métricas para este período.");
+  }
+  return { data: result.data };
 }
 
 /**
