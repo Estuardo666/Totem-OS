@@ -209,7 +209,11 @@ model Client {
   facebookPageId      String? // ID de la Fanpage vinculada
   instagramBusinessId String? // ID de la cuenta de Instagram vinculada
   pageAccessToken     String? // Token específico de la página (necesario para leer insights sin que caduque la sesión del usuario)
-  adAccountId         String? // ID de la cuenta publicitaria de Meta (para IA Ads Advisor y optimizaciones)
+  adAccountId         String? // DEPRECADO: usar la relación adAccounts. Se conserva por compatibilidad.
+
+  // TikTok Integration
+  tiktokOpenId   String? // open_id del perfil de TikTok vinculado
+  tiktokUsername String?
 
   // Facturación Electrónica - Datos fiscales
   tipoIdentificacion   String? // RUC, CEDULA, PASAPORTE, CONSUMIDOR_FINAL
@@ -230,6 +234,8 @@ model Client {
   feedbacks         ClientFeedback[]
   shootings         Shoot[]
   metrics           ClientMetric[]
+  adAccounts        ClientAdAccount[]
+  adMetrics         ClientAdMetric[]
   monthlyClosures   ClientMonthlyClosure[]
   monthlyStrategies ClientMonthlyStrategy[]
   billingExceptions ClientBillingException[]
@@ -790,25 +796,95 @@ model AgencyMetaAccount {
   name           String // Nombre del usuario, ej: "Stuart Admin"
   accessToken    String // Token de usuario de larga duración (60 días)
   tokenExpiresAt DateTime // Fecha de expiración del token
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+
+  // Ciclo de vida del token
+  scopes          String? // CSV de permisos otorgados al momento de conectar
+  lastRefreshedAt DateTime? // Última renovación exitosa vía fb_exchange_token
+  refreshFailedAt DateTime? // Si está seteado, la renovación falló y hace falta reconectar
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([facebookUserId])
 }
 
-// MÉTRICAS DE CLIENTES (Insights Engine)
+// INTEGRACIÓN TIKTOK (Login Kit + Display API)
+model AgencyTikTokAccount {
+  id               String    @id @default(cuid())
+  openId           String    @unique // Identificador del usuario en TikTok
+  displayName      String
+  accessToken      String // Vive 24h
+  refreshToken     String // Vive 365d
+  tokenExpiresAt   DateTime
+  refreshExpiresAt DateTime
+  scopes           String
+  lastRefreshedAt  DateTime?
+  refreshFailedAt  DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// MÉTRICAS ORGÁNICAS DE CLIENTES (Insights Engine)
 model ClientMetric {
   id         String   @id @default(cuid())
   clientId   String
   client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  platform   String // "FACEBOOK" | "INSTAGRAM"
-  metricName String // ej: "page_impressions", "page_engaged_users"
+  platform   String // "FACEBOOK" | "INSTAGRAM" | "TIKTOK"
+  metricName String // ej: "page_media_view", "reach", "followers_count"
   value      Float
   date       DateTime // Fecha del dato
   fetchedAt  DateTime @default(now())
 
   @@unique([clientId, platform, metricName, date]) // Evita duplicados para el mismo día
   @@index([clientId, date]) // Optimiza la carga de gráficas
+}
+
+// CUENTAS PUBLICITARIAS VINCULADAS (un cliente puede tener varias)
+model ClientAdAccount {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  platform    String   @default("META_ADS")
+  adAccountId String // "act_123456"
+  name        String
+  currency    String   @default("USD")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([clientId, platform, adAccountId])
+  @@index([clientId])
+}
+
+// MÉTRICAS PAGADAS POR CAMPAÑA/DÍA
+// Tabla tipada (no EAV) porque los ratios CTR/CPC/CPM/ROAS deben recalcularse
+// desde numeradores y denominadores sumados, nunca promediarse entre filas.
+model ClientAdMetric {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  platform     String // "META_ADS"
+  adAccountId  String
+  campaignId   String // "__ACCOUNT__" para filas de resumen — nunca NULL
+  campaignName String
+  date         DateTime // Día, desde date_start con time_increment=1
+
+  spend           Float @default(0)
+  impressions     Float @default(0)
+  reach           Float @default(0)
+  clicks          Float @default(0) // inline_link_clicks, con fallback a clicks
+  frequency       Float @default(0)
+  conversions     Float @default(0) // Extraído de actions[]
+  conversionValue Float @default(0) // De action_values[] → numerador de ROAS
+
+  currency    String  @default("USD")
+  objective   String?
+  actionsJson String? // Payload crudo de actions[], para drill-down sin re-sincronizar
+
+  fetchedAt DateTime @default(now())
+
+  @@unique([clientId, platform, adAccountId, campaignId, date])
+  @@index([clientId, date])
 }
 
 // CIERRE MENSUAL CONTABLE POR CLIENTE

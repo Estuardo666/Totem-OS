@@ -10,7 +10,8 @@ import { generatePerformanceAnalysis } from "@/lib/ai/ai-orchestrator";
 import type { PerformanceContext } from "@/lib/ai/performance-prompts";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { fetchPageMetrics, transformMetricsForStorage, TokenExpiredError, InsufficientPermissionsError } from "@/lib/meta/metrics-service";
+import { runClientSync } from "@/lib/meta/sync-orchestrator";
+import type { SyncOptions, SyncSummary } from "@/lib/meta/sync-types";
 
 /**
  * Calcula el Engagement Rate para Meta (Instagram/Facebook)
@@ -769,150 +770,63 @@ export async function generateClientPerformanceOverview(
   }
 }
 
+
 /**
- * Sincroniza las métricas de Facebook de un cliente desde la API de Meta
- * Obtiene los últimos 28 días de datos y los guarda en la base de datos
+ * Sincroniza las métricas sociales de un cliente desde la interfaz.
+ *
+ * Solo valida la sesión: la lógica vive en el orquestador, que comparte con el
+ * cron. Así una sola implementación cubre ambos caminos de entrada.
+ */
+export async function syncClientPlatforms(
+  clientId: string,
+  options: SyncOptions = {}
+): Promise<ApiResponse<SyncSummary>> {
+  const session = await auth();
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
+    return {
+      success: false,
+      error: "No autorizado. Solo ADMIN y EDITOR pueden sincronizar métricas.",
+    };
+  }
+
+  return runClientSync(clientId, options);
+}
+
+/**
+ * Wrapper de compatibilidad: sincroniza solo Facebook y devuelve el conteo plano.
+ *
+ * Se conserva porque la UI existente (sync-metrics-button) espera esta firma.
+ * A diferencia del dispatcher, propaga el error de Facebook como error de la
+ * acción, que es lo que esa UI sabe mostrar.
  */
 export async function syncClientMetrics(
   clientId: string,
   days: number = 28
 ): Promise<ApiResponse<{ count: number }>> {
-  console.log("[Meta Sync] Iniciando sincronización para cliente:", clientId);
-  
-  try {
-    // 1. Validar sesión y permisos
-    const session = await auth();
-    if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
-      console.log("[Meta Sync] ❌ No autorizado:", session?.user?.role);
-      return {
-        success: false,
-        error: "No autorizado. Solo ADMIN y EDITOR pueden sincronizar métricas.",
-      };
-    }
+  const result = await syncClientPlatforms(clientId, {
+    platforms: ["FACEBOOK"],
+    days,
+  });
 
-    // 2. Obtener cliente con pageAccessToken y facebookPageId
-    const client = await db.client.findUnique({
-      where: { id: clientId },
-      select: {
-        id: true,
-        name: true,
-        facebookPageId: true,
-        pageAccessToken: true,
-      },
-    });
-
-    if (!client) {
-      console.log("[Meta Sync] ❌ Cliente no encontrado");
-      return {
-        success: false,
-        error: "Cliente no encontrado",
-      };
-    }
-
-    if (!client.facebookPageId || !client.pageAccessToken) {
-      console.log("[Meta Sync] ❌ Sin credenciales de Facebook");
-      return {
-        success: false,
-        error: "El cliente no tiene una página de Facebook vinculada. Por favor, vincula una página en la sección de Integraciones.",
-      };
-    }
-
-    console.log("[Meta Sync] 📋 Cliente:", client.name, "| Page ID:", client.facebookPageId);
-
-    // 3. Obtener métricas de la API de Meta
-    console.log("[Meta Sync] 🚀 Llamando a API de Meta...");
-    let metricsData;
-    try {
-      metricsData = await fetchPageMetrics(
-        client.facebookPageId,
-        client.pageAccessToken,
-        days
-      );
-      console.log("[Meta Sync] ✅ Datos recibidos:", metricsData?.data?.length || 0, "métricas");
-    } catch (error) {
-      // Manejar errores específicos de token
-      if (error instanceof TokenExpiredError) {
-        console.log("[Meta Sync] ❌ Token caducado:", error.message);
-        return {
-          success: false,
-          error: error.message,
-        };
-      }
-      if (error instanceof InsufficientPermissionsError) {
-        console.log("[Meta Sync] ❌ Permisos insuficientes:", error.message);
-        return {
-          success: false,
-          error: error.message,
-        };
-      }
-      // Manejar timeout
-      if (error instanceof Error && error.message.includes('Meta API Timeout')) {
-        console.log("[Meta Sync] ⏱️ Timeout:", error.message);
-        throw error;
-      }
-      console.log("[Meta Sync] ❌ Error inesperado:", error);
-      throw error;
-    }
-
-    // 4. Transformar datos para almacenamiento
-    const transformedMetrics = transformMetricsForStorage(
-      metricsData,
-      clientId,
-      "FACEBOOK"
-    );
-
-    if (transformedMetrics.length === 0) {
-      return {
-        success: true,
-        data: { count: 0 },
-      };
-    }
-
-    // 5. Guardar en la base de datos usando upsert (batch transaction)
-    await db.$transaction(
-      transformedMetrics.map((metric) =>
-        db.clientMetric.upsert({
-          where: {
-            clientId_platform_metricName_date: {
-              clientId: metric.clientId,
-              platform: metric.platform,
-              metricName: metric.metricName,
-              date: metric.date,
-            },
-          },
-          update: {
-            value: metric.value,
-            fetchedAt: new Date(),
-          },
-          create: {
-            clientId: metric.clientId,
-            platform: metric.platform,
-            metricName: metric.metricName,
-            value: metric.value,
-            date: metric.date,
-            fetchedAt: new Date(),
-          },
-        })
-      )
-    );
-
-    // 6. Revalidar rutas
-    revalidatePath(`/clients/${clientId}`);
-
+  if (!result.success || !result.data) {
     return {
-      success: true,
-      data: { count: transformedMetrics.length },
+      success: false,
+      error: result.error ?? "Error al sincronizar métricas",
     };
-  } catch (error) {
-    console.error("Error al sincronizar métricas:", error);
+  }
+
+  const facebook = result.data.results.find((r) => r.platform === "FACEBOOK");
+
+  if (facebook && facebook.status !== "OK") {
     return {
       success: false,
       error:
-        error instanceof Error
-          ? error.message
-          : "Error al sincronizar métricas",
+        facebook.reason ??
+        "No se pudieron sincronizar las métricas de Facebook.",
     };
   }
+
+  return { success: true, data: { count: facebook?.count ?? 0 } };
 }
 
 /**

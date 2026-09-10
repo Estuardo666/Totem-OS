@@ -18,8 +18,13 @@ export function ConditionalLayout({
   const isAuthRoute = pathname?.startsWith("/sign-in") || pathname?.startsWith("/sign-up");
   const isPolicyRoute = pathname?.startsWith("/privacy") || pathname?.startsWith("/terms");
 
+  // Los informes compartidos los abre el cliente final, no la agencia: no debe
+  // ver la navegación interna ni el botón flotante de gastos. Además el
+  // documento tiene que imprimirse limpio.
+  const isPublicReportRoute = pathname?.startsWith("/reports/share");
+
   // Si es ruta de auth, solo mostrar children
-  if (isAuthRoute) {
+  if (isAuthRoute || isPublicReportRoute) {
     return <>{children}</>;
   }
 

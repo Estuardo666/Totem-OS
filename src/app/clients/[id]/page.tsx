@@ -34,7 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { TaskMetrics } from "@prisma/client";
 import { calculateMonthlyEngagement, calculateMonthlyEfficiency, formatCurrency } from "@/lib/metrics-calculations";
-import { TrendingUp, Brain, BarChart3, ArrowLeft, Receipt } from "lucide-react";
+import { TrendingUp, Brain, BarChart3, ArrowLeft, Receipt, FileText } from "lucide-react";
 import { ClientBillingForm } from "@/components/features/facturacion/ClientBillingForm";
 
 interface TaskWithMetrics {
@@ -425,7 +425,15 @@ export default async function ClientDetailPage({
                         Datos sincronizados desde la API de Meta
                       </p>
                     </div>
-                    <SyncMetricsButton clientId={client.id} />
+                    <div className="flex items-center gap-2">
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/clients/${client.id}/report/social`}>
+                          <FileText className="mr-2 h-4 w-4" />
+                          Ver informe mensual
+                        </Link>
+                      </Button>
+                      <SyncMetricsButton clientId={client.id} />
+                    </div>
                   </div>
 
                   <MetricsOverview

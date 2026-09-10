@@ -28,6 +28,28 @@ export interface MetaUserToken {
 }
 
 /**
+ * Permisos que la app solicita y verifica.
+ *
+ * Fuente única: se usa tanto para construir la URL de autorización como para
+ * comprobar qué otorgó el usuario. Si estas dos listas divergen, el banner de
+ * permisos miente — por eso vive aquí y no duplicada en cada función.
+ *
+ * `ads_read` y `business_management` requieren App Review solo para cuentas de
+ * terceros; funcionan de inmediato sobre las cuentas propias del usuario que
+ * tiene rol en la app.
+ */
+export const META_SCOPES = [
+  "public_profile",
+  "pages_show_list",
+  "pages_read_engagement",
+  "read_insights",
+  "instagram_basic",
+  "instagram_manage_insights",
+  "ads_read",
+  "business_management",
+] as const;
+
+/**
  * Genera la URL de autorización de Facebook OAuth 2.0
  * Permisos solicitados para gestión completa de páginas e Instagram Business
  */
@@ -36,12 +58,7 @@ export function getMetaAuthorizationUrl(state: string): string {
     throw new Error("META_APP_ID no está configurado en las variables de entorno");
   }
 
-  const scopes = [
-    "public_profile",
-    "pages_show_list",
-    "pages_read_engagement",
-    "read_insights",
-  ].join(",");
+  const scopes = META_SCOPES.join(",");
 
   const params = new URLSearchParams({
     client_id: META_APP_ID,
@@ -89,26 +106,44 @@ export async function exchangeCodeForToken(code: string): Promise<{
   const shortLivedToken: MetaUserToken = await tokenResponse.json();
 
   // Paso 2: Convertir token de corta duración a token de larga duración (60 días)
-  const longLivedTokenResponse = await fetch(
+  return exchangeForLongLivedToken(shortLivedToken.access_token);
+}
+
+/**
+ * Intercambia un token por uno de larga duración (60 días).
+ *
+ * Sirve para dos casos con el mismo endpoint:
+ *  - convertir el token corto recién obtenido del código OAuth;
+ *  - renovar un token largo que está por vencer, pasándolo a sí mismo.
+ *
+ * Meta puede omitir `expires_in` en la respuesta; quien la consuma debe asumir
+ * 60 días en vez de guardar una fecha inválida.
+ */
+export async function exchangeForLongLivedToken(
+  token: string
+): Promise<MetaUserToken> {
+  if (!META_APP_ID || !META_APP_SECRET) {
+    throw new Error("META_APP_ID y META_APP_SECRET deben estar configurados");
+  }
+
+  const response = await fetch(
     `https://graph.facebook.com/v21.0/oauth/access_token?` +
       new URLSearchParams({
         grant_type: "fb_exchange_token",
         client_id: META_APP_ID,
         client_secret: META_APP_SECRET,
-        fb_exchange_token: shortLivedToken.access_token,
+        fb_exchange_token: token,
       }).toString()
   );
 
-  if (!longLivedTokenResponse.ok) {
-    const errorData = await longLivedTokenResponse.json().catch(() => ({}));
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
     throw new Error(
-      `Error al obtener token de larga duración: ${errorData.error?.message || longLivedTokenResponse.statusText}`
+      `Error al obtener token de larga duración: ${errorData.error?.message || response.statusText}`
     );
   }
 
-  const longLivedToken: MetaUserToken = await longLivedTokenResponse.json();
-
-  return longLivedToken;
+  return await response.json();
 }
 
 /**
@@ -248,12 +283,7 @@ export async function checkPermissions(accessToken: string): Promise<{
   permissions: Record<string, boolean>;
   missing: string[];
 }> {
-  const requiredPermissions = [
-    "public_profile",
-    "pages_show_list",
-    "pages_read_engagement",
-    "read_insights",
-  ];
+  const requiredPermissions: string[] = [...META_SCOPES];
 
   try {
     const response = await fetch(

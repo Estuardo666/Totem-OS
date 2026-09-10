@@ -1230,3 +1230,66 @@ html.dark .finance-dashboard [class~="hover:bg-slate-50"]:hover {
 html[data-totem-native-shell-ready="1"] [data-totem-web-chrome] {
   display: none !important;
 }
+
+/* ---------------------------------------------------------------------------
+   Impresión del informe social.
+
+   El PDF se genera con el diálogo del navegador, así que estas reglas SON el
+   PDF. Deben producir un documento idéntico a lo que el cliente ve en pantalla.
+   --------------------------------------------------------------------------- */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  /* Sin esto los fondos de las tarjetas y las barras de participación
+     desaparecen y el informe queda ilegible. */
+  .totem-social-report,
+  .totem-social-report * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* El navegador pinta su propio fondo detrás de la página; forzar blanco
+     evita medios tonos grises en papel. */
+  .totem-social-report {
+    background: #ffffff !important;
+    color: #0b0b0b !important;
+  }
+
+  /* Una tarjeta o un gráfico partido entre dos páginas es ilegible. */
+  .totem-social-report section,
+  .totem-social-report table,
+  .totem-social-report tr,
+  .totem-social-report figure {
+    break-inside: avoid;
+  }
+
+  .totem-social-report h2 {
+    break-after: avoid;
+  }
+
+  /* Las tablas anchas no pueden depender del scroll horizontal en papel. */
+  .totem-social-report .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  .totem-social-report table {
+    min-width: 0 !important;
+    width: 100% !important;
+    font-size: 10pt;
+  }
+
+  /* Recharts renderiza SVG y sale nítido, pero un ResponsiveContainer puede
+     medir 0 al imprimir. El ancho fijo lo evita. */
+  .totem-social-report .recharts-responsive-container {
+    width: 680px !important;
+  }
+
+  /* Navegación, botones y controles no pertenecen al documento impreso. */
+  .totem-social-report button,
+  [data-totem-web-chrome] {
+    display: none !important;
+  }
+}
