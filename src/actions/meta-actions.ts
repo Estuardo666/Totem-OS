@@ -260,6 +260,27 @@ export async function linkPageToClient(
       },
     });
 
+    // Espejar la cuenta publicitaria en ClientAdAccount, que es la fuente que
+    // lee la sincronización. Client.adAccountId queda solo por compatibilidad.
+    if (adAccountId) {
+      await db.clientAdAccount.upsert({
+        where: {
+          clientId_platform_adAccountId: {
+            clientId,
+            platform: "META_ADS",
+            adAccountId,
+          },
+        },
+        update: { isActive: true },
+        create: {
+          clientId,
+          platform: "META_ADS",
+          adAccountId,
+          name: client.name,
+        },
+      });
+    }
+
     revalidatePath(`/clients/${clientId}`);
     revalidatePath("/admin/settings/integrations");
 
@@ -346,3 +367,134 @@ export async function disconnectMetaAccount(): Promise<ApiResponse<{ success: bo
   }
 }
 
+
+/**
+ * Lista las cuentas publicitarias vinculadas a un cliente.
+ */
+export async function getClientAdAccounts(
+  clientId: string
+): Promise<ApiResponse<Array<{ id: string; adAccountId: string; name: string; currency: string; isActive: boolean }>>> {
+  try {
+    const session = await auth();
+    if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const accounts = await db.clientAdAccount.findMany({
+      where: { clientId, platform: "META_ADS" },
+      select: {
+        id: true,
+        adAccountId: true,
+        name: true,
+        currency: true,
+        isActive: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return { success: true, data: accounts };
+  } catch (error) {
+    console.error("Error al listar cuentas publicitarias:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al listar cuentas publicitarias",
+    };
+  }
+}
+
+/**
+ * Vincula una cuenta publicitaria de Meta a un cliente.
+ *
+ * Un cliente puede tener varias: es común que arrastre una cuenta antigua y
+ * otra nueva bajo un Business Manager distinto, y el informe debe sumar ambas.
+ * Re-vincular una existente la reactiva en vez de duplicarla.
+ */
+export async function linkAdAccountToClient(
+  clientId: string,
+  adAccountId: string,
+  name: string,
+  currency: string = "USD"
+): Promise<ApiResponse<{ id: string }>> {
+  try {
+    const session = await auth();
+    if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const normalized = adAccountId.trim().startsWith("act_")
+      ? adAccountId.trim()
+      : `act_${adAccountId.trim()}`;
+
+    const client = await db.client.findUnique({
+      where: { id: clientId },
+      select: { id: true },
+    });
+    if (!client) {
+      return { success: false, error: "Cliente no encontrado" };
+    }
+
+    const account = await db.clientAdAccount.upsert({
+      where: {
+        clientId_platform_adAccountId: {
+          clientId,
+          platform: "META_ADS",
+          adAccountId: normalized,
+        },
+      },
+      update: { name, currency, isActive: true },
+      create: {
+        clientId,
+        platform: "META_ADS",
+        adAccountId: normalized,
+        name,
+        currency,
+      },
+      select: { id: true },
+    });
+
+    revalidatePath(`/clients/${clientId}`);
+    revalidatePath("/admin/settings/integrations");
+
+    return { success: true, data: account };
+  } catch (error) {
+    console.error("Error al vincular cuenta publicitaria:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al vincular cuenta publicitaria",
+    };
+  }
+}
+
+/**
+ * Desvincula una cuenta publicitaria de un cliente.
+ *
+ * Se desactiva en lugar de borrarse, para que las métricas ya sincronizadas
+ * sigan apareciendo en los informes de meses anteriores.
+ */
+export async function unlinkAdAccountFromClient(
+  clientId: string,
+  adAccountId: string
+): Promise<ApiResponse<{ success: boolean }>> {
+  try {
+    const session = await auth();
+    if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
+      return { success: false, error: "No autorizado" };
+    }
+
+    await db.clientAdAccount.updateMany({
+      where: { clientId, platform: "META_ADS", adAccountId },
+      data: { isActive: false },
+    });
+
+    revalidatePath(`/clients/${clientId}`);
+    revalidatePath("/admin/settings/integrations");
+
+    return { success: true, data: { success: true } };
+  } catch (error) {
+    console.error("Error al desvincular cuenta publicitaria:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al desvincular cuenta publicitaria",
+    };
+  }
+}

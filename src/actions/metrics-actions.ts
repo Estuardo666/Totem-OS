@@ -15,6 +15,11 @@ import {
   fetchInstagramFollowerCount,
   fetchInstagramMetrics,
 } from "@/lib/meta/instagram-service";
+import {
+  fetchAdInsights,
+  transformAdInsightsForStorage,
+  type AdMetricRow,
+} from "@/lib/meta/ads-service";
 import type {
   PlatformSyncResult,
   SyncOptions,
@@ -900,6 +905,113 @@ async function syncInstagram(
 }
 
 /**
+ * Persiste filas de métricas publicitarias, troceadas igual que las orgánicas.
+ */
+async function persistAdMetrics(rows: AdMetricRow[]): Promise<number> {
+  const BATCH_SIZE = 200;
+  const fetchedAt = new Date();
+
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
+    await db.$transaction(
+      batch.map((row) =>
+        db.clientAdMetric.upsert({
+          where: {
+            clientId_platform_adAccountId_campaignId_date: {
+              clientId: row.clientId,
+              platform: row.platform,
+              adAccountId: row.adAccountId,
+              campaignId: row.campaignId,
+              date: row.date,
+            },
+          },
+          update: {
+            campaignName: row.campaignName,
+            spend: row.spend,
+            impressions: row.impressions,
+            reach: row.reach,
+            clicks: row.clicks,
+            frequency: row.frequency,
+            conversions: row.conversions,
+            conversionValue: row.conversionValue,
+            currency: row.currency,
+            objective: row.objective,
+            actionsJson: row.actionsJson,
+            fetchedAt,
+          },
+          create: { ...row, fetchedAt },
+        })
+      )
+    );
+  }
+
+  return rows.length;
+}
+
+/**
+ * Convierte una fecha a `YYYY-MM-DD`.
+ *
+ * Meta interpreta estas fechas en la zona horaria de la cuenta publicitaria,
+ * no en UTC. Por eso se usan los componentes locales: convertir a ISO/UTC
+ * correría el borde del período un día en husos negativos como el de Ecuador.
+ */
+function toAdsDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Sincroniza las métricas de todas las cuentas publicitarias de un cliente.
+ *
+ * Una cuenta inaccesible (revocada, deshabilitada) no puede impedir que las
+ * demás se sincronicen, así que cada una corre aislada. Solo si TODAS fallan
+ * se propaga el error, porque entonces sí hay un problema real de conexión.
+ */
+async function syncMetaAds(
+  clientId: string,
+  adAccounts: Array<{ adAccountId: string; name: string }>,
+  accessToken: string,
+  since: Date,
+  until: Date
+): Promise<{ count: number; failures: string[] }> {
+  const sinceStr = toAdsDateString(since);
+  const untilStr = toAdsDateString(until);
+
+  let count = 0;
+  const failures: string[] = [];
+
+  for (const account of adAccounts) {
+    try {
+      const insights = await fetchAdInsights(account.adAccountId, accessToken, {
+        since: sinceStr,
+        until: untilStr,
+        level: "campaign",
+      });
+      const rows = transformAdInsightsForStorage(
+        insights,
+        clientId,
+        account.adAccountId
+      );
+      if (rows.length > 0) {
+        count += await persistAdMetrics(rows);
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      console.error(`[Sync] Meta Ads "${account.name}": ${reason}`);
+      failures.push(`${account.name}: ${reason}`);
+    }
+  }
+
+  if (failures.length === adAccounts.length && adAccounts.length > 0) {
+    throw new Error(failures.join(" | "));
+  }
+
+  return { count, failures };
+}
+
+/**
  * Sincroniza las métricas sociales de un cliente, plataforma por plataforma.
  *
  * Cada plataforma corre aislada en su propio try/catch y contribuye una entrada
@@ -935,6 +1047,10 @@ export async function syncClientPlatforms(
         pageAccessToken: true,
         instagramBusinessId: true,
         tiktokOpenId: true,
+        adAccounts: {
+          where: { isActive: true, platform: "META_ADS" },
+          select: { adAccountId: true, name: true },
+        },
       },
     });
 
@@ -1013,8 +1129,43 @@ export async function syncClientPlatforms(
           }
 
           case "META_ADS": {
-            // Implementado en la Fase 2.
-            skip("Integración de Meta Ads aún no disponible.");
+            if (client.adAccounts.length === 0) {
+              skip("Sin cuentas publicitarias vinculadas.");
+              break;
+            }
+
+            // Los insights de anuncios usan el token de USUARIO de la agencia,
+            // no el token de página: el permiso ads_read vive en el usuario.
+            const agency = await db.agencyMetaAccount.findFirst({
+              orderBy: { createdAt: "desc" },
+              select: { accessToken: true },
+            });
+            if (!agency) {
+              skip("No hay una cuenta de Meta conectada en la agencia.");
+              break;
+            }
+
+            const until = options.until ?? new Date();
+            const since =
+              options.since ??
+              new Date(until.getTime() - (days - 1) * 86400 * 1000);
+
+            const { count, failures } = await syncMetaAds(
+              clientId,
+              client.adAccounts,
+              agency.accessToken,
+              since,
+              until
+            );
+
+            results.push({
+              platform,
+              status: "OK",
+              count,
+              // Éxito parcial: algunas cuentas fallaron pero otras guardaron.
+              reason: failures.length > 0 ? failures.join(" | ") : undefined,
+              durationMs: Date.now() - startedAt,
+            });
             break;
           }
 
