@@ -11,6 +11,12 @@ import type { PerformanceContext } from "@/lib/ai/performance-prompts";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { fetchPageMetrics, transformMetricsForStorage, TokenExpiredError, InsufficientPermissionsError } from "@/lib/meta/metrics-service";
+import type {
+  PlatformSyncResult,
+  SyncOptions,
+  SyncPlatform,
+  SyncSummary,
+} from "@/lib/meta/sync-types";
 
 /**
  * Calcula el Engagement Rate para Meta (Instagram/Facebook)
@@ -770,107 +776,25 @@ export async function generateClientPerformanceOverview(
 }
 
 /**
- * Sincroniza las métricas de Facebook de un cliente desde la API de Meta
- * Obtiene los últimos 28 días de datos y los guarda en la base de datos
+ * Persiste filas orgánicas en ClientMetric.
+ * Trocea en lotes para no sostener una transacción enorme contra el pooler.
  */
-export async function syncClientMetrics(
-  clientId: string,
-  days: number = 28
-): Promise<ApiResponse<{ count: number }>> {
-  console.log("[Meta Sync] Iniciando sincronización para cliente:", clientId);
-  
-  try {
-    // 1. Validar sesión y permisos
-    const session = await auth();
-    if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
-      console.log("[Meta Sync] ❌ No autorizado:", session?.user?.role);
-      return {
-        success: false,
-        error: "No autorizado. Solo ADMIN y EDITOR pueden sincronizar métricas.",
-      };
-    }
+async function persistOrganicMetrics(
+  rows: Array<{
+    clientId: string;
+    platform: string;
+    metricName: string;
+    value: number;
+    date: Date;
+  }>
+): Promise<number> {
+  const BATCH_SIZE = 200;
+  const fetchedAt = new Date();
 
-    // 2. Obtener cliente con pageAccessToken y facebookPageId
-    const client = await db.client.findUnique({
-      where: { id: clientId },
-      select: {
-        id: true,
-        name: true,
-        facebookPageId: true,
-        pageAccessToken: true,
-      },
-    });
-
-    if (!client) {
-      console.log("[Meta Sync] ❌ Cliente no encontrado");
-      return {
-        success: false,
-        error: "Cliente no encontrado",
-      };
-    }
-
-    if (!client.facebookPageId || !client.pageAccessToken) {
-      console.log("[Meta Sync] ❌ Sin credenciales de Facebook");
-      return {
-        success: false,
-        error: "El cliente no tiene una página de Facebook vinculada. Por favor, vincula una página en la sección de Integraciones.",
-      };
-    }
-
-    console.log("[Meta Sync] 📋 Cliente:", client.name, "| Page ID:", client.facebookPageId);
-
-    // 3. Obtener métricas de la API de Meta
-    console.log("[Meta Sync] 🚀 Llamando a API de Meta...");
-    let metricsData;
-    try {
-      metricsData = await fetchPageMetrics(
-        client.facebookPageId,
-        client.pageAccessToken,
-        days
-      );
-      console.log("[Meta Sync] ✅ Datos recibidos:", metricsData?.data?.length || 0, "métricas");
-    } catch (error) {
-      // Manejar errores específicos de token
-      if (error instanceof TokenExpiredError) {
-        console.log("[Meta Sync] ❌ Token caducado:", error.message);
-        return {
-          success: false,
-          error: error.message,
-        };
-      }
-      if (error instanceof InsufficientPermissionsError) {
-        console.log("[Meta Sync] ❌ Permisos insuficientes:", error.message);
-        return {
-          success: false,
-          error: error.message,
-        };
-      }
-      // Manejar timeout
-      if (error instanceof Error && error.message.includes('Meta API Timeout')) {
-        console.log("[Meta Sync] ⏱️ Timeout:", error.message);
-        throw error;
-      }
-      console.log("[Meta Sync] ❌ Error inesperado:", error);
-      throw error;
-    }
-
-    // 4. Transformar datos para almacenamiento
-    const transformedMetrics = transformMetricsForStorage(
-      metricsData,
-      clientId,
-      "FACEBOOK"
-    );
-
-    if (transformedMetrics.length === 0) {
-      return {
-        success: true,
-        data: { count: 0 },
-      };
-    }
-
-    // 5. Guardar en la base de datos usando upsert (batch transaction)
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
     await db.$transaction(
-      transformedMetrics.map((metric) =>
+      batch.map((metric) =>
         db.clientMetric.upsert({
           where: {
             clientId_platform_metricName_date: {
@@ -882,7 +806,7 @@ export async function syncClientMetrics(
           },
           update: {
             value: metric.value,
-            fetchedAt: new Date(),
+            fetchedAt,
           },
           create: {
             clientId: metric.clientId,
@@ -890,29 +814,234 @@ export async function syncClientMetrics(
             metricName: metric.metricName,
             value: metric.value,
             date: metric.date,
-            fetchedAt: new Date(),
+            fetchedAt,
           },
         })
       )
     );
+  }
 
-    // 6. Revalidar rutas
+  return rows.length;
+}
+
+/**
+ * Traduce un error de plataforma a un motivo legible en español.
+ * Nunca re-lanza: el contrato del dispatcher es que un fallo de una plataforma
+ * no puede impedir que las demás guarden sus datos.
+ */
+function describeSyncError(error: unknown): string {
+  if (error instanceof TokenExpiredError) return error.message;
+  if (error instanceof InsufficientPermissionsError) return error.message;
+  if (error instanceof Error) {
+    if (error.message.includes("Meta API Timeout") || error.name === "TimeoutError") {
+      return "La API tardó demasiado en responder. Intenta de nuevo en unos minutos.";
+    }
+    return error.message;
+  }
+  return "Error desconocido al sincronizar.";
+}
+
+/**
+ * Sincroniza las métricas de Facebook de un cliente.
+ * Aislada para que el dispatcher pueda capturar su fallo sin tumbar el resto.
+ */
+async function syncFacebook(
+  clientId: string,
+  facebookPageId: string,
+  pageAccessToken: string,
+  days: number
+): Promise<number> {
+  const metricsData = await fetchPageMetrics(facebookPageId, pageAccessToken, days);
+  const rows = transformMetricsForStorage(metricsData, clientId, "FACEBOOK");
+  if (rows.length === 0) return 0;
+  return persistOrganicMetrics(rows);
+}
+
+/**
+ * Sincroniza las métricas sociales de un cliente, plataforma por plataforma.
+ *
+ * Cada plataforma corre aislada en su propio try/catch y contribuye una entrada
+ * al resultado. Un fallo de Instagram no impide que Facebook guarde sus filas.
+ *
+ * Es secuencial a propósito: varias llamadas concurrentes sobre el mismo token
+ * multiplican el golpe al rate limit de Meta sin ganancia de reloj que lo valga,
+ * y mantiene analizable el presupuesto de 300s de la función serverless.
+ */
+export async function syncClientPlatforms(
+  clientId: string,
+  options: SyncOptions = {}
+): Promise<ApiResponse<SyncSummary>> {
+  const days = options.days ?? 28;
+
+  try {
+    // 1. Validar sesión y permisos
+    const session = await auth();
+    if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
+      return {
+        success: false,
+        error: "No autorizado. Solo ADMIN y EDITOR pueden sincronizar métricas.",
+      };
+    }
+
+    // 2. Cargar credenciales del cliente
+    const client = await db.client.findUnique({
+      where: { id: clientId },
+      select: {
+        id: true,
+        name: true,
+        facebookPageId: true,
+        pageAccessToken: true,
+        instagramBusinessId: true,
+        tiktokOpenId: true,
+      },
+    });
+
+    if (!client) {
+      return { success: false, error: "Cliente no encontrado" };
+    }
+
+    // 3. Resolver plataformas objetivo
+    const requested: SyncPlatform[] = options.platforms ?? [
+      "FACEBOOK",
+      "INSTAGRAM",
+      "META_ADS",
+      "TIKTOK",
+    ];
+
+    console.log(
+      `[Sync] Cliente "${client.name}" (${clientId}) | plataformas: ${requested.join(", ")}`
+    );
+
+    const results: PlatformSyncResult[] = [];
+
+    // 4. Recorrer secuencialmente, cada plataforma aislada
+    for (const platform of requested) {
+      const startedAt = Date.now();
+
+      const skip = (reason: string) => {
+        results.push({
+          platform,
+          status: "SKIPPED",
+          count: 0,
+          reason,
+          durationMs: Date.now() - startedAt,
+        });
+      };
+
+      try {
+        switch (platform) {
+          case "FACEBOOK": {
+            if (!client.facebookPageId || !client.pageAccessToken) {
+              skip("Sin página de Facebook vinculada.");
+              break;
+            }
+            const count = await syncFacebook(
+              clientId,
+              client.facebookPageId,
+              client.pageAccessToken,
+              days
+            );
+            results.push({
+              platform,
+              status: "OK",
+              count,
+              durationMs: Date.now() - startedAt,
+            });
+            break;
+          }
+
+          case "INSTAGRAM": {
+            if (!client.instagramBusinessId || !client.pageAccessToken) {
+              skip("Sin cuenta de Instagram Business vinculada.");
+              break;
+            }
+            // Implementado en la Fase 1.
+            skip("Integración de Instagram aún no disponible.");
+            break;
+          }
+
+          case "META_ADS": {
+            // Implementado en la Fase 2.
+            skip("Integración de Meta Ads aún no disponible.");
+            break;
+          }
+
+          case "TIKTOK": {
+            if (!client.tiktokOpenId) {
+              skip("Sin cuenta de TikTok vinculada.");
+              break;
+            }
+            // Implementado en la Fase 6.
+            skip("Integración de TikTok aún no disponible.");
+            break;
+          }
+        }
+      } catch (error) {
+        const reason = describeSyncError(error);
+        console.error(`[Sync] ❌ ${platform}: ${reason}`);
+        results.push({
+          platform,
+          status: "ERROR",
+          count: 0,
+          reason,
+          durationMs: Date.now() - startedAt,
+        });
+      }
+    }
+
+    const total = results.reduce((sum, r) => sum + r.count, 0);
+    console.log(
+      `[Sync] ✅ ${client.name}: ${total} filas | ` +
+        results.map((r) => `${r.platform}=${r.status}`).join(" ")
+    );
+
     revalidatePath(`/clients/${clientId}`);
 
-    return {
-      success: true,
-      data: { count: transformedMetrics.length },
-    };
+    return { success: true, data: { total, results } };
   } catch (error) {
     console.error("Error al sincronizar métricas:", error);
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Error al sincronizar métricas",
+      error: error instanceof Error ? error.message : "Error al sincronizar métricas",
     };
   }
+}
+
+/**
+ * Wrapper de compatibilidad: sincroniza solo Facebook y devuelve el conteo plano.
+ *
+ * Se conserva porque la UI existente (sync-metrics-button) espera esta firma.
+ * A diferencia del dispatcher, propaga el error de Facebook como error de la
+ * acción, que es lo que esa UI sabe mostrar.
+ */
+export async function syncClientMetrics(
+  clientId: string,
+  days: number = 28
+): Promise<ApiResponse<{ count: number }>> {
+  const result = await syncClientPlatforms(clientId, {
+    platforms: ["FACEBOOK"],
+    days,
+  });
+
+  if (!result.success || !result.data) {
+    return {
+      success: false,
+      error: result.error ?? "Error al sincronizar métricas",
+    };
+  }
+
+  const facebook = result.data.results.find((r) => r.platform === "FACEBOOK");
+
+  if (facebook && facebook.status !== "OK") {
+    return {
+      success: false,
+      error:
+        facebook.reason ??
+        "No se pudieron sincronizar las métricas de Facebook.",
+    };
+  }
+
+  return { success: true, data: { count: facebook?.count ?? 0 } };
 }
 
 /**
@@ -963,23 +1092,23 @@ export async function getClientFacebookMetrics(
 
     // 4. Calcular totales para el overview
     const impressions = metrics
-      .filter((m) => m.metricName === "page_impressions")
+      .filter((m) => m.metricName === "page_media_view")
       .reduce((sum, m) => sum + m.value, 0);
 
     // Nota: page_engaged_users puede no estar disponible, usar 0 como fallback
     const engagements = metrics
-      .filter((m) => m.metricName === "page_engaged_users")
+      .filter((m) => m.metricName === "page_post_engagements")
       .reduce((sum, m) => sum + m.value, 0);
 
     // page_fans es lifetime, tomar el valor más reciente
     const fansMetrics = metrics
-      .filter((m) => m.metricName === "page_fans")
+      .filter((m) => m.metricName === "page_follows")
       .sort((a, b) => b.date.getTime() - a.date.getTime());
     const fans = fansMetrics.length > 0 ? fansMetrics[0].value : 0;
 
     // 5. Preparar datos para el gráfico (últimos 28 días de impresiones)
     const impressionsByDate = metrics
-      .filter((m) => m.metricName === "page_impressions")
+      .filter((m) => m.metricName === "page_media_view")
       .reduce((acc, m) => {
         const dateKey = m.date.toISOString().split("T")[0];
         if (!acc[dateKey]) {
