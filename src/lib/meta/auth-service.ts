@@ -9,6 +9,9 @@
 
 const META_APP_ID = process.env.META_APP_ID;
 const META_APP_SECRET = process.env.META_APP_SECRET;
+// Configuración de "Inicio de sesión con Facebook para empresas". Si está
+// presente, es ella —y no el parámetro scope— la que decide los permisos.
+const META_CONFIG_ID = process.env.META_CONFIG_ID;
 const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/callback/meta`;
 
 if (!META_APP_ID || !META_APP_SECRET) {
@@ -58,16 +61,29 @@ export function getMetaAuthorizationUrl(state: string): string {
     throw new Error("META_APP_ID no está configurado en las variables de entorno");
   }
 
-  const scopes = META_SCOPES.join(",");
-
   const params = new URLSearchParams({
     client_id: META_APP_ID,
     redirect_uri: REDIRECT_URI,
-    scope: scopes,
     response_type: "code",
     auth_type: "rerequest", // Forzar re-autorización si los permisos fueron rechazados
     state, // Se valida en el callback contra una cookie httpOnly
   });
+
+  if (META_CONFIG_ID) {
+    // Esta app usa "Inicio de sesión con Facebook para empresas", donde los
+    // permisos los define la configuración de inicio de sesión y NO el
+    // parámetro `scope`: Meta lo ignora por completo. Mandar `scope` aquí crea
+    // la ilusión de estar pidiendo permisos que nunca se solicitan.
+    //
+    // Para cambiar los permisos hay que editarlos en la configuración
+    // `META_CONFIG_ID` del panel de Meta Developers:
+    //   Inicio de sesión con Facebook para empresas → Configuraciones → Editar
+    // META_SCOPES sigue siendo la lista contra la que se verifica lo otorgado.
+    params.set("config_id", META_CONFIG_ID);
+  } else {
+    // Facebook Login clásico: los permisos sí viajan en la URL.
+    params.set("scope", META_SCOPES.join(","));
+  }
 
   return `https://www.facebook.com/v21.0/dialog/oauth?${params.toString()}`;
 }
