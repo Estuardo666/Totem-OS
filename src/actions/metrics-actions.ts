@@ -11,6 +11,10 @@ import type { PerformanceContext } from "@/lib/ai/performance-prompts";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { fetchPageMetrics, transformMetricsForStorage, TokenExpiredError, InsufficientPermissionsError } from "@/lib/meta/metrics-service";
+import {
+  fetchInstagramFollowerCount,
+  fetchInstagramMetrics,
+} from "@/lib/meta/instagram-service";
 import type {
   PlatformSyncResult,
   SyncOptions,
@@ -858,6 +862,44 @@ async function syncFacebook(
 }
 
 /**
+ * Sincroniza las métricas orgánicas de Instagram Business de un cliente.
+ *
+ * Además de los insights, guarda el total de seguidores como una fila diaria
+ * `followers_count` fechada hoy a medianoche UTC. Graph no da serie histórica
+ * de ese número, así que se acumula un snapshot por día.
+ */
+async function syncInstagram(
+  clientId: string,
+  igUserId: string,
+  pageAccessToken: string,
+  days: number
+): Promise<number> {
+  const metricsData = await fetchInstagramMetrics(igUserId, pageAccessToken, days);
+  const rows = transformMetricsForStorage(metricsData, clientId, "INSTAGRAM");
+
+  // Snapshot de seguidores: un valor por día, no una serie que Graph no expone.
+  try {
+    const followers = await fetchInstagramFollowerCount(igUserId, pageAccessToken);
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    rows.push({
+      clientId,
+      platform: "INSTAGRAM",
+      metricName: "followers_count",
+      value: followers,
+      date: today,
+    });
+  } catch (error) {
+    // El conteo de seguidores es complementario: si falla, los insights
+    // igual se guardan.
+    console.warn("[Sync] Instagram: no se pudo leer followers_count:", error);
+  }
+
+  if (rows.length === 0) return 0;
+  return persistOrganicMetrics(rows);
+}
+
+/**
  * Sincroniza las métricas sociales de un cliente, plataforma por plataforma.
  *
  * Cada plataforma corre aislada en su propio try/catch y contribuye una entrada
@@ -955,8 +997,18 @@ export async function syncClientPlatforms(
               skip("Sin cuenta de Instagram Business vinculada.");
               break;
             }
-            // Implementado en la Fase 1.
-            skip("Integración de Instagram aún no disponible.");
+            const count = await syncInstagram(
+              clientId,
+              client.instagramBusinessId,
+              client.pageAccessToken,
+              days
+            );
+            results.push({
+              platform,
+              status: "OK",
+              count,
+              durationMs: Date.now() - startedAt,
+            });
             break;
           }
 
