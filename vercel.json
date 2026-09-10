@@ -1,5 +1,4 @@
 {
-  "$comment": "Plan Hobby: máximo 2 cron jobs, solo con granularidad diaria. Los crons de daily-digest, cobranza-check, shooting-reminders y calendar-webhook-renew existen como rutas pero NO están programados aquí: nunca han estado activos (este archivo estaba en .gitignore y jamás llegó al despliegue), y activarlos ahora enviaría correos de golpe. Ver vercel.json.local-backup para la lista completa.",
   "crons": [
     {
       "path": "/api/cron/sync-social-metrics",
