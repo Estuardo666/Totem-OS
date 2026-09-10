@@ -120,3 +120,51 @@ test('the day window is validated before any network call', async () => {
     global.fetch = original;
   }
 });
+
+test('total_value metrics are normalized into the daily shape', async () => {
+  // Graph devuelve estas como { total_value: { value } } en vez de values[].
+  // Sin normalizar, transformMetricsForStorage las descartaría en silencio.
+  const original = global.fetch;
+  let call = 0;
+  try {
+    global.fetch = async () => {
+      call++;
+      if (call === 1) return Response.json({ data: [] });
+      return Response.json({
+        data: [{ name: 'total_interactions', period: 'day', total_value: { value: 42 } }],
+      });
+    };
+
+    const result = await fetchInstagramMetrics('ig-1', 'test-token', 28);
+    const metric = result.data.find((d) => d.name === 'total_interactions');
+
+    assert.ok(Array.isArray(metric.values), 'debe exponer values[]');
+    assert.equal(metric.values[0].value, 42);
+    assert.ok(metric.values[0].end_time, 'debe llevar fecha para poder guardarse');
+  } finally {
+    global.fetch = original;
+  }
+});
+
+test('a total-value metric without a numeric value is dropped, not stored as NaN', async () => {
+  const original = global.fetch;
+  let call = 0;
+  try {
+    global.fetch = async () => {
+      call++;
+      if (call === 1) return Response.json({ data: [] });
+      return Response.json({ data: [{ name: 'accounts_engaged', period: 'day', total_value: {} }] });
+    };
+    const result = await fetchInstagramMetrics('ig-1', 'test-token', 28);
+    assert.equal(result.data.length, 0);
+  } finally {
+    global.fetch = original;
+  }
+});
+
+test('profile_views is a total-value metric, not a daily one', () => {
+  // Verificado contra la cuenta real: Graph responde
+  // "(#100) ... should be specified with parameter metric_type=total_value".
+  assert.equal(IG_DAILY_METRICS.includes('profile_views'), false);
+  assert.equal(IG_TOTAL_VALUE_METRICS.includes('profile_views'), true);
+});

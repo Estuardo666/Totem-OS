@@ -24,7 +24,7 @@ const TIMEOUT_MS = 10000;
  * ante una métrica inválida el `error.message` de Graph enumera las válidas,
  * y esa es la fuente autoritativa, no la documentación.
  */
-export const IG_DAILY_METRICS = ["reach", "profile_views"] as const;
+export const IG_DAILY_METRICS = ["reach"] as const;
 
 /**
  * Métricas que Graph solo entrega como valor total del período.
@@ -33,6 +33,10 @@ export const IG_DAILY_METRICS = ["reach", "profile_views"] as const;
 export const IG_TOTAL_VALUE_METRICS = [
   "accounts_engaged",
   "total_interactions",
+  // Verificado contra la cuenta real: Graph rechaza profile_views como métrica
+  // diaria con "(#100) ... should be specified with parameter
+  // metric_type=total_value".
+  "profile_views",
 ] as const;
 
 export interface IgMediaInsight {
@@ -122,7 +126,24 @@ export async function fetchInstagramMetrics(
     until: String(until),
   });
   if (Array.isArray(totals.data)) {
-    data.push(...(totals.data as PageMetricData[]));
+    // Estas métricas llegan como `total_value: { value }` en vez de `values[]`.
+    // Se normalizan al formato diario, fechadas al cierre del período, para que
+    // transformMetricsForStorage no las descarte en silencio.
+    const untilMs = until * 1000;
+    type TotalValueMetric = PageMetricData & { total_value?: { value?: number } };
+
+    for (const metric of totals.data as TotalValueMetric[]) {
+      if (Array.isArray(metric.values) && metric.values.length > 0) {
+        data.push(metric);
+        continue;
+      }
+      const value = metric.total_value?.value;
+      if (typeof value !== "number") continue;
+      data.push({
+        ...metric,
+        values: [{ value, end_time: new Date(untilMs).toISOString() }],
+      });
+    }
   }
 
   return { data };
