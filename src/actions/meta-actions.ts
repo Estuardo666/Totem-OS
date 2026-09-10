@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { getManagedPages, getInstagramBusinessAccount, getMetaAuthorizationUrl, getAdAccounts, checkPermissions } from "@/lib/meta/auth-service";
 import { META_STATE_COOKIE, createState, setOAuthCookie } from "@/lib/oauth-state";
+import { getAgencyToken, writePageToken } from "@/lib/meta/token-store";
 import type { ApiResponse } from "@/types";
 import { revalidatePath } from "next/cache";
 
@@ -60,11 +61,7 @@ export async function getConnectedMetaAccount(): Promise<
       };
     }
 
-    const account = await db.agencyMetaAccount.findFirst({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const account = await getAgencyToken();
 
     if (!account) {
       return {
@@ -122,11 +119,7 @@ export async function getAvailableAdAccounts(): Promise<
       };
     }
 
-    const account = await db.agencyMetaAccount.findFirst({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const account = await getAgencyToken();
 
     if (!account) {
       return {
@@ -176,11 +169,7 @@ export async function getManagedMetaPages(): Promise<
     }
 
     // Obtener la cuenta de Meta conectada
-    const account = await db.agencyMetaAccount.findFirst({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const account = await getAgencyToken();
 
     if (!account) {
       return {
@@ -254,7 +243,7 @@ export async function linkPageToClient(
       where: { id: clientId },
       data: {
         facebookPageId: pageId,
-        pageAccessToken: pageAccessToken,
+        pageAccessToken: writePageToken(pageAccessToken),
         instagramBusinessId: instagramBusinessId || null,
         adAccountId: adAccountId || null,
       },

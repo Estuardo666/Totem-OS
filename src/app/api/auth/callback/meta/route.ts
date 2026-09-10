@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { exchangeCodeForToken, getFacebookUserInfo } from "@/lib/meta/auth-service";
-import { db } from "@/lib/db";
+import { checkPermissions, exchangeCodeForToken, getFacebookUserInfo } from "@/lib/meta/auth-service";
+import { saveAgencyToken } from "@/lib/meta/token-store";
 import { META_STATE_COOKIE, clearOAuthCookies, readOAuthCookie, safeEqual } from "@/lib/oauth-state";
 
 /**
@@ -112,24 +112,30 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date();
     expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
 
-    // 8. Guardar o actualizar el token en la base de datos
+    // 8. Registrar qué permisos otorgó realmente el usuario.
+    //    Guardarlos deja que el dispatcher salte plataformas sin gastar una
+    //    llamada fallida a Graph por cada cliente.
+    let grantedScopes: string | null = null;
     try {
-      await db.agencyMetaAccount.upsert({
-        where: {
-          facebookUserId: userInfo.id,
-        },
-        update: {
-          name: userInfo.name,
-          accessToken: longLivedToken.access_token,
-          tokenExpiresAt: expiresAt,
-          updatedAt: new Date(),
-        },
-        create: {
-          facebookUserId: userInfo.id,
-          name: userInfo.name,
-          accessToken: longLivedToken.access_token,
-          tokenExpiresAt: expiresAt,
-        },
+      const { permissions } = await checkPermissions(longLivedToken.access_token);
+      grantedScopes = Object.entries(permissions)
+        .filter(([, granted]) => granted)
+        .map(([name]) => name)
+        .join(",");
+    } catch (permError) {
+      // No aborta la conexión: el banner de permisos volverá a consultarlos
+      // al abrir la página de integraciones.
+      console.warn("No se pudieron leer los permisos otorgados:", permError);
+    }
+
+    // 9. Guardar el token cifrado en la base de datos
+    try {
+      await saveAgencyToken({
+        facebookUserId: userInfo.id,
+        name: userInfo.name,
+        accessToken: longLivedToken.access_token,
+        tokenExpiresAt: expiresAt,
+        scopes: grantedScopes,
       });
     } catch (dbError) {
       console.error("Error al guardar token en la base de datos:", dbError);

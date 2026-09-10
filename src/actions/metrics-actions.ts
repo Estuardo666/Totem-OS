@@ -15,6 +15,7 @@ import {
   fetchInstagramFollowerCount,
   fetchInstagramMetrics,
 } from "@/lib/meta/instagram-service";
+import { getAgencyToken, readPageToken } from "@/lib/meta/token-store";
 import {
   fetchAdInsights,
   transformAdInsightsForStorage,
@@ -1058,6 +1059,11 @@ export async function syncClientPlatforms(
       return { success: false, error: "Cliente no encontrado" };
     }
 
+    // Los tokens se guardan cifrados; los servicios de Graph esperan texto plano.
+    const pageAccessToken = client.pageAccessToken
+      ? readPageToken(client.pageAccessToken)
+      : null;
+
     // 3. Resolver plataformas objetivo
     const requested: SyncPlatform[] = options.platforms ?? [
       "FACEBOOK",
@@ -1089,14 +1095,14 @@ export async function syncClientPlatforms(
       try {
         switch (platform) {
           case "FACEBOOK": {
-            if (!client.facebookPageId || !client.pageAccessToken) {
+            if (!client.facebookPageId || !pageAccessToken) {
               skip("Sin página de Facebook vinculada.");
               break;
             }
             const count = await syncFacebook(
               clientId,
               client.facebookPageId,
-              client.pageAccessToken,
+              pageAccessToken,
               days
             );
             results.push({
@@ -1109,14 +1115,14 @@ export async function syncClientPlatforms(
           }
 
           case "INSTAGRAM": {
-            if (!client.instagramBusinessId || !client.pageAccessToken) {
+            if (!client.instagramBusinessId || !pageAccessToken) {
               skip("Sin cuenta de Instagram Business vinculada.");
               break;
             }
             const count = await syncInstagram(
               clientId,
               client.instagramBusinessId,
-              client.pageAccessToken,
+              pageAccessToken,
               days
             );
             results.push({
@@ -1136,10 +1142,7 @@ export async function syncClientPlatforms(
 
             // Los insights de anuncios usan el token de USUARIO de la agencia,
             // no el token de página: el permiso ads_read vive en el usuario.
-            const agency = await db.agencyMetaAccount.findFirst({
-              orderBy: { createdAt: "desc" },
-              select: { accessToken: true },
-            });
+            const agency = await getAgencyToken();
             if (!agency) {
               skip("No hay una cuenta de Meta conectada en la agencia.");
               break;
