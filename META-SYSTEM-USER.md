@@ -140,8 +140,12 @@ curl -s "https://graph.facebook.com/v21.0/act_$AD_ACCOUNT_ID/insights?fields=spe
 | Error 10 o 200 en alguna | Ahí sí: verificación de empresa y luego App Review de los siete permisos |
 
 **Verificación de empresa**, cuando toque → Configuración del negocio → Centro de
-seguridad. Pide documentos legales: RUC, constitución, comprobante de domicilio.
-Es el trámite lento, de semanas.
+seguridad. **No hace falta una sociedad constituida.** Meta reconoce
+"sole proprietorship" (persona natural con actividad económica) como tipo de
+negocio válido, y pide un documento tributario que muestre nombre legal y número
+de identificación fiscal — un RUC personal de persona natural encaja ahí, siempre
+que muestre la actividad económica y no solo la cédula. Es el trámite lento, de
+semanas, por tiempos de revisión de Meta, no por trámites propios.
 
 Los permisos de publicación (`pages_manage_posts`, `instagram_content_publish`)
 se piden en una tanda posterior. `instagram_content_publish` **sí** exige App
