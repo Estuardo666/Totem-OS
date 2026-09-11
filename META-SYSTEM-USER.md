@@ -149,9 +149,9 @@ Review sin discusión, y por tanto verificación. No es "nunca", es "no primero"
 
 ---
 
-## Verificación, antes de tocar nada
+## E. Revisar el token antes de desplegar
 
-Con el token en la mano y **cero código desplegado**:
+Además de las tres llamadas de la sección D, conviene mirar el token en sí:
 
 ```bash
 curl -s "https://graph.facebook.com/v21.0/debug_token?input_token=$SU_TOKEN&access_token=$META_APP_ID%7C$META_APP_SECRET"
@@ -160,13 +160,10 @@ curl -s "https://graph.facebook.com/v21.0/debug_token?input_token=$SU_TOKEN&acce
 Debe devolver `is_valid: true`, `type: "SYSTEM_USER"`, `expires_at: 0`, y los
 siete permisos entre `scopes` ∪ `granular_scopes`.
 
-```bash
-curl -s "https://graph.facebook.com/v21.0/me/accounts?fields=id,name&access_token=$SU_TOKEN"
-```
-
-Los IDs devueltos deben cubrir los `facebookPageId` de los clientes del piloto.
-**No seguir hasta que coincidan.** Asignar de menos en Business Manager es la
-causa de fallo dominante, y falla en silencio.
+Antes de pasar al resto de clientes, los IDs que devuelve `/me/accounts` tienen
+que cubrir los `facebookPageId` que hay en la base. **No seguir hasta que
+coincidan:** asignar de menos en Business Manager es la causa de fallo dominante,
+y falla en silencio.
 
 ## Encendido
 
