@@ -52,7 +52,7 @@ export function ConnectMetaButton({
       ) : (
         <>
           <Facebook className="h-5 w-5 mr-2" />
-          Conectar con Facebook
+          {label}
         </>
       )}
     </Button>

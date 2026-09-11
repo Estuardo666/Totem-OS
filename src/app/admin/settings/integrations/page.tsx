@@ -5,6 +5,8 @@ import { getConnectedMetaAccount } from "@/actions/meta-actions";
 import { ConnectMetaButton } from "@/components/features/admin/connect-meta-button";
 import { DetectedPagesList } from "@/components/features/admin/detected-pages-list";
 import { DisconnectMetaButton } from "@/components/features/admin/disconnect-meta-button";
+import { ResyncPageTokensButton } from "@/components/features/admin/resync-page-tokens-button";
+import { Badge } from "@/components/ui/badge";
 import { TikTokIntegrationCard } from "@/components/features/admin/tiktok-integration-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -61,8 +63,10 @@ async function IntegrationsContent() {
           ) : (
             <>
               {metaAccountResult.data.permissions?.missing &&
-                metaAccountResult.data.permissions.missing.length > 0 && (
-                  <Alert variant="destructive">
+                metaAccountResult.data.permissions.missing.length > 0 && (() => {
+                  const isSystemUser = metaAccountResult.data.mode === "system_user";
+                  return (
+                  <Alert variant={isSystemUser ? "default" : "destructive"}>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       <div className="space-y-1">
@@ -86,27 +90,52 @@ async function IntegrationsContent() {
                             );
                           })}
                         </ul>
-                        <p className="text-sm mt-2">
-                          Reconecta tu cuenta de Facebook y otorga todos los permisos.
-                          Se te volverán a pedir los que falten; no perderás las páginas ya vinculadas.
-                        </p>
-                        <div className="mt-3">
-                          <ConnectMetaButton label="Reconectar y otorgar permisos" size="sm" />
-                        </div>
+                        {isSystemUser ? (
+                          // Reconectar por OAuth no arregla un permiso que
+                          // falta en Business Manager: ofrecerlo desorienta.
+                          <p className="text-sm mt-2">
+                            Asigna los permisos faltantes al usuario del sistema en Business
+                            Manager → Configuración del negocio → Usuarios del sistema →
+                            Agregar activos, y vuelve a generar el token.
+                          </p>
+                        ) : (
+                          <>
+                            <p className="text-sm mt-2">
+                              Reconecta tu cuenta de Facebook y otorga todos los permisos.
+                              Se te volverán a pedir los que falten; no perderás las páginas ya vinculadas.
+                            </p>
+                            <div className="mt-3">
+                              <ConnectMetaButton label="Reconectar y otorgar permisos" size="sm" />
+                            </div>
+                          </>
+                        )}
                       </div>
                     </AlertDescription>
                   </Alert>
-                )}
+                  );
+                })()}
               
               {/* Información de la cuenta conectada con botón de desvincular */}
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+              <div className="flex items-center justify-between gap-3 p-4 border rounded-lg bg-muted/50">
                 <div>
-                  <p className="font-medium">{metaAccountResult.data.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    ID: {metaAccountResult.data.facebookUserId}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{metaAccountResult.data.name}</p>
+                    {metaAccountResult.data.mode === "system_user" && (
+                      <Badge variant="secondary">Usuario del sistema</Badge>
+                    )}
+                  </div>
+                  {metaAccountResult.data.facebookUserId && (
+                    <p className="text-sm text-muted-foreground">
+                      ID: {metaAccountResult.data.facebookUserId}
+                    </p>
+                  )}
                 </div>
-                <DisconnectMetaButton />
+                <div className="flex flex-wrap items-center gap-2">
+                  <ResyncPageTokensButton />
+                  {/* Con un usuario del sistema no hay nada que desconectar
+                      desde aquí: el token vive en el entorno de Vercel. */}
+                  {metaAccountResult.data.mode !== "system_user" && <DisconnectMetaButton />}
+                </div>
               </div>
 
               <DetectedPagesList metaAccount={metaAccountResult.data} />

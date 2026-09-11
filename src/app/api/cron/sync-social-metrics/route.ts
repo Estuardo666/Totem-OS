@@ -47,8 +47,12 @@ async function run(offset: number, days: number) {
     const refreshed = await refreshAgencyMetaToken();
     tokenRefresh = {
       refreshed: refreshed.refreshed,
+      mode: refreshed.mode ?? null,
       expiresAt: refreshed.expiresAt?.toISOString() ?? null,
       pageTokensRenewed: refreshed.pageTokensRenewed ?? 0,
+      // Clientes cuya página no apareció entre las gestionadas. Con un usuario
+      // del sistema significa que falta asignar ese activo en Business Manager.
+      unmatchedClients: refreshed.unmatchedClients ?? [],
       reason: refreshed.reason ?? null,
     };
   } catch (error) {

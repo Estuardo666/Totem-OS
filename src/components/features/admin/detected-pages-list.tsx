@@ -138,11 +138,16 @@ export function DetectedPagesList({ metaAccount }: DetectedPagesListProps) {
               Cuenta Conectada
             </CardTitle>
             <CardDescription>
-              {metaAccount.name} (ID: {metaAccount.facebookUserId})
+              {metaAccount.name}
+              {metaAccount.facebookUserId ? ` (ID: ${metaAccount.facebookUserId})` : ""}
             </CardDescription>
-            <CardDescription className="text-xs text-muted-foreground mt-1">
-              Token expira el {format(metaAccount.tokenExpiresAt, "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
-            </CardDescription>
+            {/* Un usuario del sistema no vence: sin fecha que mostrar.
+                `format(null)` además lanza y se lleva la tarjeta entera. */}
+            {metaAccount.tokenExpiresAt && (
+              <CardDescription className="text-xs text-muted-foreground mt-1">
+                Token expira el {format(metaAccount.tokenExpiresAt, "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
+              </CardDescription>
+            )}
           </div>
         </div>
       </CardHeader>

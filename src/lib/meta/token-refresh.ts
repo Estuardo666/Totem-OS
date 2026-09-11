@@ -16,15 +16,23 @@ import {
   saveAgencyToken,
   writePageToken,
 } from "./token-store.ts";
-import { needsRefresh, resolveExpiryDate } from "./token-refresh-policy.ts";
+import { decideAgencyRefresh, resolveExpiryDate } from "./token-refresh-policy.ts";
 
-export { needsRefresh, REFRESH_THRESHOLD_DAYS } from "./token-refresh-policy.ts";
+export { needsRefresh, REFRESH_THRESHOLD_DAYS, decideAgencyRefresh } from "./token-refresh-policy.ts";
 
 
 export interface RefreshResult {
   refreshed: boolean;
-  expiresAt?: Date;
+  /** Cómo se obtuvo el token en uso. Ausente si no hay ninguno conectado. */
+  mode?: "oauth" | "system_user";
+  expiresAt?: Date | null;
   pageTokensRenewed?: number;
+  /**
+   * Clientes con página vinculada que no aparecieron entre las gestionadas.
+   * Con un usuario del sistema casi siempre significa "falta asignar ese
+   * activo en Business Manager", que es un error accionable y no un parpadeo.
+   */
+  unmatchedClients?: string[];
   reason?: string;
 }
 
@@ -44,14 +52,33 @@ export async function refreshAgencyMetaToken(
     return { refreshed: false, reason: "No hay una cuenta de Meta conectada." };
   }
 
-  if (
-    !options.force &&
-    !needsRefresh(account.tokenExpiresAt, options.thresholdDays)
-  ) {
+  const decision = decideAgencyRefresh({
+    mode: account.mode,
+    expiresAt: account.tokenExpiresAt,
+    force: options.force,
+    thresholdDays: options.thresholdDays,
+  });
+
+  if (decision.action === "skip") {
     return {
       refreshed: false,
+      mode: account.mode,
       expiresAt: account.tokenExpiresAt,
-      reason: "El token todavía no necesita renovarse.",
+      reason: decision.reason,
+    };
+  }
+
+  if (decision.action === "pages_only") {
+    // Sin intercambio de token, pero sí refresco de páginas. `refreshed: false`
+    // es la respuesta honesta: no se renovó nada, no había nada que renovar.
+    const pages = await refreshClientPageTokens(account.accessToken);
+    return {
+      refreshed: false,
+      mode: account.mode,
+      expiresAt: null,
+      pageTokensRenewed: pages.updated,
+      unmatchedClients: pages.unmatched.map((c) => c.id),
+      reason: decision.reason,
     };
   }
 
@@ -64,6 +91,7 @@ export async function refreshAgencyMetaToken(
     await markAgencyRefreshFailed(account.id);
     return {
       refreshed: false,
+      mode: account.mode,
       reason:
         error instanceof Error
           ? `No se pudo renovar el token: ${error.message}`
@@ -81,9 +109,15 @@ export async function refreshAgencyMetaToken(
     markRefreshed: true,
   });
 
-  const pageTokensRenewed = await refreshClientPageTokens(renewed.access_token);
+  const pages = await refreshClientPageTokens(renewed.access_token);
 
-  return { refreshed: true, expiresAt, pageTokensRenewed };
+  return {
+    refreshed: true,
+    mode: account.mode,
+    expiresAt,
+    pageTokensRenewed: pages.updated,
+    unmatchedClients: pages.unmatched.map((c) => c.id),
+  };
 }
 
 /**
@@ -92,23 +126,34 @@ export async function refreshAgencyMetaToken(
  * puede haber perdido el acceso temporalmente y borrar el token empeoraría
  * la recuperación.
  */
+export interface PageTokenRefreshResult {
+  updated: number;
+  unmatched: Array<{ id: string; name: string; facebookPageId: string }>;
+}
+
 export async function refreshClientPageTokens(
   userAccessToken: string
-): Promise<number> {
+): Promise<PageTokenRefreshResult> {
   const pages = await getManagedPages(userAccessToken);
-  if (pages.length === 0) return 0;
 
   const tokenByPageId = new Map(pages.map((p) => [p.id, p.access_token]));
 
   const clients = await db.client.findMany({
     where: { facebookPageId: { not: null } },
-    select: { id: true, facebookPageId: true },
+    select: { id: true, name: true, facebookPageId: true },
   });
 
   let updated = 0;
+  const unmatched: PageTokenRefreshResult["unmatched"] = [];
+
   for (const client of clients) {
-    const pageToken = tokenByPageId.get(client.facebookPageId!);
-    if (!pageToken) continue;
+    const facebookPageId = client.facebookPageId as string;
+    const pageToken = tokenByPageId.get(facebookPageId);
+
+    if (!pageToken) {
+      unmatched.push({ id: client.id, name: client.name, facebookPageId });
+      continue;
+    }
 
     await db.client.update({
       where: { id: client.id },
@@ -117,5 +162,5 @@ export async function refreshClientPageTokens(
     updated++;
   }
 
-  return updated;
+  return { updated, unmatched };
 }

@@ -5,6 +5,9 @@ import { auth } from "@/auth";
 import { getManagedPages, getInstagramBusinessAccount, getMetaAuthorizationUrl, getAdAccounts, checkPermissions } from "@/lib/meta/auth-service";
 import { META_STATE_COOKIE, createState, setOAuthCookie } from "@/lib/oauth-state";
 import { getAgencyToken, writePageToken } from "@/lib/meta/token-store";
+import type { AgencyTokenMode } from "@/lib/meta/token-store";
+import { isMetaSystemUserMode } from "@/lib/meta/system-user";
+import { refreshClientPageTokens } from "@/lib/meta/token-refresh";
 import type { ApiResponse } from "@/types";
 import { revalidatePath } from "next/cache";
 
@@ -43,9 +46,12 @@ export async function getMetaAuthUrl(): Promise<ApiResponse<{ url: string }>> {
 export async function getConnectedMetaAccount(): Promise<
   ApiResponse<{
     id: string;
+    /** Cómo se obtuvo el token: decide qué muestra y qué oculta la interfaz. */
+    mode: AgencyTokenMode;
     facebookUserId: string;
     name: string;
-    tokenExpiresAt: Date;
+    /** `null` cuando el token no vence (usuario del sistema). */
+    tokenExpiresAt: Date | null;
     permissions?: {
       permissions: Record<string, boolean>;
       missing: string[];
@@ -73,7 +79,7 @@ export async function getConnectedMetaAccount(): Promise<
     // Verificar permisos
     let permissions;
     try {
-      permissions = await checkPermissions(account.accessToken);
+      permissions = await checkPermissions(account.accessToken, account.mode);
     } catch (error) {
       console.error("Error al verificar permisos:", error);
       // Si falla la verificación, continuamos sin permisos
@@ -83,6 +89,7 @@ export async function getConnectedMetaAccount(): Promise<
       success: true,
       data: {
         id: account.id,
+        mode: account.mode,
         facebookUserId: account.facebookUserId,
         name: account.name,
         tokenExpiresAt: account.tokenExpiresAt,
@@ -338,6 +345,19 @@ export async function disconnectMetaAccount(): Promise<ApiResponse<{ success: bo
       };
     }
 
+    // Guardia en el servidor, no solo en la interfaz: una Server Action se
+    // puede invocar directamente. Con un usuario del sistema esto borraría la
+    // fila de OAuth aparentando éxito sin cambiar nada visible —el token sigue
+    // viniendo del entorno— y de paso destruiría el material para revertir.
+    if (isMetaSystemUserMode()) {
+      return {
+        success: false,
+        error:
+          "La conexión con Meta se gestiona por variable de entorno. " +
+          "Quita META_SYSTEM_USER_TOKEN en Vercel para desconectarla.",
+      };
+    }
+
     // Eliminar todas las cuentas de Meta conectadas
     await db.agencyMetaAccount.deleteMany({});
 
@@ -484,6 +504,55 @@ export async function unlinkAdAccountFromClient(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Error al desvincular cuenta publicitaria",
+    };
+  }
+}
+
+/**
+ * Vuelve a emitir los tokens de página de todos los clientes vinculados.
+ *
+ * Con un usuario del sistema los activos se asignan en Business Manager, y la
+ * app no se entera hasta que vuelve a leer `/me/accounts`. Sin esto habría que
+ * esperar al cron nocturno para ver el efecto de una asignación.
+ *
+ * No pasa por `refreshAgencyMetaToken` a propósito: en modo OAuth eso podría
+ * disparar un intercambio de token que nadie pidió.
+ */
+export async function resyncPageTokens(): Promise<
+  ApiResponse<{ updated: number; unmatched: string[] }>
+> {
+  try {
+    const session = await auth();
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return {
+        success: false,
+        error: "No autorizado. Solo los administradores pueden resincronizar tokens.",
+      };
+    }
+
+    const account = await getAgencyToken();
+    if (!account) {
+      return { success: false, error: "No hay cuenta de Meta conectada" };
+    }
+
+    const result = await refreshClientPageTokens(account.accessToken);
+
+    revalidatePath("/admin/settings/integrations");
+
+    return {
+      success: true,
+      data: {
+        updated: result.updated,
+        // Por nombre y no por id: "3 páginas sin asignar" no le sirve a nadie
+        // sin saber de qué clientes se trata.
+        unmatched: result.unmatched.map((client) => client.name),
+      },
+    };
+  } catch (error) {
+    console.error("Error al resincronizar tokens de página:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al resincronizar tokens de página",
     };
   }
 }

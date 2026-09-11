@@ -8,18 +8,10 @@
 
 import { db } from "@/lib/db";
 import { decryptToken, encryptToken } from "@/lib/crypto/token-cipher.ts";
+import { buildSystemUserAccount } from "./system-user.ts";
+import type { AgencyToken } from "./system-user.ts";
 
-export interface AgencyToken {
-  id: string;
-  facebookUserId: string;
-  name: string;
-  /** Descifrado, listo para usar contra Graph. */
-  accessToken: string;
-  tokenExpiresAt: Date;
-  scopes: string | null;
-  lastRefreshedAt: Date | null;
-  refreshFailedAt: Date | null;
-}
+export type { AgencyToken, AgencyTokenMode } from "./system-user.ts";
 
 /**
  * Devuelve la cuenta de Meta de la agencia con su token ya descifrado.
@@ -28,12 +20,19 @@ export interface AgencyToken {
  * que se toma la más reciente.
  */
 export async function getAgencyToken(): Promise<AgencyToken | null> {
+  // El entorno gana: si hay un usuario del sistema configurado, la base de
+  // datos ni se consulta. La fila de OAuth se deja intacta a propósito, porque
+  // es el material para revertir borrando la variable.
+  const systemUser = buildSystemUserAccount();
+  if (systemUser) return systemUser;
+
   const account = await db.agencyMetaAccount.findFirst({
     orderBy: { createdAt: "desc" },
   });
   if (!account) return null;
 
   return {
+    mode: "oauth",
     id: account.id,
     facebookUserId: account.facebookUserId,
     name: account.name,

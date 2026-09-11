@@ -12,6 +12,20 @@ const META_APP_SECRET = process.env.META_APP_SECRET;
 // Configuración de "Inicio de sesión con Facebook para empresas". Si está
 // presente, es ella —y no el parámetro scope— la que decide los permisos.
 const META_CONFIG_ID = process.env.META_CONFIG_ID;
+import {
+  META_SCOPES,
+  mapGrantedScopes,
+  parseDebugTokenResponse,
+  requiredScopesForMode,
+  type DebugTokenInfo,
+} from "./permissions-policy.ts";
+
+// Se reexporta para no romper a quien lo importaba desde aquí. La lista vive
+// en permissions-policy.ts porque ese módulo es el que decide qué falta, y
+// tenerla allí evita que los dos archivos se importen en círculo.
+export { META_SCOPES } from "./permissions-policy.ts";
+import type { AgencyTokenMode } from "./system-user.ts";
+
 const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/callback/meta`;
 
 if (!META_APP_ID || !META_APP_SECRET) {
@@ -30,27 +44,6 @@ export interface MetaUserToken {
   expires_in: number; // Segundos hasta la expiración
 }
 
-/**
- * Permisos que la app solicita y verifica.
- *
- * Fuente única: se usa tanto para construir la URL de autorización como para
- * comprobar qué otorgó el usuario. Si estas dos listas divergen, el banner de
- * permisos miente — por eso vive aquí y no duplicada en cada función.
- *
- * `ads_read` y `business_management` requieren App Review solo para cuentas de
- * terceros; funcionan de inmediato sobre las cuentas propias del usuario que
- * tiene rol en la app.
- */
-export const META_SCOPES = [
-  "public_profile",
-  "pages_show_list",
-  "pages_read_engagement",
-  "read_insights",
-  "instagram_basic",
-  "instagram_manage_insights",
-  "ads_read",
-  "business_management",
-] as const;
 
 /**
  * Genera la URL de autorización de Facebook OAuth 2.0
@@ -295,10 +288,26 @@ export async function getAdAccounts(userAccessToken: string): Promise<Array<{
  * Verifica los permisos del token de acceso
  * Retorna un objeto con los permisos solicitados y si están activos
  */
-export async function checkPermissions(accessToken: string): Promise<{
+export async function checkPermissions(
+  accessToken: string,
+  mode: AgencyTokenMode = "oauth"
+): Promise<{
   permissions: Record<string, boolean>;
   missing: string[];
 }> {
+  // Un usuario del sistema no responde `/me/permissions`: no es una persona.
+  // `/debug_token` inspecciona el token contra la app y sirve para los dos
+  // tipos. No se envuelve en try/catch a propósito: un fallo de red debe
+  // propagarse para que quien llama deje los permisos sin mostrar, en vez de
+  // pintar "faltan todos" y hacer sonar una alarma falsa.
+  if (mode === "system_user") {
+    const info = await debugToken(accessToken);
+    return mapGrantedScopes(
+      info.isValid ? info.scopes : null,
+      requiredScopesForMode("system_user")
+    );
+  }
+
   const requiredPermissions: string[] = [...META_SCOPES];
 
   try {
@@ -351,3 +360,32 @@ export async function checkPermissions(accessToken: string): Promise<{
   }
 }
 
+/**
+ * Inspecciona un token contra la app usando el token de aplicación.
+ *
+ * `/me/permissions` solo funciona para tokens de persona; este endpoint sirve
+ * para tokens de usuario, de página y de usuario del sistema, y además dice si
+ * el token sigue siendo válido y cuándo vence (0 = nunca).
+ */
+export async function debugToken(token: string): Promise<DebugTokenInfo> {
+  if (!META_APP_ID || !META_APP_SECRET) {
+    throw new Error("META_APP_ID y META_APP_SECRET son necesarios para inspeccionar un token");
+  }
+
+  const url = new URL("https://graph.facebook.com/v21.0/debug_token");
+  url.searchParams.set("input_token", token);
+  // El token de aplicación es literalmente "{app_id}|{app_secret}".
+  url.searchParams.set("access_token", `${META_APP_ID}|${META_APP_SECRET}`);
+
+  const response = await fetch(url.toString(), { cache: "no-store" });
+  const body = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      (body as { error?: { message?: string } } | null)?.error?.message ??
+      response.statusText;
+    throw new Error(`No se pudo inspeccionar el token: ${message}`);
+  }
+
+  return parseDebugTokenResponse(body);
+}

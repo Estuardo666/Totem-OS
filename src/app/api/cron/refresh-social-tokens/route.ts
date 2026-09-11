@@ -29,8 +29,10 @@ async function run() {
   return NextResponse.json({
     success: true,
     refreshed: result.refreshed,
+    mode: result.mode ?? null,
     expiresAt: result.expiresAt?.toISOString() ?? null,
     pageTokensRenewed: result.pageTokensRenewed ?? 0,
+    unmatchedClients: result.unmatchedClients ?? [],
     reason: result.reason ?? null,
     executedAt: new Date().toISOString(),
   });

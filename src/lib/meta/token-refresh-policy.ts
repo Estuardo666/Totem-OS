@@ -39,3 +39,49 @@ export function resolveExpiryDate(
   const ttl = Number.isFinite(seconds) && seconds > 0 ? seconds : DEFAULT_TTL_SECONDS;
   return new Date(now.getTime() + ttl * 1000);
 }
+
+/** Qué hacer con el token de la agencia en esta corrida. */
+export type RefreshDecision =
+  | { action: "exchange" }
+  | { action: "skip"; reason: string }
+  | { action: "pages_only"; reason: string };
+
+/**
+ * Decide si toca renovar, no hacer nada, o solo refrescar tokens de página.
+ *
+ * Un token de usuario del sistema no vence y no se renueva: pasarlo por
+ * `fb_exchange_token` no devuelve otro token de sistema, así que el intercambio
+ * se salta siempre, incluso con `force`. Lo que sí hay que seguir haciendo es
+ * volver a pedir los tokens de página, porque es la vía por la que se emiten
+ * desde el usuario del sistema y por la que aparecen los activos recién
+ * asignados en Business Manager.
+ */
+export function decideAgencyRefresh(input: {
+  mode: "oauth" | "system_user";
+  expiresAt: Date | null;
+  force?: boolean;
+  thresholdDays?: number;
+  now?: Date;
+}): RefreshDecision {
+  if (input.mode === "system_user") {
+    return {
+      action: "pages_only",
+      reason:
+        "Token de usuario del sistema: no vence, solo se refrescan los tokens de página.",
+    };
+  }
+
+  // Defensivo: en modo OAuth siempre hay fecha. Si faltara, no inventar una
+  // renovación sobre un dato que no existe.
+  if (!input.expiresAt) {
+    return { action: "skip", reason: "El token no tiene fecha de vencimiento registrada." };
+  }
+
+  if (input.force) return { action: "exchange" };
+
+  if (!needsRefresh(input.expiresAt, input.thresholdDays, input.now)) {
+    return { action: "skip", reason: "El token todavía no necesita renovarse." };
+  }
+
+  return { action: "exchange" };
+}
