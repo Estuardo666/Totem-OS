@@ -1,7 +1,7 @@
 // Cliente SOAP para comunicación con el SRI Ecuador
 // Endpoints de Recepción y Autorización de Comprobantes Electrónicos
 
-import soap from "soap";
+import { createClientAsync } from "soap";
 import { SRI_URLS } from "./types";
 
 export interface RespuestaRecepcion {
@@ -68,16 +68,20 @@ export async function enviarRecepcion(
   const urls = getSriUrls(ambiente);
 
   try {
-    const client = await soap.createClientAsync(urls.recepcion, {
-      wsdl_options: {},
+    const client = await createClientAsync(urls.recepcion, {
+      wsdl_options: { timeout: timeoutMs },
     });
 
-    // El SRI espera el XML como string dentro de <xml>
+    // El WSDL del SRI declara <xml> como xsd:base64Binary. Convertimos
+    // explícitamente a Base64: node-soap puede tratar un Buffer como un
+    // objeto e intentar serializar sus índices como elementos XML.
     const args = {
-      xml: xmlFirmado,
+      xml: Buffer.from(xmlFirmado, "utf8").toString("base64"),
     };
 
-    const [result] = await client.validarComprobanteAsync(args);
+    const [result] = await client.validarComprobanteAsync(args, {
+      timeout: timeoutMs,
+    });
 
     if (!result) {
       throw new Error("Respuesta vacía del SRI en recepción");
@@ -110,15 +114,17 @@ export async function consultarAutorizacion(
   const urls = getSriUrls(ambiente);
 
   try {
-    const client = await soap.createClientAsync(urls.autorizacion, {
-      wsdl_options: {},
+    const client = await createClientAsync(urls.autorizacion, {
+      wsdl_options: { timeout: timeoutMs },
     });
 
     const args = {
       claveAccesoComprobante: claveAcceso,
     };
 
-    const [result] = await client.autorizacionComprobanteAsync(args);
+    const [result] = await client.autorizacionComprobanteAsync(args, {
+      timeout: timeoutMs,
+    });
 
     if (!result) {
       throw new Error("Respuesta vacía del SRI en autorización");
@@ -144,7 +150,7 @@ export async function consultarAutorizacion(
 export async function verificarConectividadSri(ambiente: string): Promise<boolean> {
   try {
     const urls = getSriUrls(ambiente);
-    const client = await soap.createClientAsync(urls.autorizacion, {
+    const client = await createClientAsync(urls.autorizacion, {
       wsdl_options: {},
     });
     return !!client;
@@ -157,10 +163,15 @@ export async function verificarConectividadSri(ambiente: string): Promise<boolea
  * Extrae mensajes de error legibles de una respuesta SRI.
  */
 export function extraerMensajesError(
-  mensajes?: { mensaje: Array<{ identificador: string; mensaje: string; tipo: string; informacionAdicional?: string }> }
+  mensajes?: {
+    mensaje:
+      | Array<{ identificador: string; mensaje: string; tipo: string; informacionAdicional?: string }>
+      | { identificador: string; mensaje: string; tipo: string; informacionAdicional?: string };
+  }
 ): string[] {
   if (!mensajes?.mensaje) return [];
-  return mensajes.mensaje.map(
+  const lista = Array.isArray(mensajes.mensaje) ? mensajes.mensaje : [mensajes.mensaje];
+  return lista.map(
     (m) => `[${m.identificador}] ${m.mensaje}${m.informacionAdicional ? ` - ${m.informacionAdicional}` : ""}`
   );
 }
