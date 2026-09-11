@@ -52,10 +52,11 @@ sistema pueda existir.
 
 1. `business.facebook.com` → crear un negocio a nombre de Totem.
    Anotar el **ID del negocio** (Configuración del negocio → Información del negocio).
-2. **Verificación de empresa** → Configuración del negocio → Centro de seguridad.
-   Pide documentos legales: RUC, constitución, comprobante de domicilio.
-   Es el trámite más lento. **Arrancarlo el primer día**, en paralelo con todo lo demás.
-3. **Reclamar la app** (`META_APP_ID`) → Configuración del negocio → Apps → Agregar.
+2. **Reclamar la app** (`META_APP_ID`) → Configuración del negocio → Apps → Agregar.
+
+> **La verificación de empresa NO va aquí.** Ver la sección de abajo: lo único que
+> bloquea es *enviar* App Review, y puede que no haga falta. Arrancar semanas de
+> papeleo antes de saberlo es tiempo tirado.
 
 ## B. Acceso de socio, cliente por cliente
 
@@ -105,13 +106,46 @@ en la base.
 5. Copiar el token. **Solo se muestra una vez.** No pegarlo en chat, correo ni
    en el repositorio: va directo a Vercel.
 
-## D. App Review (solo lectura)
+## D. Probar antes de tramitar nada
 
-Antes de enviar, revisar en el panel de la app qué permisos **ya** tienen Acceso
-avanzado; parte del camino puede estar hecho. Enviar solo los siete de arriba.
+La verificación de empresa bloquea **una sola cosa**: poder enviar App Review para
+Acceso avanzado. No bloquea el BM, ni reclamar la app, ni el acceso de socio, ni
+generar el token. Y puede que no haga falta Acceso avanzado en absoluto:
+
+> "Standard Access limits you to your own assets."
+> "If you are using the API for yourself as a Direct Developer, you do not need
+> Advanced access or app review."
+
+Totem es herramienta interna sobre cuentas propias, no una app que usan terceros.
+Y la instalación actual ya lee métricas de clientes que están en BM distintos, sin
+App Review, porque el usuario tiene rol en la app y rol en las páginas. El usuario
+del sistema tiene la misma forma.
+
+**Así que con UN cliente piloto configurado, se prueba:**
+
+```bash
+# 1. ¿El usuario del sistema ve la página?
+curl -s "https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token&access_token=$SU_TOKEN"
+
+# 2. ¿Puede leer insights de esa página?
+curl -s "https://graph.facebook.com/v21.0/$PAGE_ID/insights?metric=page_impressions_unique&period=day&access_token=$PAGE_TOKEN"
+
+# 3. ¿Puede leer la cuenta publicitaria? (la más propensa a rebotar)
+curl -s "https://graph.facebook.com/v21.0/act_$AD_ACCOUNT_ID/insights?fields=spend&date_preset=last_7d&access_token=$SU_TOKEN"
+```
+
+| Resultado | Qué sigue |
+|---|---|
+| Las tres devuelven datos | No hace falta verificación ni App Review. Seguir con el resto de clientes |
+| Error 10 o 200 en alguna | Ahí sí: verificación de empresa y luego App Review de los siete permisos |
+
+**Verificación de empresa**, cuando toque → Configuración del negocio → Centro de
+seguridad. Pide documentos legales: RUC, constitución, comprobante de domicilio.
+Es el trámite lento, de semanas.
 
 Los permisos de publicación (`pages_manage_posts`, `instagram_content_publish`)
-se piden en una tanda posterior, sobre una app ya aprobada.
+se piden en una tanda posterior. `instagram_content_publish` **sí** exige App
+Review sin discusión, y por tanto verificación. No es "nunca", es "no primero".
 
 ---
 
