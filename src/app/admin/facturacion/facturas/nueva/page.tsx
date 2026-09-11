@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Plus, Trash2, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Plus, Trash2, Check, Loader2, ListChecks } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { emitirFacturaAction } from "@/actions/admin/facturacion/facturas";
 import { FORMAS_PAGO_LABELS } from "@/lib/sri/types";
 
@@ -25,6 +26,22 @@ interface ItemFactura {
   precioUnitario: number;
   descuento: number;
   tipoIva: string;
+}
+
+interface CampoAdicional {
+  id: string;
+  nombre: string;
+  valor: string;
+}
+
+interface TareaCliente {
+  id: string;
+  title: string;
+  type: string;
+  status: string;
+  publishedAt: string | null;
+  scheduledAt: string | null;
+  createdAt: string;
 }
 
 interface Cliente {
@@ -49,6 +66,7 @@ export default function NuevaFacturaPage() {
   const preselectedClientId = searchParams.get("clientId");
   const preselectedClientName = searchParams.get("clientName");
   const preselectedAmount = searchParams.get("amount");
+  const preselectedDescription = searchParams.get("description");
 
   const [step, setStep] = useState(1);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -58,7 +76,7 @@ export default function NuevaFacturaPage() {
     {
       id: "1",
       codigo: "SERV-001",
-      descripcion: "Servicio de marketing digital",
+      descripcion: preselectedDescription ?? "Servicio de marketing digital",
       cantidad: 1,
       precioUnitario: preselectedAmount ? parseFloat(preselectedAmount) : 0,
       descuento: 0,
@@ -69,6 +87,10 @@ export default function NuevaFacturaPage() {
   const [formaPagoPlazo, setFormaPagoPlazo] = useState("");
   const [enviarEmail, setEnviarEmail] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [camposAdicionales, setCamposAdicionales] = useState<CampoAdicional[]>([]);
+  const [tareas, setTareas] = useState<TareaCliente[]>([]);
+  const [tareasSeleccionadas, setTareasSeleccionadas] = useState<string[]>([]);
+  const [cargandoTareas, setCargandoTareas] = useState(false);
 
   // Cargar clientes y auto-seleccionar si hay clientId o clientName
   useEffect(() => {
@@ -102,6 +124,41 @@ export default function NuevaFacturaPage() {
     }
     loadClientes();
   }, [preselectedClientId, preselectedClientName]);
+
+  // Cargar las tareas del cliente seleccionado para poder adjuntarlas a la factura
+  useEffect(() => {
+    const clienteId = clienteSeleccionado?.id;
+    if (!clienteId) {
+      setTareas([]);
+      setTareasSeleccionadas([]);
+      return;
+    }
+
+    let cancelado = false;
+    async function loadTareas() {
+      setCargandoTareas(true);
+      try {
+        const res = await fetch(`/api/facturacion/tareas?clientId=${clienteId}`);
+        if (!res.ok) throw new Error("Error");
+        const data = await res.json();
+        if (!cancelado) {
+          setTareas(data);
+          setTareasSeleccionadas([]);
+        }
+      } catch {
+        if (!cancelado) {
+          setTareas([]);
+          toast.error("No se pudieron cargar las tareas del cliente");
+        }
+      } finally {
+        if (!cancelado) setCargandoTareas(false);
+      }
+    }
+    loadTareas();
+    return () => {
+      cancelado = true;
+    };
+  }, [clienteSeleccionado?.id]);
 
   // Calcular totales
   const calcularItem = (item: ItemFactura) => {
@@ -147,6 +204,51 @@ export default function NuevaFacturaPage() {
     setItems(items.map((i) => (i.id === id ? { ...i, [field]: value } : i)));
   };
 
+  const toggleTarea = (id: string) => {
+    setTareasSeleccionadas((prev) =>
+      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
+    );
+  };
+
+  const formatearFechaTarea = (tarea: TareaCliente) => {
+    const fecha = tarea.publishedAt ?? tarea.scheduledAt ?? tarea.createdAt;
+    return new Date(fecha).toLocaleDateString("es-EC", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const addCampoAdicional = () => {
+    setCamposAdicionales((prev) => [
+      ...prev,
+      { id: String(Date.now()), nombre: "", valor: "" },
+    ]);
+  };
+
+  const updateCampoAdicional = (id: string, field: "nombre" | "valor", value: string) => {
+    setCamposAdicionales((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, [field]: value } : c))
+    );
+  };
+
+  const removeCampoAdicional = (id: string) => {
+    setCamposAdicionales((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  // Campos que se envían al SRI: tareas seleccionadas + campos manuales (máx. 15)
+  const infoAdicional = [
+    ...tareas
+      .filter((t) => tareasSeleccionadas.includes(t.id))
+      .map((t, i) => ({
+        nombre: `Tarea ${i + 1}`,
+        valor: `${t.title} (${t.type} - ${formatearFechaTarea(t)})`,
+      })),
+    ...camposAdicionales
+      .filter((c) => c.nombre.trim() && c.valor.trim())
+      .map((c) => ({ nombre: c.nombre.trim(), valor: c.valor.trim() })),
+  ].slice(0, 15);
+
   const handleSubmit = async () => {
     if (!clienteSeleccionado) {
       toast.error("Seleccione un cliente");
@@ -172,6 +274,7 @@ export default function NuevaFacturaPage() {
         formaPagoCodigo,
         formaPagoPlazo: formaPagoPlazo || undefined,
         enviarEmail,
+        infoAdicional: infoAdicional.length > 0 ? infoAdicional : undefined,
       });
 
       toast.success(`Factura ${result.secuencial} creada y encolada para envío al SRI`);
@@ -390,6 +493,81 @@ export default function NuevaFacturaPage() {
               <Plus className="mr-2 h-4 w-4" /> Agregar item
             </Button>
 
+            {/* Información adicional */}
+            <div className="space-y-3 rounded-lg border p-4">
+              <div className="flex items-center gap-2">
+                <ListChecks className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium">Información adicional</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Seleccione las tareas facturadas para que el cliente vea el detalle en su factura.
+              </p>
+
+              {cargandoTareas ? (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Cargando tareas del cliente...
+                </p>
+              ) : tareas.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Este cliente no tiene tareas registradas.
+                </p>
+              ) : (
+                <div className="max-h-64 space-y-2 overflow-y-auto">
+                  {tareas.map((tarea) => (
+                    <label
+                      key={tarea.id}
+                      className="flex cursor-pointer items-start gap-3 rounded-lg border p-2 hover:bg-muted/50"
+                    >
+                      <Checkbox
+                        checked={tareasSeleccionadas.includes(tarea.id)}
+                        onCheckedChange={() => toggleTarea(tarea.id)}
+                        className="mt-0.5"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{tarea.title}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {tarea.type} · {tarea.status} · {formatearFechaTarea(tarea)}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {camposAdicionales.map((campo) => (
+                <div key={campo.id} className="flex items-end gap-2">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs">Nombre</Label>
+                    <Input
+                      value={campo.nombre}
+                      placeholder="Ej: Periodo"
+                      onChange={(e) => updateCampoAdicional(campo.id, "nombre", e.target.value)}
+                    />
+                  </div>
+                  <div className="flex-[2] space-y-1">
+                    <Label className="text-xs">Valor</Label>
+                    <Input
+                      value={campo.valor}
+                      placeholder="Ej: Marzo 2026"
+                      onChange={(e) => updateCampoAdicional(campo.id, "valor", e.target.value)}
+                    />
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => removeCampoAdicional(campo.id)}>
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
+              ))}
+
+              <div className="flex items-center justify-between">
+                <Button variant="outline" size="sm" onClick={addCampoAdicional}>
+                  <Plus className="mr-2 h-4 w-4" /> Agregar campo libre
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {infoAdicional.length}/15 campos
+                </span>
+              </div>
+            </div>
+
             {/* Totales */}
             <div className="p-4 bg-muted rounded-lg space-y-2">
               <div className="flex justify-between text-sm">
@@ -475,6 +653,24 @@ export default function NuevaFacturaPage() {
                 );
               })}
             </div>
+
+            {/* Información adicional */}
+            {infoAdicional.length > 0 && (
+              <div>
+                <p className="mb-2 text-sm text-muted-foreground">
+                  Información adicional ({infoAdicional.length})
+                </p>
+                {infoAdicional.map((campo) => (
+                  <div
+                    key={`${campo.nombre}-${campo.valor}`}
+                    className="flex justify-between gap-4 border-b py-1 text-sm"
+                  >
+                    <span className="text-muted-foreground">{campo.nombre}</span>
+                    <span className="text-right">{campo.valor}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Total */}
             <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">

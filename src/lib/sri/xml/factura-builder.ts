@@ -8,10 +8,12 @@ import type { FacturaXmlData } from "../types";
  * El XML generado NO incluye firma digital (se firma después).
  */
 export function buildFacturaXml(data: FacturaXmlData): string {
-  const { infoTributaria, infoFactura, detalles } = data;
+  const { infoTributaria, infoFactura, detalles, infoAdicional } = data;
 
-  const doc = create({ version: "1.0", encoding: "UTF-8" })
-    .ele("factura", { id: "comprobante", version: "1.1.0" })
+  const factura = create({ version: "1.0", encoding: "UTF-8" })
+    .ele("factura", { id: "comprobante", version: "1.1.0" });
+
+  factura
       // ── infoTributaria ──
       .ele("infoTributaria")
         .ele("ambiente").txt(infoTributaria.ambiente).up()
@@ -25,9 +27,10 @@ export function buildFacturaXml(data: FacturaXmlData): string {
         .ele("ptoEmi").txt(infoTributaria.ptoEmi).up()
         .ele("secuencial").txt(infoTributaria.secuencial).up()
         .ele("dirMatriz").txt(infoTributaria.dirMatriz).up()
-      .up()
+      .up();
 
-      // ── infoFactura ──
+  // ── infoFactura ──
+  const infoFacturaNode = factura
       .ele("infoFactura")
         .ele("fechaEmision").txt(infoFactura.fechaEmision).up()
         .ele("dirEstablecimiento").txt(infoFactura.dirEstablecimiento ?? infoTributaria.dirMatriz).up()
@@ -36,11 +39,12 @@ export function buildFacturaXml(data: FacturaXmlData): string {
         .ele("razonSocialComprador").txt(infoFactura.razonSocialComprador).up()
         .ele("identificacionComprador").txt(infoFactura.identificacionComprador).up()
       .ele("totalSinImpuestos").txt(formatDecimal(infoFactura.totalSinImpuestos)).up()
-      .ele("totalDescuento").txt(formatDecimal(infoFactura.totalDescuento)).up()
-      .ele("totalConImpuestos");
+      .ele("totalDescuento").txt(formatDecimal(infoFactura.totalDescuento)).up();
+
+    const totalConImpuestosNode = infoFacturaNode.ele("totalConImpuestos");
 
     for (const imp of infoFactura.totalConImpuestos) {
-      doc.ele("totalImpuesto")
+      totalConImpuestosNode.ele("totalImpuesto")
         .ele("codigo").txt(imp.codigo).up()
         .ele("codigoPorcentaje").txt(imp.codigoPorcentaje).up()
         .ele("baseImponible").txt(formatDecimal(imp.baseImponible)).up()
@@ -48,14 +52,15 @@ export function buildFacturaXml(data: FacturaXmlData): string {
       .up();
     }
 
-    doc.up()
+    infoFacturaNode
       .ele("propina").txt(formatDecimal(infoFactura.propina)).up()
       .ele("importeTotal").txt(formatDecimal(infoFactura.importeTotal)).up()
-      .ele("moneda").txt(infoFactura.moneda).up()
-      .ele("pagos");
+      .ele("moneda").txt(infoFactura.moneda).up();
+
+    const pagosNode = infoFacturaNode.ele("pagos");
 
     for (const pago of infoFactura.pagos) {
-      const pagoNode = doc.ele("pago")
+      const pagoNode = pagosNode.ele("pago")
         .ele("formaPago").txt(pago.formaPago).up()
         .ele("total").txt(formatDecimal(pago.total)).up();
       if (pago.plazo) {
@@ -67,13 +72,11 @@ export function buildFacturaXml(data: FacturaXmlData): string {
       pagoNode.up();
     }
 
-    doc.up().up()
-
-      // ── detalles ──
-      .ele("detalles");
+    // ── detalles ──
+    const detallesNode = factura.ele("detalles");
 
     for (const det of detalles) {
-      const detNode = doc.ele("detalle")
+      const detNode = detallesNode.ele("detalle")
         .ele("codigoPrincipal").txt(det.codigoPrincipal).up()
         .ele("descripcion").txt(det.descripcion).up()
         .ele("cantidad").txt(formatDecimal(det.cantidad)).up()
@@ -95,7 +98,32 @@ export function buildFacturaXml(data: FacturaXmlData): string {
       detNode.up().up();
     }
 
-  return doc.end({ prettyPrint: true });
+    // ── infoAdicional ──
+    // El SRI limita el nombre a 300 caracteres y el valor a 300 caracteres,
+    // y admite un máximo de 15 campos adicionales.
+    const camposAdicionales = (infoAdicional ?? [])
+      .filter((campo) => campo.nombre.trim() && campo.valor.trim())
+      .slice(0, 15);
+
+    if (camposAdicionales.length > 0) {
+      const infoAdicionalNode = factura.ele("infoAdicional");
+      for (const campo of camposAdicionales) {
+        infoAdicionalNode
+          .ele("campoAdicional", { nombre: truncar(campo.nombre.trim(), 300) })
+          .txt(truncar(campo.valor.trim(), 300))
+          .up();
+      }
+      infoAdicionalNode.up();
+    }
+
+  return factura.end({ prettyPrint: true });
+}
+
+/**
+ * Recorta un texto al límite permitido por el esquema del SRI.
+ */
+function truncar(value: string, max: number): string {
+  return value.length > max ? value.slice(0, max) : value;
 }
 
 /**

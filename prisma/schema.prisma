@@ -1238,6 +1238,10 @@ model ElectronicInvoice {
   formaPagoUnidad String? // "DIAS"
   pagos           String? // JSON array para múltiples formas de pago
 
+  // Información adicional (campoAdicional del XML SRI)
+  // JSON array: [{ "nombre": "Tarea", "valor": "Reel campaña abril" }]
+  infoAdicional String?
+
   // Estado del comprobante
   estado String @default("PENDIENTE_FIRMA")
   // PENDIENTE_FIRMA, FIRMADA, ENVIADA, AUTORIZADA, RECHAZADA, ANULADA, ERROR, CANCELADA_LOCAL

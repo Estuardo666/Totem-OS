@@ -196,10 +196,16 @@ export interface InfoFactura {
   pagos: PagoFactura[];
 }
 
+export interface CampoAdicional {
+  nombre: string;
+  valor: string;
+}
+
 export interface FacturaXmlData {
   infoTributaria: InfoTributaria;
   infoFactura: InfoFactura;
   detalles: DetalleFactura[];
+  infoAdicional?: CampoAdicional[];
 }
 
 export interface InfoNotaCredito {

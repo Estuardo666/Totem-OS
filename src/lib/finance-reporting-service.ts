@@ -45,6 +45,7 @@ export interface FinancialStats {
     amount: number;
     description: string;
     date: Date;
+    clientId?: string;
     clientName?: string;
     clientLogo?: string | null;
     status?: string;
@@ -618,6 +619,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
             amount: invoice.amount,
             description: `Factura - ${invoice.client.name}`,
             date: invoice.generatedAt,
+            clientId: invoice.clientId as string | undefined,
             clientName: invoice.client.name,
             clientLogo: invoice.client.logo ?? undefined,
             status: invoice.status,
@@ -633,6 +635,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         amount: expense.amount,
         description: expense.description,
         date: expense.date,
+        clientId: expense.clientId ?? undefined,
         clientName: expense.client?.name,
         clientLogo: expense.client?.logo ?? undefined,
         status: expense.reimbursed ? "PAID" : "PENDING",
@@ -649,6 +652,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         amount: transaction.amount,
         description: transaction.description || "Transacción",
         date: transaction.createdAt,
+        clientId: transaction.relatedClientId ?? undefined,
         clientName: transaction.relatedClient?.name,
         clientLogo: transaction.relatedClient?.logo ?? undefined,
         status: transaction.status,

@@ -49,6 +49,9 @@ interface RideData {
     iva: number;
   }>;
 
+  // Información adicional (campoAdicional)
+  infoAdicional?: Array<{ nombre: string; valor: string }>;
+
   // Totales por tipo de IVA
   subtotal0: number;
   subtotal12: number;
@@ -280,6 +283,29 @@ export async function generarRidePdf(data: RideData): Promise<Buffer> {
       drawTotal("TOTAL:", formatMoney(data.importeTotal), true);
 
       doc.moveDown(1);
+
+      // ════════════════════════════════════════════
+      // INFORMACIÓN ADICIONAL
+      // ════════════════════════════════════════════
+      if (data.infoAdicional && data.infoAdicional.length > 0) {
+        doc.moveTo(40, doc.y).lineTo(40 + pageWidth, doc.y).stroke();
+        doc.moveDown(0.5);
+        doc.font("Helvetica-Bold").fontSize(8).text("INFORMACIÓN ADICIONAL", 40, doc.y);
+        doc.moveDown(0.3);
+
+        for (const campo of data.infoAdicional) {
+          doc.font("Helvetica-Bold").fontSize(7).text(`${campo.nombre}:`, 40, doc.y, {
+            width: 120,
+            continued: false,
+          });
+          doc.font("Helvetica").fontSize(7).text(campo.valor, 165, doc.y - 9, {
+            width: pageWidth - 125,
+          });
+          doc.moveDown(0.2);
+        }
+
+        doc.moveDown(1);
+      }
 
       // ════════════════════════════════════════════
       // PIE DE PÁGINA

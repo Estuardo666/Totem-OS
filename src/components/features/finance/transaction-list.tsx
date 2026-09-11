@@ -1135,7 +1135,15 @@ export function TransactionList({ transactions }: TransactionListProps) {
                             return (
                               <>
                                 {transaction.type === "INCOME" && transaction.clientName && (
-                                  <Link className="block" href={`/admin/facturacion/facturas/nueva?clientName=${encodeURIComponent(transaction.clientName)}&amount=${transaction.amount}`}>
+                                  <Link
+                                    className="block"
+                                    href={`/admin/facturacion/facturas/nueva?${new URLSearchParams({
+                                      ...(transaction.clientId ? { clientId: transaction.clientId } : {}),
+                                      clientName: transaction.clientName,
+                                      amount: String(transaction.amount),
+                                      ...(transaction.description ? { description: transaction.description } : {}),
+                                    }).toString()}`}
+                                  >
                                     <Button
                                       variant="outline"
                                       size="sm"

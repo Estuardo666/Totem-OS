@@ -25,6 +25,7 @@ interface DatosFactura {
   formaPagoUnidad?: string;
   invoiceId?: string; // si se emite desde Invoice existente
   enviarEmail?: boolean;
+  infoAdicional?: Array<{ nombre: string; valor: string }>;
 }
 
 /**
@@ -120,6 +121,8 @@ export async function emitirFactura(
         formaPagoPlazo: datos.formaPagoPlazo,
         formaPagoUnidad: datos.formaPagoUnidad,
 
+        infoAdicional: serializarInfoAdicional(datos.infoAdicional),
+
         estado: "PENDIENTE_FIRMA",
         invoiceId: datos.invoiceId,
 
@@ -163,6 +166,26 @@ export async function emitirFactura(
   });
 
   return factura;
+}
+
+/**
+ * Normaliza los campos adicionales y los serializa como JSON para persistirlos.
+ * El SRI admite hasta 15 campos, con nombre y valor de 300 caracteres.
+ */
+function serializarInfoAdicional(
+  campos?: Array<{ nombre: string; valor: string }>
+): string | undefined {
+  if (!campos || campos.length === 0) return undefined;
+
+  const limpios = campos
+    .map((campo) => ({
+      nombre: campo.nombre.trim().slice(0, 300),
+      valor: campo.valor.trim().slice(0, 300),
+    }))
+    .filter((campo) => campo.nombre && campo.valor)
+    .slice(0, 15);
+
+  return limpios.length > 0 ? JSON.stringify(limpios) : undefined;
 }
 
 /**

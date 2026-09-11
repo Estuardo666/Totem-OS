@@ -24,6 +24,7 @@ export async function emitirFacturaAction(data: {
   formaPagoUnidad?: string;
   invoiceId?: string;
   enviarEmail?: boolean;
+  infoAdicional?: Array<{ nombre: string; valor: string }>;
 }) {
   const session = await auth();
   if (!session?.user) throw new Error("No autenticado");
