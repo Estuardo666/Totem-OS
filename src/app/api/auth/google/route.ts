@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleCalendarService } from '@/lib/google-calendar';
+import { syncCalendarEventsToShoots } from '@/lib/calendar-to-shoot-sync';
 import { auth } from '@/auth';
 import {
   GOOGLE_STATE_COOKIE,
@@ -62,6 +63,13 @@ export async function GET(request: NextRequest) {
     
     // Guardar tokens en la base de datos
     await GoogleCalendarService.saveTokens(session.user.id, tokens);
+
+    // Importar los eventos que ya existen antes de esperar una notificación
+    // push. El alta del webhook solo avisa de cambios futuros.
+    const initialSync = await syncCalendarEventsToShoots(session.user.id);
+    if (initialSync.errors.length > 0) {
+      console.error('[Google Calendar] Errores en la sincronización inicial:', initialSync.errors);
+    }
 
     // Registrar webhook channel para sync bidireccional
     try {

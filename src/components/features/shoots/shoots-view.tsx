@@ -259,7 +259,9 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.push("/api/google-calendar/connect")}
+            onClick={() => {
+              window.location.href = "/api/auth/google";
+            }}
           >
             <Link2 className="h-4 w-4 mr-1" />
             Conectar

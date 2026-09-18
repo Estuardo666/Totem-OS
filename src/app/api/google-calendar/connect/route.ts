@@ -27,10 +27,10 @@ export async function GET() {
 
     const authUrl = GoogleCalendarService.getAuthUrl(state, challenge);
     
-    return NextResponse.json({ 
-      authUrl,
-      message: 'URL de autorización generada correctamente'
-    });
+    // Este endpoint se consume mediante navegación del navegador desde Rodajes.
+    // Redirigir aquí inicia el flujo OAuth; devolver JSON deja al usuario viendo
+    // la URL sin llegar nunca a la pantalla de autorización de Google.
+    return NextResponse.redirect(authUrl);
   } catch (error) {
     console.error('Error generando URL de autorización:', error);
     return NextResponse.json(
