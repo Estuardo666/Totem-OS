@@ -125,7 +125,7 @@ export function MonthlySummaryBreakdown({ summary }: MonthlySummaryBreakdownProp
           <CardHeader>
             <CardTitle className="text-xl">Tesorería operativa</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Caja del mes y compromisos ya asumidos. Esta sección no reemplaza conciliación bancaria, pero sí sirve para decidir.
+              Flujo del mes, asignaciones a ahorro y obligaciones abiertas. No reemplaza la conciliación bancaria.
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
@@ -135,9 +135,9 @@ export function MonthlySummaryBreakdown({ summary }: MonthlySummaryBreakdownProp
               <p className="mt-2 text-xs text-emerald-800">Eficiencia de cobranza: {formatPercent(summary.quality.collectionEfficiencyPct)}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-medium text-slate-900">Flujo neto del mes</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-950">{formatCurrency(summary.executive.netCashFlow)}</p>
-              <p className="mt-2 text-xs text-slate-700">Cobros menos salidas directas y operativas registradas.</p>
+              <p className="text-sm font-medium text-slate-900">Disponible por asignar</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-950">{formatCurrency(summary.treasury.availableToAllocate)}</p>
+              <p className="mt-2 text-xs text-slate-700">Cobros menos salidas efectivamente pagadas.</p>
             </div>
             <div className="space-y-3 rounded-2xl border border-border/60 p-4 md:col-span-2">
               <div className="flex items-center justify-between text-sm">
@@ -148,8 +148,29 @@ export function MonthlySummaryBreakdown({ summary }: MonthlySummaryBreakdownProp
                 <span className="text-muted-foreground">Salidas operativas</span>
                 <span className="font-semibold">{formatCurrency(summary.treasury.operatingCashOut)}</span>
               </div>
+              <div className="flex items-center justify-between border-t border-border/60 pt-3 text-sm font-semibold">
+                <span>Salidas efectivamente pagadas</span>
+                <span>{formatCurrency(summary.treasury.paidCashOut)}</span>
+              </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Reembolsos pendientes</span>
+                <span className="text-muted-foreground">Transferido a ahorro</span>
+                <span className="font-semibold">{formatCurrency(summary.treasury.transferredToSavings)}</span>
+              </div>
+              {summary.treasury.withdrawnFromSavings > 0 ? (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Retirado de ahorro</span>
+                  <span className="font-semibold">{formatCurrency(summary.treasury.withdrawnFromSavings)}</span>
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between text-sm font-semibold">
+                <span>Saldo operativo final</span>
+                <span>{formatCurrency(summary.treasury.operatingEndingBalance)}</span>
+              </div>
+              <p className="border-t border-border/60 pt-3 text-xs font-medium text-muted-foreground">
+                Obligaciones abiertas · {summary.treasury.commitmentsScopeLabel}
+              </p>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Reembolsos pendientes a personas</span>
                 <span className="font-semibold">{formatCurrency(summary.treasury.pendingReimbursements)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">

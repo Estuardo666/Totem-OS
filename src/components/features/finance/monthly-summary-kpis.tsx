@@ -79,7 +79,7 @@ export function MonthlySummaryKpis({ summary }: MonthlySummaryKpisProps) {
               : item.key === "directCosts"
                 ? `Margen bruto ${formatPercent(summary.executive.grossMarginPct)}`
                 : item.key === "operatingExpenses"
-                  ? `Caja neta ${formatCurrency(summary.executive.netCashFlow)}`
+                  ? `Disponible por asignar ${formatCurrency(summary.treasury.availableToAllocate)}`
                   : item.key === "operatingResult"
                     ? `Margen ${formatPercent(summary.executive.operatingMarginPct)}`
                     : `Corriente ${formatCurrency(summary.receivables.current)}`;

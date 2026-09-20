@@ -17,6 +17,10 @@ import {
 } from "@/lib/finance-monthly-summary-helpers";
 import { getClientMonthlyClosureRows } from "@/lib/finance-monthly-close-service";
 import { getReceivablesFromDb } from "@/lib/finance-transaction-service";
+import {
+  calculateTreasuryPosition,
+  isExpensePaidFromCompanyCash,
+} from "@/lib/finance-treasury-logic";
 import type {
   ClientSummaryAccumulator,
   MonthlyFinancialSummaryData,
@@ -129,7 +133,8 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
   const periodLabel = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(monthStart);
   const cutoffLabel = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(cutoffDate);
 
-  const [clients, invoices, incomeTransactions, expenseTransactions, honorarios, expenses, pendingExpenseTransactions, pendingHonorarios, pendingExpenses, receivablesResult] = await Promise.all([
+  const commitmentCutoff = isCurrentMonth ? new Date() : monthEnd;
+  const [clients, invoices, incomeTransactions, expenseTransactions, honorarios, expenses, pendingExpenseTransactions, pendingHonorarios, pendingExpenses, savingsMovements, receivablesResult] = await Promise.all([
     db.client.findMany({
       where: { status: { not: "INACTIVE" } },
       select: { id: true, name: true, logo: true, status: true, monthlyRate: true, paymentDay: true, billingStartDate: true, createdAt: true },
@@ -139,9 +144,16 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
     db.transaction.findMany({ where: { type: "EXPENSE", status: "PAID", createdAt: { gte: monthStart, lte: monthEnd } }, include: { relatedClient: true } }),
     db.transaction.findMany({ where: { type: "HONORARIOS", status: "PAID", createdAt: { gte: monthStart, lte: monthEnd } }, include: { relatedClient: true } }),
     db.expense.findMany({ where: { date: { gte: monthStart, lte: monthEnd } }, include: { client: true } }),
-    db.transaction.findMany({ where: { type: "EXPENSE", status: "PENDING" } }),
-    db.transaction.findMany({ where: { type: "HONORARIOS", status: "PENDING" } }),
-    db.expense.findMany({ where: { reimbursed: false } }),
+    db.transaction.findMany({ where: { type: "EXPENSE", status: "PENDING", createdAt: { lte: commitmentCutoff } } }),
+    db.transaction.findMany({ where: { type: "HONORARIOS", status: "PENDING", createdAt: { lte: commitmentCutoff } } }),
+    db.expense.findMany({
+      where: {
+        reimbursed: false,
+        paidByUserId: { not: null },
+        date: { lte: commitmentCutoff },
+      },
+    }),
+    db.emergencyFundMovement.findMany({ where: { year: monthStart.getFullYear(), month: monthStart.getMonth() + 1 } }),
     getReceivablesFromDb(userId, monthStart),
   ]);
 
@@ -292,11 +304,28 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
   const collectedCash = invoices.filter((invoice) => invoice.status === "PAID").reduce((sum, invoice) => sum + invoice.amount, 0) + incomeTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
   const grossMargin = recognizedRevenue - directCosts;
   const operatingResult = grossMargin - operatingExpenses;
-  const netCashFlow = collectedCash - directCosts - operatingExpenses;
   const pendingReimbursements = pendingExpenses.reduce((sum, item) => sum + item.amount, 0);
   const pendingExpenseTransactionsTotal = pendingExpenseTransactions.reduce((sum, item) => sum + item.amount, 0);
   const pendingCompensation = pendingHonorarios.reduce((sum, item) => sum + item.amount, 0);
-  const pendingCommitments = pendingReimbursements + pendingExpenseTransactionsTotal + pendingCompensation;
+  const cashExpenses = expenses.filter(isExpensePaidFromCompanyCash);
+  const directCashOut =
+    honorarios.reduce((sum, item) => sum + item.amount, 0) +
+    cashExpenses.filter((expense) => expense.clientId).reduce((sum, item) => sum + item.amount, 0) +
+    expenseTransactions.filter((transaction) => transaction.relatedClientId ?? transaction.clientId).reduce((sum, item) => sum + item.amount, 0);
+  const operatingCashOut =
+    cashExpenses.filter((expense) => !expense.clientId).reduce((sum, item) => sum + item.amount, 0) +
+    expenseTransactions.filter((transaction) => !(transaction.relatedClientId ?? transaction.clientId)).reduce((sum, item) => sum + item.amount, 0);
+  const treasuryPosition = calculateTreasuryPosition({
+    collectedCash,
+    directCashOut,
+    operatingCashOut,
+    savingsContributions: savingsMovements.filter((movement) => movement.type === "CONTRIBUTION").reduce((sum, movement) => sum + movement.amount, 0),
+    savingsWithdrawals: savingsMovements.filter((movement) => movement.type === "WITHDRAWAL").reduce((sum, movement) => sum + movement.amount, 0),
+    pendingReimbursements,
+    pendingExpenseTransactions: pendingExpenseTransactionsTotal,
+    pendingCompensation,
+  });
+  const netCashFlow = treasuryPosition.availableToAllocate;
 
   const receivablesTotal = receivableEntries.reduce((sum, item) => sum + item.amount, 0);
   const current = receivableEntries.filter((item) => item.daysOverdue <= 0).reduce((sum, item) => sum + item.amount, 0);
@@ -354,12 +383,18 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
     },
     treasury: {
       collectedCash,
-      directCashOut: directCosts,
-      operatingCashOut: operatingExpenses,
-      pendingCommitments,
+      directCashOut,
+      operatingCashOut,
+      paidCashOut: treasuryPosition.paidCashOut,
+      availableToAllocate: treasuryPosition.availableToAllocate,
+      transferredToSavings: treasuryPosition.transferredToSavings,
+      withdrawnFromSavings: treasuryPosition.withdrawnFromSavings,
+      operatingEndingBalance: treasuryPosition.operatingEndingBalance,
+      pendingCommitments: treasuryPosition.pendingCommitments,
       pendingReimbursements,
       pendingExpenseTransactions: pendingExpenseTransactionsTotal,
       pendingCompensation,
+      commitmentsScopeLabel: `Acumulados hasta ${cutoffLabel}`,
     },
     receivables: {
       total: receivablesTotal,

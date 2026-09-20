@@ -141,7 +141,9 @@ export async function getStrategicClientPlans():
     }
 
     const clients = await db.client.findMany({
-      where: clientScope,
+      where: {
+        AND: [clientScope, { status: { not: "INACTIVE" } }],
+      },
       select: {
         id: true,
         name: true,

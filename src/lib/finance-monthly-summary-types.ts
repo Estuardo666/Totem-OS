@@ -118,10 +118,16 @@ export interface MonthlyFinancialSummaryData {
     collectedCash: number;
     directCashOut: number;
     operatingCashOut: number;
+    paidCashOut: number;
+    availableToAllocate: number;
+    transferredToSavings: number;
+    withdrawnFromSavings: number;
+    operatingEndingBalance: number;
     pendingCommitments: number;
     pendingReimbursements: number;
     pendingExpenseTransactions: number;
     pendingCompensation: number;
+    commitmentsScopeLabel: string;
   };
   receivables: {
     total: number;

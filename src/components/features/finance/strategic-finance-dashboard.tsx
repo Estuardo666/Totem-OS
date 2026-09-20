@@ -88,6 +88,7 @@ type DashboardAggregate = {
   collectedCash: number;
   directCosts: number;
   operatingExpenses: number;
+  paidCashOut: number;
   operatingResult: number;
   netCashFlow: number;
   closingReceivables: number;
@@ -124,6 +125,7 @@ function aggregateSnapshots(
   let collectedCash = 0;
   let directCosts = 0;
   let operatingExpenses = 0;
+  let paidCashOut = 0;
 
   for (const snapshot of sortedSnapshots) {
     let selectedRevenueForOverhead = 0;
@@ -176,6 +178,7 @@ function aggregateSnapshots(
 
     directCosts += unattributedDirectCosts * overheadShare;
     operatingExpenses += snapshot.executive.operatingExpenses * overheadShare;
+    paidCashOut += snapshot.treasury.paidCashOut * overheadShare;
   }
 
   if (lastSnapshot) {
@@ -195,8 +198,9 @@ function aggregateSnapshots(
     collectedCash,
     directCosts,
     operatingExpenses,
+    paidCashOut,
     operatingResult: recognizedRevenue - directCosts - operatingExpenses,
-    netCashFlow: collectedCash - directCosts - operatingExpenses,
+    netCashFlow: collectedCash - paidCashOut,
     closingReceivables,
     clientsWithDebt: clients.filter((row) => row.outstanding > 0).length,
     clients,
@@ -342,6 +346,7 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, r
       collectedCash: fallbackIncome,
       directCosts: 0,
       operatingExpenses: fallbackExpenses,
+      paidCashOut: fallbackExpenses,
       operatingResult: fallbackIncome - fallbackExpenses,
       netCashFlow: fallbackIncome - fallbackExpenses,
       closingReceivables: receivables?.totalReceivable ?? 0,
@@ -538,7 +543,7 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, r
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <MetricCard label="Ingresos netos" value={money(totalIncome)} delta={formatDelta(incomeDelta)} compareLabel={previousAggregate ? compareLabel : "en el período"} context="Ingreso reconocido para el alcance seleccionado." tone={totalIncome >= 0 ? "positive" : "critical"} trendTone={positiveTrend(incomeDelta)} points={sparkPoints("ingresos")} icon={CircleDollarSign} />
           <MetricCard label="Utilidad operativa" value={money(operatingProfit)} delta={formatDelta(profitDelta)} compareLabel={previousAggregate ? compareLabel : "en el período"} context="Resultado después de costos directos y gastos operativos." tone={operatingProfit >= 0 ? "positive" : "critical"} trendTone={positiveTrend(profitDelta)} points={sparkPoints("utilidad")} icon={TrendingUp} />
-          <MetricCard label="Caja neta del período" value={money(aggregate.netCashFlow)} delta={formatDelta(cashDelta)} compareLabel={previousAggregate ? compareLabel : "en el período"} context="Cobros menos salidas de caja del alcance seleccionado." tone={aggregate.netCashFlow >= 0 ? "positive" : "critical"} trendTone={positiveTrend(cashDelta)} points={sparkPoints("caja")} icon={WalletCards} />
+          <MetricCard label="Disponible por asignar" value={money(aggregate.netCashFlow)} delta={formatDelta(cashDelta)} compareLabel={previousAggregate ? compareLabel : "en el período"} context="Cobros menos salidas efectivamente pagadas, antes de transferencias a ahorro." tone={aggregate.netCashFlow >= 0 ? "positive" : "critical"} trendTone={positiveTrend(cashDelta)} points={sparkPoints("caja")} icon={WalletCards} />
           <MetricCard label="Cartera pendiente" value={money(receivableTotal)} delta={formatDelta(receivableDelta)} compareLabel={previousAggregate ? compareLabel : "en el período"} context={`${receivableCount} ${receivableCount === 1 ? "cliente" : "clientes"} con saldo pendiente al corte.`} tone={receivableTotal > 0 ? "critical" : "positive"} trendTone={inverseTrend(receivableDelta)} points={sparkPoints("cartera")} icon={ReceiptText} />
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3">
@@ -548,7 +553,7 @@ export function StrategicFinanceDashboard({ stats, profitability, clientPlans, r
       </section>
 
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-[1.08fr_1fr_0.92fr]">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.025)]"><SectionTitle title="Rentabilidad multinivel" description="Tres lecturas para separar margen, operación y caja real." /><div className="grid grid-cols-3 gap-2">{[{ label: "Directa", value: totalIncome - aggregate.directCosts, detail: "Ingreso menos costos directos", tone: "text-blue-600" }, { label: "Ajustada", value: operatingProfit, detail: "Incluye gastos operativos", tone: "text-violet-600" }, { label: "Real", value: aggregate.netCashFlow, detail: "Caja efectivamente generada", tone: "text-emerald-600" }].map((item) => <div key={item.label} className="rounded-xl border border-slate-100 bg-slate-50/60 p-3"><p className={cn("text-[10px] font-semibold", item.tone)}>{item.label}</p><p className="mt-2 text-sm font-semibold tracking-[-0.03em] text-slate-900">{money(item.value)}</p><p className="mt-1 text-[10px] leading-relaxed text-slate-500">{item.detail}</p></div>)}</div><div className="mt-3 flex items-start gap-2 border-t border-slate-100 pt-3 text-[11px] leading-relaxed text-slate-500"><ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />La lectura real usa cobros y salidas de caja del período filtrado.</div></div>
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.025)]"><SectionTitle title="Rentabilidad multinivel" description="Tres lecturas para separar margen, operación y caja real." /><div className="grid grid-cols-3 gap-2">{[{ label: "Directa", value: totalIncome - aggregate.directCosts, detail: "Ingreso menos costos directos", tone: "text-blue-600" }, { label: "Ajustada", value: operatingProfit, detail: "Incluye gastos operativos", tone: "text-violet-600" }, { label: "Real", value: aggregate.netCashFlow, detail: "Disponible antes de ahorro", tone: "text-emerald-600" }].map((item) => <div key={item.label} className="rounded-xl border border-slate-100 bg-slate-50/60 p-3"><p className={cn("text-[10px] font-semibold", item.tone)}>{item.label}</p><p className="mt-2 text-sm font-semibold tracking-[-0.03em] text-slate-900">{money(item.value)}</p><p className="mt-1 text-[10px] leading-relaxed text-slate-500">{item.detail}</p></div>)}</div><div className="mt-3 flex items-start gap-2 border-t border-slate-100 pt-3 text-[11px] leading-relaxed text-slate-500"><ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />La lectura real usa cobros y salidas efectivamente pagadas del período filtrado.</div></div>
         <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.025)]"><SectionTitle title="Proyectado vs. cobrado" description={`Cumplimiento contractual de ${periodTitle}.`} /><div className="flex items-center gap-5"><div><p className="text-3xl font-semibold tracking-[-0.06em] text-blue-600">{Math.round(collectedRate)}%</p><p className="mt-1 text-[11px] text-slate-500">de lo proyectado</p><p className="mt-4 text-xs font-medium text-slate-700">Diferencia <span className="ml-2 font-semibold text-rose-600">{money(totalContracted - collectedCash)}</span></p></div><div className="h-40 flex-1"><ResponsiveContainer width="100%" height="100%"><BarChart data={[{ name: "Período", proyectado: totalContracted, cobrado: collectedCash }]} barCategoryGap="28%"><CartesianGrid vertical={false} stroke="#e2e8f0" /><XAxis dataKey="name" hide /><YAxis hide /><RechartsTooltip formatter={(value: number) => money(value)} contentStyle={{ borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 11 }} /><Bar dataKey="proyectado" fill="#bfdbfe" radius={[5, 5, 0, 0]} /><Bar dataKey="cobrado" fill="#2563eb" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div></div><div className="mt-3 flex items-center gap-4 text-[10px] text-slate-500"><span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-blue-200" />Proyectado {money(totalContracted)}</span><span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-blue-600" />Cobrado {money(collectedCash)}</span></div></div>
         <div className="col-span-2 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.025)] xl:col-span-1"><SectionTitle title="Radar financiero" description="Estado de las dimensiones que más afectan la decisión." /><div className="space-y-1">{radar.map((item) => <div key={item.label} className="flex items-center justify-between border-b border-slate-100 py-2.5 last:border-0"><span className="text-xs font-medium text-slate-700">{item.label}</span><StatePill tone={item.tone}>{item.value}</StatePill></div>)}</div></div>
       </section>
