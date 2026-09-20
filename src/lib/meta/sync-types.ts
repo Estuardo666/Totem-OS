@@ -34,6 +34,17 @@ export interface SyncOptions {
   days?: number;
   since?: Date;
   until?: Date;
+  /**
+   * Días de los que reconstruir las métricas de Instagram que Graph solo
+   * entrega como total de un período (una petición por día).
+   *
+   * El valor por defecto es corto a propósito: la corrida diaria solo necesita
+   * cubrir la anterior. Solo un backfill manual lo sube, y ahí sí cuesta una
+   * llamada por día.
+   */
+  totalsDays?: number;
+  /** Publicaciones a traer por plataforma. 0 las desactiva. */
+  mediaLimit?: number;
 }
 
 export interface SyncSummary {

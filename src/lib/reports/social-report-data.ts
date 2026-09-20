@@ -16,6 +16,16 @@ import {
   type AdEfficiency,
   type DeltaPct,
 } from "./social-report-math.ts";
+import {
+  communityGrowthRate,
+  costPerInteraction,
+  engagementRateByFollowers,
+  engagementRateByReach,
+  interactionsPerPost,
+  publishingConsistency,
+  reachPerPost,
+  totalCostPerResult,
+} from "../metrics/derived-metrics.ts";
 
 export type ReportPlatform = "FACEBOOK" | "INSTAGRAM" | "TIKTOK";
 
@@ -118,6 +128,17 @@ export interface SocialReportData {
     reels: number;
     flyers: number;
   };
+  /**
+   * Métricas que Meta no entrega y se calculan aquí. Van en el informe para
+   * que el cliente tenga las mismas cifras que el panel interno, con su
+   * definición al lado.
+   */
+  derived: Array<{
+    label: string;
+    value: number | null;
+    unit: "percent" | "number" | "currency";
+    hint: string;
+  }>;
   narrative: { summary: string | null; generatedAt: Date | null };
   /** Qué falta o está viejo, para no dejar que un hueco se lea como cero. */
   dataQuality: Array<{ label: string; detail: string }>;
@@ -238,6 +259,7 @@ export async function buildSocialReportData(
       tiktokOpenId: true,
       lastAiOverview: true,
       lastAiOverviewDate: true,
+      monthlyRate: true,
       adAccounts: {
         where: { isActive: true },
         select: { adAccountId: true },
@@ -277,7 +299,7 @@ export async function buildSocialReportData(
         publishedAt: { gte: current.start, lte: current.end },
         status: "PUBLISHED",
       },
-      select: { type: true },
+      select: { type: true, publishedAt: true },
     }),
   ]);
 
@@ -448,6 +470,73 @@ export async function buildSocialReportData(
     });
   }
 
+  // --- Métricas calculadas ---
+  const publishedDays = new Set(
+    tasks
+      .filter((t): t is typeof t & { publishedAt: Date } => Boolean(t.publishedAt))
+      .map((t) => isoDay(t.publishedAt))
+  );
+  const daysInPeriod = Math.round(
+    (current.end.getTime() - current.start.getTime()) / 86400_000
+  ) + 1;
+  const dominantTotals = dominant?.totals;
+
+  const derived: SocialReportData["derived"] = [
+    {
+      label: "Engagement rate",
+      value: engagementRateByReach(totalEngagement, totalReach),
+      unit: "percent",
+      hint: "Interacciones ÷ visualizaciones del mes.",
+    },
+    {
+      label: "ER sobre comunidad",
+      value: engagementRateByFollowers(totalEngagement, totalFollowers),
+      unit: "percent",
+      hint: "Interacciones ÷ seguidores al cierre del mes.",
+    },
+    {
+      label: "Crecimiento de comunidad",
+      value: communityGrowthRate(totalFollowers, previousFollowers),
+      unit: "percent",
+      hint: "Variación de seguidores frente al mes anterior.",
+    },
+    {
+      label: "Alcance por publicación",
+      value: reachPerPost(totalReach, tasks.length),
+      unit: "number",
+      hint: "Visualizaciones ÷ piezas publicadas.",
+    },
+    {
+      label: "Interacciones por publicación",
+      value: interactionsPerPost(totalEngagement, tasks.length),
+      unit: "number",
+      hint: "Interacciones ÷ piezas publicadas.",
+    },
+    {
+      label: "Consistencia de publicación",
+      value: publishingConsistency(publishedDays.size, daysInPeriod),
+      unit: "percent",
+      hint: "Días con publicación sobre los días del mes.",
+    },
+    {
+      label: "Costo por interacción",
+      value: costPerInteraction(client.monthlyRate, totalEngagement, daysInPeriod),
+      unit: "currency",
+      hint: "Tarifa del plan ÷ interacciones del mes.",
+    },
+    {
+      label: "Costo real por resultado",
+      value: totalCostPerResult(
+        dominantTotals?.spend ?? 0,
+        client.monthlyRate,
+        dominantTotals?.conversions ?? 0,
+        daysInPeriod
+      ),
+      unit: "currency",
+      hint: "Inversión en anuncios + tarifa del plan ÷ resultados.",
+    },
+  ];
+
   return {
     client: { id: client.id, name: client.name, logo: client.logo },
     period: {
@@ -474,6 +563,7 @@ export async function buildSocialReportData(
       reels: tasks.filter((t) => t.type === "REEL").length,
       flyers: tasks.filter((t) => t.type === "FLYER").length,
     },
+    derived,
     narrative: {
       summary: client.lastAiOverview,
       generatedAt: client.lastAiOverviewDate,

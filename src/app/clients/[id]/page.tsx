@@ -8,7 +8,7 @@ import {
   getClientProfitability,
 } from "@/actions/client-actions";
 import { getUsers } from "@/actions/user.actions";
-import { getClientGlobalMetrics, getClientRecentTasksWithMetrics, getClientFacebookMetrics } from "@/actions/metrics-actions";
+import { getClientGlobalMetrics, getClientRecentTasksWithMetrics, getClientAnalytics } from "@/actions/metrics-actions";
 import { ClientHeader } from "@/components/features/clients/client-header";
 import { ClientDeleteButton } from "@/components/features/clients/client-delete-button";
 import { VaultList } from "@/components/features/clients/vault-list";
@@ -26,8 +26,7 @@ import { ClientStrategyForm } from "@/components/features/clients/client-strateg
 import { AiOverviewCard } from "@/components/features/metrics/ai-overview-card";
 import { KanbanBoard } from "@/components/features/content/kanban-board";
 import { SyncMetricsButton } from "@/components/features/metrics/sync-metrics-button";
-import { MetricsOverview } from "@/components/features/metrics/metrics-overview";
-import { MetricsChartClient } from "@/components/features/metrics/metrics-chart-client";
+import { AnalyticsPanel } from "@/components/features/analytics/analytics-panel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -103,13 +102,13 @@ export default async function ClientDetailPage({
     );
   }
   
-  const [result, usersResult, profitabilityResult, globalMetricsResult, recentTasksResult, facebookMetricsResult] = await Promise.all([
+  const [result, usersResult, profitabilityResult, globalMetricsResult, recentTasksResult, analyticsResult] = await Promise.all([
     getClientById(id),
     getUsers(),
     getClientProfitability(id),
     getClientGlobalMetrics(id),
     getClientRecentTasksWithMetrics(id, 10),
-    getClientFacebookMetrics(id, 30),
+    getClientAnalytics(id, 28),
   ]);
 
   // Si no se encuentra el cliente, mostrar 404
@@ -416,16 +415,12 @@ export default async function ClientDetailPage({
 
           {isAdmin && (
             <TabsContent value="metrics" className="mt-6 space-y-6">
-              {facebookMetricsResult.success && facebookMetricsResult.data ? (
-                <>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-2xl font-bold">Métricas de Facebook</h2>
-                      <p className="text-sm text-muted-foreground">
-                        Datos sincronizados desde la API de Meta
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
+              {analyticsResult.success && analyticsResult.data ? (
+                <AnalyticsPanel
+                  clientId={client.id}
+                  initial={analyticsResult.data}
+                  actions={
+                    <>
                       <Button asChild variant="outline" size="sm">
                         <Link href={`/clients/${client.id}/report/social`}>
                           <FileText className="mr-2 h-4 w-4" />
@@ -433,23 +428,15 @@ export default async function ClientDetailPage({
                         </Link>
                       </Button>
                       <SyncMetricsButton clientId={client.id} />
-                    </div>
-                  </div>
-
-                  <MetricsOverview
-                    impressions={facebookMetricsResult.data.overview.impressions}
-                    engagements={facebookMetricsResult.data.overview.engagements}
-                    fans={facebookMetricsResult.data.overview.fans}
-                  />
-
-                  <MetricsChartClient data={facebookMetricsResult.data.chartData} />
-                </>
+                    </>
+                  }
+                />
               ) : (
                 <Card>
                   <CardContent className="py-12">
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <p className="text-muted-foreground text-center">
-                        {facebookMetricsResult.error || "No hay métricas disponibles"}
+                        {analyticsResult.error || "No hay métricas disponibles"}
                       </p>
                       <SyncMetricsButton clientId={client.id} />
                     </div>

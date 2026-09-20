@@ -12,6 +12,8 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { runClientSync } from "@/lib/meta/sync-orchestrator";
 import type { SyncOptions, SyncSummary } from "@/lib/meta/sync-types";
+import { buildClientAnalytics, type ClientAnalytics } from "@/lib/metrics/analytics-data";
+import { buildAgencyAnalytics, type AgencyAnalytics } from "@/lib/metrics/agency-analytics-data";
 
 /**
  * Calcula el Engagement Rate para Meta (Instagram/Facebook)
@@ -927,6 +929,61 @@ export async function getClientFacebookMetrics(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Error al obtener métricas",
+    };
+  }
+}
+
+/**
+ * Panel de analítica de un cliente para una ventana de 7, 28 o 90 días.
+ *
+ * Misma guarda de sesión que el resto de lecturas de métricas: cualquier
+ * usuario autenticado puede verlo, porque la ficha del cliente ya es visible
+ * para el equipo asignado.
+ */
+export async function getClientAnalytics(
+  clientId: string,
+  days: number = 28
+): Promise<ApiResponse<ClientAnalytics>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const analytics = await buildClientAnalytics(clientId, days);
+    if (!analytics) {
+      return { success: false, error: "Cliente no encontrado" };
+    }
+
+    return { success: true, data: analytics };
+  } catch (error) {
+    console.error("Error al construir la analítica del cliente:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al obtener la analítica",
+    };
+  }
+}
+
+/**
+ * Panel global de agencia. Solo ADMIN: cruza tarifas y desempeño de todos los
+ * clientes, que no es información para el resto del equipo.
+ */
+export async function getAgencyAnalytics(
+  days: number = 28
+): Promise<ApiResponse<AgencyAnalytics>> {
+  try {
+    const session = await auth();
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return { success: false, error: "No autorizado. Solo ADMIN puede ver el panel global." };
+    }
+
+    return { success: true, data: await buildAgencyAnalytics(days) };
+  } catch (error) {
+    console.error("Error al construir la analítica de agencia:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al obtener la analítica",
     };
   }
 }

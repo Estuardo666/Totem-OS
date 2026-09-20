@@ -6,18 +6,26 @@
  * el Server Action la exige, el cron se autentica con CRON_SECRET.
  */
 
+import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
 import { revalidatePath } from "next/cache";
 import {
   fetchPageMetrics,
+  fetchPagePosts,
   transformMetricsForStorage,
   TokenExpiredError,
   InsufficientPermissionsError,
+  type StoredMetricRow,
 } from "./metrics-service.ts";
 import {
+  fetchInstagramDailyTotals,
+  fetchInstagramDemographics,
   fetchInstagramFollowerCount,
   fetchInstagramMetrics,
+  fetchInstagramTopMedia,
+  transformDemographicsForStorage,
 } from "./instagram-service.ts";
 import {
   fetchAdInsights,
@@ -40,48 +48,29 @@ import type {
 
 /**
  * Persiste filas orgánicas en ClientMetric.
- * Trocea en lotes para no sostener una transacción enorme contra el pooler.
+ *
+ * Un único INSERT ... ON CONFLICT por lote en vez de un upsert por fila: con
+ * la base en Neon, cada ida y vuelta cuesta ~100 ms y una sincronización
+ * ampliada escribe medio millar de filas. Fila por fila eso eran más de 50
+ * segundos por cliente, y el cron tiene 300 s para toda la cartera.
  */
-async function persistOrganicMetrics(
-  rows: Array<{
-    clientId: string;
-    platform: string;
-    metricName: string;
-    value: number;
-    date: Date;
-  }>
-): Promise<number> {
+async function persistOrganicMetrics(rows: StoredMetricRow[]): Promise<number> {
   const BATCH_SIZE = 200;
   const fetchedAt = new Date();
 
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
-    await db.$transaction(
-      batch.map((metric) =>
-        db.clientMetric.upsert({
-          where: {
-            clientId_platform_metricName_date: {
-              clientId: metric.clientId,
-              platform: metric.platform,
-              metricName: metric.metricName,
-              date: metric.date,
-            },
-          },
-          update: {
-            value: metric.value,
-            fetchedAt,
-          },
-          create: {
-            clientId: metric.clientId,
-            platform: metric.platform,
-            metricName: metric.metricName,
-            value: metric.value,
-            date: metric.date,
-            fetchedAt,
-          },
-        })
-      )
+    const values = batch.map(
+      (metric) =>
+        Prisma.sql`(${randomUUID()}, ${metric.clientId}, ${metric.platform}, ${metric.metricName}, ${metric.value}, ${metric.date}, ${fetchedAt})`
     );
+
+    await db.$executeRaw`
+      INSERT INTO "ClientMetric" ("id", "clientId", "platform", "metricName", "value", "date", "fetchedAt")
+      VALUES ${Prisma.join(values)}
+      ON CONFLICT ("clientId", "platform", "metricName", "date")
+      DO UPDATE SET "value" = EXCLUDED."value", "fetchedAt" = EXCLUDED."fetchedAt"
+    `;
   }
 
   return rows.length;
@@ -104,6 +93,82 @@ function describeSyncError(error: unknown): string {
   return "Error desconocido al sincronizar.";
 }
 
+/** Fila de rendimiento por publicación, lista para `ClientMediaMetric`. */
+interface MediaMetricRow {
+  clientId: string;
+  platform: string;
+  mediaId: string;
+  mediaType: string;
+  productType: string | null;
+  permalink: string | null;
+  thumbnailUrl: string | null;
+  caption: string | null;
+  publishedAt: Date;
+  reach: number;
+  views: number;
+  likes: number;
+  comments: number;
+  saves: number;
+  shares: number;
+  clicks: number;
+  profileVisits: number;
+  follows: number;
+  interactions: number;
+}
+
+/**
+ * Persiste el rendimiento por publicación.
+ *
+ * Upsert por `(clientId, platform, mediaId)`: una publicación sigue acumulando
+ * alcance e interacciones durante días, así que cada corrida actualiza la fila
+ * existente en vez de crear una nueva. En un solo statement por lote, por la
+ * misma razón que las métricas orgánicas.
+ */
+async function persistMediaMetrics(rows: MediaMetricRow[]): Promise<number> {
+  if (rows.length === 0) return 0;
+
+  const BATCH_SIZE = 100;
+  const fetchedAt = new Date();
+
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
+    const values = batch.map(
+      (row) =>
+        Prisma.sql`(${randomUUID()}, ${row.clientId}, ${row.platform}, ${row.mediaId}, ${row.mediaType}, ${row.productType}, ${row.permalink}, ${row.thumbnailUrl}, ${row.caption}, ${row.publishedAt}, ${row.reach}, ${row.views}, ${row.likes}, ${row.comments}, ${row.saves}, ${row.shares}, ${row.clicks}, ${row.profileVisits}, ${row.follows}, ${row.interactions}, ${fetchedAt})`
+    );
+
+    await db.$executeRaw`
+      INSERT INTO "ClientMediaMetric" (
+        "id", "clientId", "platform", "mediaId", "mediaType", "productType", "permalink",
+        "thumbnailUrl", "caption", "publishedAt", "reach", "views", "likes", "comments",
+        "saves", "shares", "clicks", "profileVisits", "follows", "interactions", "fetchedAt"
+      )
+      VALUES ${Prisma.join(values)}
+      ON CONFLICT ("clientId", "platform", "mediaId")
+      DO UPDATE SET
+        "mediaType" = EXCLUDED."mediaType",
+        "productType" = EXCLUDED."productType",
+        "permalink" = EXCLUDED."permalink",
+        "thumbnailUrl" = EXCLUDED."thumbnailUrl",
+        "caption" = EXCLUDED."caption",
+        "publishedAt" = EXCLUDED."publishedAt",
+        "reach" = EXCLUDED."reach",
+        "views" = EXCLUDED."views",
+        "likes" = EXCLUDED."likes",
+        "comments" = EXCLUDED."comments",
+        "saves" = EXCLUDED."saves",
+        "shares" = EXCLUDED."shares",
+        "clicks" = EXCLUDED."clicks",
+        "profileVisits" = EXCLUDED."profileVisits",
+        "follows" = EXCLUDED."follows",
+        "interactions" = EXCLUDED."interactions",
+        "fetchedAt" = EXCLUDED."fetchedAt"
+    `;
+  }
+
+  return rows.length;
+}
+
 /**
  * Sincroniza las métricas de Facebook de un cliente.
  * Aislada para que el dispatcher pueda capturar su fallo sin tumbar el resto.
@@ -112,12 +177,46 @@ async function syncFacebook(
   clientId: string,
   facebookPageId: string,
   pageAccessToken: string,
-  days: number
+  days: number,
+  mediaLimit: number
 ): Promise<number> {
   const metricsData = await fetchPageMetrics(facebookPageId, pageAccessToken, days);
   const rows = transformMetricsForStorage(metricsData, clientId, "FACEBOOK");
-  if (rows.length === 0) return 0;
-  return persistOrganicMetrics(rows);
+  let count = rows.length > 0 ? await persistOrganicMetrics(rows) : 0;
+
+  // Las publicaciones son complementarias: un fallo aquí no puede perder los
+  // insights de página que ya se guardaron.
+  if (mediaLimit > 0) {
+    try {
+      const posts = await fetchPagePosts(facebookPageId, pageAccessToken, mediaLimit);
+      const mediaRows: MediaMetricRow[] = posts.map((post) => ({
+        clientId,
+        platform: "FACEBOOK",
+        mediaId: post.id,
+        mediaType: "POST",
+        productType: "FEED",
+        permalink: post.permalink || null,
+        thumbnailUrl: post.thumbnailUrl,
+        caption: post.message || null,
+        publishedAt: post.publishedAt,
+        reach: 0, // Meta ya no expone alcance por publicación de página.
+        views: post.views,
+        likes: post.likes,
+        comments: post.comments,
+        saves: 0,
+        shares: post.shares,
+        clicks: post.clicks,
+        profileVisits: 0,
+        follows: 0,
+        interactions: post.likes + post.comments + post.shares,
+      }));
+      if (mediaRows.length > 0) count += await persistMediaMetrics(mediaRows);
+    } catch (error) {
+      console.warn("[Sync] Facebook: no se pudieron leer las publicaciones:", error);
+    }
+  }
+
+  return count;
 }
 
 /**
@@ -131,10 +230,22 @@ async function syncInstagram(
   clientId: string,
   igUserId: string,
   pageAccessToken: string,
-  days: number
+  days: number,
+  totalsDays: number,
+  mediaLimit: number
 ): Promise<number> {
   const metricsData = await fetchInstagramMetrics(igUserId, pageAccessToken, days);
   const rows = transformMetricsForStorage(metricsData, clientId, "INSTAGRAM");
+
+  // Métricas de valor total, día por día. Sin esto no habría serie: Graph las
+  // entrega como un único número por ventana.
+  try {
+    rows.push(
+      ...(await fetchInstagramDailyTotals(igUserId, pageAccessToken, clientId, totalsDays))
+    );
+  } catch (error) {
+    console.warn("[Sync] Instagram: no se pudieron leer los totales diarios:", error);
+  }
 
   // Snapshot de seguidores: un valor por día, no una serie que Graph no expone.
   try {
@@ -154,8 +265,48 @@ async function syncInstagram(
     console.warn("[Sync] Instagram: no se pudo leer followers_count:", error);
   }
 
-  if (rows.length === 0) return 0;
-  return persistOrganicMetrics(rows);
+  // Demografía de la audiencia. Meta exige un mínimo de seguidores; por debajo
+  // responde "Not enough users" y el servicio devuelve una lista vacía.
+  try {
+    const demographics = await fetchInstagramDemographics(igUserId, pageAccessToken);
+    rows.push(...transformDemographicsForStorage(demographics, clientId));
+  } catch (error) {
+    console.warn("[Sync] Instagram: no se pudo leer la demografía:", error);
+  }
+
+  let count = rows.length > 0 ? await persistOrganicMetrics(rows) : 0;
+
+  if (mediaLimit > 0) {
+    try {
+      const media = await fetchInstagramTopMedia(igUserId, pageAccessToken, mediaLimit);
+      const mediaRows: MediaMetricRow[] = media.map((item) => ({
+        clientId,
+        platform: "INSTAGRAM",
+        mediaId: item.id,
+        mediaType: item.mediaType,
+        productType: item.productType,
+        permalink: item.permalink || null,
+        thumbnailUrl: item.thumbnailUrl,
+        caption: item.caption || null,
+        publishedAt: item.publishedAt,
+        reach: item.reach,
+        views: item.views,
+        likes: item.likes,
+        comments: item.comments,
+        saves: item.saves,
+        shares: item.shares,
+        clicks: 0,
+        profileVisits: item.profileVisits,
+        follows: item.follows,
+        interactions: item.interactions,
+      }));
+      if (mediaRows.length > 0) count += await persistMediaMetrics(mediaRows);
+    } catch (error) {
+      console.warn("[Sync] Instagram: no se pudieron leer las publicaciones:", error);
+    }
+  }
+
+  return count;
 }
 
 /**
@@ -186,44 +337,44 @@ async function syncTikTok(clientId: string): Promise<number> {
 }
 
 /**
- * Persiste filas de métricas publicitarias, troceadas igual que las orgánicas.
+ * Persiste filas de métricas publicitarias, con el mismo upsert en lote que
+ * las orgánicas: una campaña por día durante 90 días son cientos de filas.
  */
 async function persistAdMetrics(rows: AdMetricRow[]): Promise<number> {
-  const BATCH_SIZE = 200;
+  if (rows.length === 0) return 0;
+
+  const BATCH_SIZE = 100;
   const fetchedAt = new Date();
 
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
-    await db.$transaction(
-      batch.map((row) =>
-        db.clientAdMetric.upsert({
-          where: {
-            clientId_platform_adAccountId_campaignId_date: {
-              clientId: row.clientId,
-              platform: row.platform,
-              adAccountId: row.adAccountId,
-              campaignId: row.campaignId,
-              date: row.date,
-            },
-          },
-          update: {
-            campaignName: row.campaignName,
-            spend: row.spend,
-            impressions: row.impressions,
-            reach: row.reach,
-            clicks: row.clicks,
-            frequency: row.frequency,
-            conversions: row.conversions,
-            conversionValue: row.conversionValue,
-            currency: row.currency,
-            objective: row.objective,
-            actionsJson: row.actionsJson,
-            fetchedAt,
-          },
-          create: { ...row, fetchedAt },
-        })
-      )
+    const values = batch.map(
+      (row) =>
+        Prisma.sql`(${randomUUID()}, ${row.clientId}, ${row.platform}, ${row.adAccountId}, ${row.campaignId}, ${row.campaignName}, ${row.date}, ${row.spend}, ${row.impressions}, ${row.reach}, ${row.clicks}, ${row.frequency}, ${row.conversions}, ${row.conversionValue}, ${row.currency}, ${row.objective}, ${row.actionsJson}, ${fetchedAt})`
     );
+
+    await db.$executeRaw`
+      INSERT INTO "ClientAdMetric" (
+        "id", "clientId", "platform", "adAccountId", "campaignId", "campaignName", "date",
+        "spend", "impressions", "reach", "clicks", "frequency", "conversions",
+        "conversionValue", "currency", "objective", "actionsJson", "fetchedAt"
+      )
+      VALUES ${Prisma.join(values)}
+      ON CONFLICT ("clientId", "platform", "adAccountId", "campaignId", "date")
+      DO UPDATE SET
+        "campaignName" = EXCLUDED."campaignName",
+        "spend" = EXCLUDED."spend",
+        "impressions" = EXCLUDED."impressions",
+        "reach" = EXCLUDED."reach",
+        "clicks" = EXCLUDED."clicks",
+        "frequency" = EXCLUDED."frequency",
+        "conversions" = EXCLUDED."conversions",
+        "conversionValue" = EXCLUDED."conversionValue",
+        "currency" = EXCLUDED."currency",
+        "objective" = EXCLUDED."objective",
+        "actionsJson" = EXCLUDED."actionsJson",
+        "fetchedAt" = EXCLUDED."fetchedAt"
+    `;
   }
 
   return rows.length;
@@ -307,6 +458,10 @@ export async function runClientSync(
   options: SyncOptions = {}
 ): Promise<ApiResponse<SyncSummary>> {
   const days = options.days ?? 28;
+  // Corto por defecto: cada día extra son 28 peticiones más contra el mismo
+  // token. Un backfill manual lo sube explícitamente.
+  const totalsDays = options.totalsDays ?? 3;
+  const mediaLimit = options.mediaLimit ?? 25;
 
   try {
     // 1. Cargar credenciales del cliente
@@ -374,7 +529,8 @@ export async function runClientSync(
               clientId,
               client.facebookPageId,
               pageAccessToken,
-              days
+              days,
+              mediaLimit
             );
             results.push({
               platform,
@@ -394,7 +550,9 @@ export async function runClientSync(
               clientId,
               client.instagramBusinessId,
               pageAccessToken,
-              days
+              days,
+              totalsDays,
+              mediaLimit
             );
             results.push({
               platform,
@@ -477,7 +635,14 @@ export async function runClientSync(
         results.map((r) => `${r.platform}=${r.status}`).join(" ")
     );
 
-    revalidatePath(`/clients/${clientId}`);
+    // Fuera de una petición de Next —un script de backfill, por ejemplo— esta
+    // llamada lanza "static generation store missing". Los datos ya están
+    // guardados a estas alturas, así que no puede tumbar la corrida.
+    try {
+      revalidatePath(`/clients/${clientId}`);
+    } catch {
+      // Sin contexto de petición no hay caché que invalidar.
+    }
 
     return { success: true, data: { total, results } };
   } catch (error) {

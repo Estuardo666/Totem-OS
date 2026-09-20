@@ -97,7 +97,16 @@ async function run(offset: number, days: number) {
       break;
     }
 
-    const outcome = await runClientSync(client.id, { days });
+    // Cada publicación cuesta una llamada de insights, así que la corrida
+    // diaria trae menos que una sincronización manual: con 10 por red cubre
+    // de sobra lo publicado en un día y el presupuesto de 300s alcanza para
+    // toda la cartera. `totalsDays: 3` rellena la corrida de ayer y cualquier
+    // día que se haya perdido, sin pagar 28 peticiones por cliente.
+    const outcome = await runClientSync(client.id, {
+      days,
+      totalsDays: 3,
+      mediaLimit: 10,
+    });
 
     results.push({
       clientId: client.id,

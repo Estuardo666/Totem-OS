@@ -8,9 +8,12 @@
 
 import {
   InsufficientPermissionsError,
+  MEDIA_CONCURRENCY,
+  mapWithConcurrency,
   TokenExpiredError,
   type PageMetricData,
   type PageMetricsResponse,
+  type StoredMetricRow,
 } from "./metrics-service.ts";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
@@ -19,37 +22,68 @@ const TIMEOUT_MS = 10000;
 /**
  * Métricas diarias con serie temporal.
  *
- * NO incluye `impressions`: Meta lo eliminó en v22 y lo reemplazó por `views`.
- * Esta constante es el único lugar a editar cuando la app suba de versión —
- * ante una métrica inválida el `error.message` de Graph enumera las válidas,
- * y esa es la fuente autoritativa, no la documentación.
+ * NO incluye `impressions`: Meta lo eliminó en v22 y lo reemplazó por `views`,
+ * que además solo existe como `total_value`. Verificado con
+ * `scripts/probe-meta-metrics.mjs` — ante una métrica inválida el
+ * `error.message` de Graph enumera las válidas, y esa es la fuente
+ * autoritativa, no la documentación.
+ *
+ * `follower_count` es el delta diario de seguidores, no el total: el total se
+ * lee aparte con `fetchInstagramFollowerCount`.
  */
-export const IG_DAILY_METRICS = ["reach"] as const;
+export const IG_DAILY_METRICS = ["reach", "follower_count"] as const;
 
 /**
- * Métricas que Graph solo entrega como valor total del período.
- * Exigen `metric_type=total_value` y van en una petición aparte de las diarias.
+ * Métricas que Graph solo entrega como valor total de un período.
+ *
+ * Exigen `metric_type=total_value` y van en una petición aparte de las
+ * diarias. Para obtener serie diaria se piden con una ventana de un día
+ * (ver `fetchInstagramDailyTotals`), nunca con la ventana completa: guardar el
+ * total de 28 días en la fecha de hoy y luego sumar por período inflaría cada
+ * lectura.
  */
 export const IG_TOTAL_VALUE_METRICS = [
+  "views", // visualizaciones de contenido (reemplaza impressions)
+  "profile_views",
+  "website_clicks",
+  "profile_links_taps",
   "accounts_engaged",
   "total_interactions",
-  // Verificado contra la cuenta real: Graph rechaza profile_views como métrica
-  // diaria con "(#100) ... should be specified with parameter
-  // metric_type=total_value".
-  "profile_views",
+  "likes",
+  "comments",
+  "saves",
+  "shares",
+  "replies",
 ] as const;
+
+/** Desgloses demográficos soportados para los seguidores. */
+export const IG_DEMOGRAPHIC_BREAKDOWNS = ["country", "city", "age", "gender"] as const;
 
 export interface IgMediaInsight {
   id: string;
   caption: string;
   mediaType: string;
+  productType: string;
   permalink: string;
   thumbnailUrl: string | null;
   publishedAt: Date;
   likes: number;
   comments: number;
   reach: number;
+  views: number;
+  saves: number;
+  shares: number;
+  profileVisits: number;
+  follows: number;
   interactions: number;
+}
+
+export interface IgDemographicRow {
+  /** "country" | "city" | "age" | "gender" */
+  dimension: string;
+  /** Valor del desglose: "EC", "25-34", "F"… */
+  key: string;
+  value: number;
 }
 
 /**
@@ -85,13 +119,18 @@ async function graphGet(
   return result;
 }
 
+/** Medianoche UTC de una fecha: la clave con la que se guardan las filas. */
+function utcMidnight(date: Date): Date {
+  const copy = new Date(date);
+  copy.setUTCHours(0, 0, 0, 0);
+  return copy;
+}
+
 /**
- * Obtiene las métricas de una cuenta de Instagram Business.
+ * Obtiene las métricas diarias de una cuenta de Instagram Business.
  *
- * Hace dos llamadas separadas porque Graph trata las métricas diarias y las de
- * valor total como familias distintas: pedirlas juntas devuelve error 100.
- * Una respuesta vacía no es un fallo — devuelve `data: []` y deja que el
- * dispatcher lo registre como cero filas.
+ * Solo la familia con serie temporal real. Una respuesta vacía no es un fallo
+ * — devuelve `data: []` y deja que el dispatcher lo registre como cero filas.
  */
 export async function fetchInstagramMetrics(
   igUserId: string,
@@ -104,49 +143,77 @@ export async function fetchInstagramMetrics(
 
   const until = Math.floor(Date.now() / 1000);
   const since = until - days * 86400;
-  const data: PageMetricData[] = [];
 
-  // 1. Serie temporal diaria
   const daily = await graphGet(`${igUserId}/insights`, accessToken, {
     metric: IG_DAILY_METRICS.join(","),
     period: "day",
     since: String(since),
     until: String(until),
   });
-  if (Array.isArray(daily.data)) {
-    data.push(...(daily.data as PageMetricData[]));
+
+  return { data: Array.isArray(daily.data) ? (daily.data as PageMetricData[]) : [] };
+}
+
+/**
+ * Serie diaria de las métricas que Graph solo entrega como total del período.
+ *
+ * Se pide una ventana de 24 h por día, de más reciente a más antiguo. Es la
+ * única forma de construir histórico con estas métricas: pedir la ventana
+ * completa devuelve un único número que, guardado día tras día, se sumaría
+ * consigo mismo en cada lectura.
+ *
+ * Por eso `days` es deliberadamente corto en la sincronización diaria (basta
+ * con cubrir la corrida anterior) y solo se amplía en un backfill manual.
+ */
+export async function fetchInstagramDailyTotals(
+  igUserId: string,
+  accessToken: string,
+  clientId: string,
+  days: number = 3
+): Promise<StoredMetricRow[]> {
+  if (!Number.isInteger(days) || days < 1 || days > 90) {
+    throw new Error("El período debe estar entre 1 y 90 días.");
   }
 
-  // 2. Métricas de valor total (petición aparte, con metric_type)
-  const totals = await graphGet(`${igUserId}/insights`, accessToken, {
-    metric: IG_TOTAL_VALUE_METRICS.join(","),
-    metric_type: "total_value",
-    period: "day",
-    since: String(since),
-    until: String(until),
-  });
-  if (Array.isArray(totals.data)) {
-    // Estas métricas llegan como `total_value: { value }` en vez de `values[]`.
-    // Se normalizan al formato diario, fechadas al cierre del período, para que
-    // transformMetricsForStorage no las descarte en silencio.
-    const untilMs = until * 1000;
-    type TotalValueMetric = PageMetricData & { total_value?: { value?: number } };
+  const rows: StoredMetricRow[] = [];
+  const today = utcMidnight(new Date());
 
-    for (const metric of totals.data as TotalValueMetric[]) {
-      if (Array.isArray(metric.values) && metric.values.length > 0) {
-        data.push(metric);
-        continue;
-      }
+  for (let back = 1; back <= days; back++) {
+    const day = new Date(today);
+    day.setUTCDate(day.getUTCDate() - back);
+    const since = Math.floor(day.getTime() / 1000);
+
+    let result: Record<string, unknown>;
+    try {
+      result = await graphGet(`${igUserId}/insights`, accessToken, {
+        metric: IG_TOTAL_VALUE_METRICS.join(","),
+        metric_type: "total_value",
+        period: "day",
+        since: String(since),
+        until: String(since + 86400),
+      });
+    } catch (error) {
+      // Un día suelto que Graph rechaza (ventana fuera de rango, cuenta recién
+      // creada) no puede invalidar los demás días ya recolectados.
+      console.warn(`[Meta] Instagram sin totales para ${day.toISOString().slice(0, 10)}:`, (error as Error).message);
+      continue;
+    }
+
+    type TotalValueMetric = PageMetricData & { total_value?: { value?: number } };
+    for (const metric of ((result.data as TotalValueMetric[]) ?? [])) {
       const value = metric.total_value?.value;
       if (typeof value !== "number") continue;
-      data.push({
-        ...metric,
-        values: [{ value, end_time: new Date(untilMs).toISOString() }],
+      rows.push({
+        clientId,
+        platform: "INSTAGRAM",
+        metricName: metric.name,
+        value,
+        date: day,
       });
     }
   }
 
-  return { data };
+  return rows;
 }
 
 /**
@@ -168,58 +235,187 @@ export async function fetchInstagramFollowerCount(
 }
 
 /**
+ * Demografía de los seguidores, desglosada por país, ciudad, edad y género.
+ *
+ * Meta exige al menos 100 seguidores; por debajo responde "Not enough users".
+ * Eso no es un error de la app: se devuelve lo que sí llegó y se sigue. Se usa
+ * `follower_demographics` y no `engaged_audience_demographics` porque esta
+ * última exige un `timeframe` cuyos valores fueron retirados en v20+
+ * (verificado contra la API real).
+ */
+export async function fetchInstagramDemographics(
+  igUserId: string,
+  accessToken: string
+): Promise<IgDemographicRow[]> {
+  const rows: IgDemographicRow[] = [];
+
+  for (const breakdown of IG_DEMOGRAPHIC_BREAKDOWNS) {
+    let result: Record<string, unknown>;
+    try {
+      result = await graphGet(`${igUserId}/insights`, accessToken, {
+        metric: "follower_demographics",
+        period: "lifetime",
+        metric_type: "total_value",
+        breakdown,
+      });
+    } catch (error) {
+      console.warn(`[Meta] Instagram sin demografía "${breakdown}":`, (error as Error).message);
+      continue;
+    }
+
+    type DemographicMetric = {
+      total_value?: {
+        breakdowns?: Array<{
+          dimension_keys?: string[];
+          results?: Array<{ dimension_values?: string[]; value?: number }>;
+        }>;
+      };
+    };
+
+    for (const metric of ((result.data as DemographicMetric[]) ?? [])) {
+      for (const group of metric.total_value?.breakdowns ?? []) {
+        for (const entry of group.results ?? []) {
+          const key = entry.dimension_values?.[0];
+          if (!key || typeof entry.value !== "number") continue;
+          rows.push({ dimension: breakdown, key, value: entry.value });
+        }
+      }
+    }
+  }
+
+  return rows;
+}
+
+/**
+ * Convierte la demografía en filas de `ClientMetric`.
+ *
+ * La dimensión viaja dentro de `metricName` (`audience_country:EC`) en vez de
+ * en una columna nueva: la clave única de la tabla ya es
+ * `clientId+platform+metricName+date`, así que la convención entra sin migrar
+ * nada. Se fecha a medianoche UTC de hoy porque es un snapshot, no una serie.
+ */
+export function transformDemographicsForStorage(
+  rows: IgDemographicRow[],
+  clientId: string
+): StoredMetricRow[] {
+  const date = utcMidnight(new Date());
+  return rows.map((row) => ({
+    clientId,
+    platform: "INSTAGRAM",
+    metricName: `audience_${row.dimension}:${row.key}`,
+    value: row.value,
+    date,
+  }));
+}
+
+/**
+ * Métricas por publicación verificadas contra la API real para FEED y REELS.
+ * `impressions` y `plays` ya no existen en v22+; `views` las reemplaza.
+ */
+const MEDIA_METRICS = [
+  "reach",
+  "views",
+  "total_interactions",
+  "saved",
+  "shares",
+  "likes",
+  "comments",
+  "profile_visits",
+  "follows",
+] as const;
+
+/**
+ * Subconjunto que toda publicación soporta.
+ *
+ * `profile_visits` y `follows` no existen para algunos formatos —Graph
+ * responde "(#100) The Media Insights API does not support the profile_visits,
+ * follows metric for this media product type"— y rechaza la petición entera.
+ * Sin este reintento, una sola métrica extra dejaba la publicación sin alcance
+ * ni interacciones.
+ */
+const CORE_MEDIA_METRICS = [
+  "reach",
+  "views",
+  "total_interactions",
+  "saved",
+  "shares",
+  "likes",
+  "comments",
+] as const;
+
+/**
  * Publicaciones recientes con sus insights, para la sección "mejor contenido"
- * del informe. Una publicación cuyos insights fallen se omite en vez de
- * tumbar toda la llamada — las historias y algunos formatos no los exponen.
+ * del informe. Una publicación cuyos insights fallen conserva sus contadores
+ * públicos en vez de tumbar toda la llamada — las historias y algunos formatos
+ * no los exponen.
  */
 export async function fetchInstagramTopMedia(
   igUserId: string,
   accessToken: string,
-  limit: number = 10
+  limit: number = 25
 ): Promise<IgMediaInsight[]> {
   const listed = await graphGet(`${igUserId}/media`, accessToken, {
-    fields: "id,caption,media_type,permalink,timestamp,like_count,comments_count,thumbnail_url,media_url",
+    fields:
+      "id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,thumbnail_url,media_url",
     limit: String(Math.min(Math.max(limit, 1), 50)),
   });
 
   const media = Array.isArray(listed.data) ? listed.data : [];
-  const results: IgMediaInsight[] = [];
 
-  for (const item of media as Array<Record<string, unknown>>) {
-    const id = String(item.id);
-    let reach = 0;
-    let interactions = 0;
+  const results = await mapWithConcurrency(
+    media as Array<Record<string, unknown>>,
+    MEDIA_CONCURRENCY,
+    async (item): Promise<IgMediaInsight> => {
+      const id = String(item.id);
+      const values: Record<string, number> = {};
 
-    try {
-      const insights = await graphGet(`${id}/insights`, accessToken, {
-        metric: "reach,total_interactions",
-      });
-      for (const metric of (insights.data as PageMetricData[]) ?? []) {
-        const raw = metric.values?.[0]?.value;
-        const value = typeof raw === "string" ? parseFloat(raw) || 0 : (raw ?? 0);
-        if (metric.name === "reach") reach = value;
-        if (metric.name === "total_interactions") interactions = value;
+      const readInsights = async (metrics: readonly string[]) => {
+        const insights = await graphGet(`${id}/insights`, accessToken, {
+          metric: metrics.join(","),
+        });
+        for (const metric of ((insights.data as PageMetricData[]) ?? [])) {
+          const raw = metric.values?.[0]?.value;
+          const value =
+            typeof raw === "string" ? parseFloat(raw) || 0 : typeof raw === "number" ? raw : 0;
+          values[metric.name] = value;
+        }
+      };
+
+      try {
+        await readInsights(MEDIA_METRICS);
+      } catch {
+        try {
+          await readInsights(CORE_MEDIA_METRICS);
+        } catch (error) {
+          // Sin insights para este formato: se conserva la publicación con los
+          // contadores públicos (likes y comentarios) y ceros en el resto.
+          console.warn(`[Meta] Instagram sin insights para ${id}:`, (error as Error).message);
+        }
       }
-    } catch {
-      // Sin insights para este formato: se conserva la publicación con ceros.
-    }
 
-    results.push({
-      id,
-      caption: typeof item.caption === "string" ? item.caption : "",
-      mediaType: String(item.media_type ?? "UNKNOWN"),
-      permalink: String(item.permalink ?? ""),
-      thumbnailUrl:
-        (typeof item.thumbnail_url === "string" && item.thumbnail_url) ||
-        (typeof item.media_url === "string" && item.media_url) ||
-        null,
-      publishedAt: new Date(String(item.timestamp)),
-      likes: Number(item.like_count ?? 0),
-      comments: Number(item.comments_count ?? 0),
-      reach,
-      interactions,
-    });
-  }
+      return {
+        id,
+        caption: typeof item.caption === "string" ? item.caption : "",
+        mediaType: String(item.media_type ?? "UNKNOWN"),
+        productType: String(item.media_product_type ?? "FEED"),
+        permalink: String(item.permalink ?? ""),
+        thumbnailUrl:
+          (typeof item.thumbnail_url === "string" && item.thumbnail_url) ||
+          (typeof item.media_url === "string" && item.media_url) ||
+          null,
+        publishedAt: new Date(String(item.timestamp)),
+        likes: values.likes ?? Number(item.like_count ?? 0),
+        comments: values.comments ?? Number(item.comments_count ?? 0),
+        reach: values.reach ?? 0,
+        views: values.views ?? 0,
+        saves: values.saved ?? 0,
+        shares: values.shares ?? 0,
+        profileVisits: values.profile_visits ?? 0,
+        follows: values.follows ?? 0,
+        interactions: values.total_interactions ?? 0,
+      };
+    }
+  );
 
   return results;
 }

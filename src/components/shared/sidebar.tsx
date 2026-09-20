@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, FileText, Moon, Sun, Receipt } from "lucide-react";
+import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, FileText, Moon, Sun, Receipt, BarChart3 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getBrandSettings } from "@/actions/admin-actions";
@@ -122,6 +122,11 @@ const navItems: (NavItem | NavItemWithChildren)[] = [
 
 // Items adicionales solo para ADMIN
 const adminNavItems: NavItem[] = [
+  {
+    href: "/analytics",
+    label: "Analítica de Agencia",
+    icon: BarChart3,
+  },
   {
     href: "/admin/users",
     label: "Gestión de Usuarios",

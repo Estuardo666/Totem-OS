@@ -234,6 +234,7 @@ model Client {
   feedbacks         ClientFeedback[]
   shootings         Shoot[]
   metrics           ClientMetric[]
+  mediaMetrics      ClientMediaMetric[]
   adAccounts        ClientAdAccount[]
   adMetrics         ClientAdMetric[]
   monthlyClosures   ClientMonthlyClosure[]
@@ -837,6 +838,40 @@ model ClientMetric {
 
   @@unique([clientId, platform, metricName, date]) // Evita duplicados para el mismo día
   @@index([clientId, date]) // Optimiza la carga de gráficas
+}
+
+// RENDIMIENTO POR PUBLICACIÓN (Instagram y Facebook)
+// Tabla tipada, igual que ClientAdMetric: el ER por publicación necesita
+// numerador y denominador reales, no un par clave/valor suelto.
+model ClientMediaMetric {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  platform String // "FACEBOOK" | "INSTAGRAM"
+  mediaId  String // id de la publicación en la plataforma
+
+  mediaType    String // IMAGE, VIDEO, CAROUSEL_ALBUM, POST…
+  productType  String? // FEED, REELS, STORY
+  permalink    String?
+  thumbnailUrl String?
+  caption      String?
+  publishedAt  DateTime
+
+  reach         Float @default(0)
+  views         Float @default(0)
+  likes         Float @default(0)
+  comments      Float @default(0)
+  saves         Float @default(0)
+  shares        Float @default(0)
+  clicks        Float @default(0)
+  profileVisits Float @default(0)
+  follows       Float @default(0)
+  interactions  Float @default(0) // total reportado por la plataforma
+
+  fetchedAt DateTime @default(now())
+
+  @@unique([clientId, platform, mediaId])
+  @@index([clientId, publishedAt])
 }
 
 // CUENTAS PUBLICITARIAS VINCULADAS (un cliente puede tener varias)

@@ -3,7 +3,7 @@ import { AdsSection } from "./ads-section";
 import { KpiTile } from "./kpi-tile";
 import { PrintReportButton } from "./print-report-button";
 import { ReachTrendChartClient } from "./reach-trend-chart-client";
-import { REPORT_SERIES, formatCurrency, formatNumber } from "./report-tokens";
+import { REPORT_SERIES, formatCurrency, formatNumber, formatRatio } from "./report-tokens";
 
 interface SocialReportBodyProps {
   data: SocialReportData;
@@ -180,6 +180,32 @@ export function SocialReportBody({ data }: SocialReportBodyProps) {
             </p>
             <p className="text-muted-foreground">Flyers</p>
           </div>
+        </div>
+      </section>
+
+      {/* 5b. Métricas calculadas */}
+      <section className="rounded-xl border bg-card p-4 print:break-inside-avoid">
+        <h2 className="text-lg font-semibold">Métricas calculadas</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          No las entrega Meta: se derivan de los datos del mes. Un guion significa que falta el
+          denominador para calcularlas, no que el valor sea cero.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">
+          {data.derived.map((metric) => (
+            <div key={metric.label}>
+              <p className="text-2xl font-semibold tabular-nums leading-none">
+                {metric.value === null
+                  ? "—"
+                  : metric.unit === "percent"
+                    ? formatRatio(metric.value, "%")
+                    : metric.unit === "currency"
+                      ? formatCurrency(metric.value, data.headline.currency ?? "USD")
+                      : formatNumber(metric.value)}
+              </p>
+              <p className="mt-1 text-sm font-medium">{metric.label}</p>
+              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{metric.hint}</p>
+            </div>
+          ))}
         </div>
       </section>
 
