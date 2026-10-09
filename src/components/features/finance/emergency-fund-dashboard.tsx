@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  Trash2,
   Shield,
   DollarSign,
   ArrowUpRight,
@@ -12,7 +13,7 @@ import {
 } from "lucide-react";
 import type { EmergencyFundMovementWithUser } from "@/schemas/emergency-fund";
 import { getMonthName } from "@/lib/finance-funds-logic";
-import { executeEmergencyWithdrawal } from "@/actions/finance-funds-actions";
+import { deleteEmergencyFundMovement, executeEmergencyWithdrawal } from "@/actions/finance-funds-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,6 +66,23 @@ export function EmergencyFundDashboard({
         });
       } else {
         toast({ variant: "destructive", title: "Error", description: result.error });
+      }
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDelete = async (movement: EmergencyFundMovementWithUser) => {
+    const kind = movement.type === "CONTRIBUTION" ? "aporte" : "retiro";
+    const extra = movement.relatedTransactionId ? " También se eliminará el egreso que generó." : "";
+    if (!window.confirm(`¿Eliminar este ${kind} de $${movement.amount.toFixed(2)}? No se puede deshacer.${extra}`)) return;
+    setProcessingId(movement.id);
+    try {
+      const result = await deleteEmergencyFundMovement(movement.id);
+      if (result.success) {
+        toast({ title: "Movimiento eliminado", description: `Nuevo saldo: $${result.data?.newBalance.toFixed(2)}` });
+      } else {
+        toast({ variant: "destructive", title: "No se pudo eliminar", description: result.error });
       }
     } finally {
       setProcessingId(null);
@@ -284,6 +302,17 @@ export function EmergencyFundDashboard({
                           <CheckCircle2 className="h-3 w-3" /> Ejecutado
                         </Badge>
                       )}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="ml-1 h-8 w-8 text-muted-foreground hover:text-destructive"
+                        aria-label="Eliminar movimiento"
+                        title="Eliminar movimiento"
+                        onClick={() => handleDelete(m)}
+                        disabled={processingId === m.id}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

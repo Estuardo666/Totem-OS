@@ -350,3 +350,61 @@ export async function autoContributeFromClose(
     };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Delete a movement (para corregir registros hechos por error)
+// ---------------------------------------------------------------------------
+
+export async function deleteEmergencyFundMovement(
+  movementId: string
+): Promise<ApiResponse<{ newBalance: number }>> {
+  try {
+    const session = await auth();
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return { success: false, error: "No autorizado" };
+    }
+
+    return await db.$transaction(async (tx) => {
+      const movement = await tx.emergencyFundMovement.findUnique({ where: { id: movementId } });
+      if (!movement) {
+        return { success: false as const, error: "Movimiento no encontrado" };
+      }
+
+      // Recalcula el saldo de todos los movimientos sin el eliminado. Si algún
+      // retiro quedara sin fondos, no se permite borrar.
+      const remaining = await tx.emergencyFundMovement.findMany({
+        where: { id: { not: movementId } },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, type: true, amount: true, balanceAfter: true },
+      });
+      let balance = 0;
+      const updates: Array<{ id: string; balanceAfter: number }> = [];
+      for (const row of remaining) {
+        balance = Math.round((balance + (row.type === "CONTRIBUTION" ? row.amount : -row.amount)) * 100) / 100;
+        if (balance < 0) {
+          return {
+            success: false as const,
+            error: "No se puede eliminar: hay retiros posteriores que se quedarían sin saldo. Elimina primero esos retiros.",
+          };
+        }
+        if (row.balanceAfter !== balance) updates.push({ id: row.id, balanceAfter: balance });
+      }
+
+      await tx.emergencyFundMovement.delete({ where: { id: movementId } });
+      // El retiro ejecutado generó un egreso; se elimina junto con el movimiento
+      if (movement.relatedTransactionId) {
+        await tx.transaction.deleteMany({ where: { id: movement.relatedTransactionId } });
+      }
+      for (const update of updates) {
+        await tx.emergencyFundMovement.update({ where: { id: update.id }, data: { balanceAfter: update.balanceAfter } });
+      }
+
+      return { success: true as const, data: { newBalance: balance } };
+    });
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al eliminar el movimiento",
+    };
+  }
+}

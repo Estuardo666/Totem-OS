@@ -30,6 +30,7 @@ import {
   recordContribution as recordContributionFromService,
   requestWithdrawal as requestWithdrawalFromService,
   executeWithdrawal as executeWithdrawalFromService,
+  deleteEmergencyFundMovement as deleteEmergencyFundMovementFromService,
 } from "@/lib/finance-emergency-fund-service";
 
 // ---------------------------------------------------------------------------
@@ -260,4 +261,14 @@ export async function executeEmergencyWithdrawal(
           : "Error al ejecutar retiro del fondo",
     };
   }
+}
+
+export async function deleteEmergencyFundMovement(
+  movementId: string
+): Promise<ApiResponse<{ newBalance: number }>> {
+  const result = await deleteEmergencyFundMovementFromService(movementId);
+  if (result.success) {
+    revalidateFundsViews();
+  }
+  return result;
 }
