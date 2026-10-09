@@ -143,6 +143,9 @@ export function FinanceMonthOverview({ current, previous, trend }: FinanceMonthO
   const r = current.receivables;
   // Honorarios van aparte: el resto de costos de clientes + gastos fijos son "Gastos"
   const expenses = e.directCosts - e.honorarios + e.operatingExpenses;
+  // En el mes en curso el ingreso ya cuenta el fee completo, pero los costos
+  // aún no se registran: la utilidad es parcial y no se compara con un mes cerrado.
+  const inProgress = current.period.isCurrentMonth;
   const prevExpenses = p ? p.directCosts - p.honorarios + p.operatingExpenses : undefined;
   const overdue = r.overdue1To30 + r.overdue31To60 + r.overdue61Plus;
   const clients = current.clients.filter((c) => c.recognizedRevenue > 0 || c.collectedCash > 0 || c.outstanding > 0);
@@ -168,21 +171,21 @@ export function FinanceMonthOverview({ current, previous, trend }: FinanceMonthO
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Kpi label="Ingresos" value={e.recognizedRevenue} previous={p?.recognizedRevenue} sub={`Cobrado ${money(e.collectedCash)}`} />
-        <Kpi label="Honorarios" value={e.honorarios} previous={p?.honorarios} inverse />
-        <Kpi label="Gastos" value={expenses} previous={prevExpenses} inverse />
+        <Kpi label="Honorarios" value={e.honorarios} previous={inProgress ? undefined : p?.honorarios} inverse sub={inProgress ? "Registrado hasta hoy" : undefined} />
+        <Kpi label="Gastos" value={expenses} previous={inProgress ? undefined : prevExpenses} inverse sub={inProgress ? "Registrado hasta hoy" : undefined} />
         <Kpi
-          label="Utilidad"
+          label={inProgress ? "Utilidad parcial" : "Utilidad"}
           value={e.operatingResult}
-          previous={p?.operatingResult}
-          sub={e.recognizedRevenue > 0 ? `Margen ${e.operatingMarginPct.toFixed(0)}%` : undefined}
-          tone={e.operatingResult < 0 ? "negative" : "positive"}
+          previous={inProgress ? undefined : p?.operatingResult}
+          sub={inProgress ? "Mes en curso: faltan honorarios y gastos" : e.recognizedRevenue > 0 ? `Margen ${e.operatingMarginPct.toFixed(0)}%` : undefined}
+          tone={e.operatingResult < 0 ? "negative" : inProgress ? undefined : "positive"}
         />
         <Kpi label="Por cobrar" value={r.total} previous={previous?.receivables.total} inverse sub={overdue > 0 ? `${money(overdue)} vencido` : "Nada vencido"} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Ledger
-          title="Cómo se calcula la utilidad"
+          title={inProgress ? "Cómo se calcula la utilidad (hasta hoy)" : "Cómo se calcula la utilidad"}
           lines={[
             { label: "Ingresos del mes", value: e.recognizedRevenue, previous: p?.recognizedRevenue },
             { label: "Honorarios", value: e.honorarios, previous: p?.honorarios, kind: "sub" },
