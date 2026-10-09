@@ -50,8 +50,8 @@ export function PersonalFinanceDashboard({ stats, userId }: PersonalFinanceDashb
   return (
     <div className="container mx-auto p-6 space-y-6">
       <PageHeader
-        title="Dashboard personal"
-        description="Visualiza los ingresos, gastos y beneficios."
+        title="Mis finanzas"
+        description="Lo que te deben y lo que has cobrado."
         actions={
           <TransactionDialog>
             <Button className="gap-2">
@@ -65,32 +65,31 @@ export function PersonalFinanceDashboard({ stats, userId }: PersonalFinanceDashb
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Mis Gastos por Reembolsar</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Te deben (reembolsos)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
             <div className="text-2xl font-semibold text-amber-600">
               {formatCurrency(pendingReimbursements)}
             </div>
-            <p className="text-xs text-muted-foreground">Gastos pendientes de reembolso</p>
+            <p className="text-xs text-muted-foreground">Gastos que pagaste tú y la empresa aún no te devuelve</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Honorarios Recibidos (Mes)</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Honorarios cobrados este mes</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
             <div className="text-2xl font-semibold text-emerald-600">
               {formatCurrency(honorariosReceived)}
             </div>
-            <p className="text-xs text-muted-foreground">Honorarios pagados este mes</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Transacciones Recientes</CardTitle>
+          <CardTitle className="text-base">Mis últimos movimientos</CardTitle>
         </CardHeader>
         <CardContent>
           {filteredTransactions.length === 0 ? (
@@ -99,31 +98,26 @@ export function PersonalFinanceDashboard({ stats, userId }: PersonalFinanceDashb
             </p>
           ) : (
             <div className="space-y-3">
-              {filteredTransactions.slice(0, 5).map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{transaction.description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(transaction.date), "dd/MM/yyyy")}
-                    </p>
+              {filteredTransactions.slice(0, 8).map((transaction) => {
+                const isHonorario = transaction.type === "HONORARIOS";
+                const isPaid = transaction.status === "PAID";
+                const label = isHonorario
+                  ? isPaid ? "Honorario pagado" : "Honorario pendiente"
+                  : isPaid ? "Gasto reembolsado" : "Gasto por reembolsar";
+                const tone = isPaid ? "text-emerald-600" : "text-amber-600";
+
+                return (
+                  <div key={transaction.id} className="flex items-center justify-between gap-4 rounded-lg border p-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{transaction.description}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(transaction.date), "dd/MM/yyyy")} · <span className={tone}>{label}</span>
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrency(transaction.amount)}</div>
                   </div>
-                  <div
-                    className={`text-sm font-semibold ${
-                      transaction.type === "EXPENSE" && transaction.status !== "PAID"
-                        ? "text-rose-600"
-                        : "text-emerald-600"
-                    }`}
-                  >
-                    {transaction.type === "EXPENSE" && transaction.status !== "PAID"
-                      ? "-"
-                      : "+"}
-                    {formatCurrency(transaction.amount)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
