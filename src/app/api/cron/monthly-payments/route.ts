@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createMonthlyPaymentTransactions } from "@/lib/finance-logic";
 import { autoContributeFromClose } from "@/lib/finance-emergency-fund-service";
+import { isAuthorizedCron, isAuthorizedCronSecretHeader } from "@/lib/cron-auth";
 
+/**
+ * Acepta el Bearer estándar o el header legacy `x-cron-secret`. Antes, sin
+ * CRON_SECRET la ruta quedaba abierta a cualquiera; ahora falla cerrado.
+ */
 function isAuthorized(request: NextRequest) {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return true;
-
-  const headerSecret = request.headers.get("x-cron-secret");
-  const querySecret = request.nextUrl.searchParams.get("secret");
-  return expected === headerSecret || expected === querySecret;
+  return isAuthorizedCron(request) || isAuthorizedCronSecretHeader(request);
 }
 
 export async function POST(request: NextRequest) {

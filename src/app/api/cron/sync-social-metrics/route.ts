@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthorizedCronRequest } from "@/lib/cron-auth";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { db } from "@/lib/db";
 import { runClientSync } from "@/lib/meta/sync-orchestrator";
 import { refreshAgencyMetaToken } from "@/lib/meta/token-refresh";
@@ -28,13 +28,8 @@ export const maxDuration = 300;
 /** Margen antes del límite de la función para cortar de forma ordenada. */
 const TIME_BUDGET_MS = 240_000;
 
-function authorized(request: NextRequest, secretParam?: string | null): boolean {
-  return isAuthorizedCronRequest({
-    authorizationHeader: request.headers.get("authorization"),
-    vercelCronHeader: request.headers.get("x-vercel-cron-id"),
-    secretParam,
-    cronSecret: process.env.CRON_SECRET,
-  });
+function authorized(request: NextRequest): boolean {
+  return isAuthorizedCron(request);
 }
 
 async function run(offset: number, days: number) {
@@ -164,10 +159,11 @@ export async function POST(request: NextRequest) {
 
 /**
  * Variante GET para prueba y diagnóstico manual:
- * /api/cron/sync-social-metrics?secret=...&offset=0&days=28
+ * /api/cron/sync-social-metrics?offset=0&days=28 con `Authorization: Bearer $CRON_SECRET`.
+ * Es también la variante que invoca el scheduler de Vercel.
  */
 export async function GET(request: NextRequest) {
-  if (!authorized(request, request.nextUrl.searchParams.get("secret"))) {
+  if (!authorized(request)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 

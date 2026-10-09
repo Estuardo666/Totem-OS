@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { checkAndMarkOverdueInvoices, checkPaymentAlerts72Hours } from "@/lib/finance-cobranza-service";
 
 /**
@@ -11,12 +12,7 @@ import { checkAndMarkOverdueInvoices, checkPaymentAlerts72Hours } from "@/lib/fi
  */
 export async function POST(request: NextRequest) {
   try {
-    // Seguridad: verificar Vercel Cron o secret válido
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-    const vercelCronHeader = request.headers.get("x-vercel-cron-id");
-
-    if (!vercelCronHeader && (!cronSecret || authHeader !== `Bearer ${cronSecret}`)) {
+    if (!isAuthorizedCron(request)) {
       console.warn("⚠️ Acceso no autorizado a /api/cron/cobranza-check");
       return NextResponse.json(
         { error: "No autorizado" },
@@ -53,17 +49,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Permitir GET para testing manual
+// GET para testing manual: exige el mismo header Bearer que el POST
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const secret = searchParams.get("secret");
-
-  if (secret !== process.env.CRON_SECRET) {
-    return NextResponse.json(
-      { error: "Acceso denegado - usa POST con Authorization header" },
-      { status: 403 }
-    );
-  }
-
   return POST(request);
 }

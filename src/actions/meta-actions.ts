@@ -16,8 +16,10 @@ import { revalidatePath } from "next/cache";
  */
 export async function getMetaAuthUrl(): Promise<ApiResponse<{ url: string }>> {
   try {
+    // Solo ADMIN: la conexión reemplaza el token de toda la agencia, y
+    // desconectarla ya exigía ADMIN.
     const session = await auth();
-    if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
+    if (!session?.user || session.user.role !== "ADMIN") {
       return {
         success: false,
         error: "No autorizado",
@@ -158,7 +160,6 @@ export async function getManagedMetaPages(): Promise<
     Array<{
       id: string;
       name: string;
-      access_token: string;
       instagramAccount: {
         id: string;
         username: string;
@@ -192,10 +193,11 @@ export async function getManagedMetaPages(): Promise<
     const pagesWithInstagram = await Promise.all(
       pages.map(async (page) => {
         const instagramAccount = await getInstagramBusinessAccount(page.id, page.access_token);
+        // El token de página no sale del servidor: no vence y permite
+        // publicar como la página. linkPageToClient lo vuelve a pedir.
         return {
           id: page.id,
           name: page.name,
-          access_token: page.access_token,
           instagramAccount,
         };
       })
@@ -215,12 +217,15 @@ export async function getManagedMetaPages(): Promise<
 }
 
 /**
- * Vincula una página de Facebook a un cliente
+ * Vincula una página de Facebook a un cliente.
+ *
+ * El token de página se obtiene aquí, en el servidor, a partir de las páginas
+ * que gestiona la cuenta conectada. Así el navegador nunca lo ve y no puede
+ * vincular una página ajena ni un token que no corresponde a esa página.
  */
 export async function linkPageToClient(
   clientId: string,
   pageId: string,
-  pageAccessToken: string,
   instagramBusinessId?: string | null,
   adAccountId?: string | null
 ): Promise<ApiResponse<{ success: boolean }>> {
@@ -243,6 +248,32 @@ export async function linkPageToClient(
         success: false,
         error: "Cliente no encontrado",
       };
+    }
+
+    const account = await getAgencyToken();
+    if (!account) {
+      return { success: false, error: "No hay cuenta de Meta conectada" };
+    }
+
+    const page = (await getManagedPages(account.accessToken)).find((p) => p.id === pageId);
+    if (!page) {
+      return {
+        success: false,
+        error: "La página no está entre las gestionadas por la cuenta de Meta conectada",
+      };
+    }
+    const pageAccessToken = page.access_token;
+
+    // La cuenta de Instagram también se verifica contra la página, en vez de
+    // confiar en el ID que manda el navegador.
+    if (instagramBusinessId) {
+      const instagram = await getInstagramBusinessAccount(page.id, pageAccessToken);
+      if (instagram?.id !== instagramBusinessId) {
+        return {
+          success: false,
+          error: "La cuenta de Instagram no pertenece a esa página",
+        };
+      }
     }
 
     // Actualizar el cliente con los IDs de página, Instagram y Ad Account

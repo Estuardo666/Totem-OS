@@ -3,6 +3,13 @@ import { auth } from "@/auth";
 import { checkPermissions, exchangeCodeForToken, getFacebookUserInfo } from "@/lib/meta/auth-service";
 import { saveAgencyToken } from "@/lib/meta/token-store";
 import { META_STATE_COOKIE, clearOAuthCookies, readOAuthCookie, safeEqual } from "@/lib/oauth-state";
+import type { IntegrationErrorCode } from "@/lib/integration-errors";
+
+function redirectWithError(request: NextRequest, code: IntegrationErrorCode) {
+  return NextResponse.redirect(
+    new URL(`/admin/settings/integrations?error=${code}`, request.url)
+  );
+}
 
 /**
  * API Route para recibir el callback de OAuth de Meta
@@ -10,7 +17,8 @@ import { META_STATE_COOKIE, clearOAuthCookies, readOAuthCookie, safeEqual } from
  */
 export async function GET(request: NextRequest) {
   try {
-    // 1. Verificar que el usuario esté autenticado (solo ADMIN y EDITOR)
+    // 1. Verificar que el usuario esté autenticado (solo ADMIN: este token pasa
+    //    a ser el de toda la agencia)
     const session = await auth();
     if (!session?.user) {
       return NextResponse.redirect(
@@ -18,10 +26,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (session.user.role !== "ADMIN" && session.user.role !== "EDITOR") {
-      return NextResponse.redirect(
-        new URL("/admin/settings/integrations?error=Unauthorized", request.url)
-      );
+    if (session.user.role !== "ADMIN") {
+      return redirectWithError(request, "unauthorized");
     }
 
     // 2. Obtener parámetros de la query
@@ -38,24 +44,12 @@ export async function GET(request: NextRequest) {
         errorReason,
         errorDescription,
       });
-      return NextResponse.redirect(
-        new URL(
-          `/admin/settings/integrations?error=${encodeURIComponent(
-            errorDescription || errorReason || "Error al autorizar con Meta"
-          )}`,
-          request.url
-        )
-      );
+      return redirectWithError(request, "provider_denied");
     }
 
     // 4. Validar que existe el código
     if (!code) {
-      return NextResponse.redirect(
-        new URL(
-          "/admin/settings/integrations?error=" + encodeURIComponent("Código de autorización no recibido"),
-          request.url
-        )
-      );
+      return redirectWithError(request, "missing_code");
     }
 
     // 4b. Validar el state contra la cookie: sin esto el callback aceptaria
@@ -67,12 +61,7 @@ export async function GET(request: NextRequest) {
 
     if (!safeEqual(returnedState ?? undefined, expectedState)) {
       console.error("[Meta OAuth] state invalido o ausente; se descarta el callback");
-      return NextResponse.redirect(
-        new URL(
-          "/admin/settings/integrations?error=" + encodeURIComponent("Validacion de seguridad fallida (state)"),
-          request.url
-        )
-      );
+      return redirectWithError(request, "invalid_state");
     }
 
     // 5. Intercambiar código por token de larga duración
@@ -81,14 +70,7 @@ export async function GET(request: NextRequest) {
       longLivedToken = await exchangeCodeForToken(code);
     } catch (tokenError) {
       console.error("Error al intercambiar código por token:", tokenError);
-      return NextResponse.redirect(
-        new URL(
-          `/admin/settings/integrations?error=${encodeURIComponent(
-            tokenError instanceof Error ? tokenError.message : "Error al obtener token"
-          )}`,
-          request.url
-        )
-      );
+      return redirectWithError(request, "token_exchange_failed");
     }
 
     // 6. Obtener información del usuario de Facebook
@@ -97,14 +79,7 @@ export async function GET(request: NextRequest) {
       userInfo = await getFacebookUserInfo(longLivedToken.access_token);
     } catch (userError) {
       console.error("Error al obtener información del usuario:", userError);
-      return NextResponse.redirect(
-        new URL(
-          `/admin/settings/integrations?error=${encodeURIComponent(
-            userError instanceof Error ? userError.message : "Error al obtener información del usuario"
-          )}`,
-          request.url
-        )
-      );
+      return redirectWithError(request, "user_info_failed");
     }
 
     // 7. Calcular fecha de expiración del token
@@ -139,12 +114,7 @@ export async function GET(request: NextRequest) {
       });
     } catch (dbError) {
       console.error("Error al guardar token en la base de datos:", dbError);
-      return NextResponse.redirect(
-        new URL(
-          "/admin/settings/integrations?error=" + encodeURIComponent("Error al guardar la conexión"),
-          request.url
-        )
-      );
+      return redirectWithError(request, "save_failed");
     }
 
     // 9. Redirigir a la página de integraciones con éxito
@@ -153,14 +123,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error("Error inesperado en callback de Meta:", error);
-    return NextResponse.redirect(
-      new URL(
-        `/admin/settings/integrations?error=${encodeURIComponent(
-          error instanceof Error ? error.message : "Error inesperado"
-        )}`,
-        request.url
-      )
-    );
+    return redirectWithError(request, "unexpected");
   }
 }
 

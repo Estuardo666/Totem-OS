@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { PageHeader } from "@/components/shared";
+import { integrationErrorMessage } from "@/lib/integration-errors";
 
 async function IntegrationsContent() {
   const userResult = await getCurrentUser();
@@ -156,7 +157,8 @@ export default async function IntegrationsPage({
 }) {
   const params = await searchParams;
   const hasSuccess = params.success === "true";
-  const error = params.error;
+  // Solo se muestran mensajes propios: la URL trae un código, nunca texto.
+  const error = integrationErrorMessage(params.error);
 
   return (
     <>
@@ -175,7 +177,7 @@ export default async function IntegrationsPage({
         <div className="p-2 md:p-3 pb-0">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{decodeURIComponent(error)}</AlertDescription>
+            <AlertDescription>{error}</AlertDescription>
           </Alert>
         </div>
       )}

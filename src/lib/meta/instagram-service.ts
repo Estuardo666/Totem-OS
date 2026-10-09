@@ -15,6 +15,7 @@ import {
   type PageMetricsResponse,
   type StoredMetricRow,
 } from "./metrics-service.ts";
+import { withAppSecretProof } from "./app-secret-proof.ts";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 const TIMEOUT_MS = 10000;
@@ -104,7 +105,7 @@ async function graphGet(
   params: Record<string, string>
 ): Promise<Record<string, unknown>> {
   const url = new URL(`${GRAPH}/${path}`);
-  url.search = new URLSearchParams(params).toString();
+  url.search = withAppSecretProof(new URLSearchParams(params), accessToken).toString();
 
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },

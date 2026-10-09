@@ -10,6 +10,7 @@ import {
   InsufficientPermissionsError,
   TokenExpiredError,
 } from "./metrics-service.ts";
+import { withAppSecretProof } from "./app-secret-proof.ts";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 const TIMEOUT_MS = 10000;
@@ -206,7 +207,7 @@ export async function fetchAdInsights(
       limit: String(PAGE_SIZE),
     };
     if (after) params.after = after;
-    url.search = new URLSearchParams(params).toString();
+    url.search = withAppSecretProof(new URLSearchParams(params), accessToken).toString();
 
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${accessToken}` },

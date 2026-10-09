@@ -44,10 +44,10 @@ Vercel automáticamente va a deployar. Espera 2-3 minutos.
    ```
 
 ### Probar manualmente AHORA:
-Abre esta URL en tu navegador (reemplaza `tu-app` con tu dominio de Vercel):
+Ejecuta (reemplaza `tu-app` con tu dominio de Vercel):
 
-```
-https://tu-app.vercel.app/api/cron/daily-digest?secret=TU_CRON_SECRET
+```bash
+curl -H "Authorization: Bearer TU_CRON_SECRET" https://tu-app.vercel.app/api/cron/daily-digest
 ```
 
 Deberías ver:

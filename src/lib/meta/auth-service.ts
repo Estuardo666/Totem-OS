@@ -19,6 +19,7 @@ import {
   requiredScopesForMode,
   type DebugTokenInfo,
 } from "./permissions-policy.ts";
+import { appSecretProof, withAppSecretProof } from "./app-secret-proof.ts";
 
 // Se reexporta para no romper a quien lo importaba desde aquí. La lista vive
 // en permissions-policy.ts porque ese módulo es el que decide qué falta, y
@@ -164,10 +165,13 @@ export async function getFacebookUserInfo(accessToken: string): Promise<{
 }> {
   const response = await fetch(
     `https://graph.facebook.com/v21.0/me?` +
-      new URLSearchParams({
-        access_token: accessToken,
-        fields: "id,name",
-      }).toString()
+      withAppSecretProof(
+        new URLSearchParams({
+          access_token: accessToken,
+          fields: "id,name",
+        }),
+        accessToken
+      ).toString()
   );
 
   if (!response.ok) {
@@ -187,10 +191,13 @@ export async function getFacebookUserInfo(accessToken: string): Promise<{
 export async function getManagedPages(userAccessToken: string): Promise<MetaPage[]> {
   const response = await fetch(
     `https://graph.facebook.com/v21.0/me/accounts?` +
-      new URLSearchParams({
-        access_token: userAccessToken,
-        fields: "id,name,access_token",
-      }).toString()
+      withAppSecretProof(
+        new URLSearchParams({
+          access_token: userAccessToken,
+          fields: "id,name,access_token",
+        }),
+        userAccessToken
+      ).toString()
   );
 
   if (!response.ok) {
@@ -214,10 +221,13 @@ export async function getInstagramBusinessAccount(
   try {
     const response = await fetch(
       `https://graph.facebook.com/v21.0/${pageId}?` +
-        new URLSearchParams({
-          access_token: pageAccessToken,
-          fields: "instagram_business_account{id,username}",
-        }).toString()
+        withAppSecretProof(
+          new URLSearchParams({
+            access_token: pageAccessToken,
+            fields: "instagram_business_account{id,username}",
+          }),
+          pageAccessToken
+        ).toString()
     );
 
     if (!response.ok) {
@@ -259,10 +269,13 @@ export async function getAdAccounts(userAccessToken: string): Promise<Array<{
   try {
     const response = await fetch(
       `https://graph.facebook.com/v21.0/me/adaccounts?` +
-        new URLSearchParams({
-          access_token: userAccessToken,
-          fields: "id,name,account_id",
-        }).toString()
+        withAppSecretProof(
+          new URLSearchParams({
+            access_token: userAccessToken,
+            fields: "id,name,account_id",
+          }),
+          userAccessToken
+        ).toString()
     );
 
     if (!response.ok) {
@@ -313,9 +326,12 @@ export async function checkPermissions(
   try {
     const response = await fetch(
       `https://graph.facebook.com/v21.0/me/permissions?` +
-        new URLSearchParams({
-          access_token: accessToken,
-        }).toString()
+        withAppSecretProof(
+          new URLSearchParams({
+            access_token: accessToken,
+          }),
+          accessToken
+        ).toString()
     );
 
     if (!response.ok) {
@@ -372,12 +388,19 @@ export async function debugToken(token: string): Promise<DebugTokenInfo> {
     throw new Error("META_APP_ID y META_APP_SECRET son necesarios para inspeccionar un token");
   }
 
+  // El token de aplicación es literalmente "{app_id}|{app_secret}". Viaja en
+  // el header y no en la URL, para que el secreto no quede en ningún log de
+  // URLs; la prueba HMAC sí va en la query porque Graph solo la lee allí.
+  const appToken = `${META_APP_ID}|${META_APP_SECRET}`;
   const url = new URL("https://graph.facebook.com/v21.0/debug_token");
   url.searchParams.set("input_token", token);
-  // El token de aplicación es literalmente "{app_id}|{app_secret}".
-  url.searchParams.set("access_token", `${META_APP_ID}|${META_APP_SECRET}`);
+  const proof = appSecretProof(appToken);
+  if (proof) url.searchParams.set("appsecret_proof", proof);
 
-  const response = await fetch(url.toString(), { cache: "no-store" });
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${appToken}` },
+    cache: "no-store",
+  });
   const body = await response.json().catch(() => null);
 
   if (!response.ok) {

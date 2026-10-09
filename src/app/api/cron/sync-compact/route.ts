@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { compactSyncHistory } from "@/lib/sync-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function authorized(request: NextRequest): boolean {
-  const authHeader = request.headers.get("authorization");
-  return Boolean(request.headers.get("x-vercel-cron-id"))
-    || Boolean(process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`);
+  return isAuthorizedCron(request);
 }
 
 export async function POST(request: NextRequest) {

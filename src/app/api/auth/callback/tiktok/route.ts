@@ -9,15 +9,16 @@ import {
   readOAuthCookie,
   safeEqual,
 } from "@/lib/oauth-state";
+import type { IntegrationErrorCode } from "@/lib/integration-errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SETTINGS = "/admin/settings/integrations";
 
-function redirectWithError(request: NextRequest, message: string) {
+function redirectWithError(request: NextRequest, code: IntegrationErrorCode) {
   return NextResponse.redirect(
-    new URL(`${SETTINGS}?error=${encodeURIComponent(message)}`, request.url)
+    new URL(`${SETTINGS}?error=${code}`, request.url)
   );
 }
 
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     // 1. Solo un administrador puede conectar cuentas de la agencia.
     const session = await auth();
     if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
-      return redirectWithError(request, "No autorizado");
+      return redirectWithError(request, "unauthorized");
     }
 
     const params = request.nextUrl.searchParams;
@@ -38,14 +39,13 @@ export async function GET(request: NextRequest) {
     // 2. TikTok informa el rechazo del usuario por querystring, no por error HTTP.
     const oauthError = params.get("error");
     if (oauthError) {
-      const description = params.get("error_description") || oauthError;
-      return redirectWithError(request, description);
+      return redirectWithError(request, "provider_denied");
     }
 
     const code = params.get("code");
     const state = params.get("state");
     if (!code) {
-      return redirectWithError(request, "TikTok no devolvió un código de autorización");
+      return redirectWithError(request, "missing_code");
     }
 
     // 3. Validar el state contra la cookie httpOnly: sin esto, el callback
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     const expectedState = await readOAuthCookie(TIKTOK_STATE_COOKIE);
     if (!safeEqual(state ?? undefined, expectedState)) {
       await clearOAuthCookies(TIKTOK_STATE_COOKIE);
-      return redirectWithError(request, "La sesión de autorización expiró. Intenta de nuevo.");
+      return redirectWithError(request, "invalid_state");
     }
     await clearOAuthCookies(TIKTOK_STATE_COOKIE);
 
@@ -75,9 +75,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(`${SETTINGS}?success=tiktok`, request.url));
   } catch (error) {
     console.error("Error en el callback de TikTok:", error);
-    return redirectWithError(
-      request,
-      error instanceof Error ? error.message : "Error al conectar con TikTok"
-    );
+    return redirectWithError(request, "unexpected");
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { db } from "@/lib/db";
 import { sendShootingReminders } from "@/lib/shooting-notifications";
 
@@ -11,11 +12,7 @@ import { sendShootingReminders } from "@/lib/shooting-notifications";
  */
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-    const vercelCronHeader = request.headers.get("x-vercel-cron-id");
-
-    if (!vercelCronHeader && (!cronSecret || authHeader !== `Bearer ${cronSecret}`)) {
+    if (!isAuthorizedCron(request)) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
@@ -92,12 +89,5 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const secret = searchParams.get("secret");
-
-  if (secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
-  }
-
   return POST(request);
 }

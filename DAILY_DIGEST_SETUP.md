@@ -129,10 +129,7 @@ curl -X POST http://localhost:3000/api/cron/daily-digest \
   -H "Authorization: Bearer tu-secreto-aleatorio-muy-seguro-123456"
 ```
 
-O desde el navegador (solo para testing):
-```
-http://localhost:3000/api/cron/daily-digest?secret=tu-secreto-aleatorio-muy-seguro-123456
-```
+El secreto no se acepta en la URL (`?secret=`): siempre va en el header `Authorization`.
 
 **Respuesta esperada:**
 ```json

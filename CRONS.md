@@ -32,8 +32,10 @@ decisión explícita.
 
 ## Prueba manual
 
-Todas aceptan `POST` con `Authorization: Bearer $CRON_SECRET`, y `GET` con
-`?secret=$CRON_SECRET` para diagnóstico:
+Todas aceptan `POST` y `GET` solo con `Authorization: Bearer $CRON_SECRET`.
+El secreto ya no se acepta en la URL (`?secret=`) porque quedaba en los logs, ni
+se confía en el header `x-vercel-cron-id`, que cualquiera puede enviar. Vercel
+manda el Bearer solo en cada ejecución programada si `CRON_SECRET` está definido:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" \

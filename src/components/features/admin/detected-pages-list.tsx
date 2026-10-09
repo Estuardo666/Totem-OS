@@ -30,7 +30,6 @@ export function DetectedPagesList({ metaAccount }: DetectedPagesListProps) {
     Array<{
       id: string;
       name: string;
-      access_token: string;
       instagramAccount: {
         id: string;
         username: string;
@@ -85,7 +84,7 @@ export function DetectedPagesList({ metaAccount }: DetectedPagesListProps) {
     });
   }, [toast]);
 
-  const handleLinkPage = (pageId: string, pageAccessToken: string, instagramBusinessId?: string | null, isUpdate: boolean = false) => {
+  const handleLinkPage = (pageId: string, instagramBusinessId?: string | null, isUpdate: boolean = false) => {
     const clientId = selectedClients[pageId];
     if (!clientId) {
       toast({
@@ -98,7 +97,7 @@ export function DetectedPagesList({ metaAccount }: DetectedPagesListProps) {
 
     startTransition(async () => {
       try {
-        const result = await linkPageToClient(clientId, pageId, pageAccessToken, instagramBusinessId);
+        const result = await linkPageToClient(clientId, pageId, instagramBusinessId);
         if (result.success) {
           setLinkedPages((prev) => new Set(prev).add(pageId));
           toast({
@@ -216,7 +215,7 @@ export function DetectedPagesList({ metaAccount }: DetectedPagesListProps) {
                     </Select>
                     <Button
                       onClick={() =>
-                        handleLinkPage(page.id, page.access_token, page.instagramAccount?.id, isLinked)
+                        handleLinkPage(page.id, page.instagramAccount?.id, isLinked)
                       }
                       disabled={!selectedClientId || isPending}
                       size="sm"

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthorizedCronRequest } from "@/lib/cron-auth";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { refreshAgencyMetaToken } from "@/lib/meta/token-refresh";
 
 export const runtime = "nodejs";
@@ -14,13 +14,8 @@ export const maxDuration = 300;
  * a diario. Esta ruta queda como disparador manual, para forzar una renovación
  * o para verificar el flujo sin esperar a la corrida nocturna.
  */
-function authorized(request: NextRequest, secretParam?: string | null): boolean {
-  return isAuthorizedCronRequest({
-    authorizationHeader: request.headers.get("authorization"),
-    vercelCronHeader: request.headers.get("x-vercel-cron-id"),
-    secretParam,
-    cronSecret: process.env.CRON_SECRET,
-  });
+function authorized(request: NextRequest): boolean {
+  return isAuthorizedCron(request);
 }
 
 async function run() {
@@ -59,11 +54,11 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Variante GET para prueba manual: /api/cron/refresh-social-tokens?secret=...
+ * Variante GET para prueba manual: /api/cron/refresh-social-tokens
  * Acepta también el mismo header Bearer que el POST.
  */
 export async function GET(request: NextRequest) {
-  if (!authorized(request, request.nextUrl.searchParams.get("secret"))) {
+  if (!authorized(request)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
