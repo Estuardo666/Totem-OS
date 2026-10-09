@@ -17,6 +17,20 @@ export function getMonthEnd(date: Date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
 }
 
+// La agencia opera en Ecuador (UTC-5 fijo, sin horario de verano). El servidor
+// corre en UTC, así que un registro hecho el 30 a las 20:00 cae el día 1 en UTC.
+// Este rango corta el mes a medianoche de Ecuador para las consultas por fecha.
+const BUSINESS_UTC_OFFSET_HOURS = 5;
+
+export function getBusinessMonthRange(date: Date) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  return {
+    start: new Date(Date.UTC(year, month, 1, BUSINESS_UTC_OFFSET_HOURS)),
+    end: new Date(Date.UTC(year, month + 1, 1, BUSINESS_UTC_OFFSET_HOURS) - 1),
+  };
+}
+
 export function formatMonthValue(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${date.getFullYear()}-${month}`;

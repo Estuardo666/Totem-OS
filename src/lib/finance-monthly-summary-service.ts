@@ -9,6 +9,7 @@ import {
   getBillingExceptions,
   getMonthEnd,
   getMonthStart,
+  getBusinessMonthRange,
   getRecurringStartMonth,
   getSummaryCutoffDate,
   groupReceivables,
@@ -126,6 +127,7 @@ function buildMonthlyComparison(current: MonthlySummarySnapshot, previous: Month
 async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Promise<MonthlySummarySnapshot> {
   const monthStart = getMonthStart(monthDate);
   const monthEnd = getMonthEnd(monthDate);
+  const { start: queryStart, end: queryEnd } = getBusinessMonthRange(monthDate);
   const periodValue = formatMonthValue(monthStart);
   const currentMonthValue = formatMonthValue(new Date());
   const isCurrentMonth = periodValue === currentMonthValue;
@@ -133,17 +135,17 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
   const periodLabel = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(monthStart);
   const cutoffLabel = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(cutoffDate);
 
-  const commitmentCutoff = isCurrentMonth ? new Date() : monthEnd;
+  const commitmentCutoff = isCurrentMonth ? new Date() : queryEnd;
   const [clients, invoices, incomeTransactions, expenseTransactions, honorarios, expenses, pendingExpenseTransactions, pendingHonorarios, pendingExpenses, savingsMovements, receivablesResult] = await Promise.all([
     db.client.findMany({
       where: { status: { not: "INACTIVE" } },
       select: { id: true, name: true, logo: true, status: true, monthlyRate: true, paymentDay: true, billingStartDate: true, createdAt: true },
     }),
-    db.invoice.findMany({ where: { generatedAt: { gte: monthStart, lte: monthEnd } }, include: { client: true } }),
-    db.transaction.findMany({ where: { type: "INCOME", status: "PAID", createdAt: { gte: monthStart, lte: monthEnd } }, include: { relatedClient: true } }),
-    db.transaction.findMany({ where: { type: "EXPENSE", status: "PAID", createdAt: { gte: monthStart, lte: monthEnd } }, include: { relatedClient: true } }),
-    db.transaction.findMany({ where: { type: "HONORARIOS", status: "PAID", createdAt: { gte: monthStart, lte: monthEnd } }, include: { relatedClient: true } }),
-    db.expense.findMany({ where: { date: { gte: monthStart, lte: monthEnd } }, include: { client: true } }),
+    db.invoice.findMany({ where: { generatedAt: { gte: queryStart, lte: queryEnd } }, include: { client: true } }),
+    db.transaction.findMany({ where: { type: "INCOME", status: "PAID", createdAt: { gte: queryStart, lte: queryEnd } }, include: { relatedClient: true } }),
+    db.transaction.findMany({ where: { type: "EXPENSE", status: "PAID", createdAt: { gte: queryStart, lte: queryEnd } }, include: { relatedClient: true } }),
+    db.transaction.findMany({ where: { type: "HONORARIOS", status: "PAID", createdAt: { gte: queryStart, lte: queryEnd } }, include: { relatedClient: true } }),
+    db.expense.findMany({ where: { date: { gte: queryStart, lte: queryEnd } }, include: { client: true } }),
     db.transaction.findMany({ where: { type: "EXPENSE", status: "PENDING", createdAt: { lte: commitmentCutoff } } }),
     db.transaction.findMany({ where: { type: "HONORARIOS", status: "PENDING", createdAt: { lte: commitmentCutoff } } }),
     db.expense.findMany({
