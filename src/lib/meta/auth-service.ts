@@ -394,7 +394,7 @@ export async function debugToken(token: string): Promise<DebugTokenInfo> {
   const appToken = `${META_APP_ID}|${META_APP_SECRET}`;
   const url = new URL("https://graph.facebook.com/v21.0/debug_token");
   url.searchParams.set("input_token", token);
-  const proof = appSecretProof(appToken);
+  const proof = appSecretProof(appToken, META_APP_SECRET);
   if (proof) url.searchParams.set("appsecret_proof", proof);
 
   const response = await fetch(url.toString(), {
