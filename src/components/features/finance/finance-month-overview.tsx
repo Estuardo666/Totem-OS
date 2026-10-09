@@ -200,10 +200,10 @@ export function FinanceMonthOverview({ current, previous, trend }: FinanceMonthO
             { label: "Honorarios pagados", value: e.honorarios, previous: p?.honorarios, kind: "sub" },
             { label: "Otros pagos", value: t.paidCashOut - e.honorarios, previous: pt && p ? pt.paidCashOut - p.honorarios : undefined, kind: "sub" },
             ...(t.transferredToSavings || pt?.transferredToSavings
-              ? [{ label: "Enviado a ahorro", value: t.transferredToSavings, previous: pt?.transferredToSavings, kind: "sub" as const }]
+              ? [{ label: "Pasado a utilidades acumuladas", value: t.transferredToSavings, previous: pt?.transferredToSavings, kind: "sub" as const }]
               : []),
             ...(t.withdrawnFromSavings || pt?.withdrawnFromSavings
-              ? [{ label: "Retirado de ahorro", value: t.withdrawnFromSavings, previous: pt?.withdrawnFromSavings, kind: "add" as const }]
+              ? [{ label: "Sacado de utilidades acumuladas", value: t.withdrawnFromSavings, previous: pt?.withdrawnFromSavings, kind: "add" as const }]
               : []),
             { label: "Queda en caja del mes", value: t.operatingEndingBalance, previous: pt?.operatingEndingBalance, kind: "total" },
           ]}
