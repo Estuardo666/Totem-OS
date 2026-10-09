@@ -500,7 +500,7 @@ export async function getReceivablesFromDb(
     const monthStart = getMonthStart(referenceMonth);
     const monthEnd = getMonthEnd(referenceMonth);
 
-    const allInvoices = await db.invoice.findMany({
+    const allInvoicesPromise = db.invoice.findMany({
       where: {
         generatedAt: {
           lte: monthEnd,
@@ -514,7 +514,7 @@ export async function getReceivablesFromDb(
       },
     });
 
-    const allTransactions = await db.transaction.findMany({
+    const allTransactionsPromise = db.transaction.findMany({
       where: {
         type: "INCOME",
         createdAt: {
@@ -533,7 +533,7 @@ export async function getReceivablesFromDb(
       },
     });
 
-    const recurringClients = await db.client.findMany({
+    const recurringClientsPromise = db.client.findMany({
       where: {
         monthlyRate: { gt: 0 },
         paymentDay: { not: null },
@@ -553,7 +553,13 @@ export async function getReceivablesFromDb(
       },
     });
 
+    const [allInvoices, allTransactions, recurringClients] = await Promise.all([
+      allInvoicesPromise,
+      allTransactionsPromise,
+      recurringClientsPromise,
+    ]);
     const recurringClientIdsArray = recurringClients.map((client) => client.id);
+
     const [billingExceptions, closureRows] = await Promise.all([
       getBillingExceptions({
         clientIds: recurringClientIdsArray,

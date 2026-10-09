@@ -140,7 +140,12 @@ export interface GlobalProfitabilityStatsData {
  * Para ADMIN: ingresos de facturas + transacciones INCOME, gastos de expenses + transacciones
  * Para Non-ADMIN: apenas honorarios y gastos personales
  */
-export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialStats>> {
+export async function getFinancialStatsFromDb(
+  options: { recentLimit?: number } = {}
+): Promise<ApiResponse<FinancialStats>> {
+  // Con recentLimit solo se cargan las N transacciones más recientes de cada
+  // fuente (suficiente para el top N combinado) en vez de todo el historial.
+  const recentTake = options.recentLimit;
   try {
     const session = await auth();
     const userId = session?.user?.id;
@@ -183,8 +188,8 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
     const pendingClosureClients = recurringClients.filter((client: RecurringClientRow) => !closureClientIds.has(client.id));
 
     // Obtener facturas pagadas (solo ADMIN)
-    const paidInvoicesThisMonth = isAdmin
-      ? await db.invoice.findMany({
+    const paidInvoicesThisMonthPromise = isAdmin
+      ? db.invoice.findMany({
           where: {
             status: "PAID",
             generatedAt: {
@@ -196,10 +201,10 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
             client: true,
           },
         })
-      : [];
+      : Promise.resolve([]);
 
-    const paidInvoicesPrevMonth = isAdmin
-      ? await db.invoice.findMany({
+    const paidInvoicesPrevMonthPromise = isAdmin
+      ? db.invoice.findMany({
           where: {
             status: "PAID",
             generatedAt: {
@@ -211,10 +216,10 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
             client: true,
           },
         })
-      : [];
+      : Promise.resolve([]);
 
     // Obtener transacciones INCOME/HONORARIOS pagadas
-    const paidTransactionsThisMonth = await db.transaction.findMany({
+    const paidTransactionsThisMonthPromise = db.transaction.findMany({
       where: {
         type: !isAdmin ? "HONORARIOS" : "INCOME",
         status: "PAID",
@@ -226,7 +231,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
       },
     });
 
-    const paidTransactionsPrevMonth = await db.transaction.findMany({
+    const paidTransactionsPrevMonthPromise = db.transaction.findMany({
       where: {
         type: !isAdmin ? "HONORARIOS" : "INCOME",
         status: "PAID",
@@ -238,19 +243,8 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
       },
     });
 
-    // Calcular ingresos totales
-    const totalIncome = sumCurrency([
-      paidInvoicesThisMonth.reduce((sum, invoice) => sum + invoice.amount, 0),
-      paidTransactionsThisMonth.reduce((sum, transaction) => sum + transaction.amount, 0),
-    ]);
-
-    const prevTotalIncome = sumCurrency([
-      paidInvoicesPrevMonth.reduce((sum, invoice) => sum + invoice.amount, 0),
-      paidTransactionsPrevMonth.reduce((sum, transaction) => sum + transaction.amount, 0),
-    ]);
-
     // Obtener gastos
-    const paidExpensesThisMonth = await db.expense.findMany({
+    const paidExpensesThisMonthPromise = db.expense.findMany({
       where: {
         date: {
           gte: monthStart,
@@ -260,7 +254,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
       },
     });
 
-    const paidExpensesPrevMonth = await db.expense.findMany({
+    const paidExpensesPrevMonthPromise = db.expense.findMany({
       where: {
         date: {
           gte: prevMonthStart,
@@ -271,8 +265,8 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
     });
 
     // Obtener honorarios pagados (transacciones de tipo HONORARIOS, solo ADMIN)
-    const paidHonorariosThisMonth = isAdmin
-      ? await db.transaction.findMany({
+    const paidHonorariosThisMonthPromise = isAdmin
+      ? db.transaction.findMany({
           where: {
             type: "HONORARIOS",
             status: "PAID",
@@ -282,10 +276,10 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
             },
           },
         })
-      : [];
+      : Promise.resolve([]);
 
-    const paidHonorariosPrevMonth = isAdmin
-      ? await db.transaction.findMany({
+    const paidHonorariosPrevMonthPromise = isAdmin
+      ? db.transaction.findMany({
           where: {
             type: "HONORARIOS",
             status: "PAID",
@@ -295,11 +289,11 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
             },
           },
         })
-      : [];
+      : Promise.resolve([]);
 
 
     // Obtener transacciones EXPENSE pagadas
-    const paidExpenseTransactionsThisMonth = await db.transaction.findMany({
+    const paidExpenseTransactionsThisMonthPromise = db.transaction.findMany({
       where: {
         type: "EXPENSE",
         status: "PAID",
@@ -318,7 +312,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
       },
     });
 
-    const paidExpenseTransactionsPrevMonth = await db.transaction.findMany({
+    const paidExpenseTransactionsPrevMonthPromise = db.transaction.findMany({
       where: {
         type: "EXPENSE",
         status: "PAID",
@@ -338,25 +332,64 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
     });
 
     // Todas las transacciones EXPENSE del mes (PAID + PENDING) — para Saldo en Caja
-    const allExpenseTransactionsThisMonth = isAdmin
-      ? await db.transaction.findMany({
+    const allExpenseTransactionsThisMonthPromise = isAdmin
+      ? db.transaction.findMany({
           where: {
             type: "EXPENSE",
             createdAt: { gte: monthStart, lte: monthEnd },
           },
           select: { amount: true },
         })
-      : [];
+      : Promise.resolve([]);
 
-    const allExpenseTransactionsPrevMonth = isAdmin
-      ? await db.transaction.findMany({
+    const allExpenseTransactionsPrevMonthPromise = isAdmin
+      ? db.transaction.findMany({
           where: {
             type: "EXPENSE",
             createdAt: { gte: prevMonthStart, lte: prevMonthEnd },
           },
           select: { amount: true },
         })
-      : [];
+      : Promise.resolve([]);
+
+    const [
+      paidInvoicesThisMonth,
+      paidInvoicesPrevMonth,
+      paidTransactionsThisMonth,
+      paidTransactionsPrevMonth,
+      paidExpensesThisMonth,
+      paidExpensesPrevMonth,
+      paidHonorariosThisMonth,
+      paidHonorariosPrevMonth,
+      paidExpenseTransactionsThisMonth,
+      paidExpenseTransactionsPrevMonth,
+      allExpenseTransactionsThisMonth,
+      allExpenseTransactionsPrevMonth,
+    ] = await Promise.all([
+      paidInvoicesThisMonthPromise,
+      paidInvoicesPrevMonthPromise,
+      paidTransactionsThisMonthPromise,
+      paidTransactionsPrevMonthPromise,
+      paidExpensesThisMonthPromise,
+      paidExpensesPrevMonthPromise,
+      paidHonorariosThisMonthPromise,
+      paidHonorariosPrevMonthPromise,
+      paidExpenseTransactionsThisMonthPromise,
+      paidExpenseTransactionsPrevMonthPromise,
+      allExpenseTransactionsThisMonthPromise,
+      allExpenseTransactionsPrevMonthPromise,
+    ]);
+
+    // Calcular ingresos totales
+    const totalIncome = sumCurrency([
+      paidInvoicesThisMonth.reduce((sum, invoice) => sum + invoice.amount, 0),
+      paidTransactionsThisMonth.reduce((sum, transaction) => sum + transaction.amount, 0),
+    ]);
+
+    const prevTotalIncome = sumCurrency([
+      paidInvoicesPrevMonth.reduce((sum, invoice) => sum + invoice.amount, 0),
+      paidTransactionsPrevMonth.reduce((sum, transaction) => sum + transaction.amount, 0),
+    ]);
 
     // Calcular gastos totales
     const totalExpenses = sumCurrency([
@@ -429,7 +462,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
       const prevWeekEnd = new Date();
       prevWeekEnd.setDate(prevWeekEnd.getDate() - 7);
 
-      const pendingExpenseTransactions = await db.transaction.findMany({
+      const pendingExpenseTransactionsPromise = db.transaction.findMany({
         where: {
           type: "EXPENSE",
           status: "PENDING",
@@ -447,7 +480,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         },
       });
 
-      const pendingExpenseTransactionsPrevWeek = await db.transaction.findMany({
+      const pendingExpenseTransactionsPrevWeekPromise = db.transaction.findMany({
         where: {
           type: "EXPENSE",
           status: "PENDING",
@@ -466,7 +499,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         },
       });
 
-      const pendingExpenses = await db.expense.findMany({
+      const pendingExpensesPromise = db.expense.findMany({
         where: {
           reimbursed: false,
           ...(isAdmin ? { paidByUserId: { not: null } } : { paidByUserId: userId }),
@@ -481,7 +514,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         },
       });
 
-      const pendingExpensesPrevWeek = await db.expense.findMany({
+      const pendingExpensesPrevWeekPromise = db.expense.findMany({
         where: {
           reimbursed: false,
           ...(isAdmin ? { paidByUserId: { not: null } } : { paidByUserId: userId }),
@@ -497,18 +530,8 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         },
       });
 
-      pendingReimbursements = sumCurrency([
-        pendingExpenseTransactions.reduce((sum, t) => sum + t.amount, 0),
-        pendingExpenses.reduce((sum, e) => sum + e.amount, 0),
-      ]);
-
-      const pendingReimbursementsPrevWeek = sumCurrency([
-        pendingExpenseTransactionsPrevWeek.reduce((sum, t) => sum + t.amount, 0),
-        pendingExpensesPrevWeek.reduce((sum, e) => sum + e.amount, 0),
-      ]);
-
       // Honorarios pagados
-      const honorariosThisMonth = await db.transaction.findMany({
+      const honorariosThisMonthPromise = db.transaction.findMany({
         where: {
           type: "HONORARIOS",
           status: "PAID",
@@ -520,7 +543,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         },
       });
 
-      const honorariosPrevMonth = await db.transaction.findMany({
+      const honorariosPrevMonthPromise = db.transaction.findMany({
         where: {
           type: "HONORARIOS",
           status: "PAID",
@@ -532,6 +555,25 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
         },
       });
 
+      const [pendingExpenseTransactions, pendingExpenseTransactionsPrevWeek, pendingExpenses, pendingExpensesPrevWeek, honorariosThisMonth, honorariosPrevMonth] = await Promise.all([
+        pendingExpenseTransactionsPromise,
+        pendingExpenseTransactionsPrevWeekPromise,
+        pendingExpensesPromise,
+        pendingExpensesPrevWeekPromise,
+        honorariosThisMonthPromise,
+        honorariosPrevMonthPromise,
+      ]);
+
+      pendingReimbursements = sumCurrency([
+        pendingExpenseTransactions.reduce((sum, t) => sum + t.amount, 0),
+        pendingExpenses.reduce((sum, e) => sum + e.amount, 0),
+      ]);
+
+      const pendingReimbursementsPrevWeek = sumCurrency([
+        pendingExpenseTransactionsPrevWeek.reduce((sum, t) => sum + t.amount, 0),
+        pendingExpensesPrevWeek.reduce((sum, e) => sum + e.amount, 0),
+      ]);
+
       honorariosReceived = sumCurrency(honorariosThisMonth.map((t) => t.amount));
       const honorariosPrev = sumCurrency(honorariosPrevMonth.map((t) => t.amount));
       pendingReimbursementsDeltaPct = calculateDeltaPct(
@@ -542,20 +584,21 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
     }
 
     // Obtener todas las transacciones
-    const allInvoices = isAdmin
-      ? await db.invoice.findMany({
+    const allInvoicesPromise = isAdmin
+      ? db.invoice.findMany({
           include: {
             client: true,
           },
           orderBy: {
             generatedAt: "desc",
           },
+          take: recentTake,
         })
-      : [];
+      : Promise.resolve([]);
 
     const expenseWhereClause = isAdmin ? {} : userId ? { paidByUserId: userId } : { id: undefined };
 
-    const allExpenses = await db.expense.findMany({
+    const allExpensesPromise = db.expense.findMany({
       where: expenseWhereClause,
       include: {
         client: true,
@@ -569,6 +612,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
       orderBy: {
         date: "desc",
       },
+      take: recentTake,
     });
 
     const transactionWhereClause = isAdmin
@@ -588,7 +632,7 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
           }
         : { id: undefined };
 
-    const allTransactions = await db.transaction.findMany({
+    const allTransactionsPromise = db.transaction.findMany({
       where: transactionWhereClause,
       include: {
         relatedClient: true,
@@ -608,7 +652,14 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
       orderBy: {
         createdAt: "desc",
       },
+      take: recentTake,
     });
+
+    const [allInvoices, allExpenses, allTransactions] = await Promise.all([
+      allInvoicesPromise,
+      allExpensesPromise,
+      allTransactionsPromise,
+    ]);
 
     // Mezclar y ordenar transacciones
     const baseTransactions = [
@@ -695,7 +746,8 @@ export async function getFinancialStatsFromDb(): Promise<ApiResponse<FinancialSt
 
         return true;
       })
-      .sort((a, b) => b.date.getTime() - a.date.getTime()) as FinancialStats["recentTransactions"];
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, options.recentLimit ?? undefined) as FinancialStats["recentTransactions"];
 
     // Calcular datos del mapa de calor (solo para ADMIN)
     let heatmapData: HeatmapCell[] | undefined;

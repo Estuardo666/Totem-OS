@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { cache } from "react";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { db as prisma } from "@/lib/db";
@@ -15,7 +16,7 @@ import { normalizeCanonicalRole, resolveRoleCode } from "@/lib/roles";
  * Configuración completa de NextAuth para Node.js Runtime
  * Incluye Prisma Adapter y callbacks que requieren acceso a la base de datos
  */
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const nextAuth = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -265,4 +266,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
+
+export const { handlers, signIn, signOut } = nextAuth;
+
+// El callback jwt consulta la BD en cada llamada; cache() deduplica las
+// llamadas a auth() dentro de un mismo request (página + server actions).
+export const auth = cache(() => nextAuth.auth());
 

@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { getTasks } from "@/actions/content-actions";
-import { getClients } from "@/actions/client-actions";
+import { db } from "@/lib/db";
 import { getPendingFeedbacks } from "@/actions/client-feedback-actions";
 import { getUserWorkloads } from "@/actions/workload-actions";
 import { getFinancialStats } from "@/actions/finance-actions";
@@ -17,11 +17,19 @@ export default async function Home() {
   // Finance is intentionally not requested for non-admins. The restriction is
   // enforced at the server data boundary, not only by hiding the card.
   const [tasksResult, clientsResult, feedbacksResult, workloadsResult, financeResult, receivablesResult] = await Promise.all([
-    getTasks(),
-    getClients(),
+    getTasks(undefined, { includeBrandAssets: false }),
+    // El home solo necesita datos básicos del cliente; getClients() carga todas
+    // las tareas de cada cliente para métricas que aquí no se usan.
+    db.client
+      .findMany({
+        select: { id: true, name: true, status: true, logo: true, color: true },
+        orderBy: { createdAt: "desc" },
+      })
+      .then((data) => ({ success: true as const, data }))
+      .catch(() => ({ success: false as const, data: [] })),
     getPendingFeedbacks(),
     getUserWorkloads(),
-    isAdmin ? getFinancialStats() : Promise.resolve({ success: true as const, data: null }),
+    isAdmin ? getFinancialStats({ recentLimit: 3 }) : Promise.resolve({ success: true as const, data: null }),
     isAdmin ? getReceivables() : Promise.resolve({ success: true as const, data: null }),
   ]);
 

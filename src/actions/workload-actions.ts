@@ -53,39 +53,38 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
       },
     });
 
-    // Obtener conteo de tareas pendientes por usuario
-    const workloads: UserWorkload[] = await Promise.all(
-      users.map(async (user) => {
+    // Conteos agrupados en 2 consultas (antes: 1-2 consultas por usuario)
+    const [editorGroups, communityGroups] = await Promise.all([
+      db.contentTask.groupBy({
+        by: ["assignedEditorId"],
+        where: {
+          assignedEditorId: { not: null },
+          status: { in: [...EDITOR_RESPONSIBLE_STATUSES] },
+        },
+        _count: { _all: true },
+      }),
+      db.contentTask.groupBy({
+        by: ["assignedCommunityId"],
+        where: {
+          assignedCommunityId: { not: null },
+          status: { in: [...COMMUNITY_RESPONSIBLE_STATUSES] },
+        },
+        _count: { _all: true },
+      }),
+    ]);
+    const editorCounts = new Map(editorGroups.map((g) => [g.assignedEditorId, g._count._all]));
+    const communityCounts = new Map(communityGroups.map((g) => [g.assignedCommunityId, g._count._all]));
+
+    const workloads: UserWorkload[] = users.map((user) => {
         let pendingTasksCount = 0;
         const userRole = resolveRoleCode(user) ?? "USER";
         const normalizedSpecialty = user.specialty?.toUpperCase() ?? null;
         const actsAsCommunity = normalizedSpecialty?.includes("COMMUNITY") ?? false;
 
-        // LÓGICA PARA EDITORES (role: EDITOR o ADMIN)
-        // Solo cuentan tareas en estados: RECORDED, EDITING, REVIEW_CLIENT
-        // NO cuentan: CLIENT_APPROVED, APPROVED, PUBLISHED
-        const editorCount = await db.contentTask.count({
-          where: {
-            assignedEditorId: user.id,
-            status: {
-              in: [...EDITOR_RESPONSIBLE_STATUSES],
-            },
-          },
-        });
-
-        // LÓGICA PARA COMMUNITY
-        // Cuentan tareas en estados: IDEA, SCRIPT, CLIENT_APPROVED
-        let communityCount = 0;
-        if (actsAsCommunity) {
-          communityCount = await db.contentTask.count({
-            where: {
-              assignedCommunityId: user.id,
-              status: {
-                in: [...COMMUNITY_RESPONSIBLE_STATUSES],
-              },
-            },
-          });
-        }
+        // EDITORES: RECORDED, EDITING, REVIEW_CLIENT
+        const editorCount = editorCounts.get(user.id) ?? 0;
+        // COMMUNITY: IDEA, SCRIPT, CLIENT_APPROVED
+        const communityCount = actsAsCommunity ? communityCounts.get(user.id) ?? 0 : 0;
 
         // Sumar ambos contadores (un usuario puede tener ambos roles)
         pendingTasksCount = editorCount + communityCount;
@@ -117,8 +116,7 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
           weeklyCapacityMinutes,
           saturationThresholdMinutes,
         };
-      })
-    );
+      });
 
     return { success: true, data: workloads };
   } catch (error) {

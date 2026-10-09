@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, FileText, Moon, Sun, Receipt, BarChart3 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getBrandSettings } from "@/actions/admin-actions";
+import { useBrandSettings } from "@/components/providers/brand-settings-provider";
 import { updateUserSettings } from "@/actions/user.actions";
 import {
   DropdownMenu,
@@ -146,10 +146,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const [brandSettings, setBrandSettings] = useState<{
-    logoLight: string | null;
-    logoDark: string | null;
-  } | null>(null); // Inicializar siempre como null para evitar mismatch SSR
+  const brandSettings = useBrandSettings();
   const [mounted, setMounted] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
@@ -189,47 +186,8 @@ export function Sidebar({ className, onNavigate, ...props }: SidebarProps) {
     .toUpperCase()
     .slice(0, 2) || "U";
 
-  // Cargar configuración de marca (solo en cliente después de hidratación)
   useEffect(() => {
-    setMounted(true); // Marcar que el cliente está listo
-
-    let isMounted = true;
-
-    const loadBrandSettings = async () => {
-      try {
-        // Primero intentar cargar desde localStorage
-        try {
-          const cached = localStorage.getItem("totem_brand_cache");
-          if (cached && isMounted) {
-            setBrandSettings(JSON.parse(cached));
-          }
-        } catch (e) {
-          // Ignorar errores de localStorage
-        }
-
-        // Luego cargar desde API para actualizar
-        const result = await getBrandSettings();
-        if (!isMounted) return;
-
-        if (result.success && result.data) {
-          setBrandSettings(result.data);
-          // Guardar en localStorage para siguiente carga
-          try {
-            localStorage.setItem("totem_brand_cache", JSON.stringify(result.data));
-          } catch {
-            // Ignorar errores de localStorage
-          }
-        }
-      } catch (error) {
-        console.error("Error al cargar configuración de marca:", error);
-      }
-    };
-
-    loadBrandSettings();
-
-    return () => {
-      isMounted = false;
-    };
+    setMounted(true);
   }, []);
 
   // Sincronizar estado de dark mode

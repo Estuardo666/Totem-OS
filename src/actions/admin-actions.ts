@@ -2,7 +2,8 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { BRAND_SETTINGS_TAG } from "@/lib/brand-settings";
 import type { ApiResponse } from "@/types";
 import { z } from "zod";
 
@@ -525,8 +526,9 @@ export async function updateBrandSettings(
       },
     });
 
-    // 6. Revalidar rutas
-    revalidatePath("/");
+    // 6. Revalidar rutas y la caché de marca del layout
+    revalidateTag(BRAND_SETTINGS_TAG);
+    revalidatePath("/", "layout");
     revalidatePath("/admin/settings");
 
     return { success: true, data: { success: true } };

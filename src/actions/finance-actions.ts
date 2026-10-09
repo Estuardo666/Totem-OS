@@ -864,8 +864,10 @@ export async function getClientAccountStatus(
 
 // ============ REPORTING OPERATIONS ============
 
-export async function getFinancialStats(): Promise<ApiResponse<FinancialStatsData>> {
-  return getFinancialStatsFromDb();
+export async function getFinancialStats(
+  options: { recentLimit?: number } = {}
+): Promise<ApiResponse<FinancialStatsData>> {
+  return getFinancialStatsFromDb(options);
 }
 
 export async function getExpensesStats(filters?: {

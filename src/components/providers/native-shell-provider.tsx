@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
-import { getPublicBrandSettings } from "@/actions/admin-actions";
+import { useBrandSettings } from "@/components/providers/brand-settings-provider";
 import { getPendingTasksCount } from "@/actions/content-actions";
 import {
   getUnreadCount,
@@ -65,7 +65,7 @@ function NativeShellBridge() {
 
   const [theme, setTheme] = useState<ThemeVariant>("light");
   const [accentColor, setAccentColor] = useState(DEFAULT_PRIMARY_COLOR);
-  const [brand, setBrand] = useState<{ logoLight: string | null; logoDark: string | null } | null>(null);
+  const brand = useBrandSettings();
   const [taskCount, setTaskCount] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<ShellNotificationSource[]>([]);
@@ -101,24 +101,6 @@ function NativeShellBridge() {
       attributeFilter: ["class", "style", "data-theme", "data-theme-variant"],
     });
     return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    getPublicBrandSettings()
-      .then((result) => {
-        if (isMounted && result.success && result.data) {
-          setBrand(result.data);
-        }
-      })
-      .catch(() => {
-        // La marca es decorativa: el shell usa el título como respaldo.
-      });
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
   const refreshCounters = useCallback(async () => {

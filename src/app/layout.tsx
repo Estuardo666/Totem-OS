@@ -12,7 +12,6 @@ import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "@/app/api/uploadthing/core";
 import { ConditionalLayout } from "@/components/layouts/conditional-layout";
-import { GoogleMapsScript } from "@/components/providers/google-maps-script";
 import { PwaServiceWorker } from "@/components/providers/pwa-service-worker";
 import { WebPushProvider } from "@/components/providers/web-push-provider";
 import { SplashProvider } from "@/components/providers/splash-provider";
@@ -20,8 +19,8 @@ import { AppBadgeProvider } from "@/components/providers/app-badge-provider";
 import { OfflineFinanceSyncProvider } from "@/components/providers/offline-finance-sync-provider";
 import { RemoteLogoutProvider } from "@/components/providers/remote-logout-provider";
 import { ApiQueryProvider } from "@/components/providers/api-query-provider";
-import { getBrandSettings } from "@/actions/admin-actions";
-import { unstable_cache } from "next/cache";
+import { getCachedBrandSettings } from "@/lib/brand-settings";
+import { BrandSettingsProvider } from "@/components/providers/brand-settings-provider";
 import { PRIMARY_COLOR_COOKIE, resolvePrimaryColor } from "@/lib/theme";
 import "./globals.css";
 
@@ -39,18 +38,9 @@ const googleSans = localFont({
   preload: false,
 });
 
-// Cache brand settings for 1 hour — avoids a DB hit on every route render
-const getCachedBrandSettings = unstable_cache(
-  async () => getBrandSettings(),
-  ["brand-settings"],
-  { revalidate: 3600 }
-);
-
 export async function generateMetadata(): Promise<Metadata> {
-  const brandResult = await getCachedBrandSettings();
-  const faviconUrl = brandResult.success && brandResult.data?.favicon 
-    ? brandResult.data.favicon 
-    : "/favicon.ico";
+  const brand = await getCachedBrandSettings();
+  const faviconUrl = brand.favicon || "/favicon.ico";
 
   return {
     title: "Totem OS - Sistema Operativo Interno",
@@ -96,7 +86,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
+  const [cookieStore, brandSettings] = await Promise.all([cookies(), getCachedBrandSettings()]);
   const cookieColor = cookieStore.get(PRIMARY_COLOR_COOKIE)?.value;
   const {
     hex: primaryColorHex,
@@ -169,9 +159,9 @@ export default async function RootLayout({
       </head>
       <body className={`${googleSans.variable} font-google-sans overflow-x-hidden`}>
         <ThemeScript />
-        <GoogleMapsScript />
         <PwaServiceWorker />
         <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
+        <BrandSettingsProvider value={brandSettings}>
         <ApiQueryProvider>
           <NextAuthSessionProvider>
             <OfflineFinanceSyncProvider />
@@ -191,6 +181,7 @@ export default async function RootLayout({
             </RemoteLogoutProvider>
           </NextAuthSessionProvider>
         </ApiQueryProvider>
+        </BrandSettingsProvider>
         <Toaster />
         <SpeedInsights />
       </body>

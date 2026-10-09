@@ -24,7 +24,7 @@ import {
 import { NotificationBell } from "./notification-bell";
 import { TaskBell } from "./task-bell";
 import { Sidebar } from "./sidebar";
-import { getPublicBrandSettings } from "@/actions/admin-actions";
+import { useBrandSettings } from "@/components/providers/brand-settings-provider";
 import { updateUserSettings } from "@/actions/user.actions";
 import { toggleThemeVariantClient } from "@/lib/theme";
 import { signOutWithTotemIOSCleanup } from "@/lib/totem-ios-client";
@@ -33,33 +33,7 @@ export function Navbar() {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [brandSettings, setBrandSettings] = useState<{
-    logoLight: string | null;
-    logoDark: string | null;
-  } | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadBrand = async () => {
-      try {
-        const result = await getPublicBrandSettings();
-        if (!isMounted) return;
-
-        if (result.success && result.data) {
-          setBrandSettings(result.data);
-        }
-      } catch (error) {
-        console.error("Error al cargar configuración de marca pública:", error);
-      }
-    };
-
-    loadBrand();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const brandSettings = useBrandSettings();
 
   // Sincronizar estado de dark mode
   useEffect(() => {

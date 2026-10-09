@@ -325,7 +325,11 @@ export async function createTasksBatch(
  * Incluye la relación del cliente para mostrar su nombre
  * Filtra por rol: EDITOR solo ve sus tareas asignadas, ADMIN ve todas (a menos que showOnlyMine sea true)
  */
-export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<ContentTaskWithClient[]>> {
+export async function getTasks(
+  showOnlyMine?: boolean,
+  options: { includeBrandAssets?: boolean } = {}
+): Promise<ApiResponse<ContentTaskWithClient[]>> {
+  const includeBrandAssets = options.includeBrandAssets ?? true;
   try {
     // Obtener sesión para verificar rol
     const { auth } = await import("@/auth");
@@ -374,14 +378,18 @@ export async function getTasks(showOnlyMine?: boolean): Promise<ApiResponse<Cont
             status: true,
             editorId: true,
             communityId: true,
-            brandAssets: {
-              select: {
-                id: true,
-                name: true,
-                url: true,
-                fileType: true,
-              },
-            },
+            // El home no usa los assets de marca; omitirlos evita traer
+            // todos los assets de cada cliente repetidos por tarea.
+            brandAssets: includeBrandAssets
+              ? {
+                  select: {
+                    id: true,
+                    name: true,
+                    url: true,
+                    fileType: true,
+                  },
+                }
+              : false,
           },
         },
         assignedEditor: {

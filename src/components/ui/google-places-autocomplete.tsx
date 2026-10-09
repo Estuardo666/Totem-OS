@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { GoogleMapsScript } from "@/components/providers/google-maps-script";
 import { Loader2, MapPin, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -339,6 +340,8 @@ export function GooglePlacesAutocomplete({
 
   return (
     <div className="relative" ref={containerRef}>
+      {/* Maps solo se descarga en pantallas que usan el autocompletado */}
+      <GoogleMapsScript />
       <div className="relative">
         <Input
           ref={inputRef}
