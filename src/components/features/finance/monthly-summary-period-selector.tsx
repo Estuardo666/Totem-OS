@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -60,74 +60,59 @@ export function MonthlySummaryPeriodSelector({
   };
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-3 rounded-[1.75rem] border border-border/60 bg-card/90 p-3 shadow-sm sm:flex-row sm:items-center",
-        className
+    <div className={cn("inline-flex w-fit shrink-0 items-center gap-1 rounded-lg border bg-card p-1", className)}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        aria-label="Mes anterior"
+        disabled={isPending}
+        onClick={() => navigateToMonth(shiftMonth(monthValue, -1))}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+
+      <Input
+        type="month"
+        value={value}
+        max={currentMonthValue}
+        aria-label="Mes consultado"
+        className="h-8 w-[150px] border-0 bg-transparent px-1 text-center text-sm shadow-none focus-visible:ring-0"
+        disabled={isPending}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          setValue(nextValue);
+
+          if (isValidMonthValue(nextValue)) {
+            navigateToMonth(nextValue);
+          }
+        }}
+        onBlur={() => {
+          if (!isValidMonthValue(value)) {
+            setValue(monthValue);
+          }
+        }}
+      />
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        aria-label="Mes siguiente"
+        disabled={isPending || isCurrentMonth}
+        onClick={() => navigateToMonth(shiftMonth(monthValue, 1))}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+
+      {!isCurrentMonth && (
+        <Button type="button" variant="ghost" size="sm" className="h-8 px-2" disabled={isPending} onClick={() => navigateToMonth(currentMonthValue)}>
+          <RotateCcw className="h-3.5 w-3.5" />
+          Hoy
+        </Button>
       )}
-    >
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <CalendarDays className="h-4 w-4" />
-        <span>Mes consultado</span>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="rounded-full"
-          disabled={isPending}
-          onClick={() => navigateToMonth(shiftMonth(monthValue, -1))}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-
-        <Input
-          type="month"
-          value={value}
-          max={currentMonthValue}
-          className="w-full min-w-[180px] rounded-full sm:w-[190px]"
-          disabled={isPending}
-          onChange={(event) => {
-            const nextValue = event.target.value;
-            setValue(nextValue);
-
-            if (isValidMonthValue(nextValue)) {
-              navigateToMonth(nextValue);
-            }
-          }}
-          onBlur={() => {
-            if (!isValidMonthValue(value)) {
-              setValue(monthValue);
-            }
-          }}
-        />
-
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="rounded-full"
-          disabled={isPending || isCurrentMonth}
-          onClick={() => navigateToMonth(shiftMonth(monthValue, 1))}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-
-        {!isCurrentMonth && (
-          <Button
-            type="button"
-            variant="ghost"
-            className="rounded-full px-3"
-            disabled={isPending}
-            onClick={() => navigateToMonth(currentMonthValue)}
-          >
-            <RotateCcw className="h-4 w-4" />
-            Mes actual
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

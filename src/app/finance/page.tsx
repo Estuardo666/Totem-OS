@@ -47,7 +47,7 @@ async function SimpleBody({ month }: { month?: string }) {
 
   return (
     <>
-      <MonthlySummaryPeriodSelector monthValue={current} isCurrentMonth={current === monthValue(now)} className="mb-4 w-fit" />
+      <MonthlySummaryPeriodSelector monthValue={current} isCurrentMonth={current === monthValue(now)} className="mb-4" />
       <FinanceMonthOverview current={currentSnapshot} previous={previousSnapshot} trend={snapshots} />
     </>
   );
