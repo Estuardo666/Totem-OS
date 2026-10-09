@@ -86,6 +86,8 @@ export interface MonthlyFinancialSummaryData {
     recognizedRevenue: number;
     collectedCash: number;
     directCosts: number;
+    /** Honorarios del período; ya incluidos en directCosts y en treasury.directCashOut. */
+    honorarios: number;
     grossMargin: number;
     grossMarginPct: number;
     operatingExpenses: number;

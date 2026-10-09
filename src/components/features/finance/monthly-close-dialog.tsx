@@ -24,13 +24,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 type ClosureItem = ClientMonthlyClosurePageData["items"][number];
@@ -54,10 +47,14 @@ function getInitialValues(item: ClosureItem | null, year: number, month: number)
   };
 }
 
-function getStatusLabel(status: ClientMonthlyClosureInput["accrualStatus"]) {
-  if (status === "FULL") return "Devengado total";
-  if (status === "PARTIAL") return "Devengado parcial";
-  return "No devengado";
+export const CLOSURE_OPTIONS = [
+  { value: "FULL", label: "Cobrar completo", hint: "Se cumplió el plan del mes" },
+  { value: "PARTIAL", label: "Cobrar una parte", hint: "Se hizo solo parte del trabajo" },
+  { value: "NONE", label: "No cobrar este mes", hint: "No hubo trabajo o se pausó" },
+] as const;
+
+export function getClosureLabel(status: ClientMonthlyClosureInput["accrualStatus"]) {
+  return CLOSURE_OPTIONS.find((option) => option.value === status)?.label ?? status;
 }
 
 export function MonthlyCloseDialog({
@@ -114,45 +111,27 @@ export function MonthlyCloseDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0">
         <DialogHeader>
-          <DialogTitle>Cerrar mes del cliente</DialogTitle>
+          <DialogTitle>{item ? item.clientName : "Cerrar mes"}</DialogTitle>
           <DialogDescription>
             {item
-              ? `${item.clientName} · ${new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1))}`
+              ? `Plan de ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(item.monthlyRate)} · ${new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1))}`
               : "Selecciona un cliente para registrar su cierre mensual."}
           </DialogDescription>
         </DialogHeader>
 
         {item ? (
-          <div className="space-y-6 overflow-y-auto px-6 pb-6">
-            <div className="grid gap-3 rounded-3xl border border-border/60 bg-muted/30 p-4 md:grid-cols-2">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Sugerencia del sistema</p>
-                <p className="mt-2 text-sm font-semibold">{getStatusLabel(item.recommendation.status)}</p>
-                <p className="text-sm text-muted-foreground">Monto sugerido: ${item.recommendation.amount.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Fundamento</p>
-                <p className="mt-2 text-sm text-muted-foreground">{item.recommendation.reason}</p>
-              </div>
-            </div>
-
-            <div className="grid gap-3 rounded-3xl border border-border/60 p-4 md:grid-cols-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Publicadas</p>
-                <p className="mt-2 text-lg font-semibold">{item.evidence.publishedTasks}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Aprobadas</p>
-                <p className="mt-2 text-lg font-semibold">{item.evidence.approvedTasks}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Rodajes</p>
-                <p className="mt-2 text-lg font-semibold">{item.evidence.completedShoots}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Horas</p>
-                <p className="mt-2 text-lg font-semibold">{item.evidence.trackedHours.toFixed(2)}</p>
-              </div>
+          <div className="space-y-5 overflow-y-auto px-6 pb-6">
+            <div className="rounded-xl border bg-muted/30 p-4 text-sm">
+              <p className="font-medium">Trabajo entregado en el mes</p>
+              <p className="mt-1 text-muted-foreground">
+                Reels {item.evidence.publishedReels + item.evidence.approvedReels} de {item.monthlyReels}
+                {" · "}Diseños {item.evidence.publishedFlyers + item.evidence.approvedFlyers} de {item.monthlyFlyers}
+                {item.evidence.completedShoots > 0 ? ` · ${item.evidence.completedShoots} rodaje(s)` : ""}
+              </p>
+              <p className="mt-2 text-muted-foreground">
+                Sugerencia: <span className="font-medium text-foreground">{getClosureLabel(item.recommendation.status)}</span>
+                {item.recommendation.status !== "NONE" ? ` (${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(item.recommendation.amount)})` : ""}
+              </p>
             </div>
 
             <Form {...form}>
@@ -162,19 +141,24 @@ export function MonthlyCloseDialog({
                   name="accrualStatus"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Decisión de cierre</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange} disabled={isPending}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona el cierre" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="FULL">Devengado total</SelectItem>
-                          <SelectItem value="PARTIAL">Devengado parcial</SelectItem>
-                          <SelectItem value="NONE">No devengado</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>¿Cuánto cuenta como ingreso de este mes?</FormLabel>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        {CLOSURE_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            disabled={isPending}
+                            onClick={() => {
+                              field.onChange(option.value);
+                              if (option.value === "FULL") form.setValue("accruedAmount", item.monthlyRate, { shouldValidate: true });
+                            }}
+                            className={`rounded-xl border p-3 text-left transition-colors ${field.value === option.value ? "border-primary bg-primary/10" : "hover:bg-muted/50"}`}
+                          >
+                            <p className="text-sm font-semibold">{option.label}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">{option.hint}</p>
+                          </button>
+                        ))}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -185,7 +169,7 @@ export function MonthlyCloseDialog({
                   name="accruedAmount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Monto devengado</FormLabel>
+                      <FormLabel>Monto que cuenta este mes</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -206,11 +190,11 @@ export function MonthlyCloseDialog({
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Notas del cierre</FormLabel>
+                      <FormLabel>Nota (opcional)</FormLabel>
                       <FormControl>
                         <Textarea
-                          rows={5}
-                          placeholder="Explica por qué este cliente sí o no se devenga en el mes."
+                          rows={2}
+                          placeholder="Ej.: faltaron 2 diseños, se cobran el próximo mes."
                           disabled={isPending}
                           {...field}
                           value={field.value ?? ""}
@@ -226,7 +210,7 @@ export function MonthlyCloseDialog({
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isPending}>
-                    {isPending ? "Guardando..." : "Guardar cierre"}
+                    {isPending ? "Guardando..." : "Guardar"}
                   </Button>
                 </div>
               </form>

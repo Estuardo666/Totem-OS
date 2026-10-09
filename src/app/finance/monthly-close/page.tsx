@@ -33,8 +33,8 @@ export default async function MonthlyClosePage({ searchParams }: MonthlyClosePag
     return (
       <div className="container mx-auto p-3">
         <PageHeader
-          title="Cierre Mensual por Cliente"
-          description="Define si cada fee del mes se reconoce, se reconoce parcialmente o no se devenga."
+          title="Cierre del mes"
+          description="Cuánto se le cobra a cada cliente este mes"
         />
         <Card>
           <CardContent className="py-12">
@@ -50,8 +50,8 @@ export default async function MonthlyClosePage({ searchParams }: MonthlyClosePag
   return (
     <div className="container mx-auto p-3">
       <PageHeader
-        title="Cierre Mensual por Cliente"
-        description="Cierra devengo y criterio contable antes de consolidar ingresos y cartera del mes."
+        title="Cierre del mes"
+        description="Cuánto se le cobra a cada cliente este mes"
       />
       <MonthlyClosePageClient data={result.data} userRole={session.user.role} />
     </div>

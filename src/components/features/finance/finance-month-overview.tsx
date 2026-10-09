@@ -96,25 +96,28 @@ function TrendChart({ trend }: { trend: FinanceDashboardPeriodSnapshot[] }) {
   const rows = trend.map((s) => ({
     label: s.periodLabel.slice(0, 3),
     income: s.executive.recognizedRevenue,
-    expenses: s.executive.directCosts + s.executive.operatingExpenses,
+    honorarios: s.executive.honorarios,
+    expenses: s.executive.directCosts - s.executive.honorarios + s.executive.operatingExpenses,
     result: s.executive.operatingResult,
   }));
-  const max = Math.max(...rows.flatMap((r) => [r.income, r.expenses]), 1);
+  const max = Math.max(...rows.flatMap((r) => [r.income, r.honorarios, r.expenses]), 1);
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">Últimos meses</h2>
         <div className="flex gap-4 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-emerald-500" />Ingresos</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-sky-500" />Honorarios</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-slate-400" />Gastos</span>
         </div>
       </div>
       <div className="flex h-40 items-end gap-3">
         {rows.map((row) => (
-          <div key={row.label} className="flex h-full flex-1 flex-col items-center justify-end gap-1" title={`Ingresos ${money(row.income)} · Gastos ${money(row.expenses)} · Utilidad ${money(row.result)}`}>
+          <div key={row.label} className="flex h-full flex-1 flex-col items-center justify-end gap-1" title={`Ingresos ${money(row.income)} · Honorarios ${money(row.honorarios)} · Gastos ${money(row.expenses)} · Utilidad ${money(row.result)}`}>
             <div className="flex h-full w-full items-end justify-center gap-1">
-              <div className="w-1/3 max-w-6 rounded-t bg-emerald-500" style={{ height: `${(row.income / max) * 100}%` }} />
-              <div className="w-1/3 max-w-6 rounded-t bg-slate-400" style={{ height: `${(row.expenses / max) * 100}%` }} />
+              <div className="w-1/4 max-w-6 rounded-t bg-emerald-500" style={{ height: `${(row.income / max) * 100}%` }} />
+              <div className="w-1/4 max-w-6 rounded-t bg-sky-500" style={{ height: `${(row.honorarios / max) * 100}%` }} />
+              <div className="w-1/4 max-w-6 rounded-t bg-slate-400" style={{ height: `${(row.expenses / max) * 100}%` }} />
             </div>
           </div>
         ))}
@@ -138,7 +141,9 @@ export function FinanceMonthOverview({ current, previous, trend }: FinanceMonthO
   const t = current.treasury;
   const pt = previous?.treasury;
   const r = current.receivables;
-  const expenses = e.directCosts + e.operatingExpenses;
+  // Honorarios van aparte: el resto de costos de clientes + gastos fijos son "Gastos"
+  const expenses = e.directCosts - e.honorarios + e.operatingExpenses;
+  const prevExpenses = p ? p.directCosts - p.honorarios + p.operatingExpenses : undefined;
   const overdue = r.overdue1To30 + r.overdue31To60 + r.overdue61Plus;
   const clients = current.clients.filter((c) => c.recognizedRevenue > 0 || c.collectedCash > 0 || c.outstanding > 0);
 
@@ -161,9 +166,10 @@ export function FinanceMonthOverview({ current, previous, trend }: FinanceMonthO
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Kpi label="Ingresos" value={e.recognizedRevenue} previous={p?.recognizedRevenue} sub={`Cobrado ${money(e.collectedCash)}`} />
-        <Kpi label="Gastos" value={expenses} previous={p ? p.directCosts + p.operatingExpenses : undefined} inverse />
+        <Kpi label="Honorarios" value={e.honorarios} previous={p?.honorarios} inverse />
+        <Kpi label="Gastos" value={expenses} previous={prevExpenses} inverse />
         <Kpi
           label="Utilidad"
           value={e.operatingResult}
@@ -179,7 +185,8 @@ export function FinanceMonthOverview({ current, previous, trend }: FinanceMonthO
           title="Cómo se calcula la utilidad"
           lines={[
             { label: "Ingresos del mes", value: e.recognizedRevenue, previous: p?.recognizedRevenue },
-            { label: "Costos de clientes (honorarios y producción)", value: e.directCosts, previous: p?.directCosts, kind: "sub" },
+            { label: "Honorarios", value: e.honorarios, previous: p?.honorarios, kind: "sub" },
+            { label: "Gastos de clientes (producción)", value: e.directCosts - e.honorarios, previous: p ? p.directCosts - p.honorarios : undefined, kind: "sub" },
             { label: "Gastos fijos de la empresa", value: e.operatingExpenses, previous: p?.operatingExpenses, kind: "sub" },
             { label: "Utilidad", value: e.operatingResult, previous: p?.operatingResult, kind: "total" },
           ]}
@@ -190,7 +197,8 @@ export function FinanceMonthOverview({ current, previous, trend }: FinanceMonthO
           title="Dinero que entró y salió"
           lines={[
             { label: "Cobrado a clientes", value: t.collectedCash, previous: pt?.collectedCash },
-            { label: "Pagado", value: t.paidCashOut, previous: pt?.paidCashOut, kind: "sub" },
+            { label: "Honorarios pagados", value: e.honorarios, previous: p?.honorarios, kind: "sub" },
+            { label: "Otros pagos", value: t.paidCashOut - e.honorarios, previous: pt && p ? pt.paidCashOut - p.honorarios : undefined, kind: "sub" },
             ...(t.transferredToSavings || pt?.transferredToSavings
               ? [{ label: "Enviado a ahorro", value: t.transferredToSavings, previous: pt?.transferredToSavings, kind: "sub" as const }]
               : []),
@@ -226,7 +234,7 @@ export function FinanceMonthOverview({ current, previous, trend }: FinanceMonthO
                   <th className="pb-2 font-normal">Cliente</th>
                   <th className="pb-2 text-right font-normal">Ingreso</th>
                   <th className="pb-2 text-right font-normal">Cobrado</th>
-                  <th className="pb-2 text-right font-normal">Costo</th>
+                  <th className="pb-2 text-right font-normal">Gastos</th>
                   <th className="pb-2 text-right font-normal">Debe</th>
                 </tr>
               </thead>
@@ -247,7 +255,7 @@ export function FinanceMonthOverview({ current, previous, trend }: FinanceMonthO
           </div>
         )}
         <p className="mt-3 text-xs text-muted-foreground">
-          El costo por cliente solo incluye gastos asignados a ese cliente; los honorarios generales se cuentan en la utilidad total.
+          Los gastos por cliente solo incluyen lo asignado a ese cliente; los honorarios se cuentan en el total del mes.
         </p>
       </div>
     </div>

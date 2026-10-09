@@ -263,7 +263,8 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
     row.collectedCash += transaction.amount;
   }
 
-  let directCosts = honorarios.reduce((sum, item) => sum + item.amount, 0);
+  const honorariosTotal = honorarios.reduce((sum, item) => sum + item.amount, 0);
+  let directCosts = honorariosTotal;
   let operatingExpenses = 0;
 
   for (const expense of expenses) {
@@ -358,6 +359,7 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
       recognizedRevenue,
       collectedCash,
       directCosts,
+      honorarios: honorariosTotal,
       grossMargin,
       grossMarginPct: toPercent(grossMargin, recognizedRevenue),
       operatingExpenses,
