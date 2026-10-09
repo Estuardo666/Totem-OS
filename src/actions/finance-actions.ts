@@ -287,9 +287,12 @@ export async function registerPayment(
   }
 }
 
-export async function markInvoiceAsPaid(invoiceId: string): Promise<ApiResponse<any>> {
+export async function markInvoiceAsPaid(
+  invoiceId: string,
+  paidAt?: string
+): Promise<ApiResponse<any>> {
   try {
-    const invoice = await markInvoiceAsPaidInDb(invoiceId);
+    const invoice = await markInvoiceAsPaidInDb(invoiceId, parsePaidAt(paidAt));
     revalidateFinanceViews();
     return { success: true, data: invoice };
   } catch (error) {
@@ -300,6 +303,13 @@ export async function markInvoiceAsPaid(invoiceId: string): Promise<ApiResponse<
   }
 }
 
+function parsePaidAt(value?: string): Date {
+  if (!value) return new Date();
+  const [y, m, d] = value.split("-").map(Number);
+  const date = new Date(y, (m ?? 1) - 1, d ?? 1, 12);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
 /**
  * Marca una transacción recurrente como pagada:
  * 1. Crea una factura PAID con generatedAt del mes/año correspondiente (historial)
@@ -308,9 +318,14 @@ export async function markInvoiceAsPaid(invoiceId: string): Promise<ApiResponse<
  */
 export async function markRecurringAsPaid(
   recurringId: string,
-  amount: number
+  amount: number,
+  options: { paidAt?: string; settlesPeriod?: boolean } = {}
 ): Promise<ApiResponse<any>> {
   try {
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return { success: false, error: "El monto debe ser mayor a 0" };
+    }
+
     const match = recurringId.match(/^recurring-(.+)-(\d{4})-(\d{1,2})$/);
     if (!match) {
       return { success: false, error: "ID de transacción recurrente inválido" };
@@ -334,13 +349,20 @@ export async function markRecurringAsPaid(
     const day = Math.min(paymentDay, lastDay);
     const generatedAt = new Date(year, month - 1, day);
 
-    // 1. Create PAID invoice for transaction history
+    // 1. Create PAID invoice: generatedAt = mes devengado, paidAt = fecha real de cobro
     await createInvoiceInDb({
       amount,
       status: "PAID",
       clientId,
       generatedAt,
+      paidAt: parsePaidAt(options.paidAt),
     });
+
+    // Abono parcial: el saldo restante sigue apareciendo en Por Cobrar
+    if (options.settlesPeriod === false) {
+      revalidateFinanceViews();
+      return { success: true, data: { clientId, year, month } };
+    }
 
     // 2. Insert MARK_AS_PAID billing exception (removes from receivables)
     await db.$executeRaw`

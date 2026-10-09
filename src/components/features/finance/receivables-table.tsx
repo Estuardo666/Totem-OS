@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { format, differenceInDays } from "date-fns";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { Check, MessageCircle, Loader2 } from "lucide-react";
 import {
   markTransactionAsPaid,
@@ -26,6 +27,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+type Receivable = ReceivablesTableProps["transactions"][number];
+
+interface PaymentOptions {
+  amount: number;
+  paidAt: string;
+  settlesPeriod: boolean;
+}
 
 interface ReceivablesTableProps {
   transactions: Array<{
@@ -54,11 +73,40 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [payingItem, setPayingItem] = useState<Receivable | null>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payDate, setPayDate] = useState("");
+
+  const openPaymentDialog = (item: Receivable) => {
+    setPayingItem(item);
+    setPayAmount(item.amount.toFixed(2));
+    setPayDate(format(new Date(), "yyyy-MM-dd"));
+  };
+
+  const confirmPayment = async () => {
+    if (!payingItem) return;
+    const amount = parseFloat(payAmount);
+    if (!Number.isFinite(amount) || amount <= 0 || !payDate) {
+      toast({ variant: "destructive", title: "Datos inválidos", description: "Revisa el monto y la fecha de pago." });
+      return;
+    }
+    const item = payingItem;
+    setPayingItem(null);
+    await handleMarkAsPaid(item.id, item.sourceType, {
+      amount,
+      paidAt: payDate,
+      settlesPeriod: amount >= item.amount - 0.005,
+    });
+  };
 
   // Ensure transactions is an array
   const safeTransactions = Array.isArray(transactions) ? transactions : [];
 
-  const handleMarkAsPaid = async (transactionId: string, sourceType: "INVOICE" | "TRANSACTION" | "RECURRING", amount?: number) => {
+  const handleMarkAsPaid = async (
+    transactionId: string,
+    sourceType: "INVOICE" | "TRANSACTION" | "RECURRING",
+    { amount, paidAt, settlesPeriod }: PaymentOptions
+  ) => {
     setProcessingId(transactionId);
     try {
       if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -67,7 +115,7 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
             id: buildFinanceOfflineQueueId("receivable"),
             kind: "MARK_INVOICE_PAID",
             createdAt: new Date().toISOString(),
-            payload: { invoiceId: transactionId, amount },
+            payload: { invoiceId: transactionId, amount, paidAt },
           });
         } else if (sourceType === "TRANSACTION") {
           enqueueFinanceAction({
@@ -81,7 +129,7 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
             id: buildFinanceOfflineQueueId("receivable"),
             kind: "MARK_RECURRING_PAID",
             createdAt: new Date().toISOString(),
-            payload: { recurringId: transactionId, amount: amount ?? 0 },
+            payload: { recurringId: transactionId, amount, paidAt, settlesPeriod },
           });
         }
 
@@ -94,11 +142,11 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
 
       let result;
       if (sourceType === "INVOICE") {
-        result = await markInvoiceAsPaid(transactionId);
+        result = await markInvoiceAsPaid(transactionId, paidAt);
       } else if (sourceType === "TRANSACTION") {
         result = await markTransactionAsPaid(transactionId);
       } else if (sourceType === "RECURRING") {
-        result = await markRecurringAsPaid(transactionId, amount ?? 0);
+        result = await markRecurringAsPaid(transactionId, amount, { paidAt, settlesPeriod });
       }
 
       if (result && result.success) {
@@ -259,9 +307,7 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() =>
-                        handleMarkAsPaid(transaction.id, transaction.sourceType, transaction.amount)
-                      }
+                      onClick={() => openPaymentDialog(transaction)}
                       disabled={isProcessing}
                       className="h-8 bg-green-600 hover:bg-green-700 text-white"
                     >
@@ -281,6 +327,77 @@ export function ReceivablesTable({ transactions }: ReceivablesTableProps) {
           })}
         </TableBody>
       </Table>
+
+      <Dialog open={payingItem !== null} onOpenChange={(open) => !open && setPayingItem(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar pago</DialogTitle>
+            <DialogDescription>{payingItem?.description}</DialogDescription>
+          </DialogHeader>
+          {payingItem && (
+            <div className="space-y-4">
+              {payingItem.sourceType === "RECURRING" && (
+                <div className="space-y-2">
+                  <Label htmlFor="pay-amount">Monto pagado ($)</Label>
+                  <div className="flex gap-2">
+                    {[1, 0.5].map((ratio) => (
+                      <Button
+                        key={ratio}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPayAmount((payingItem.amount * ratio).toFixed(2))}
+                      >
+                        {ratio * 100}%
+                      </Button>
+                    ))}
+                  </div>
+                  <Input
+                    id="pay-amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={payAmount}
+                    onChange={(e) => setPayAmount(e.target.value)}
+                  />
+                  {parseFloat(payAmount) < payingItem.amount - 0.005 && (
+                    <p className="text-xs text-muted-foreground">
+                      Abono parcial: el saldo restante seguirá en Por Cobrar.
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="pay-date">Fecha de pago</Label>
+                <Input
+                  id="pay-date"
+                  type="date"
+                  value={payDate}
+                  onChange={(e) => setPayDate(e.target.value)}
+                />
+              </div>
+              {payingItem.sourceType === "RECURRING" && (
+                <p className="text-xs text-muted-foreground">
+                  Se registra como ingreso devengado de{" "}
+                  <span className="font-medium text-foreground">
+                    {format(new Date(payingItem.date), "MMMM yyyy", { locale: es })}
+                  </span>
+                  , cobrado en la fecha indicada.
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayingItem(null)}>
+              Cancelar
+            </Button>
+            <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={confirmPayment}>
+              <Check className="h-3 w-3 mr-1" />
+              Confirmar pago
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

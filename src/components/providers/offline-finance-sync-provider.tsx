@@ -34,11 +34,14 @@ async function executeQueueItem(item: FinanceOfflineQueueItem): Promise<SyncResu
     case "CREATE_TRANSACTION":
       return createTransaction(item.payload);
     case "MARK_INVOICE_PAID":
-      return markInvoiceAsPaid(item.payload.invoiceId);
+      return markInvoiceAsPaid(item.payload.invoiceId, item.payload.paidAt);
     case "MARK_TRANSACTION_PAID":
       return markTransactionAsPaid(item.payload.transactionId);
     case "MARK_RECURRING_PAID":
-      return markRecurringAsPaid(item.payload.recurringId, item.payload.amount);
+      return markRecurringAsPaid(item.payload.recurringId, item.payload.amount, {
+        paidAt: item.payload.paidAt,
+        settlesPeriod: item.payload.settlesPeriod,
+      });
     case "MARK_EXPENSE_REIMBURSED":
       return markExpenseAsReimbursed(item.payload.expenseId);
     default:

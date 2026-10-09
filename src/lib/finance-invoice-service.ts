@@ -12,6 +12,7 @@ export interface CreateInvoiceInput {
   clientId: string;
   dueDate?: Date;
   generatedAt?: Date;
+  paidAt?: Date;
 }
 
 /**
@@ -27,6 +28,7 @@ export async function createInvoiceInDb(
       clientId: data.clientId,
       dueDate: data.dueDate ?? null,
       generatedAt: data.generatedAt ?? new Date(),
+      paidAt: data.paidAt ?? (data.status === "PAID" ? new Date() : null),
     },
   });
 }
@@ -68,11 +70,12 @@ export async function getInvoiceByIdFromDb(id: string): Promise<Invoice | null> 
  * Marca una factura como pagada
  */
 export async function markInvoiceAsPaidInDb(
-  invoiceId: string
+  invoiceId: string,
+  paidAt: Date = new Date()
 ): Promise<Invoice> {
   return db.invoice.update({
     where: { id: invoiceId },
-    data: { status: "PAID" },
+    data: { status: "PAID", paidAt },
     include: {
       client: true,
     },

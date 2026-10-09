@@ -418,6 +418,7 @@ model Invoice {
   client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   dueDate     DateTime?
   generatedAt DateTime  @default(now())
+  paidAt      DateTime? // Fecha real de cobro (caja); generatedAt = mes devengado
 
   // Facturación Electrónica
   electronicInvoice ElectronicInvoice?

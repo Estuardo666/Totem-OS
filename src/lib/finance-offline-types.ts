@@ -92,6 +92,7 @@ export interface MarkInvoicePaidQueueItem extends FinanceOfflineQueueBase {
   payload: {
     invoiceId: string;
     amount?: number;
+    paidAt?: string;
   };
 }
 
@@ -108,6 +109,8 @@ export interface MarkRecurringPaidQueueItem extends FinanceOfflineQueueBase {
   payload: {
     recurringId: string;
     amount: number;
+    paidAt?: string;
+    settlesPeriod?: boolean;
   };
 }
 
