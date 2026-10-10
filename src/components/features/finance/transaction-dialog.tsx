@@ -109,6 +109,12 @@ const getCurrentDateInEcuador = (): Date => {
   return ecuadorTime;
 };
 
+// Mes en curso en Ecuador (YYYY-MM)
+const getCurrentMonthInEcuador = (): string => {
+  const date = getCurrentDateInEcuador();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+};
+
 const formatDateValue = (value?: Date | string) => {
   if (!value) return "";
   if (typeof value === "string") return value.split("T")[0];
@@ -234,6 +240,7 @@ export function TransactionDialog({
       status: "PAID",
       description: "",
       userId: undefined,
+      periodMonth: getCurrentMonthInEcuador(),
     },
   });
 
@@ -304,7 +311,7 @@ export function TransactionDialog({
     if (!open) {
       incomeForm.reset();
       expenseForm.reset();
-      honorariosForm.reset();
+      honorariosForm.reset({ ...honorariosForm.formState.defaultValues, periodMonth: getCurrentMonthInEcuador() });
       setIncomeClientQuery("");
       setExpenseClientQuery("");
       setIncomeAmountInput("");
@@ -1260,6 +1267,26 @@ export function TransactionDialog({
                                 setHonorariosAmountInput("");
                               }
                             }}
+                            disabled={isSubmitting}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={honorariosForm.control}
+                    name="periodMonth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mes correspondiente</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="month"
+                            {...field}
+                            value={field.value ?? ""}
+                            max={getCurrentMonthInEcuador()}
                             disabled={isSubmitting}
                           />
                         </FormControl>

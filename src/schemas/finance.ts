@@ -93,6 +93,7 @@ export const transactionSchema = z.object({
   clientId: z.string().cuid().optional(),
   assignedToId: z.string().cuid().optional(), // Para gastos (reembolsos)
   userId: z.string().cuid().optional(), // Para honorarios/salarios (quién recibió el pago)
+  periodMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(), // Mes al que corresponde (YYYY-MM); por defecto el mes en curso
 });
 
 export const createTransactionSchema = transactionSchema.omit({ id: true });

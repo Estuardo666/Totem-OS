@@ -16,6 +16,21 @@ async function revalidateFinancePaths(paths: string[]): Promise<void> {
  * Crea una nueva transacción en la base de datos
  * Valida permisos: ADMIN puede crear INCOME/HONORARIOS, EDITOR solo EXPENSE
  */
+/**
+ * Si la transacción corresponde a un mes distinto al actual, se fecha al último
+ * día de ese mes (mediodía Ecuador) para que cuente en ese período.
+ */
+function resolvePeriodCreatedAt(periodMonth?: string): Date | undefined {
+  if (!periodMonth) return undefined;
+  const [year, month] = periodMonth.split("-").map(Number);
+  const now = new Date();
+  const nowEc = new Date(now.getTime() - 5 * 60 * 60 * 1000);
+  if (year === nowEc.getUTCFullYear() && month === nowEc.getUTCMonth() + 1) return undefined;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const date = new Date(Date.UTC(year, month - 1, lastDay, 17));
+  return date.getTime() > now.getTime() ? undefined : date;
+}
+
 export async function createTransactionInDb(
   input: unknown,
   userId: string,
@@ -56,6 +71,9 @@ export async function createTransactionInDb(
         clientId: validatedData.clientId ?? null,
         assignedToId: validatedData.assignedToId ?? null,
         userId: validatedData.userId ?? null,
+        ...(resolvePeriodCreatedAt(validatedData.periodMonth) && {
+          createdAt: resolvePeriodCreatedAt(validatedData.periodMonth),
+        }),
       },
     });
 
