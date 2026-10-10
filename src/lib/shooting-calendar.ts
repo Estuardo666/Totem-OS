@@ -198,8 +198,8 @@ export async function markCalendarEventStatus(
   if (status === "COMPLETED") {
     try {
       const auth = await (await import("@/lib/google-calendar")).GoogleCalendarService.getAuthenticatedClient(userId);
-      const { google } = await import("googleapis");
-      const calendar = google.calendar({ version: "v3", auth });
+      const { calendar: googleCalendar } = await import("@googleapis/calendar");
+      const calendar = googleCalendar({ version: "v3", auth });
 
       const titlePrefix = "✅ ";
       const summary = currentTitle

@@ -1,4 +1,4 @@
-import { google } from 'googleapis';
+import { auth as googleAuth, calendar as googleCalendar } from '@googleapis/calendar';
 import { CodeChallengeMethod } from 'google-auth-library';
 import { db } from '@/lib/db';
 
@@ -35,7 +35,7 @@ export interface GoogleCalendarEvent {
 }
 
 export class GoogleCalendarService {
-  private static oauth2Client = new google.auth.OAuth2(
+  private static oauth2Client = new googleAuth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.GOOGLE_REDIRECT_URI
@@ -211,7 +211,7 @@ export class GoogleCalendarService {
   ): Promise<GoogleCalendarEvent> {
     try {
       const auth = await this.getAuthenticatedClient(userId);
-      const calendar = google.calendar({ version: 'v3', auth });
+      const calendar = googleCalendar({ version: 'v3', auth });
 
       // Preparar attendees
       const attendees: Array<{ email: string; displayName?: string }> = [];
@@ -300,7 +300,7 @@ export class GoogleCalendarService {
   ): Promise<GoogleCalendarEvent> {
     try {
       const auth = await this.getAuthenticatedClient(userId);
-      const calendar = google.calendar({ version: 'v3', auth });
+      const calendar = googleCalendar({ version: 'v3', auth });
 
       // Preparar attendees (misma lógica que createEvent)
       const attendees: Array<{ email: string; displayName?: string }> = [];
@@ -376,7 +376,7 @@ export class GoogleCalendarService {
   static async deleteEvent(userId: string, eventId: string): Promise<void> {
     try {
       const auth = await this.getAuthenticatedClient(userId);
-      const calendar = google.calendar({ version: 'v3', auth });
+      const calendar = googleCalendar({ version: 'v3', auth });
 
       await calendar.events.delete({
         calendarId: 'primary',
@@ -438,7 +438,7 @@ export class GoogleCalendarService {
   }> {
     try {
       const auth = await this.getAuthenticatedClient(userId);
-      const calendar = google.calendar({ version: 'v3', auth });
+      const calendar = googleCalendar({ version: 'v3', auth });
 
       const params: Record<string, unknown> = {
         calendarId: 'primary',
@@ -520,7 +520,7 @@ export class GoogleCalendarService {
   } | null> {
     try {
       const auth = await this.getAuthenticatedClient(userId);
-      const calendar = google.calendar({ version: 'v3', auth });
+      const calendar = googleCalendar({ version: 'v3', auth });
 
       const response = await calendar.events.get({
         calendarId: 'primary',
@@ -559,7 +559,7 @@ export class GoogleCalendarService {
     secretToken: string
   ): Promise<{ channelId: string; resourceId: string; expiration: Date }> {
     const auth = await this.getAuthenticatedClient(userId);
-    const calendar = google.calendar({ version: 'v3', auth });
+    const calendar = googleCalendar({ version: 'v3', auth });
 
     const channelId = crypto.randomUUID();
     const expirationMs = Date.now() + 6 * 24 * 60 * 60 * 1000; // 6 days
@@ -610,7 +610,7 @@ export class GoogleCalendarService {
 
     try {
       const auth = await this.getAuthenticatedClient(userId);
-      const calendar = google.calendar({ version: 'v3', auth });
+      const calendar = googleCalendar({ version: 'v3', auth });
 
       await calendar.channels.stop({
         requestBody: {

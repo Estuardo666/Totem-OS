@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
+// En Vercel, lint y typecheck ya corren en GitHub Actions (web-checks.yml);
+// repetirlos dentro de `next build` suma ~40s por deploy. El output standalone
+// solo sirve para el despliegue Node/cPanel y Vercel no lo usa.
+const isVercel = Boolean(process.env.VERCEL);
+
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: isVercel ? undefined : "standalone",
+  eslint: { ignoreDuringBuilds: isVercel },
+  typescript: { ignoreBuildErrors: isVercel },
   async headers() {
     return [
       {
