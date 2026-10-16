@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { createHash, verify as verifySignature } from "node:crypto";
 import test from "node:test";
 import forge from "node-forge";
+import { DOMParser } from "@xmldom/xmldom";
+import { C14nCanonicalization, ExclusiveCanonicalization, SignedXml, findAncestorNs } from "xml-crypto";
 import { firmarXml, leerP12, obtenerHuellaCertificado } from "../../src/lib/sri/xml-signer.ts";
 
 const password = "local-synthetic-p12-password";
@@ -32,6 +34,10 @@ test("lee un P12 sintético, rechaza contraseña incorrecta y reporta su huella"
   assert.ok(parsed.privateKey);
   assert.equal(parsed.certificate.subject.attributes[0].value, "Totem SRI Synthetic Fixture");
   assert.throws(() => leerP12(p12, "wrong-password"), /Error al leer archivo \.p12/);
+  assert.throws(
+    () => firmarXml('<!DOCTYPE factura [<!ENTITY x "test">]><factura>&x;</factura>', p12, password),
+    /No se permite DOCTYPE/
+  );
 
   const fingerprint = obtenerHuellaCertificado(p12, password);
   assert.match(fingerprint.huella, /^([A-F0-9]{2}:){31}[A-F0-9]{2}$/);
@@ -44,20 +50,40 @@ test("firma un XML sintético y verifica SignedInfo, el digest de factura y la r
   const xml = '<factura id="comprobante" version="1.0.0"><infoTributaria/></factura>';
   const signedXml = firmarXml(xml, p12, password);
   const parsed = leerP12(p12, password);
-  const signedInfo = signedXml.match(/<ds:SignedInfo\b[\s\S]*?<\/ds:SignedInfo>/)?.[0];
   const signatureValue = signedXml.match(/<ds:SignatureValue>([^<]+)<\/ds:SignatureValue>/)?.[1];
-  const signedProperties = signedXml.match(/<xades:SignedProperties\b[\s\S]*?<\/xades:SignedProperties>/)?.[0];
   const digestValues = [...signedXml.matchAll(/<ds:DigestValue>([^<]+)<\/ds:DigestValue>/g)].map((match) => match[1]);
+  const document = new DOMParser().parseFromString(signedXml, "application/xml");
+  const signature = document.getElementsByTagNameNS("http://www.w3.org/2000/09/xmldsig#", "Signature")[0];
+  const signedInfo = document.getElementsByTagNameNS("http://www.w3.org/2000/09/xmldsig#", "SignedInfo")[0];
+  const signedProperties = document.getElementsByTagNameNS("http://uri.etsi.org/01903/v1.3.2#", "SignedProperties")[0];
 
-  assert.ok(signedInfo);
   assert.ok(signatureValue);
+  assert.ok(signature);
+  assert.ok(signedInfo);
   assert.ok(signedProperties);
-  assert.equal(signedXml.includes("<ds:X509Certificate>"), true);
-  assert.equal(digestValues[0], createHash("sha1").update(xml, "utf8").digest("base64"));
-  const canonicalSignedProperties = signedProperties.replace(/>\s+</g, "><");
+  const exclusiveCanonicalizer = new ExclusiveCanonicalization();
+  const inclusiveCanonicalizer = new C14nCanonicalization();
+  const canonicalSignedInfo = exclusiveCanonicalizer.process(signedInfo, {});
+  const ancestorNamespaces = findAncestorNs(document, "//*[@Id='Signature1-SignedProperties']");
+  const canonicalSignedProperties = inclusiveCanonicalizer.process(signedProperties, { ancestorNamespaces });
   assert.equal(digestValues[1], createHash("sha1").update(canonicalSignedProperties, "utf8").digest("base64"));
   assert.equal(
-    verifySignature("RSA-SHA1", Buffer.from(signedInfo, "utf8"), parsed.certificatePem, Buffer.from(signatureValue, "base64")),
+    verifySignature("RSA-SHA1", Buffer.from(canonicalSignedInfo, "utf8"), parsed.certificatePem, Buffer.from(signatureValue, "base64")),
     true
   );
+  const xmlSignatureVerifier = new SignedXml({ publicCert: parsed.certificatePem });
+  xmlSignatureVerifier.loadSignature(signature);
+  const xmlSignatureIsValid = xmlSignatureVerifier.checkSignature(signedXml);
+  const validationErrors = xmlSignatureVerifier.validationErrors;
+  assert.equal(
+    xmlSignatureIsValid,
+    true,
+    Array.isArray(validationErrors) ? validationErrors.map((error) => error.message).join("\n") : "XMLDSig validation failed"
+  );
+
+  const parent = signature.parentNode;
+  assert.ok(parent);
+  parent.removeChild(signature);
+  const canonicalUnsignedDocument = exclusiveCanonicalizer.process(document.documentElement, {});
+  assert.equal(digestValues[0], createHash("sha1").update(canonicalUnsignedDocument, "utf8").digest("base64"));
 });

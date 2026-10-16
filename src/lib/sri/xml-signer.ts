@@ -3,6 +3,8 @@
 
 import forge from "node-forge";
 import { create } from "xmlbuilder2";
+import { DOMParser } from "@xmldom/xmldom";
+import { C14nCanonicalization, ExclusiveCanonicalization } from "xml-crypto";
 
 interface P12Data {
   privateKey: forge.pki.PrivateKey;
@@ -94,23 +96,46 @@ function sha256Base64(content: string): string {
   return forge.util.encode64(md.digest().bytes());
 }
 
-/**
- * Canonicaliza un XML usando Exclusive C14N (exc-c14n).
- * Implementación simplificada que remueve declaraciones XML y normaliza espacios.
- */
+function parseXmlForSigning(xml: string): Document {
+  if (/<!DOCTYPE\b/i.test(xml)) {
+    throw new Error("No se permite DOCTYPE al canonicalizar XML de firma");
+  }
+
+  const failOnParseIssue = (message: string) => {
+    throw new Error(`XML inválido para firma: ${message}`);
+  };
+  const document = new DOMParser({
+    errorHandler: {
+      warning: failOnParseIssue,
+      error: failOnParseIssue,
+      fatalError: failOnParseIssue,
+    },
+  }).parseFromString(xml, "application/xml");
+
+  if (!document.documentElement) {
+    throw new Error("XML vacío para canonicalizar");
+  }
+
+  return document;
+}
+
+/** Canonicaliza con Exclusive C14N, usada por SignedInfo y la referencia de factura. */
 function canonicalizeExcC14N(xml: string): string {
-  // Remover declaración XML si existe
-  let result = xml.replace(/<\?xml[^?]*\?>\s*/g, "");
-  // Remover saltos de línea entre tags y normalizar espacios
-  result = result.replace(/>\s+</g, "><");
-  return result;
+  const document = parseXmlForSigning(xml);
+  return new ExclusiveCanonicalization().process(document.documentElement, {});
+}
+
+/** Canonical XML 1.0 es la conversión implícita para una referencia node-set sin Transform. */
+function canonicalizeC14N10(xml: string): string {
+  const document = parseXmlForSigning(xml);
+  return new C14nCanonicalization().process(document.documentElement, {});
 }
 
 /**
- * Genera el digest SHA-1 del XML canonicalizado para el SignedInfo.
+ * Genera el digest SHA-1 de un XML canonicalizado.
  */
-function calcularDigestXml(xml: string): string {
-  const canonical = canonicalizeExcC14N(xml);
+function calcularDigestXml(xml: string, mode: "exclusive" | "inclusive" = "exclusive"): string {
+  const canonical = mode === "inclusive" ? canonicalizeC14N10(xml) : canonicalizeExcC14N(xml);
   return sha1Base64(canonical);
 }
 
@@ -168,7 +193,7 @@ export function firmarXml(
 
   // 4. Calcular el digest del elemento al que apunta la URI SignedProperties,
   // no del ds:Object que lo contiene.
-  const signedPropertiesDigest = calcularDigestXml(signedProperties.referencedElementXml);
+  const signedPropertiesDigest = calcularDigestXml(signedProperties.referencedElementXml, "inclusive");
 
   // 5. Construir SignedInfo
   const signedInfoXml = buildSignedInfo(
@@ -246,13 +271,28 @@ function buildSignedProperties(
       .up()
     .up();
 
-  const objectXml = canonicalizeExcC14N(doc.end({ prettyPrint: false }));
-  const referencedElementXml = objectXml.match(
+  let objectXml = doc.end({ prettyPrint: false, headless: true });
+  let referencedElementXml = objectXml.match(
     /<xades:SignedProperties\b[\s\S]*?<\/xades:SignedProperties>/
   )?.[0];
   if (!referencedElementXml) {
     throw new Error("No se pudo construir xades:SignedProperties");
   }
+
+  const openTag = referencedElementXml.match(/^<xades:SignedProperties\b([^>]*)>/);
+  if (!openTag) {
+    throw new Error("No se pudo leer la etiqueta xades:SignedProperties");
+  }
+  const attributes = openTag[1]
+    .replace(/\s+xmlns:ds="[^"]*"/g, "")
+    .replace(/\s+xmlns:xades="[^"]*"/g, "")
+    .trim();
+  const explicitNamespaceElement =
+    `<xades:SignedProperties xmlns:ds="http://www.w3.org/2000/09/xmldsig#" ` +
+    `xmlns:xades="http://uri.etsi.org/01903/v1.3.2#"${attributes ? ` ${attributes}` : ""}>` +
+    referencedElementXml.slice(openTag[0].length);
+  objectXml = objectXml.replace(referencedElementXml, explicitNamespaceElement);
+  referencedElementXml = explicitNamespaceElement;
 
   return { objectXml, referencedElementXml };
 }
@@ -285,7 +325,7 @@ function buildSignedInfo(
       .up()
     .up();
 
-  return canonicalizeExcC14N(doc.end({ prettyPrint: false }));
+  return doc.end({ prettyPrint: false, headless: true });
 }
 
 /**
@@ -329,11 +369,11 @@ function insertarFirmaEnXml(xmlContent: string, signatureXml: string): string {
   for (const pattern of rootClosePatterns) {
     const idx = xmlContent.lastIndexOf(pattern);
     if (idx !== -1) {
+      // No añadir whitespace fuera de Signature: el transform enveloped lo elimina
+      // junto con el nodo, y el digest debe reconstruir el XML de entrada.
       return (
         xmlContent.substring(0, idx) +
-        "\n" +
         signatureXml +
-        "\n" +
         pattern
       );
     }

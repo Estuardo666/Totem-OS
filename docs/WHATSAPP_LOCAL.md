@@ -167,14 +167,18 @@ cambio.
   seguiría haciendo falta un parser de `.p12`.
 - Prueba local 2026-10-16: `tests/unit/sri-xml-signer.test.mjs` crea un `.p12`
   sintético en memoria, comprueba lectura/contraseña/huella y verifica con
-  `node:crypto` la firma RSA y los digests generados. Detectó y corrigió que el
+  `node:crypto` la firma RSA y los digests; `xml-crypto.checkSignature` valida
+  el XMLDSig completo del fixture. Detectó y corrigió que el
   digest XAdES se calculaba sobre el `ds:Object` entero mientras `URI` apuntaba
   al elemento `xades:SignedProperties`. [ETSI TS 101 903](https://www.etsi.org/deliver/etsi_ts/101900_101999/101903/01.04.02_60/ts_101903v010402p.pdf)
   exige cubrir `SignedProperties` con un `ds:Reference`, y [XMLDSig](https://www.w3.org/TR/2002/REC-xmldsig-core-20020212/)
   calcula cada digest sobre el dato resuelto y transformado de su referencia.
-- La prueba sintética no demuestra aceptación por el SRI. `canonicalizeExcC14N`
-  sigue siendo simplificada; la firma debe validarse con facturas reales en el
-  ambiente de pruebas antes de habilitar SRI.
+- Se usa `xml-crypto` para Exclusive C14N en `SignedInfo` y la factura; como la
+  referencia a `SignedProperties` no declara transforms, su digest usa el
+  Canonical XML 1.0 implícito de XMLDSig.
+- La prueba sintética no demuestra aceptación por el SRI. La firma debe
+  validarse con facturas reales en el ambiente de pruebas antes de habilitar
+  SRI.
 - Vigencia: hasta el **2026-11-16** o hasta que exista versión corregida, lo
   que ocurra antes. Revisar entonces el aviso de nuevo.
 - Condición: SRI sigue desactivado hasta probar el parseo del `.p12` y la firma

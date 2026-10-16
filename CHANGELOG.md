@@ -7,7 +7,7 @@
 - Integra resúmenes, rodajes, cobros y aprobaciones con deduplicación, horarios de Ecuador, consentimiento y bloqueo global de clientes. La IA consulta solo datos del cliente del grupo y usa DRAFT por defecto.
 - Incorpora decisiones privadas del dueño, propuestas de AUTO por métricas, herramientas firmadas del asistente y puente interno de notificaciones para el worker independiente.
 - Separa y prueba la decisión de alerta del watchdog (cinco minutos, recuperación y no duplicación); el smoke del panel corre con ADMIN, EDITOR y un worker QR sintético.
-- Corrige el digest de `xades:SignedProperties` para que cubra el elemento referenciado; una prueba con `.p12` sintético en memoria valida parser, firma RSA y digests. La prueba no sustituye las facturas reales en el ambiente SRI, que permanece apagado.
+- Corrige el digest de `xades:SignedProperties` para que cubra el elemento referenciado y aplica C14N según los transforms XMLDSig; una prueba con `.p12` sintético en memoria valida parser, firma RSA, digests y `xml-crypto.checkSignature`. La prueba no sustituye las facturas reales en el ambiente SRI, que permanece apagado.
 - Retira valores Bearer de `DAILY_DIGEST_SETUP.md` y usa `CRON_SECRET` desde un entorno privado. Los valores del commit histórico `e6b9b44` deben rotarse si siguen activos.
 - Prepara Docker, Render Free y script de fallback Oracle. El worker está desplegado solo en staging desactivado; no se enviaron mensajes a clientes. El saludo previo en el grupo de pruebas está documentado en `docs/WHATSAPP_LOCAL.md`. Pendientes del rollout: §19 del plan.
 
