@@ -17,29 +17,6 @@ export interface DraftEntry extends AgentDraft {
   state: "pending" | "saving" | "done" | "cancelled" | { error: string };
 }
 
-// Captura el micrófono a 16 kHz y lo entrega como PCM16 en bloques de ~100 ms.
-const CAPTURE_WORKLET = `
-class Pcm16Capture extends AudioWorkletProcessor {
-  constructor() { super(); this.buf = []; }
-  process(inputs) {
-    const ch = inputs[0] && inputs[0][0];
-    if (ch) {
-      for (let i = 0; i < ch.length; i++) this.buf.push(ch[i]);
-      if (this.buf.length >= 1600) {
-        const out = new Int16Array(this.buf.length);
-        for (let i = 0; i < this.buf.length; i++) {
-          const s = Math.max(-1, Math.min(1, this.buf[i]));
-          out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-        }
-        this.port.postMessage(out.buffer, [out.buffer]);
-        this.buf = [];
-      }
-    }
-    return true;
-  }
-}
-registerProcessor("pcm16-capture", Pcm16Capture);
-`;
 
 function toBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -265,9 +242,7 @@ export function useLiveVoice() {
 
       const micCtx = new AudioContext({ sampleRate: 16000 });
       micCtxRef.current = micCtx;
-      const workletUrl = URL.createObjectURL(new Blob([CAPTURE_WORKLET], { type: "application/javascript" }));
-      await micCtx.audioWorklet.addModule(workletUrl);
-      URL.revokeObjectURL(workletUrl);
+      await micCtx.audioWorklet.addModule("/audio-worklets/pcm16-capture.js");
       const node = new AudioWorkletNode(micCtx, "pcm16-capture");
       node.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
         sessionRef.current?.sendRealtimeInput({
