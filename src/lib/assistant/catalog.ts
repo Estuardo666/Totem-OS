@@ -19,6 +19,9 @@ export const PROVIDER_CATALOG: Record<
     label: "OpenAI",
     envKey: "OPENAI_API_KEY",
     models: [
+      { id: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
+      { id: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
+      { id: "gpt-6.1-sol", label: "GPT-6.1 Sol" },
       { id: "gpt-5.4-mini", label: "GPT-5.4 mini" },
       { id: "gpt-5.4-nano", label: "GPT-5.4 nano" },
       { id: "gpt-5-mini", label: "GPT-5 mini" },
