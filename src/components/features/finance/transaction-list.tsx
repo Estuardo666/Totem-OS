@@ -32,6 +32,25 @@ import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
+// Mes (YYYY-MM) en hora de Ecuador. toISOString() usa UTC y movía los
+// movimientos de la noche al mes siguiente.
+const monthKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Guayaquil",
+  year: "numeric",
+  month: "2-digit",
+});
+const toMonthKey = (value: string | Date) => monthKeyFormatter.format(new Date(value)).slice(0, 7);
+
+// Etiqueta de un YYYY-MM. new Date("YYYY-MM-01") es medianoche UTC, que en
+// Ecuador cae en el mes anterior; por eso se formatea a mitad de mes en UTC.
+const formatMonthLabel = (monthKey: string) => {
+  const [year, month] = monthKey.split("-").map(Number);
+  const label = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric", timeZone: "UTC" }).format(
+    new Date(Date.UTC(year, month - 1, 15))
+  );
+  return label.charAt(0).toUpperCase() + label.slice(1);
+};
+
 const formatDateNatural = (value?: string | Date) => {
   if (!value) return "";
   const date = typeof value === "string" ? new Date(value) : value;
@@ -220,9 +239,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
     // Filtrar por mes
     if (mesFilter !== "all") {
       filtered = filtered.filter((t) => {
-        const [year, month] = mesFilter.split("-");
-        const transactionMonth = new Date(t.date).toISOString().slice(0, 7);
-        return transactionMonth === mesFilter;
+        return toMonthKey(t.date) === mesFilter;
       });
     }
 
@@ -242,7 +259,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
       if (t.clientName) {
         clientes.add(t.clientName);
       }
-      const mes = new Date(t.date).toISOString().slice(0, 7);
+      const mes = toMonthKey(t.date);
       meses.add(mes);
     });
 
@@ -744,18 +761,11 @@ export function TransactionList({ transactions }: TransactionListProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los meses</SelectItem>
-                {filterOptions.meses.map((mes) => {
-                  const date = new Date(mes + "-01");
-                  const mesLabel = new Intl.DateTimeFormat("es-ES", {
-                    month: "long",
-                    year: "numeric",
-                  }).format(date);
-                  return (
-                    <SelectItem key={mes} value={mes}>
-                      {mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1)}
-                    </SelectItem>
-                  );
-                })}
+                {filterOptions.meses.map((mes) => (
+                  <SelectItem key={mes} value={mes}>
+                    {formatMonthLabel(mes)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
