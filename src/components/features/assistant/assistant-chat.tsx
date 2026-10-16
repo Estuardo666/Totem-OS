@@ -96,7 +96,7 @@ function Strong({ children }: { children?: React.ReactNode }) {
   if (logo) {
     return (
       <strong className="inline-flex items-center gap-1.5 align-bottom font-semibold text-foreground">
-        <Avatar src={logo} name={text} className="h-[1.2em] w-[1.2em]" />
+        <Avatar src={logo} name={text} className="h-5 w-5" />
         {children}
       </strong>
     );
@@ -107,12 +107,13 @@ function Strong({ children }: { children?: React.ReactNode }) {
 const MARKDOWN: Components = {
   strong: Strong,
   p: ({ children }) => <p className="leading-relaxed">{children}</p>,
-  ul: ({ children }) => <ul className="space-y-1.5">{children}</ul>,
+  // Viñeta propia con ::before para que las listas anidadas (tareas bajo cada
+  // cliente) queden indentadas y alineadas.
+  ul: ({ children }) => <ul className="space-y-1.5 [&_ul]:mt-1.5 [&_ul]:space-y-1">{children}</ul>,
   ol: ({ children }) => <ol className="list-decimal space-y-1.5 pl-5">{children}</ol>,
   li: ({ children }) => (
-    <li className="flex gap-2.5 leading-relaxed">
-      <span className="mt-[0.65em] h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" />
-      <span className="min-w-0">{children}</span>
+    <li className="relative pl-4 leading-relaxed before:absolute before:left-0.5 before:top-[0.7em] before:h-1 before:w-1 before:rounded-full before:bg-muted-foreground/50 [&_li]:text-muted-foreground [&_li_strong]:text-foreground [&>p]:inline">
+      {children}
     </li>
   ),
 };
