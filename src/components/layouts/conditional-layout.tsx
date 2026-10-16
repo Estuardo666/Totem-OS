@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Navbar } from "@/components/shared/navbar";
 import { FloatingExpenseButton } from "@/components/features/global/floating-expense-button";
+import { AssistantOrb } from "@/components/features/assistant/assistant-orb";
 import { Footer } from "@/components/shared/footer";
 import { NativeShellProvider } from "@/components/providers/native-shell-provider";
 
@@ -63,6 +64,9 @@ export function ConditionalLayout({
 
         {/* Botón flotante de gastos */}
         <FloatingExpenseButton />
+
+        {/* Orbe del asistente IA (voz / chat), encima del de gastos */}
+        <AssistantOrb />
       </div>
 
       {/* Puente y diálogo controlado del shell nativo */}

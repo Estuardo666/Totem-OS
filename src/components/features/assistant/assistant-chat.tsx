@@ -257,7 +257,16 @@ function AssistantMark({ className }: { className?: string }) {
   );
 }
 
-export function AssistantChat({ userName, userImage }: { userName: string; userImage?: string | null }) {
+export function AssistantChat({
+  userName,
+  userImage,
+  compact = false,
+}: {
+  userName: string;
+  userImage?: string | null;
+  /** Versión para el panel flotante: menos aire vertical. */
+  compact?: boolean;
+}) {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
@@ -302,9 +311,9 @@ export function AssistantChat({ userName, userImage }: { userName: string; userI
     <ClientLogos.Provider value={logos}>
       <div className="flex h-full flex-col">
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
+          <div className={cn("mx-auto max-w-2xl space-y-6 px-4", compact ? "py-4" : "py-8")}>
             {messages.length === 0 && (
-              <motion.div {...enter} transition={{ duration: 0.3, ease: EASE_OUT }} className="space-y-6 py-12 text-center">
+              <motion.div {...enter} transition={{ duration: 0.3, ease: EASE_OUT }} className={cn("space-y-6 text-center", compact ? "py-6" : "py-12")}>
                 <AssistantMark className="mx-auto h-12 w-12 [&_svg]:h-5 [&_svg]:w-5" />
                 <div className="space-y-1">
                   <h1 className="text-xl font-semibold tracking-tight">Hola, {userName.split(" ")[0]}</h1>

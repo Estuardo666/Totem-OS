@@ -63,6 +63,10 @@ export function useLiveVoice() {
   const pendingResponseRef = useRef(false);
   const micCtxRef = useRef<AudioContext | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+  // Medidor del micrófono: anima el orbe y detecta si el usuario habla.
+  const levelCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const levelBufRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const outCtxRef = useRef<AudioContext | null>(null);
   const playheadRef = useRef(0);
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
@@ -381,6 +385,9 @@ export function useLiveVoice() {
     }
     micStreamRef.current?.getTracks().forEach((t) => t.stop());
     micStreamRef.current = null;
+    void levelCtxRef.current?.close();
+    levelCtxRef.current = null;
+    analyserRef.current = null;
     void micCtxRef.current?.close();
     micCtxRef.current = null;
     stopPlayback();
@@ -408,6 +415,13 @@ export function useLiveVoice() {
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
       micStreamRef.current = stream;
+      const levelCtx = new AudioContext();
+      const analyser = levelCtx.createAnalyser();
+      analyser.fftSize = 512;
+      levelCtx.createMediaStreamSource(stream).connect(analyser);
+      levelCtxRef.current = levelCtx;
+      analyserRef.current = analyser;
+      levelBufRef.current = new Uint8Array(analyser.fftSize);
 
       if (tokenData.provider === "openai") {
         await startOpenAI(tokenData.token, stream);
@@ -457,5 +471,19 @@ export function useLiveVoice() {
 
   useEffect(() => stop, [stop]);
 
-  return { status, error, transcript, drafts, start, stop, confirmDraft, cancelDraft };
+  /** Nivel del micrófono entre 0 y 1 (RMS); 0 sin sesión. */
+  const getInputLevel = useCallback(() => {
+    const analyser = analyserRef.current;
+    const buf = levelBufRef.current;
+    if (!analyser || !buf) return 0;
+    analyser.getByteTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) {
+      const v = (buf[i] - 128) / 128;
+      sum += v * v;
+    }
+    return Math.min(1, Math.sqrt(sum / buf.length) * 4);
+  }, []);
+
+  return { status, error, transcript, drafts, start, stop, confirmDraft, cancelDraft, getInputLevel };
 }
