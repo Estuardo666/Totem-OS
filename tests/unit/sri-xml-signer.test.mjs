@@ -8,18 +8,34 @@ import { firmarXml, leerP12, obtenerHuellaCertificado } from "../../src/lib/sri/
 
 const password = "local-synthetic-p12-password";
 
-function createSyntheticP12() {
+function createSyntheticP12(serialNumber = "80", multiValuedIssuer = false) {
   const keyPair = forge.pki.rsa.generateKeyPair({ bits: 2048, e: 0x10001 });
   const certificate = forge.pki.createCertificate();
   const subject = [{ name: "commonName", value: "Totem SRI Synthetic Fixture" }];
+  const issuer = [
+    { name: "countryName", value: "EC" },
+    { name: "organizationName", value: "CA, Example" },
+    { name: "commonName", value: "Issuer+CA " },
+  ];
 
   certificate.publicKey = keyPair.publicKey;
-  certificate.serialNumber = "01";
+  certificate.serialNumber = serialNumber;
   certificate.validity.notBefore = new Date(Date.now() - 60_000);
   certificate.validity.notAfter = new Date(Date.now() + 24 * 60 * 60 * 1000);
   certificate.setSubject(subject);
-  certificate.setIssuer(subject);
+  certificate.setIssuer(issuer);
   certificate.sign(keyPair.privateKey, forge.md.sha256.create());
+
+  if (multiValuedIssuer) {
+    const tbsFields = certificate.tbsCertificate.value;
+    const versionIndex = tbsFields[0]?.tagClass === forge.asn1.Class.CONTEXT_SPECIFIC && tbsFields[0]?.type === 0 ? 1 : 0;
+    const issuerName = tbsFields[versionIndex + 2];
+    const [countryRdn, organizationRdn, commonNameRdn] = issuerName.value;
+    issuerName.value = [
+      countryRdn,
+      { ...organizationRdn, value: [...organizationRdn.value, ...commonNameRdn.value] },
+    ];
+  }
 
   const p12Asn1 = forge.pkcs12.toPkcs12Asn1(keyPair.privateKey, certificate, password, {
     algorithm: "3des",
@@ -47,7 +63,7 @@ test("lee un P12 sintético, rechaza contraseña incorrecta y reporta su huella"
 
 test("firma un XML sintético y verifica SignedInfo, el digest de factura y la referencia XAdES", () => {
   const p12 = createSyntheticP12();
-  const xml = '<factura id="comprobante" version="1.0.0"><infoTributaria/></factura>';
+  const xml = '<factura xmlns="urn:sri:factura" xmlns:unused="urn:unused" xml:lang="es" xml:space="preserve" id="comprobante" version="1.0.0"><infoTributaria/></factura>';
   const signedXml = firmarXml(xml, p12, password);
   const parsed = leerP12(p12, password);
   const signatureValue = signedXml.match(/<ds:SignatureValue>([^<]+)<\/ds:SignatureValue>/)?.[1];
@@ -65,6 +81,18 @@ test("firma un XML sintético y verifica SignedInfo, el digest de factura y la r
   assert.ok(signedInfo);
   assert.ok(signedProperties);
   assert.equal(signedPropertiesReference?.getAttribute("Type"), "http://uri.etsi.org/01903#SignedProperties");
+  assert.equal(signedProperties.getAttribute("xmlns"), "urn:sri:factura");
+  assert.equal(signedProperties.getAttribute("xmlns:unused"), "urn:unused");
+  assert.equal(signedProperties.getAttribute("xml:lang"), "es");
+  assert.equal(signedProperties.getAttribute("xml:space"), "preserve");
+  assert.equal(
+    signedProperties.getElementsByTagNameNS("http://www.w3.org/2000/09/xmldsig#", "X509SerialNumber")[0]?.textContent,
+    "128"
+  );
+  assert.equal(
+    signedProperties.getElementsByTagNameNS("http://www.w3.org/2000/09/xmldsig#", "X509IssuerName")[0]?.textContent,
+    "CN=Issuer\\+CA\\ ,O=CA\\, Example,C=EC"
+  );
   const certDigestValue = signedProperties
     .getElementsByTagNameNS("http://uri.etsi.org/01903/v1.3.2#", "CertDigest")[0]
     ?.getElementsByTagNameNS("http://www.w3.org/2000/09/xmldsig#", "DigestValue")[0]
@@ -99,4 +127,26 @@ test("firma un XML sintético y verifica SignedInfo, el digest de factura y la r
   parent.removeChild(signature);
   const canonicalUnsignedDocument = exclusiveCanonicalizer.process(document.documentElement, {});
   assert.equal(digestValues[0], createHash("sha1").update(canonicalUnsignedDocument, "utf8").digest("base64"));
+});
+
+test("serial hexadecimal grande se expresa como entero decimal sin perder precisión", () => {
+  const p12 = createSyntheticP12("20000000000001");
+  const parsed = leerP12(p12, password);
+  const expected = BigInt(`0x${parsed.certificate.serialNumber}`).toString(10);
+  const signedXml = firmarXml("<factura></factura>", p12, password);
+  const document = new DOMParser().parseFromString(signedXml, "application/xml");
+  const serial = document.getElementsByTagNameNS(
+    "http://www.w3.org/2000/09/xmldsig#",
+    "X509SerialNumber"
+  )[0]?.textContent;
+
+  assert.equal(expected, "9007199254740993");
+  assert.equal(serial, expected);
+});
+
+test("emisor conserva un RDN multivaluado sin espacios de presentación alrededor de +", () => {
+  const p12 = createSyntheticP12("80", true);
+  const parsed = leerP12(p12, password);
+
+  assert.equal(parsed.issuerName, "O=CA\\, Example+CN=Issuer\\+CA\\ ,C=EC");
 });

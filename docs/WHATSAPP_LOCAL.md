@@ -179,7 +179,19 @@ cambio.
   DER, como exige ETSI TS 101 903 v1.4.2.
 - Se usa `xml-crypto` para Exclusive C14N en `SignedInfo` y la factura; como la
   referencia a `SignedProperties` no declara transforms, su digest usa el
-  Canonical XML 1.0 implícito de XMLDSig.
+  Canonical XML 1.0 implícito de XMLDSig. Se copia al elemento referenciado el
+  contexto de namespaces y atributos `xml:*` heredados del comprobante; la
+  fixture con namespace por defecto/no usado, `xml:lang` y `xml:space` verifica
+  que el digest coincide con el nodo ya insertado.
+- `X509SerialNumber` se escribe como entero decimal de precisión arbitraria
+  (node-forge entrega el serial hexadecimal). `X509IssuerName` usa el formato
+  DN RFC 2253 de OpenSSL, invirtiendo el orden de líneas para conservar el orden
+  de RDN y quitando espacios de presentación alrededor del `+` multivaluado;
+  la fixture comprueba RDNs simples y multivaluados, y el escape de coma, `+`
+  y espacio.
+  Referencias: [XMLDSig](https://www.w3.org/TR/2002/REC-xmldsig-core-20020212/),
+  [Canonical XML 1.0 §2.4](https://www.w3.org/TR/2001/REC-xml-c14n-20010315/#DocumentSubsets)
+  y [RFC 2253](https://www.rfc-editor.org/rfc/rfc2253.html).
 - La prueba sintética no demuestra aceptación por el SRI. La firma debe
   validarse con facturas reales en el ambiente de pruebas antes de habilitar
   SRI.

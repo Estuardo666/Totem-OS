@@ -2,6 +2,7 @@
 // Usa node-forge para leer el .p12 y construir la firma según el estándar XMLDSig + XAdES
 
 import forge from "node-forge";
+import { X509Certificate } from "node:crypto";
 import { create } from "xmlbuilder2";
 import { DOMParser } from "@xmldom/xmldom";
 import { C14nCanonicalization, ExclusiveCanonicalization } from "xml-crypto";
@@ -17,6 +18,16 @@ interface P12Data {
 interface BuiltSignedProperties {
   objectXml: string;
   referencedElementXml: string;
+}
+
+interface NamespaceContext {
+  prefix: string;
+  namespaceURI: string;
+}
+
+interface C14nContext {
+  attributes: Record<string, string>;
+  namespaces: NamespaceContext[];
 }
 
 /**
@@ -58,11 +69,8 @@ export function leerP12(p12Buffer: Buffer, password: string): P12Data {
     }
 
     const certificatePem = forge.pki.certificateToPem(certificate);
-    const issuerAttrs = certificate.issuer.attributes;
-    const issuerName = issuerAttrs
-      .map((a) => `${a.shortName || a.name}=${a.value}`)
-      .join(", ");
-    const serialNumber = certificate.serialNumber;
+    const issuerName = formatXmlDsigIssuerName(certificatePem);
+    const serialNumber = serialNumberHexToDecimal(certificate.serialNumber);
 
     return {
       privateKey,
@@ -119,6 +127,83 @@ function parseXmlForSigning(xml: string): Document {
   return document;
 }
 
+/**
+ * XMLDSig expects the issuer DN in RFC 2253 order. OpenSSL (via Node's
+ * X509Certificate) formats each RDN on a separate line and retains escaping
+ * and multi-valued RDNs; reverse those lines, remove display spaces around
+ * multi-value separators, and use RFC 2253 commas.
+ */
+function formatXmlDsigIssuerName(certificatePem: string): string {
+  const renderedName = new X509Certificate(certificatePem).issuer;
+  const rdns = renderedName.split(/\r?\n/).filter(Boolean);
+  if (rdns.length === 0) {
+    throw new Error("El certificado no contiene un nombre de emisor válido");
+  }
+  return rdns.reverse().map(removeOpenSslRdnSeparatorPadding).join(",");
+}
+
+function removeOpenSslRdnSeparatorPadding(rdn: string): string {
+  let normalized = "";
+  for (let index = 0; index < rdn.length; index += 1) {
+    if (rdn[index] === "+") {
+      let precedingBackslashes = 0;
+      for (let cursor = index - 1; cursor >= 0 && rdn[cursor] === "\\"; cursor -= 1) {
+        precedingBackslashes += 1;
+      }
+
+      if (precedingBackslashes % 2 === 0) {
+        if (normalized.endsWith(" ")) normalized = normalized.slice(0, -1);
+        normalized += "+";
+        if (rdn[index + 1] === " ") index += 1;
+        continue;
+      }
+    }
+    normalized += rdn[index];
+  }
+  return normalized;
+}
+
+/** node-forge stores the ASN.1 INTEGER serial in hexadecimal; XMLDSig uses decimal text. */
+function serialNumberHexToDecimal(serialNumberHex: string): string {
+  const normalized = serialNumberHex.trim().replace(/^0x/i, "");
+  if (!/^[0-9a-f]+$/i.test(normalized)) {
+    throw new Error("El número de serie del certificado no es hexadecimal válido");
+  }
+  return BigInt(`0x${normalized}`).toString(10);
+}
+
+/**
+ * Copy the invoice root's in-scope namespace and xml:* attributes onto the
+ * SignedProperties apex. This preserves the context required by inclusive
+ * Canonical XML 1.0 when the referenced subtree is detached by XMLDSig.
+ */
+function inheritedC14nContext(xml: string): C14nContext {
+  const root = parseXmlForSigning(xml).documentElement;
+  const attributes: Record<string, string> = {};
+  const namespaces: NamespaceContext[] = [];
+  const xmlNamespace = "http://www.w3.org/XML/1998/namespace";
+  const xmlnsNamespace = "http://www.w3.org/2000/xmlns/";
+
+  for (let i = 0; i < root.attributes.length; i += 1) {
+    const attribute = root.attributes.item(i);
+    if (!attribute) continue;
+
+    if (attribute.namespaceURI === xmlnsNamespace) {
+      const prefix = attribute.nodeName === "xmlns" ? "" : attribute.localName;
+      if (prefix !== "ds" && prefix !== "xades") {
+        attributes[attribute.nodeName] = attribute.value;
+        if (attribute.value) {
+          namespaces.push({ prefix, namespaceURI: attribute.value });
+        }
+      }
+    } else if (attribute.namespaceURI === xmlNamespace) {
+      attributes[attribute.nodeName] = attribute.value;
+    }
+  }
+
+  return { attributes, namespaces };
+}
+
 /** Canonicaliza con Exclusive C14N, usada por SignedInfo y la referencia de factura. */
 function canonicalizeExcC14N(xml: string): string {
   const document = parseXmlForSigning(xml);
@@ -126,17 +211,16 @@ function canonicalizeExcC14N(xml: string): string {
 }
 
 /** Canonical XML 1.0 es la conversión implícita para una referencia node-set sin Transform. */
-function canonicalizeC14N10(xml: string): string {
+function canonicalizeC14N10(xml: string, ancestorNamespaces: NamespaceContext[] = []): string {
   const document = parseXmlForSigning(xml);
-  return new C14nCanonicalization().process(document.documentElement, {});
+  return new C14nCanonicalization().process(document.documentElement, { ancestorNamespaces });
 }
 
 /**
  * Genera el digest SHA-1 de un XML canonicalizado.
  */
-function calcularDigestXml(xml: string, mode: "exclusive" | "inclusive" = "exclusive"): string {
-  const canonical = mode === "inclusive" ? canonicalizeC14N10(xml) : canonicalizeExcC14N(xml);
-  return sha1Base64(canonical);
+function calcularDigestXml(xml: string): string {
+  return sha1Base64(canonicalizeExcC14N(xml));
 }
 
 /**
@@ -170,22 +254,17 @@ export function firmarXml(
     forge.asn1.toDer(forge.pki.certificateToAsn1(certificate)).bytes()
   );
 
-  // Subject del certificado
-  const subjectAttrs = certificate.subject.attributes;
-  const x509SubjectName = subjectAttrs
-    .map((a) => `${a.shortName || a.name}=${a.value}`)
-    .join(", ");
-
   // Fecha de emisión y expiración del certificado
   const certNotBefore = certificate.validity.notBefore.toISOString();
   const certNotAfter = certificate.validity.notAfter.toISOString();
 
   // 3. Construir SignedProperties (XAdES-BES)
   const signedPropertiesId = "Signature1-SignedProperties";
+  const c14nContext = inheritedC14nContext(xmlContent);
   const signedProperties = buildSignedProperties(
     signedPropertiesId,
     certificate,
-    x509SubjectName,
+    c14nContext.attributes,
     certNotBefore,
     certNotAfter,
     issuerName,
@@ -194,7 +273,9 @@ export function firmarXml(
 
   // 4. Calcular el digest del elemento al que apunta la URI SignedProperties,
   // no del ds:Object que lo contiene.
-  const signedPropertiesDigest = calcularDigestXml(signedProperties.referencedElementXml, "inclusive");
+  const signedPropertiesDigest = sha1Base64(
+    canonicalizeC14N10(signedProperties.referencedElementXml, c14nContext.namespaces)
+  );
 
   // 5. Construir SignedInfo
   const signedInfoXml = buildSignedInfo(
@@ -228,7 +309,7 @@ export function firmarXml(
 function buildSignedProperties(
   signedPropertiesId: string,
   certificate: forge.pki.Certificate,
-  x509SubjectName: string,
+  inheritedAttributes: Record<string, string>,
   certNotBefore: string,
   certNotAfter: string,
   issuerName: string,
@@ -243,6 +324,7 @@ function buildSignedProperties(
         .ele("xades:SignedProperties", {
           "xmlns:ds": "http://www.w3.org/2000/09/xmldsig#",
           "xmlns:xades": "http://uri.etsi.org/01903/v1.3.2#",
+          ...inheritedAttributes,
           Id: signedPropertiesId,
         })
           .ele("xades:SignedSignatureProperties")
