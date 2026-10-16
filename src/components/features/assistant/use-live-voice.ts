@@ -55,6 +55,10 @@ export function useLiveVoice() {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  // OpenAI solo admite una respuesta activa: response.create se envía cuando
+  // la anterior terminó (response.done).
+  const responseActiveRef = useRef(false);
+  const pendingResponseRef = useRef(false);
   const micCtxRef = useRef<AudioContext | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const outCtxRef = useRef<AudioContext | null>(null);
@@ -219,6 +223,13 @@ export function useLiveVoice() {
     }
   };
 
+  const requestOpenAIResponse = () => {
+    const dc = dcRef.current;
+    if (dc?.readyState !== "open") return;
+    responseActiveRef.current = true;
+    dc.send(JSON.stringify({ type: "response.create" }));
+  };
+
   /** Eventos de OpenAI Realtime por el canal de datos. */
   const handleOpenAIEvent = async (event: { type: string; [key: string]: unknown }) => {
     switch (event.type) {
@@ -236,8 +247,17 @@ export function useLiveVoice() {
           setStatus("speaking");
         }
         break;
+      case "response.created":
+        responseActiveRef.current = true;
+        break;
       case "response.done":
-        setStatus((s) => (s === "thinking" ? s : "listening"));
+        responseActiveRef.current = false;
+        if (pendingResponseRef.current) {
+          pendingResponseRef.current = false;
+          requestOpenAIResponse();
+        } else {
+          setStatus((s) => (s === "thinking" ? s : "listening"));
+        }
         break;
       case "response.function_call_arguments.done": {
         setStatus("thinking");
@@ -261,7 +281,8 @@ export function useLiveVoice() {
               item: { type: "function_call_output", call_id: event.call_id, output: JSON.stringify(output) },
             })
           );
-          dc.send(JSON.stringify({ type: "response.create" }));
+          if (responseActiveRef.current) pendingResponseRef.current = true;
+          else requestOpenAIResponse();
         }
         break;
       }
