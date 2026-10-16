@@ -481,7 +481,8 @@ En `src/lib/assistant/tools.ts`:
 ---
 
 ## 18. Criterios de aceptación
-- [ ] `typecheck`, `lint`, `test:unit`, `test:integration` verdes; PR mergeado con CI verde.
+- [x] `typecheck`, `lint`, `test:unit`, `test:integration` verdes localmente (evidencia en §19).
+- [ ] PR mergeado con CI verde.
 - [ ] Worker ≥ 72 h estable; reconexión tras reinicio manual sin nuevo QR; lock impide doble instancia.
 - [ ] Watchdog avisa si el worker cae > 5 min.
 - [ ] Resumen 8 am solo en días activos (incluye miembro de medio mes); sin duplicados.
