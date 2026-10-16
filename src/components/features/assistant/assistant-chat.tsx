@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Bot, Check, Loader2, Send, Sparkles, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,10 +105,17 @@ function MessageParts({ message }: { message: UIMessage }) {
     <>
       {message.parts.map((part, i) => {
         if (part.type === "text") {
-          return (
+          return message.role === "user" ? (
             <p key={i} className="whitespace-pre-wrap leading-relaxed">
               {part.text}
             </p>
+          ) : (
+            <div
+              key={i}
+              className="space-y-2 leading-relaxed [&_li]:pl-0.5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5 [&_ul]:marker:text-muted-foreground"
+            >
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
+            </div>
           );
         }
         if (part.type.startsWith("tool-")) {

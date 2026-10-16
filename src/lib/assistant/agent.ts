@@ -23,9 +23,6 @@ export interface AgentTurn {
   drafts: AgentDraft[];
 }
 
-const VOICE_RULES = `
-Modo voz: tu respuesta se leerá en voz alta. Responde en 1 a 3 frases, sin listas largas ni símbolos; di los montos como "veinticinco dólares". Si preparaste un borrador, resúmelo en una frase y pregunta "¿lo confirmo?".`;
-
 export async function runAssistantTurn(
   user: AssistantUser,
   messages: ModelMessage[]
@@ -35,7 +32,7 @@ export async function runAssistantTurn(
 
   const result = await generateText({
     model: resolved.model,
-    system: buildSystemPrompt(user) + VOICE_RULES,
+    system: buildSystemPrompt(user, "voice"),
     messages,
     tools: buildAssistantTools(user),
     stopWhen: stepCountIs(6),

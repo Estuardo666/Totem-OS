@@ -139,17 +139,17 @@ export function buildAssistantTools(user: AssistantUser) {
 
     listarTareas: tool({
       description:
-        "Lista tareas de contenido. Por defecto solo las abiertas (no publicadas ni canceladas). Los no-admin solo ven las suyas.",
+        "Lista tareas de contenido. Por defecto: solo las asignadas al usuario (como editor o community) y solo las abiertas. Usa delEquipo=true SOLO si pide las de todo el equipo, de otra persona o de un cliente en general.",
       inputSchema: z.object({
         clientId: z.string().optional(),
         estado: z.enum(TASK_STATUSES).optional(),
         incluirCerradas: z.boolean().optional(),
         venceDesde: z.string().optional().describe("Fecha YYYY-MM-DD (inclusive). Para 'hoy' usa la misma fecha en venceDesde y venceAntesDe."),
         venceAntesDe: z.string().optional().describe("Fecha YYYY-MM-DD (inclusive)"),
-        soloMias: z.boolean().optional(),
+        delEquipo: z.boolean().optional().describe("true = tareas de todo el equipo (solo admin)"),
       }),
-      execute: async ({ clientId, estado, incluirCerradas, venceDesde, venceAntesDe, soloMias }) => {
-        const mine = soloMias || user.role !== "ADMIN";
+      execute: async ({ clientId, estado, incluirCerradas, venceDesde, venceAntesDe, delEquipo }) => {
+        const mine = !(delEquipo && user.role === "ADMIN");
         const where = {
           ...(clientId && { clientId }),
           ...(estado
