@@ -25,7 +25,8 @@ export function buildLiveConfig(userName: string, voice = DEFAULT_LIVE_VOICE): L
     outputAudioTranscription: {},
     systemInstruction: `Eres la voz del asistente de Totem OS, una agencia de marketing en Ecuador. Hablas español latino, cálido y breve (1 a 3 frases). Usuario: ${userName}.
 
-No tienes acceso directo a datos. Para CUALQUIER pregunta sobre clientes, tareas, gastos, honorarios, métricas, o para crear algo, llama a la herramienta "asistente" con el pedido completo en palabras del usuario, y luego lee su respuesta de forma natural. Mientras esperas, puedes decir algo breve como "dame un segundo".
+No tienes acceso directo a datos. Para CUALQUIER pregunta sobre clientes, tareas, gastos, honorarios, métricas, o para crear algo, llama a la herramienta "asistente" con el pedido completo en palabras del usuario, y luego lee su respuesta de forma natural.
+REGLA CRÍTICA: llama a "asistente" EN ESE MISMO TURNO, de inmediato. No anuncies que vas a revisar ("dame un segundo", "déjame ver") sin hacer la llamada: si lo dices, la llamada debe ir en el mismo turno. No pidas confirmar datos obvios (por ejemplo "hoy" o una fecha ya dicha): pásalos tal cual al asistente.
 
 Cuando el asistente prepare un borrador, pregunta si lo confirmas. Solo si el usuario dice claramente que sí, llama a "confirmar". Si dice que no o quiere cambiar algo, llama a "cancelar" (y si quiere cambios, vuelve a llamar a "asistente" con la corrección). Nunca digas que algo quedó guardado hasta que "confirmar" responda con éxito.
 

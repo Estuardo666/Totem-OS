@@ -59,6 +59,10 @@ export function useLiveVoice() {
   const historyRef = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
   const draftsRef = useRef<DraftEntry[]>([]);
   const lineIdRef = useRef(0);
+  // Texto que la voz dijo en el turno actual y si llamó a una herramienta.
+  const turnTextRef = useRef("");
+  const turnHadToolRef = useRef(false);
+  const nudgedRef = useRef(false);
 
   const updateDrafts = (fn: (prev: DraftEntry[]) => DraftEntry[]) => {
     draftsRef.current = fn(draftsRef.current);
@@ -166,13 +170,34 @@ export function useLiveVoice() {
     const content = message.serverContent;
     if (content?.interrupted) stopPlayback();
     if (content?.inputTranscription?.text) appendTranscript("user", content.inputTranscription.text);
-    if (content?.outputTranscription?.text) appendTranscript("assistant", content.outputTranscription.text);
+    if (content?.outputTranscription?.text) {
+      appendTranscript("assistant", content.outputTranscription.text);
+      turnTextRef.current += content.outputTranscription.text;
+    }
+    if (content?.inputTranscription?.text) nudgedRef.current = false;
+    if (content?.turnComplete) {
+      // Si anunció que iba a revisar pero no llamó a ninguna herramienta, se
+      // lo recordamos una vez (los modelos de audio a veces lo olvidan).
+      const announced = /(un segundo|un momento|déjame (ver|revisar)|reviso|voy a revisar|consult)/i.test(
+        turnTextRef.current
+      );
+      if (announced && !turnHadToolRef.current && !nudgedRef.current) {
+        nudgedRef.current = true;
+        sessionRef.current?.sendClientContent({
+          turns: [{ role: "user", parts: [{ text: "(Sistema: no llamaste a la herramienta. Llama a \"asistente\" ahora con el pedido.)" }] }],
+          turnComplete: true,
+        });
+      }
+      turnTextRef.current = "";
+      turnHadToolRef.current = false;
+    }
     for (const part of content?.modelTurn?.parts ?? []) {
       if (part.inlineData?.data) playChunk(part.inlineData.data);
     }
 
     const calls = message.toolCall?.functionCalls;
     if (calls?.length) {
+      turnHadToolRef.current = true;
       setStatus("thinking");
       const functionResponses = await Promise.all(
         calls.map(async (call) => {

@@ -144,10 +144,11 @@ export function buildAssistantTools(user: AssistantUser) {
         clientId: z.string().optional(),
         estado: z.enum(TASK_STATUSES).optional(),
         incluirCerradas: z.boolean().optional(),
-        venceAntesDe: z.string().optional().describe("Fecha YYYY-MM-DD"),
+        venceDesde: z.string().optional().describe("Fecha YYYY-MM-DD (inclusive). Para 'hoy' usa la misma fecha en venceDesde y venceAntesDe."),
+        venceAntesDe: z.string().optional().describe("Fecha YYYY-MM-DD (inclusive)"),
         soloMias: z.boolean().optional(),
       }),
-      execute: async ({ clientId, estado, incluirCerradas, venceAntesDe, soloMias }) => {
+      execute: async ({ clientId, estado, incluirCerradas, venceDesde, venceAntesDe, soloMias }) => {
         const mine = soloMias || user.role !== "ADMIN";
         const where = {
           ...(clientId && { clientId }),
@@ -156,7 +157,12 @@ export function buildAssistantTools(user: AssistantUser) {
             : incluirCerradas
               ? {}
               : { status: { in: [...OPEN_TASK_STATUSES] } }),
-          ...(venceAntesDe && { dueDate: { lte: new Date(`${venceAntesDe}T23:59:59-05:00`) } }),
+          ...((venceDesde || venceAntesDe) && {
+            dueDate: {
+              ...(venceDesde && { gte: new Date(`${venceDesde}T00:00:00-05:00`) }),
+              ...(venceAntesDe && { lte: new Date(`${venceAntesDe}T23:59:59-05:00`) }),
+            },
+          }),
           ...(mine && {
             OR: [{ assignedEditorId: user.id }, { assignedCommunityId: user.id }],
           }),
