@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, Keyboard, Loader2, Mic, MicOff, X } from "lucide-react";
+import { Check, CheckSquare, HandCoins, Keyboard, Loader2, Mic, MicOff, Receipt, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AssistantChat } from "./assistant-chat";
+import { AssistantChat, Avatar } from "./assistant-chat";
 import { type DraftEntry, type VoiceStatus, useLiveVoice } from "./use-live-voice";
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
@@ -55,6 +55,13 @@ function OrbSphere({ size, active, className }: { size?: number; active?: boolea
   );
 }
 
+const DRAFT_ICONS: Record<string, typeof Receipt> = {
+  crearGasto: Receipt,
+  crearTarea: CheckSquare,
+  registrarHonorario: HandCoins,
+};
+
+/** Aprobación estilo alerta de macOS: compacta, con icono y botones a la derecha. */
 function DraftCard({
   draft,
   onConfirm,
@@ -66,62 +73,81 @@ function DraftCard({
 }) {
   const error = typeof draft.state === "object" ? draft.state.error : null;
   const open = draft.state === "pending" || Boolean(error);
+  const Icon = DRAFT_ICONS[draft.action] ?? Receipt;
+  const rows = Object.entries(draft.summary).filter(([, v]) => v !== null && v !== "");
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, transform: "translateY(8px) scale(0.98)" }}
+      initial={{ opacity: 0, transform: "translateY(6px) scale(0.97)" }}
       animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
-      transition={{ duration: 0.25, ease: EASE_OUT }}
-      className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm"
+      transition={{ type: "spring", duration: 0.4, bounce: 0.15 }}
+      className="rounded-xl border border-black/[0.08] bg-white/80 p-3 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.25)] backdrop-blur-xl dark:border-white/10 dark:bg-zinc-800/80"
     >
-      <div className="px-4 pb-3 pt-3.5">
-        <p className="text-[13px] font-semibold tracking-tight">{DRAFT_TITLES[draft.action] ?? draft.action}</p>
-        <dl className="mt-2 space-y-1 text-[13px]">
-          {Object.entries(draft.summary)
-            .filter(([, v]) => v !== null && v !== "")
-            .map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-3">
-                <dt className="shrink-0 text-muted-foreground">{k}</dt>
-                <dd className={cn("min-w-0 truncate text-right", k === "Monto" && "font-semibold tabular-nums")}>
+      <div className="flex gap-2.5">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-b from-sky-400 to-blue-600 text-white shadow-sm">
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold leading-tight">{DRAFT_TITLES[draft.action] ?? draft.action}</p>
+          <dl className="mt-1 space-y-0.5 text-[12px] leading-snug">
+            {rows.map(([k, v]) => (
+              <div key={k} className="flex gap-2">
+                <dt className="w-16 shrink-0 text-muted-foreground">{k}</dt>
+                <dd className={cn("min-w-0 truncate", k === "Monto" && "font-semibold tabular-nums")}>
                   {typeof v === "number" && k === "Monto" ? `$${v.toFixed(2)}` : String(v)}
                 </dd>
               </div>
             ))}
-        </dl>
-        {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+          </dl>
+          {error && <p className="mt-1 text-[11px] text-destructive">{error}</p>}
+        </div>
       </div>
-      {open ? (
-        <div className="grid grid-cols-2 border-t border-border/60 text-[15px]">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="py-2.5 text-muted-foreground transition-[background-color,transform] duration-150 hover:bg-muted/60 active:scale-[0.97]"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="border-l border-border/60 py-2.5 font-semibold text-primary transition-[background-color,transform] duration-150 hover:bg-primary/5 active:scale-[0.97]"
-          >
-            Confirmar
-          </button>
-        </div>
-      ) : (
-        <div className="flex items-center justify-center gap-1.5 border-t border-border/60 py-2.5 text-[13px]">
-          {draft.state === "saving" ? (
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Guardando…
-            </span>
-          ) : draft.state === "done" ? (
-            <span className="flex items-center gap-1.5 font-medium text-emerald-600">
-              <Check className="h-3.5 w-3.5" /> Guardado
-            </span>
+      <div className="mt-2.5 flex justify-end">
+        <AnimatePresence mode="wait" initial={false}>
+          {open ? (
+            <motion.div
+              key="actions"
+              exit={{ opacity: 0, filter: "blur(2px)", transition: { duration: 0.12 } }}
+              className="flex gap-1.5"
+            >
+              <button
+                type="button"
+                onClick={onCancel}
+                className="h-6 rounded-md border border-black/10 bg-white px-3 text-[12px] font-medium shadow-sm transition-transform duration-100 active:scale-[0.97] dark:border-white/10 dark:bg-zinc-700"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={onConfirm}
+                className="h-6 rounded-md bg-gradient-to-b from-sky-500 to-blue-600 px-3 text-[12px] font-medium text-white shadow-sm shadow-blue-600/30 transition-transform duration-100 active:scale-[0.97]"
+              >
+                Confirmar
+              </button>
+            </motion.div>
           ) : (
-            <span className="text-muted-foreground">Cancelado</span>
+            <motion.span
+              key={typeof draft.state === "string" ? draft.state : "error"}
+              initial={{ opacity: 0, filter: "blur(2px)" }}
+              animate={{ opacity: 1, filter: "blur(0px)" }}
+              transition={{ duration: 0.18, ease: EASE_OUT }}
+              className="flex h-6 items-center text-[12px]"
+            >
+              {draft.state === "saving" ? (
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Guardando…
+                </span>
+              ) : draft.state === "done" ? (
+                <span className="flex items-center gap-1 font-medium text-emerald-600">
+                  <Check className="h-3.5 w-3.5" /> Guardado
+                </span>
+              ) : (
+                <span className="text-muted-foreground">Cancelado</span>
+              )}
+            </motion.span>
           )}
-        </div>
-      )}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 }
@@ -131,7 +157,11 @@ function VoiceView({
   paused,
   onToggle,
   orbRef,
+  userName,
+  userImage,
 }: {
+  userName: string;
+  userImage: string | null;
   voice: ReturnType<typeof useLiveVoice>;
   paused: boolean;
   onToggle: () => void;
@@ -163,7 +193,7 @@ function VoiceView({
               live ? "opacity-100" : "opacity-40"
             )}
           />
-          <OrbSphere className="h-20 w-20 md:h-28 md:w-28" active={status === "thinking" || status === "speaking"} />
+          <OrbSphere className="h-16 w-16 md:h-24 md:w-24" active={status === "thinking" || status === "speaking"} />
           {(status === "connecting" || status === "thinking") && (
             <Loader2 className="absolute inset-0 m-auto h-7 w-7 animate-spin text-white/90" />
           )}
@@ -194,11 +224,13 @@ function VoiceView({
               <motion.div
                 key={line.id}
                 layout="position"
-                initial={{ opacity: 0, transform: "translateY(6px)" }}
-                animate={{ opacity: 1, transform: "translateY(0px)" }}
-                transition={{ duration: 0.2, ease: EASE_OUT }}
-                className={cn("flex", line.role === "user" && "justify-end")}
+                initial={{ opacity: 0, transform: "translateY(10px) scale(0.94)" }}
+                animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
+                transition={{ type: "spring", duration: 0.4, bounce: 0.18 }}
+                style={{ transformOrigin: line.role === "user" ? "bottom right" : "bottom left" }}
+                className={cn("flex items-end gap-2", line.role === "user" && "flex-row-reverse")}
               >
+                {line.role === "user" && <Avatar src={userImage} name={userName} className="h-6 w-6 shrink-0 text-[10px]" />}
                 <p
                   className={cn(
                     "max-w-[85%] rounded-[20px] px-3.5 py-2 text-[14px] leading-snug",
@@ -365,7 +397,7 @@ export function AssistantOrb() {
           >
             <span className="absolute inset-[-6px] rounded-full bg-violet-500/30 blur-lg transition-opacity duration-300 group-hover:opacity-100 md:opacity-70" />
             <span className="relative block transition-transform duration-150 ease-out group-hover:scale-105 group-active:scale-[0.94]">
-              <OrbSphere size={52} className="shadow-lg shadow-indigo-500/30 ring-1 ring-white/30" />
+              <OrbSphere size={46} className="shadow-lg shadow-indigo-500/30 ring-1 ring-white/30" />
             </span>
           </motion.button>
         )}
@@ -440,7 +472,7 @@ export function AssistantOrb() {
 
             <div className="relative min-h-0 flex-1">
               <div className={cn("absolute inset-0", mode !== "voice" && "invisible")}>
-                <VoiceView voice={voice} paused={paused} onToggle={live ? endConversation : startVoice} orbRef={orbRef} />
+                <VoiceView userName={userName} userImage={userImage} voice={voice} paused={paused} onToggle={live ? endConversation : startVoice} orbRef={orbRef} />
               </div>
               {chatMounted && (
                 <div className={cn("absolute inset-0", mode !== "chat" && "invisible")}>

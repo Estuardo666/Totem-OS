@@ -153,9 +153,42 @@ export function useLiveVoice() {
   const pendingDraft = () =>
     [...draftsRef.current].reverse().find((d) => d.state === "pending" || typeof d.state === "object");
 
-  const confirmDraft = useCallback(async (token: string) => {
+  // Confirmaciones en curso por token: la voz y el botón comparten la misma.
+  const confirmingRef = useRef(new Map<string, ReturnType<typeof confirmAssistantDraft>>());
+
+  /** Avisa a la voz de algo que pasó fuera de la conversación, sin pedirle respuesta. */
+  const notifyVoice = (text: string) => {
+    const dc = dcRef.current;
+    if (dc?.readyState === "open") {
+      dc.send(
+        JSON.stringify({
+          type: "conversation.item.create",
+          item: { type: "message", role: "user", content: [{ type: "input_text", text }] },
+        })
+      );
+    }
+    sessionRef.current?.sendClientContent({ turns: [{ role: "user", parts: [{ text }] }], turnComplete: false });
+  };
+
+  const confirmDraft = useCallback(async (token: string, fromVoice = false) => {
+    const inFlight = confirmingRef.current.get(token);
+    if (inFlight) return inFlight;
+    const current = draftsRef.current.find((d) => d.draftToken === token);
+    if (current?.state === "done") return { success: true as const, data: { resultId: null, alreadyDone: true } };
     updateDrafts((prev) => prev.map((d) => (d.draftToken === token ? { ...d, state: "saving" } : d)));
-    const result = await confirmAssistantDraft(token);
+    const promise = confirmAssistantDraft(token);
+    confirmingRef.current.set(token, promise);
+    const result = await promise.finally(() => confirmingRef.current.delete(token));
+    if (result.success) {
+      // El pensador no debe volver a preparar lo que ya se guardó.
+      historyRef.current = [
+        ...historyRef.current,
+        { role: "assistant" as const, content: "Listo, quedó guardado. No hay nada pendiente." },
+      ].slice(-12);
+      if (!fromVoice) {
+        notifyVoice("(Sistema: el usuario confirmó con el botón y ya quedó guardado. No vuelvas a preguntar.)");
+      }
+    }
     updateDrafts((prev) =>
       prev.map((d) =>
         d.draftToken === token
@@ -198,8 +231,14 @@ export function useLiveVoice() {
 
     const draft = pendingDraft();
     if (name === "confirmar") {
-      if (!draft) return { error: "No hay ningún borrador pendiente." };
-      const result = await confirmDraft(draft.draftToken);
+      if (!draft) {
+        const last = draftsRef.current[draftsRef.current.length - 1];
+        if (last && (last.state === "done" || last.state === "saving")) {
+          return { ok: true, mensaje: "Ya quedó guardado." };
+        }
+        return { error: "No hay ningún borrador pendiente." };
+      }
+      const result = await confirmDraft(draft.draftToken, true);
       return result.success ? { ok: true, mensaje: "Guardado." } : { ok: false, error: result.error };
     }
     if (name === "cancelar") {

@@ -69,7 +69,7 @@ function initials(name: string) {
     .join("");
 }
 
-function Avatar({ src, name, className }: { src?: string | null; name: string; className?: string }) {
+export function Avatar({ src, name, className }: { src?: string | null; name: string; className?: string }) {
   const [failed, setFailed] = useState(false);
   return (
     <span
@@ -307,6 +307,14 @@ export function AssistantChat({
         animate: { opacity: 1, transform: "translateY(0px)" },
       };
 
+  // Burbujas estilo iMessage: crecen desde su esquina con un resorte suave.
+  const bubbleEnter = reduceMotion
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 } }
+    : {
+        initial: { opacity: 0, transform: "translateY(10px) scale(0.94)" },
+        animate: { opacity: 1, transform: "translateY(0px) scale(1)" },
+      };
+
   return (
     <ClientLogos.Provider value={logos}>
       <div className="flex h-full flex-col">
@@ -341,8 +349,9 @@ export function AssistantChat({
             {messages.map((m) => (
               <motion.div
                 key={m.id}
-                {...enter}
-                transition={{ duration: 0.22, ease: EASE_OUT }}
+                {...bubbleEnter}
+                transition={reduceMotion ? { duration: 0.2 } : { type: "spring", duration: 0.4, bounce: 0.18 }}
+                style={{ transformOrigin: m.role === "user" ? "bottom right" : "bottom left" }}
                 className={cn("flex gap-3", m.role === "user" && "flex-row-reverse")}
               >
                 {m.role === "user" ? (
