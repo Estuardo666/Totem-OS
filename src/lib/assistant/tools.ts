@@ -17,6 +17,7 @@ import { createExpenseSchema, createTransactionSchema } from "@/schemas/finance"
 import { createContentTaskSchema } from "@/schemas/content";
 import { getMonthlyFinancialSummaryFromDb } from "@/lib/finance-monthly-summary-service";
 import { createDraftToken, type DraftAction } from "./drafts";
+import { buildAnalysisTools } from "./analysis-tools";
 
 export interface AssistantUser {
   id: string;
@@ -86,6 +87,8 @@ async function findClient(clientId: string) {
 
 export function buildAssistantTools(user: AssistantUser) {
   return {
+    ...buildAnalysisTools(user),
+
     // ─────────────────────────── LECTURA ───────────────────────────
     buscarClientes: tool({
       description:
