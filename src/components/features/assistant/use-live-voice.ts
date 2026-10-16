@@ -60,6 +60,9 @@ export function useLiveVoice() {
   // OpenAI solo admite una respuesta activa: response.create se envía cuando
   // la anterior terminó (response.done).
   const responseActiveRef = useRef(false);
+  // La voz de OpenAI sigue sonando después de response.done; mientras suena el
+  // micrófono se silencia para que no se escuche a sí misma (eco).
+  const playingRef = useRef(false);
   const pendingResponseRef = useRef(false);
   const micCtxRef = useRef<AudioContext | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
@@ -255,6 +258,10 @@ export function useLiveVoice() {
     }
   };
 
+  const setMicEnabled = (enabled: boolean) => {
+    micStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = enabled));
+  };
+
   const requestOpenAIResponse = () => {
     const dc = dcRef.current;
     if (dc?.readyState !== "open") return;
@@ -291,9 +298,20 @@ export function useLiveVoice() {
         if (pendingResponseRef.current) {
           pendingResponseRef.current = false;
           requestOpenAIResponse();
-        } else {
+        } else if (!playingRef.current) {
           setStatus((s) => (s === "thinking" ? s : "listening"));
         }
+        break;
+      case "output_audio_buffer.started":
+        playingRef.current = true;
+        setMicEnabled(false);
+        setStatus("speaking");
+        break;
+      case "output_audio_buffer.stopped":
+      case "output_audio_buffer.cleared":
+        playingRef.current = false;
+        setMicEnabled(true);
+        setStatus((s) => (s === "thinking" ? s : "listening"));
         break;
       case "response.function_call_arguments.done": {
         setStatus("thinking");
@@ -393,7 +411,16 @@ export function useLiveVoice() {
     stopPlayback();
     void outCtxRef.current?.close();
     outCtxRef.current = null;
+    playingRef.current = false;
     setStatus((s) => (s === "error" ? s : "idle"));
+  }, []);
+
+  /** Borra la conversación de voz (transcripción, borradores e historial). */
+  const reset = useCallback(() => {
+    setTranscript([]);
+    updateDrafts(() => []);
+    historyRef.current = [];
+    setError(null);
   }, []);
 
   const start = useCallback(async () => {
@@ -456,6 +483,8 @@ export function useLiveVoice() {
       await micCtx.audioWorklet.addModule("/audio-worklets/pcm16-capture.js");
       const node = new AudioWorkletNode(micCtx, "pcm16-capture");
       node.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
+        // Mientras suena la respuesta no se envía el micrófono (evita el eco).
+        if (sourcesRef.current.size > 0) return;
         sessionRef.current?.sendRealtimeInput({
           audio: { data: toBase64(e.data), mimeType: "audio/pcm;rate=16000" },
         });
@@ -485,5 +514,5 @@ export function useLiveVoice() {
     return Math.min(1, Math.sqrt(sum / buf.length) * 4);
   }, []);
 
-  return { status, error, transcript, drafts, start, stop, confirmDraft, cancelDraft, getInputLevel };
+  return { status, error, transcript, drafts, start, stop, reset, confirmDraft, cancelDraft, getInputLevel };
 }

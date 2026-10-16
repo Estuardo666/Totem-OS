@@ -86,7 +86,8 @@ export function buildOpenAIRealtimeSession(userName: string, voice = DEFAULT_OPE
     audio: {
       input: {
         transcription: { model: "gpt-4o-mini-transcribe", language: "es" },
-        turn_detection: { type: "semantic_vad" },
+        turn_detection: { type: "semantic_vad", eagerness: "low" },
+        noise_reduction: { type: "far_field" },
       },
       output: { voice },
     },

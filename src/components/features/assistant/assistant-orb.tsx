@@ -35,11 +35,11 @@ const DRAFT_TITLES: Record<string, string> = {
 };
 
 /** Esfera con degradado vivo; `size` en px. El brillo superior imita vidrio. */
-function OrbSphere({ size, active, className }: { size: number; active?: boolean; className?: string }) {
+function OrbSphere({ size, active, className }: { size?: number; active?: boolean; className?: string }) {
   return (
     <span
       className={cn("relative block overflow-hidden rounded-full", className)}
-      style={{ width: size, height: size }}
+      style={size ? { width: size, height: size } : undefined}
       aria-hidden
     >
       <span
@@ -148,7 +148,7 @@ function VoiceView({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-col items-center gap-3 pb-2 pt-6">
+      <div className="flex flex-col items-center gap-3 pb-2 pt-4 md:pt-6">
         <button
           ref={orbRef}
           type="button"
@@ -163,7 +163,7 @@ function VoiceView({
               live ? "opacity-100" : "opacity-40"
             )}
           />
-          <OrbSphere size={112} active={status === "thinking" || status === "speaking"} />
+          <OrbSphere className="h-20 w-20 md:h-28 md:w-28" active={status === "thinking" || status === "speaking"} />
           {(status === "connecting" || status === "thinking") && (
             <Loader2 className="absolute inset-0 m-auto h-7 w-7 animate-spin text-white/90" />
           )}
@@ -245,7 +245,8 @@ export function AssistantOrb() {
   const [paused, setPaused] = useState(false);
   const [chatMounted, setChatMounted] = useState(false);
   const voice = useLiveVoice();
-  const { status, transcript, drafts, start, stop, getInputLevel } = voice;
+  const { status, transcript, drafts, start, stop, reset, getInputLevel } = voice;
+  const [chatKey, setChatKey] = useState(0);
   const live = status !== "idle" && status !== "error";
 
   const orbRef = useRef<HTMLButtonElement>(null);
@@ -258,6 +259,14 @@ export function AssistantOrb() {
     lastActivityRef.current = Date.now();
     void start();
   }, [start]);
+
+  /** Terminar: corta la voz y deja la ventana limpia para empezar de cero. */
+  const endConversation = useCallback(() => {
+    stop();
+    reset();
+    setPaused(false);
+    setChatKey((k) => k + 1);
+  }, [stop, reset]);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -431,11 +440,11 @@ export function AssistantOrb() {
 
             <div className="relative min-h-0 flex-1">
               <div className={cn("absolute inset-0", mode !== "voice" && "invisible")}>
-                <VoiceView voice={voice} paused={paused} onToggle={live ? stop : startVoice} orbRef={orbRef} />
+                <VoiceView voice={voice} paused={paused} onToggle={live ? endConversation : startVoice} orbRef={orbRef} />
               </div>
               {chatMounted && (
                 <div className={cn("absolute inset-0", mode !== "chat" && "invisible")}>
-                  <AssistantChat userName={userName} userImage={userImage} compact />
+                  <AssistantChat key={chatKey} userName={userName} userImage={userImage} compact />
                 </div>
               )}
             </div>
@@ -444,7 +453,7 @@ export function AssistantOrb() {
               <footer className="flex items-center justify-center gap-3 border-t border-border/50 px-4 py-3">
                 <button
                   type="button"
-                  onClick={live ? stop : startVoice}
+                  onClick={live ? endConversation : startVoice}
                   disabled={status === "connecting"}
                   className={cn(
                     "flex h-11 items-center gap-2 rounded-full px-5 text-[14px] font-medium transition-[background-color,transform] duration-150 active:scale-[0.97] disabled:opacity-60",
