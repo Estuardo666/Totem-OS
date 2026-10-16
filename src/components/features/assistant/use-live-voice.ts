@@ -20,6 +20,22 @@ export interface DraftEntry extends AgentDraft {
 }
 
 
+interface LiveToken {
+  provider: "gemini" | "openai";
+  token: string;
+  model: string;
+}
+
+/** Un token se reutiliza solo si tiene menos de 40 s (caducan a los 60 s). */
+const TOKEN_TTL_MS = 40_000;
+
+async function fetchLiveToken(): Promise<LiveToken> {
+  const res = await fetch("/api/assistant/live-token", { method: "POST" });
+  const data = (await res.json()) as Partial<LiveToken> & { error?: string };
+  if (!res.ok || !data.token || !data.model) throw new Error(data.error ?? "No se pudo iniciar la voz");
+  return { provider: data.provider ?? "gemini", token: data.token, model: data.model };
+}
+
 function toBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -60,6 +76,10 @@ export function useLiveVoice() {
   // OpenAI solo admite una respuesta activa: response.create se envía cuando
   // la anterior terminó (response.done).
   const responseActiveRef = useRef(false);
+  // Conexión en curso y "generación": stop() invalida cualquier start() pendiente.
+  const startingRef = useRef(false);
+  const genRef = useRef(0);
+  const tokenCacheRef = useRef<{ at: number; promise: Promise<LiveToken> } | null>(null);
   // La voz de OpenAI sigue sonando después de response.done; mientras suena el
   // micrófono se silencia para que no se escuche a sí misma (eco).
   const playingRef = useRef(false);
@@ -430,6 +450,8 @@ export function useLiveVoice() {
   };
 
   const stop = useCallback(() => {
+    genRef.current++;
+    startingRef.current = false;
     sessionRef.current?.close();
     sessionRef.current = null;
     dcRef.current?.close();
@@ -462,64 +484,99 @@ export function useLiveVoice() {
     setError(null);
   }, []);
 
+  /**
+   * Pide el token por adelantado (al pasar el cursor o tocar el orbe) para que
+   * la conexión arranque sin esperar al servidor. Los tokens son de un solo uso
+   * y caducan en 60 s, así que solo se reutiliza uno de menos de 40 s.
+   */
+  const prefetchToken = useCallback(() => {
+    const cached = tokenCacheRef.current;
+    if (cached && Date.now() - cached.at < TOKEN_TTL_MS) return;
+    const promise = fetchLiveToken();
+    tokenCacheRef.current = { at: Date.now(), promise };
+    promise.catch(() => {
+      if (tokenCacheRef.current?.promise === promise) tokenCacheRef.current = null;
+    });
+  }, []);
+
+  const takeToken = () => {
+    const cached = tokenCacheRef.current;
+    tokenCacheRef.current = null;
+    if (cached && Date.now() - cached.at < TOKEN_TTL_MS) return cached.promise;
+    return fetchLiveToken();
+  };
+
   const start = useCallback(async () => {
+    // Evita dos sesiones a la vez (doble toque, o tocar mientras conecta).
+    if (startingRef.current || sessionRef.current || pcRef.current) return;
+    startingRef.current = true;
+    const gen = ++genRef.current;
+    // Si el usuario cerró mientras conectaba, lo recién abierto se descarta.
+    const cancelled = () => gen !== genRef.current;
     setError(null);
     setStatus("connecting");
-    try {
-      const tokenRes = await fetch("/api/assistant/live-token", { method: "POST" });
-      const tokenData = (await tokenRes.json()) as {
-        provider?: "gemini" | "openai";
-        token?: string;
-        model?: string;
-        error?: string;
-      };
-      if (!tokenRes.ok || !tokenData.token || !tokenData.model) {
-        throw new Error(tokenData.error ?? "No se pudo iniciar la voz");
-      }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
+    // Los AudioContext se crean dentro del gesto del usuario (Safari los deja
+    // suspendidos si se crean después de un await).
+    const levelCtx = new AudioContext();
+    levelCtxRef.current = levelCtx;
+    try {
+      // Token y micrófono en paralelo: es lo que más tarda en la primera conexión.
+      const [tokenData, stream] = await Promise.all([
+        takeToken(),
+        navigator.mediaDevices.getUserMedia({
+          audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        }),
+      ]);
+      if (cancelled()) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       micStreamRef.current = stream;
-      const levelCtx = new AudioContext();
       const analyser = levelCtx.createAnalyser();
       analyser.fftSize = 512;
       levelCtx.createMediaStreamSource(stream).connect(analyser);
-      levelCtxRef.current = levelCtx;
       analyserRef.current = analyser;
       levelBufRef.current = new Uint8Array(analyser.fftSize);
 
       if (tokenData.provider === "openai") {
         await startOpenAI(tokenData.token, stream);
+        if (cancelled()) stop();
         return;
       }
 
       outCtxRef.current = new AudioContext({ sampleRate: 24000 });
-
-      const ai = new GoogleGenAI({ apiKey: tokenData.token, httpOptions: { apiVersion: "v1alpha" } });
-      const session = await ai.live.connect({
-        model: tokenData.model,
-        callbacks: {
-          onopen: () => setStatus("listening"),
-          onmessage: (m) => void handleMessage(m),
-          onerror: (e) => {
-            setError((e as ErrorEvent).message || "Error de conexión");
-            setStatus("error");
-          },
-          onclose: (e) => {
-            if (e.code !== 1000 && e.reason) {
-              setError(e.reason);
-              setStatus("error");
-            }
-            stop();
-          },
-        },
-      });
-      sessionRef.current = session;
-
       const micCtx = new AudioContext({ sampleRate: 16000 });
       micCtxRef.current = micCtx;
-      await micCtx.audioWorklet.addModule("/audio-worklets/pcm16-capture.js");
+
+      const ai = new GoogleGenAI({ apiKey: tokenData.token, httpOptions: { apiVersion: "v1alpha" } });
+      const [session] = await Promise.all([
+        ai.live.connect({
+          model: tokenData.model,
+          callbacks: {
+            onopen: () => setStatus("listening"),
+            onmessage: (m) => void handleMessage(m),
+            onerror: (e) => {
+              setError((e as ErrorEvent).message || "Error de conexión");
+              setStatus("error");
+            },
+            onclose: (e) => {
+              if (e.code !== 1000 && e.reason) {
+                setError(e.reason);
+                setStatus("error");
+              }
+              stop();
+            },
+          },
+        }),
+        micCtx.audioWorklet.addModule("/audio-worklets/pcm16-capture.js"),
+      ]);
+      if (cancelled()) {
+        session.close();
+        return;
+      }
+      sessionRef.current = session;
+
       const node = new AudioWorkletNode(micCtx, "pcm16-capture");
       node.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
         // Mientras suena la respuesta no se envía el micrófono (evita el eco).
@@ -530,11 +587,28 @@ export function useLiveVoice() {
       };
       micCtx.createMediaStreamSource(stream).connect(node);
     } catch (e) {
+      if (cancelled()) return;
       setError(e instanceof Error ? e.message : "No se pudo iniciar la voz");
       setStatus("error");
       stop();
+    } finally {
+      startingRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stop]);
+
+  // Si la pestaña pasa a segundo plano (otra pestaña, pantalla bloqueada), se
+  // corta la voz: nadie la está usando y seguiría gastando.
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden") stop();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", stop);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", stop);
+    };
   }, [stop]);
 
   useEffect(() => stop, [stop]);
@@ -553,5 +627,5 @@ export function useLiveVoice() {
     return Math.min(1, Math.sqrt(sum / buf.length) * 4);
   }, []);
 
-  return { status, error, transcript, drafts, start, stop, reset, confirmDraft, cancelDraft, getInputLevel };
+  return { status, error, transcript, drafts, start, stop, reset, prefetchToken, confirmDraft, cancelDraft, getInputLevel };
 }

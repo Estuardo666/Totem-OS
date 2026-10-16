@@ -16,6 +16,10 @@ const EASE_DRAWER = [0.32, 0.72, 0, 1] as const;
 const IDLE_MS = 10_000;
 /** Nivel de micrófono que cuenta como "el usuario está hablando". */
 const SPEECH_LEVEL = 0.12;
+/** Red de seguridad: corta aunque el estado se quede trabado (p. ej. "pensando"). */
+const STUCK_MS = 45_000;
+/** Duración máxima de una sesión de voz. */
+const MAX_SESSION_MS = 15 * 60_000;
 
 type Mode = "voice" | "chat";
 
@@ -277,7 +281,7 @@ export function AssistantOrb() {
   const [paused, setPaused] = useState(false);
   const [chatMounted, setChatMounted] = useState(false);
   const voice = useLiveVoice();
-  const { status, transcript, drafts, start, stop, reset, getInputLevel } = voice;
+  const { status, transcript, drafts, start, stop, reset, prefetchToken, getInputLevel } = voice;
   const [chatKey, setChatKey] = useState(0);
   const live = status !== "idle" && status !== "error";
 
@@ -315,6 +319,7 @@ export function AssistantOrb() {
   useEffect(() => {
     if (!live) return;
     const orb = orbRef.current;
+    const startedAt = Date.now();
     let raf = 0;
     let smooth = 0;
     const tick = () => {
@@ -325,7 +330,12 @@ export function AssistantOrb() {
       if (orb && !reduceMotion) {
         orb.style.transform = `scale(${1 + Math.min(smooth, 1) * 0.12})`;
       }
-      if (statusRef.current === "listening" && now - lastActivityRef.current > IDLE_MS) {
+      const idle = now - lastActivityRef.current;
+      if (
+        (statusRef.current === "listening" && idle > IDLE_MS) ||
+        idle > STUCK_MS ||
+        now - startedAt > MAX_SESSION_MS
+      ) {
         stop();
         setPaused(true);
         return;
@@ -386,6 +396,8 @@ export function AssistantOrb() {
             animate={{ opacity: 1, transform: "scale(1)" }}
             exit={{ opacity: 0, transform: "scale(0.9)", transition: { duration: 0.12 } }}
             transition={{ duration: 0.2, ease: EASE_OUT }}
+            onPointerEnter={prefetchToken}
+            onPointerDown={prefetchToken}
             onClick={() => {
               setOpen(true);
               setMode("voice");
