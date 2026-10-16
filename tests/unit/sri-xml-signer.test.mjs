@@ -65,6 +65,15 @@ test("firma un XML sintético y verifica SignedInfo, el digest de factura y la r
   assert.ok(signedInfo);
   assert.ok(signedProperties);
   assert.equal(signedPropertiesReference?.getAttribute("Type"), "http://uri.etsi.org/01903#SignedProperties");
+  const certDigestValue = signedProperties
+    .getElementsByTagNameNS("http://uri.etsi.org/01903/v1.3.2#", "CertDigest")[0]
+    ?.getElementsByTagNameNS("http://www.w3.org/2000/09/xmldsig#", "DigestValue")[0]
+    ?.textContent;
+  const certificateDer = Buffer.from(
+    forge.asn1.toDer(forge.pki.certificateToAsn1(parsed.certificate)).getBytes(),
+    "binary"
+  );
+  assert.equal(certDigestValue, createHash("sha1").update(certificateDer).digest("base64"));
   const exclusiveCanonicalizer = new ExclusiveCanonicalization();
   const inclusiveCanonicalizer = new C14nCanonicalization();
   const canonicalSignedInfo = exclusiveCanonicalizer.process(signedInfo, {});

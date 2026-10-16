@@ -184,6 +184,7 @@ export function firmarXml(
   const signedPropertiesId = "Signature1-SignedProperties";
   const signedProperties = buildSignedProperties(
     signedPropertiesId,
+    certificate,
     x509SubjectName,
     certNotBefore,
     certNotAfter,
@@ -226,6 +227,7 @@ export function firmarXml(
  */
 function buildSignedProperties(
   signedPropertiesId: string,
+  certificate: forge.pki.Certificate,
   x509SubjectName: string,
   certNotBefore: string,
   certNotAfter: string,
@@ -249,7 +251,7 @@ function buildSignedProperties(
               .ele("xades:Cert")
                 .ele("xades:CertDigest")
                   .ele("ds:DigestMethod", { Algorithm: "http://www.w3.org/2000/09/xmldsig#sha1" }).up()
-                  .ele("ds:DigestValue").txt(calcularDigestCert(issuerName + serialNumber)).up()
+                  .ele("ds:DigestValue").txt(calcularDigestCert(certificate)).up()
                 .up()
                 .ele("xades:IssuerSerial")
                   .ele("ds:X509IssuerName").txt(issuerName).up()
@@ -388,9 +390,10 @@ function insertarFirmaEnXml(xmlContent: string, signatureXml: string): string {
 /**
  * Calcula un digest simplificado del certificado para XAdES.
  */
-function calcularDigestCert(input: string): string {
+function calcularDigestCert(certificate: forge.pki.Certificate): string {
+  const certDer = forge.asn1.toDer(forge.pki.certificateToAsn1(certificate)).bytes();
   const md = forge.md.sha1.create();
-  md.update(input, "utf8");
+  md.update(certDer);
   return forge.util.encode64(md.digest().bytes());
 }
 

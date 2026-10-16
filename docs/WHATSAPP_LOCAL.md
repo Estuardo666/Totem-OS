@@ -174,6 +174,9 @@ cambio.
   exige cubrir `SignedProperties` con un `ds:Reference` cuyo `Type` sea
   `http://uri.etsi.org/01903#SignedProperties`, y [XMLDSig](https://www.w3.org/TR/2002/REC-xmldsig-core-20020212/)
   calcula cada digest sobre el dato resuelto y transformado de su referencia.
+- La fixture también confirmó que `xades:CertDigest` debe resumir el certificado
+  DER; se reemplazó el digest incorrecto de emisor+serial por el de los bytes
+  DER, como exige ETSI TS 101 903 v1.4.2.
 - Se usa `xml-crypto` para Exclusive C14N en `SignedInfo` y la factura; como la
   referencia a `SignedProperties` no declara transforms, su digest usa el
   Canonical XML 1.0 implícito de XMLDSig.
