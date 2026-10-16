@@ -18,6 +18,7 @@ import { createContentTaskSchema } from "@/schemas/content";
 import { getMonthlyFinancialSummaryFromDb } from "@/lib/finance-monthly-summary-service";
 import { createDraftToken, type DraftAction } from "./drafts";
 import { buildAnalysisTools } from "./analysis-tools";
+import { fuzzyMatch } from "./fuzzy";
 
 export interface AssistantUser {
   id: string;
@@ -92,35 +93,49 @@ export function buildAssistantTools(user: AssistantUser) {
     // ─────────────────────────── LECTURA ───────────────────────────
     buscarClientes: tool({
       description:
-        "Busca clientes por nombre (coincidencia parcial). Úsala SIEMPRE para obtener el clientId antes de crear algo para un cliente.",
+        "Busca clientes por nombre. Tolera tildes, mayúsculas y errores de transcripción (\"Audisense\" encuentra \"Audisens\"), así que pásale el nombre tal como lo dijo el usuario o una parte. Úsala SIEMPRE para obtener el clientId antes de crear algo para un cliente.",
       inputSchema: z.object({
         nombre: z.string().optional().describe("Parte del nombre del cliente"),
         estado: z.enum(["ACTIVE", "PAUSED", "DEBT", "INACTIVE"]).optional(),
       }),
       execute: async ({ nombre, estado }) => {
-        const where = {
-          ...(nombre && { name: { contains: nombre, mode: "insensitive" as const } }),
-          ...(estado ? { status: estado } : { status: { not: "INACTIVE" } }),
-        };
+        const select = { id: true, name: true, logo: true, status: true, monthlyRate: true, paymentDay: true } as const;
+        const toRow = (c: { id: string; name: string; status: string; monthlyRate: number; paymentDay: number | null }) => ({
+          clientId: c.id,
+          nombre: c.name,
+          estado: c.status,
+          ...(user.role === "ADMIN" && { tarifaMensual: c.monthlyRate, diaDePago: c.paymentDay }),
+        });
+
+        if (nombre?.trim()) {
+          // Pocos clientes: se comparan todos en memoria con búsqueda tolerante.
+          const all = await db.client.findMany({ where: estado ? { status: estado } : {}, select });
+          const matches = fuzzyMatch(nombre, all);
+          // Los inactivos solo aparecen si no hay ningún activo parecido.
+          const active = matches.filter((c) => c.status !== "INACTIVE");
+          const found = (active.length ? active : matches).slice(0, 8);
+          return {
+            total: found.length,
+            mostrando: found.length,
+            logos: logosOf(found),
+            clientes: found.map(toRow),
+            ...(found.length > 1 && found[0].score - found[1].score < 0.05
+              ? { nota: "Varios nombres parecidos: pregunta cuál es." }
+              : {}),
+            ...(found.length === 0 && { nota: "Ningún cliente se parece; pide que lo deletree o lista los clientes." }),
+          };
+        }
+
+        const where = estado ? { status: estado } : { status: { not: "INACTIVE" } };
         const [total, clients] = await Promise.all([
           db.client.count({ where }),
-          db.client.findMany({
-            where,
-            select: { id: true, name: true, logo: true, status: true, monthlyRate: true, paymentDay: true },
-            orderBy: { name: "asc" },
-            take: MAX_ROWS,
-          }),
+          db.client.findMany({ where, select, orderBy: { name: "asc" }, take: MAX_ROWS }),
         ]);
         return {
           total,
           mostrando: clients.length,
           logos: logosOf(clients),
-          clientes: clients.map((c) => ({
-            clientId: c.id,
-            nombre: c.name,
-            estado: c.status,
-            ...(user.role === "ADMIN" && { tarifaMensual: c.monthlyRate, diaDePago: c.paymentDay }),
-          })),
+          clientes: clients.map(toRow),
         };
       },
     }),
@@ -130,12 +145,13 @@ export function buildAssistantTools(user: AssistantUser) {
         "Busca miembros del equipo por nombre. Úsala para obtener el userId (honorarios, asignar tareas).",
       inputSchema: z.object({ nombre: z.string().optional() }),
       execute: async ({ nombre }) => {
-        const users = await db.user.findMany({
-          where: nombre ? { name: { contains: nombre, mode: "insensitive" } } : {},
+        const all = await db.user.findMany({
           select: { id: true, name: true, specialty: true, roleCode: true, baseSalary: true },
           orderBy: { name: "asc" },
-          take: MAX_ROWS,
         });
+        const users = nombre?.trim()
+          ? fuzzyMatch(nombre, all.map((u) => ({ ...u, name: u.name ?? "" }))).slice(0, 8)
+          : all.slice(0, MAX_ROWS);
         return users.map((u) => ({
           userId: u.id,
           nombre: u.name,
