@@ -319,7 +319,10 @@ function buildSignedInfo(
         .ele("ds:DigestValue").txt(documentDigest).up()
       .up()
       // Reference a SignedProperties
-      .ele("ds:Reference", { URI: `#${signedPropertiesId}` })
+      .ele("ds:Reference", {
+        URI: `#${signedPropertiesId}`,
+        Type: "http://uri.etsi.org/01903#SignedProperties",
+      })
         .ele("ds:DigestMethod", { Algorithm: "http://www.w3.org/2000/09/xmldsig#sha1" }).up()
         .ele("ds:DigestValue").txt(signedPropertiesDigest).up()
       .up()

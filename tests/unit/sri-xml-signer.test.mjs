@@ -56,11 +56,15 @@ test("firma un XML sintético y verifica SignedInfo, el digest de factura y la r
   const signature = document.getElementsByTagNameNS("http://www.w3.org/2000/09/xmldsig#", "Signature")[0];
   const signedInfo = document.getElementsByTagNameNS("http://www.w3.org/2000/09/xmldsig#", "SignedInfo")[0];
   const signedProperties = document.getElementsByTagNameNS("http://uri.etsi.org/01903/v1.3.2#", "SignedProperties")[0];
+  const signedPropertiesReference = Array.from(
+    document.getElementsByTagNameNS("http://www.w3.org/2000/09/xmldsig#", "Reference")
+  ).find((reference) => reference.getAttribute("URI") === "#Signature1-SignedProperties");
 
   assert.ok(signatureValue);
   assert.ok(signature);
   assert.ok(signedInfo);
   assert.ok(signedProperties);
+  assert.equal(signedPropertiesReference?.getAttribute("Type"), "http://uri.etsi.org/01903#SignedProperties");
   const exclusiveCanonicalizer = new ExclusiveCanonicalization();
   const inclusiveCanonicalizer = new C14nCanonicalization();
   const canonicalSignedInfo = exclusiveCanonicalizer.process(signedInfo, {});

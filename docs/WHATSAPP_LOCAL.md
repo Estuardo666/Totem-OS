@@ -171,7 +171,8 @@ cambio.
   el XMLDSig completo del fixture. Detectó y corrigió que el
   digest XAdES se calculaba sobre el `ds:Object` entero mientras `URI` apuntaba
   al elemento `xades:SignedProperties`. [ETSI TS 101 903](https://www.etsi.org/deliver/etsi_ts/101900_101999/101903/01.04.02_60/ts_101903v010402p.pdf)
-  exige cubrir `SignedProperties` con un `ds:Reference`, y [XMLDSig](https://www.w3.org/TR/2002/REC-xmldsig-core-20020212/)
+  exige cubrir `SignedProperties` con un `ds:Reference` cuyo `Type` sea
+  `http://uri.etsi.org/01903#SignedProperties`, y [XMLDSig](https://www.w3.org/TR/2002/REC-xmldsig-core-20020212/)
   calcula cada digest sobre el dato resuelto y transformado de su referencia.
 - Se usa `xml-crypto` para Exclusive C14N en `SignedInfo` y la factura; como la
   referencia a `SignedProperties` no declara transforms, su digest usa el
