@@ -141,7 +141,7 @@ Clínica X respondió "perfecto 👍" al video "Rematch – Tu be".
 
 ## 6. Fase 0 — Preparación
 
-- [ ] `git pull`; rama `feat/whatsapp-bot`.
+- [x] `git pull --ff-only origin main` (`Already up to date`); rama `feat/whatsapp-bot`.
 - [ ] Leer: `prisma/schema.prisma`, `src/actions/notification-actions.ts`, `src/lib/shooting-notifications.ts`, `src/lib/shooting-service.ts`, `src/lib/finance-cobranza-service.ts`, `src/lib/content-review.ts`, `src/lib/client-matcher.ts`, `src/lib/cron-auth.ts`, `src/lib/roles.ts`, `src/lib/assistant/*`, `worker/*`, `CRONS.md`, rutas en `src/app/api/cron/*`.
 - [x] Verificar accesos: Hostinger API, Vercel CLI y `gh` autenticados; SSH autentica pero la sesión remota no ofrece shell (ver §19).
 - [ ] **Por SSH**: `date`, `cat /etc/timezone || timedatectl` → anotar zona horaria del servidor (resuelve la duda de crons sin preguntar). `node -v` en `/opt/alt/alt-nodejs22/root/bin/node`.
