@@ -15,6 +15,7 @@ import { useWhatsAppAuthState } from "./auth-store";
 import { acquireWhatsAppLock, refreshWhatsAppLock, releaseWhatsAppLock } from "./lock";
 import { startHealthServer, type WhatsAppHealthState } from "./health";
 import { matchesExpectedWhatsAppIdentity } from "./pairing-guard";
+import { shouldStartSRIWorker } from "./sri-start-policy";
 
 const INSTANCE_ID = `${process.env.WA_INSTANCE_ID ?? "totem"}:${randomUUID()}`;
 // Connecting to WhatsApp requires the explicit production opt-in WA_DISABLED=0.
@@ -44,7 +45,7 @@ let freshQrReconnectAttempted = false;
 type OwnerNotificationEvent = "QR_REQUIRED" | "LOGGED_OUT";
 
 export async function startWhatsAppWorker() {
-  if (!PAIRING_ONLY && process.env.SRI_ENABLED === "1") {
+  if (shouldStartSRIWorker({ sriEnabled: process.env.SRI_ENABLED, pairingOnly: PAIRING_ONLY })) {
     const { startSRIWorker } = await import("../index");
     void startSRIWorker().catch(() => undefined);
   }

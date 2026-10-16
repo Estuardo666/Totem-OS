@@ -16,6 +16,14 @@ import { generateScopedReply } from "../../worker/whatsapp/ai-scope.ts";
 import { buildQuotedWhatsAppMessage } from "../../worker/whatsapp/quoted-message.ts";
 import { proto } from "../../worker/node_modules/@whiskeysockets/baileys/lib/index.js";
 import { startHealthServer } from "../../worker/whatsapp/health.ts";
+import { shouldStartSRIWorker } from "../../worker/whatsapp/sri-start-policy.ts";
+
+test("SRI_ENABLED gobierna SRI independientemente de WA_PAIRING_ONLY", () => {
+  assert.equal(shouldStartSRIWorker({ sriEnabled: "1", pairingOnly: true }), true);
+  assert.equal(shouldStartSRIWorker({ sriEnabled: "1", pairingOnly: false }), true);
+  assert.equal(shouldStartSRIWorker({ sriEnabled: "0", pairingOnly: true }), false);
+  assert.equal(shouldStartSRIWorker({ sriEnabled: undefined, pairingOnly: true }), false);
+});
 
 test("normaliza los cinco nombres de video del plan", () => {
   const fixtures = [
