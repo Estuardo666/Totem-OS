@@ -127,10 +127,30 @@ al panel autenticado; el token QR nunca se envía en esos mensajes.
 
 El worker remoto está en Hostinger con WhatsApp desactivado y una base de staging
 separada. Siguen pendientes las 48–72 h de estabilidad, desplegar el panel y el
-puente backend, instalar crons y cualquier activación de mensajes. El build
-reportó 5 vulnerabilidades en dependencias (3 moderadas y 2 altas; `node-forge`
-no tiene arreglo automático disponible). Mantener el worker desactivado hasta
-revisarlas. AUTO, SRI y crons de correo permanecen desactivados.
+puente backend, instalar crons y cualquier activación de mensajes. AUTO, SRI y
+crons de correo permanecen desactivados. El staging de Hostinger sigue con el
+paquete anterior; aún no se ha reconstruido con `b5fc503`.
+
+### Dependencias auditadas
+
+`npm audit --omit=dev` del worker reportaba 5 paquetes. Con `xmlbuilder2@^4`
+(`b5fc503`) desaparecen `js-yaml@3`, `argparse` y `sprintf-js`; queda solo
+`node-forge@1.4.0`.
+
+**Excepción temporal: `node-forge` (GHSA-86w9-cpqp-85rv, alta).**
+
+- El aviso afecta la *verificación* de firmas RSA PKCS#1 v1.5 y no tiene versión
+  corregida. `src/lib/sri/xml-signer.ts` solo parsea el `.p12`, calcula hashes y
+  firma; no llama a ninguna API de verificación de node-forge.
+- `node:crypto` no sustituye a node-forge por completo: no lee PKCS#12, así que
+  seguiría haciendo falta un parser de `.p12`.
+- Vigencia: hasta el **2026-11-16** o hasta que exista versión corregida, lo
+  que ocurra antes. Revisar entonces el aviso de nuevo.
+- Condición: SRI sigue desactivado hasta probar el parseo del `.p12` y la firma
+  con un fixture, y validarlos en el ambiente de pruebas del SRI con facturas
+  reales.
+- Si la política exige limpiar el hallazgo, evaluar como cambio aparte un parser
+  P12 mantenido o una extracción basada en OpenSSL.
 
 Hostinger vence el **2026-11-16** según el plan. La zona horaria, alertas y
 capacidad real de hosting no se han vuelto a verificar en esta ejecución local.
