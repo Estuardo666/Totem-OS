@@ -208,7 +208,9 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
 
     const exception = exceptionsByClient.get(client.id);
     const closure = closuresByClient.get(client.id);
-    if (!closure) {
+    // Un mes exonerado o marcado como pagado ya está decidido: no queda pendiente.
+    const decidedByException = exception?.type === "SKIP" || exception?.type === "MARK_AS_PAID";
+    if (!closure && !decidedByException) {
       pendingClosureClients.push({
         id: client.id,
         name: client.name,
