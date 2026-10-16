@@ -310,7 +310,15 @@ export function buildAssistantTools(user: AssistantUser) {
           periodo: s.periodLabel,
           esMesEnCurso: s.period.isCurrentMonth,
           ejecutivo: s.executive,
-          cierresPendientes: { cantidad: s.closureControl.pendingCount, monto: s.closureControl.pendingAmount },
+          cierresPendientes: {
+            cantidad: s.closureControl.pendingCount,
+            monto: s.closureControl.pendingAmount,
+            // Clientes recurrentes cuyo mes aún no se cerró (sin cobro ni factura registrados).
+            clientes: s.closureControl.pendingClients.map((c) => ({ cliente: c.name, tarifa: c.monthlyRate })),
+          },
+          logos: Object.fromEntries(
+            s.closureControl.pendingClients.filter((c) => c.logo).map((c) => [c.name, c.logo as string])
+          ),
           alertas: (s.alerts ?? []).map((a) => `${a.title}: ${a.description}`),
         };
       },

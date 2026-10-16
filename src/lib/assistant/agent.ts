@@ -21,6 +21,8 @@ export interface AgentDraft {
 export interface AgentTurn {
   text: string;
   drafts: AgentDraft[];
+  /** Nombre de cliente → logo, para mostrarlo junto al nombre en la transcripción. */
+  logos: Record<string, string>;
 }
 
 export async function runAssistantTurn(
@@ -40,14 +42,16 @@ export async function runAssistantTurn(
   });
 
   const drafts: AgentDraft[] = [];
+  const logos: Record<string, string> = {};
   for (const step of result.steps) {
     for (const r of step.toolResults) {
-      const out = r.output as Partial<AgentDraft> & { status?: string };
+      const out = r.output as Partial<AgentDraft> & { status?: string; logos?: Record<string, string> };
+      if (out?.logos) Object.assign(logos, out.logos);
       if (out?.status === "requires_confirmation" && out.draftToken && out.action && out.summary) {
         drafts.push({ action: out.action, summary: out.summary, draftToken: out.draftToken });
       }
     }
   }
 
-  return { text: result.text.trim(), drafts };
+  return { text: result.text.trim(), drafts, logos };
 }

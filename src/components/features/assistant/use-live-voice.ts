@@ -67,6 +67,8 @@ export function useLiveVoice() {
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
   const [drafts, setDrafts] = useState<DraftEntry[]>([]);
+  // Logos de los clientes que aparecieron en las respuestas del pensador.
+  const [logos, setLogos] = useState<Record<string, string>>({});
 
   const sessionRef = useRef<Session | null>(null);
   // OpenAI Realtime (WebRTC): conexión, canal de eventos y audio remoto.
@@ -235,6 +237,7 @@ export function useLiveVoice() {
       const data = (await res.json()) as AgentTurn & { error?: string };
       if (!res.ok || data.error) return { error: data.error ?? "No pude consultar" };
       historyRef.current = [...historyRef.current, { role: "assistant" as const, content: data.text }].slice(-12);
+      if (data.logos && Object.keys(data.logos).length) setLogos((prev) => ({ ...prev, ...data.logos }));
       if (data.drafts.length) {
         updateDrafts((prev) => [
           ...prev.map((d) => (d.state === "pending" ? { ...d, state: "cancelled" as const } : d)),
@@ -479,6 +482,7 @@ export function useLiveVoice() {
   /** Borra la conversación de voz (transcripción, borradores e historial). */
   const reset = useCallback(() => {
     setTranscript([]);
+    setLogos({});
     updateDrafts(() => []);
     historyRef.current = [];
     setError(null);
@@ -627,5 +631,5 @@ export function useLiveVoice() {
     return Math.min(1, Math.sqrt(sum / buf.length) * 4);
   }, []);
 
-  return { status, error, transcript, drafts, start, stop, reset, prefetchToken, confirmDraft, cancelDraft, getInputLevel };
+  return { status, error, transcript, drafts, logos, start, stop, reset, prefetchToken, confirmDraft, cancelDraft, getInputLevel };
 }

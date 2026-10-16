@@ -8,6 +8,45 @@ import { Keyboard, Loader2, Mic, MicOff, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AssistantChat, Avatar } from "./assistant-chat";
 import { type DraftEntry, type VoiceStatus, useLiveVoice } from "./use-live-voice";
+import { spokenNumbersToDigits } from "@/lib/assistant/spoken-numbers";
+
+const ACCENTS: Record<string, string> = { a: "aáàä", e: "eéèë", i: "iíìï", o: "oóòö", u: "uúùü", n: "nñ" };
+
+/** Regex que encuentra el nombre sin importar tildes ni mayúsculas. */
+function nameRegex(name: string) {
+  const body = [...name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()]
+    .map((ch) => (ACCENTS[ch] ? `[${ACCENTS[ch]}]` : ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))
+    .join("");
+  return body;
+}
+
+/** Texto de la voz con cifras en números y el logo del cliente junto a su nombre. */
+function SpokenText({ text, logos }: { text: string; logos: Record<string, string> }) {
+  const display = spokenNumbersToDigits(text);
+  const names = Object.keys(logos).sort((a, b) => b.length - a.length);
+  if (!names.length) return <>{display}</>;
+  const re = new RegExp(`(${names.map(nameRegex).join("|")})`, "gi");
+  const strip = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return (
+    <>
+      {display.split(re).map((part, i) => {
+        const name = i % 2 === 1 ? names.find((n) => strip(n) === strip(part)) : undefined;
+        if (!name) return <span key={i}>{part}</span>;
+        return (
+          <span key={i} className="whitespace-nowrap font-semibold">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={logos[name]}
+              alt=""
+              className="mr-1 inline-block h-[1.15em] w-[1.15em] -translate-y-px rounded-full object-cover ring-1 ring-black/5 align-middle"
+            />
+            {part}
+          </span>
+        );
+      })}
+    </>
+  );
+}
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const EASE_DRAWER = [0.32, 0.72, 0, 1] as const;
@@ -155,7 +194,7 @@ function VoiceView({
   onToggle: () => void;
   orbRef: React.RefObject<HTMLButtonElement | null>;
 }) {
-  const { status, error, transcript, drafts, confirmDraft, cancelDraft } = voice;
+  const { status, error, transcript, drafts, logos, confirmDraft, cancelDraft } = voice;
   const live = status !== "idle" && status !== "error";
   const bottomRef = useRef<HTMLDivElement>(null);
   
@@ -227,7 +266,7 @@ function VoiceView({
                       : "rounded-bl-md bg-muted/70 text-foreground"
                   )}
                 >
-                  {line.text}
+                  {line.role === "assistant" ? <SpokenText text={line.text} logos={logos} /> : line.text}
                 </p>
               </motion.div>
             ))}

@@ -26,6 +26,8 @@ REGLA CRÍTICA: llama a "asistente" EN ESE MISMO TURNO, de inmediato. No anuncie
 
 Solo pide confirmación cuando el asistente prepare un borrador (crear un gasto, tarea u honorario); en consultas simplemente responde y, si aporta, ofrece más detalle. Cuando haya un borrador, pregunta si lo confirmas. Solo si el usuario dice claramente que sí, llama a "confirmar". Si dice que no o quiere cambiar algo, llama a "cancelar" (y si quiere cambios, vuelve a llamar a "asistente" con la corrección). Nunca digas que algo quedó guardado hasta que "confirmar" responda con éxito.
 
+Al decir montos di siempre "dólares" (por ejemplo "ciento veinte dólares"). Si hablas de un cierre pendiente, una deuda o un cobro, di de qué cliente es.
+
 Saludos y charla trivial puedes responderlos sin herramientas.`;
 }
 

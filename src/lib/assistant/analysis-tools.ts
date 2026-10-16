@@ -307,6 +307,48 @@ export function buildAnalysisTools(user: AssistantUser) {
       },
     }),
 
+    utilidadesAcumuladas: tool({
+      description:
+        "Fondo de utilidades acumuladas (dinero apartado de caja y repartido 50/50 entre los socios a fin de año): saldo actual, total aportado, total retirado, cuánto le toca a cada socio y últimos movimientos. Úsala para '¿cuánto hay de utilidades?' o 'utilidades acumuladas'. Solo admin.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const denied = adminOnly(user);
+        if (denied) return denied;
+        const [byType, last, movements] = await Promise.all([
+          db.emergencyFundMovement.groupBy({ by: ["type"], _sum: { amount: true }, _count: true }),
+          db.emergencyFundMovement.findFirst({ orderBy: { createdAt: "desc" }, select: { balanceAfter: true } }),
+          db.emergencyFundMovement.findMany({
+            orderBy: { createdAt: "desc" },
+            take: 8,
+            select: {
+              type: true, amount: true, balanceAfter: true, year: true, month: true, reason: true, createdAt: true,
+              authorizedBy: { select: { name: true } },
+            },
+          }),
+        ]);
+        const sumOf = (type: string) => byType.find((t) => t.type === type);
+        const balance = last?.balanceAfter ?? 0;
+        return {
+          saldoActual: round(balance),
+          totalAportado: round(sumOf("CONTRIBUTION")?._sum.amount ?? 0),
+          aportes: sumOf("CONTRIBUTION")?._count ?? 0,
+          totalRetirado: round(sumOf("WITHDRAWAL")?._sum.amount ?? 0),
+          retiros: sumOf("WITHDRAWAL")?._count ?? 0,
+          porSocio: round(balance / 2),
+          reparto: "50/50 entre los socios, a fin de año",
+          movimientos: movements.map((m) => ({
+            fecha: m.createdAt.toISOString().slice(0, 10),
+            tipo: m.type === "CONTRIBUTION" ? "aporte" : "retiro",
+            monto: round(m.amount),
+            saldoDespues: round(m.balanceAfter),
+            mes: `${m.year}-${String(m.month).padStart(2, "0")}`,
+            motivo: m.reason,
+            autorizadoPor: m.authorizedBy?.name ?? null,
+          })),
+        };
+      },
+    }),
+
     metricasContenido: tool({
       description:
         "Rendimiento en redes de lo publicado en un mes: vistas, alcance, likes, guardados, conversiones y ventas, con las piezas top. Opcional por cliente. Úsala para análisis de métricas de contenido.",
