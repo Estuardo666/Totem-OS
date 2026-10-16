@@ -17,6 +17,24 @@ import { buildQuotedWhatsAppMessage } from "../../worker/whatsapp/quoted-message
 import { proto } from "../../worker/node_modules/@whiskeysockets/baileys/lib/index.js";
 import { startHealthServer } from "../../worker/whatsapp/health.ts";
 import { shouldStartSRIWorker } from "../../worker/whatsapp/sri-start-policy.ts";
+import { getWhatsAppPairingPolicy } from "../../worker/whatsapp/pairing-policy.ts";
+
+test("WA_PAIRING_ONLY bloquea inbound, grupos, notificaciones y automatizaciones", () => {
+  assert.deepEqual(getWhatsAppPairingPolicy(true), {
+    registerInboundHandlers: false,
+    notifyOwner: false,
+    syncGroups: false,
+    recoverSendingMessages: false,
+    runMessageAutomation: false,
+  });
+  assert.deepEqual(getWhatsAppPairingPolicy(false), {
+    registerInboundHandlers: true,
+    notifyOwner: true,
+    syncGroups: true,
+    recoverSendingMessages: true,
+    runMessageAutomation: true,
+  });
+});
 
 test("SRI_ENABLED gobierna SRI independientemente de WA_PAIRING_ONLY", () => {
   assert.equal(shouldStartSRIWorker({ sriEnabled: "1", pairingOnly: true }), true);

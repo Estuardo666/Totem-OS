@@ -15,12 +15,14 @@ import { useWhatsAppAuthState } from "./auth-store";
 import { acquireWhatsAppLock, refreshWhatsAppLock, releaseWhatsAppLock } from "./lock";
 import { startHealthServer, type WhatsAppHealthState } from "./health";
 import { matchesExpectedWhatsAppIdentity } from "./pairing-guard";
+import { getWhatsAppPairingPolicy } from "./pairing-policy";
 import { shouldStartSRIWorker } from "./sri-start-policy";
 
 const INSTANCE_ID = `${process.env.WA_INSTANCE_ID ?? "totem"}:${randomUUID()}`;
 // Connecting to WhatsApp requires the explicit production opt-in WA_DISABLED=0.
 const DISABLED = process.env.WA_DISABLED !== "0";
 const PAIRING_ONLY = process.env.WA_PAIRING_ONLY === "1";
+const PAIRING_POLICY = getWhatsAppPairingPolicy(PAIRING_ONLY);
 const state: WhatsAppHealthState = { connected: false, connectedId: null, qr: null, startedAt: new Date(), lastHeartbeatAt: null, disabled: DISABLED, lockHeld: false, pairingOnly: PAIRING_ONLY };
 const server = startHealthServer(state);
 let running = true;
@@ -49,7 +51,7 @@ export async function startWhatsAppWorker() {
     const { startSRIWorker } = await import("../index");
     void startSRIWorker().catch(() => undefined);
   }
-  if (!PAIRING_ONLY) await recoverStaleSendingMessages();
+  if (PAIRING_POLICY.recoverSendingMessages) await recoverStaleSendingMessages();
   while (running) {
     try {
       if (!state.lockHeld) {
@@ -106,7 +108,7 @@ async function connectWhatsApp() {
   }
   connecting = false;
   wa.ev.on("creds.update", saveCreds);
-  if (!PAIRING_ONLY) {
+  if (PAIRING_POLICY.registerInboundHandlers) {
     wa.ev.on("messages.upsert", ({ messages, type }) => {
       if (type === "notify") void handleMessagesUpsert(messages).catch(() => undefined);
     });
@@ -117,7 +119,7 @@ async function connectWhatsApp() {
     if (qr) {
       state.qr = qr;
       await recordWhatsAppEvent({ type: "CONNECTION", payload: { state: "QR_PENDING" } });
-      if (!PAIRING_ONLY && !qrOwnerNotified) {
+      if (PAIRING_POLICY.notifyOwner && !qrOwnerNotified) {
         qrOwnerNotified = true;
         if (!loggedOutOwnerNotified) await notifyOwner("QR_REQUIRED");
       }
@@ -143,7 +145,7 @@ async function connectWhatsApp() {
       loggedOutOwnerNotified = false;
       freshQrReconnectAttempted = false;
       await recordWhatsAppEvent({ type: "CONNECTION", payload: { state: "CONNECTED" } });
-      if (!PAIRING_ONLY) void ensureWhatsAppTestGroup(wa).then(() => syncWhatsAppGroups(wa)).then(() => { lastGroupSync = Date.now(); }).catch(() => undefined);
+      if (PAIRING_POLICY.syncGroups) void ensureWhatsAppTestGroup(wa).then(() => syncWhatsAppGroups(wa)).then(() => { lastGroupSync = Date.now(); }).catch(() => undefined);
     }
     if (connection === "close") {
       state.connected = false;
@@ -162,7 +164,7 @@ async function connectWhatsApp() {
       if (statusCode === DisconnectReason.loggedOut) {
         reconnectBlocked = true;
         state.qr = null;
-        if (!loggedOutOwnerNotified) {
+        if (PAIRING_POLICY.notifyOwner && !loggedOutOwnerNotified) {
           loggedOutOwnerNotified = true;
           await notifyOwner("LOGGED_OUT");
         }
@@ -243,10 +245,10 @@ async function runMaintenance() {
       if (!(await assertCurrentLock())) return;
       lastLockRefresh = Date.now();
     }
-    if (PAIRING_ONLY) return;
+    if (!PAIRING_POLICY.runMessageAutomation) return;
     await expireStaleData();
     if (!DISABLED && state.connected && socket) {
-      if (Date.now() - lastGroupSync >= 6 * 60 * 60 * 1000) {
+      if (PAIRING_POLICY.syncGroups && Date.now() - lastGroupSync >= 6 * 60 * 60 * 1000) {
         await syncWhatsAppGroups(socket);
         lastGroupSync = Date.now();
       }
