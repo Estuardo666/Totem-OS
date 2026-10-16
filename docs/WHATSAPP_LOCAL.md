@@ -10,12 +10,15 @@ worker local está detenido.
 El worker de staging está desplegado en
 <https://palevioletred-viper-585081.hostingersite.com>, desde un artefacto de
 `feat/whatsapp-bot` sin push. Usa una base Neon separada
-`totem_whatsapp_staging` y `WA_DISABLED=1`, `WA_PAIRING_ONLY=1`, `SRI_ENABLED=0`;
-`WA_HEALTH_TOKEN` está configurado como secreto del servicio.
-`/health/live` y `/health` responden 200 como disabled; el QR sin autorización
-responde 401. La base de staging registra solo latidos de conexión: cero grupos,
-entradas, mensajes, eventos de sincronización de grupos o envíos. Así, el
-staging no accede a la sesión ni a los grupos de producción.
+`totem_whatsapp_staging`; las claves `WA_DISABLED`, `WA_PAIRING_ONLY`,
+`SRI_ENABLED` y `WA_HEALTH_TOKEN` están configuradas, aunque Hostinger enmascara
+los valores y no permite verificar por API el valor efectivo de `SRI_ENABLED`.
+El build actual es `01a146f5-2e74-7154-b4ca-9ffd1fbcf563`. La comprobación tras
+el rebuild obtuvo `/health` HTTP 200 con `disabled=true`, `pairingOnly=true` y
+`connected=false`; el cron respondió `HEALTH_OK`. La base de staging registra
+solo latidos de conexión: cero grupos, entradas, mensajes, eventos de
+sincronización de grupos o envíos. Así, el staging no accede a la sesión ni a
+los grupos de producción.
 
 La migración aditiva de producción se probó con PostgreSQL aislado y se aplicó
 en Neon tras confirmar que era la única migración pendiente y que las columnas
@@ -40,8 +43,10 @@ dos recordatorios, omitir fines de semana, 08:00 Ecuador y sin montos en grupos.
 - H1: dueño y Paty configurados con opt-in; Paty tiene horario L–V. Hostinger se renovará. Daniela sigue sin teléfono ni opt-in; Paty podrá registrar sus fechas mediante el horario `dates`.
 
 Las salidas están en `reports/whatsapp-*.log`. La captura del panel es
-`reports/whatsapp-admin-local.png`. La vinculación sí fue real; los smokes
-locales de QR y Docker no sustituyen la estabilidad prolongada del worker remoto.
+`reports/whatsapp-admin-local.png`. La vinculación sí fue real. El dueño eximió
+las esperas de estabilidad remota de 48/72 h por confianza en Hostinger; el
+smoke posterior al rebuild confirma el arranque y la salud en ese momento, no
+estabilidad prolongada ni reconexión tras reinicio.
 La base aislada quedó con fixtures iniciales. La sesión de WhatsApp permanece
 persistida en Neon y la configuración de producción conserva la pausa global,
 el gate de clientes apagado y el número verificado del bot.
@@ -128,14 +133,19 @@ Pusher/Web Push. El worker requiere `TOTEM_API_URL` y la misma
 al panel autenticado; el token QR nunca se envía en esos mensajes.
 
 El worker remoto está en Hostinger con WhatsApp desactivado y una base de staging
-separada. Se reconstruyó desde el estado con `b5fc503` en el build Hostinger
-`01a145c2-3899-71e3-847f-2e4209bac652`; `/health/live` y `/health` responden
-200 con `disabled=true`, y la base conserva cero grupos, entradas y mensajes.
-Un cron Hostinger hace `GET /health` cada minuto (UID `d6tlvmxJDl`), y su salida
-reciente fue `HEALTH_OK`. La ventana de estabilidad de 48–72 h está en curso.
-Siguen pendientes desplegar el panel y el puente backend, instalar los crons
-que llaman rutas de Vercel y cualquier activación de mensajes. AUTO, SRI y crons
-de correo permanecen desactivados.
+separada. El build actual `01a146f5-2e74-7154-b4ca-9ffd1fbcf563` se generó desde
+`totem-worker-20261016-230223.zip`, validado localmente y sin `.env`,
+`node_modules` ni `dist`; Hostinger no registra un SHA de commit para archivos.
+El build terminó el 2026-10-16 23:04:16 UTC. Tras el reinicio, la primera
+consulta inmediata dio `lock_unavailable`; unos segundos después `/health`
+respondió HTTP 200 con `disabled=true`, `pairingOnly=true`, `connected=false` y
+uptime de 27 s. El cron Hostinger `d6tlvmxJDl` respondió `HEALTH_OK`. Las claves
+de entorno siguen presentes; sus valores están enmascarados y el valor efectivo
+de `SRI_ENABLED` no pudo leerse por API. El dueño eximió las esperas de 48/72 h
+por confianza en Hostinger; no se afirma estabilidad ni reconexión probadas. La
+automatización de sondeo se eliminó. Siguen pendientes desplegar el panel y el
+puente backend, instalar los crons que llaman rutas de Vercel y cualquier
+activación de mensajes. AUTO, SRI y crons de correo permanecen desactivados.
 
 ### Dependencias auditadas
 
