@@ -143,11 +143,26 @@ de correo permanecen desactivados.
 (`b5fc503`) desaparecen `js-yaml@3`, `argparse` y `sprintf-js`; queda solo
 `node-forge@1.4.0`.
 
-**Excepción temporal: `node-forge` (GHSA-86w9-cpqp-85rv, alta).**
+La auditoría de producción de la aplicación raíz también reportaba alertas con
+corrección disponible. `npm audit fix` actualizó el lockfile dentro de los
+rangos declarados (`next@15.5.28`, `axios@1.20.0`, `sharp@0.35.5`,
+`@xmldom/xmldom@0.8.15` y `source-map-js@1.2.2`). Después del cambio,
+`npm audit --omit=dev` en la raíz y el worker deja solo `node-forge`.
+
+La auditoría completa de la raíz todavía informa alertas de dependencias de
+desarrollo bajo Tailwind CSS 3 (`braces` y `postcss-selector-parser`, entre
+otras dependencias encadenadas). npm propone `tailwindcss@4.3.3` con
+`--force`, lo que sería una migración mayor; no se forzó como parte de este
+cambio.
+
+**Excepción temporal: `node-forge` (GHSA-86w9-cpqp-85rv / CVE-2026-85393, alta).**
 
 - El aviso afecta la *verificación* de firmas RSA PKCS#1 v1.5 y no tiene versión
   corregida. `src/lib/sri/xml-signer.ts` solo parsea el `.p12`, calcula hashes y
   firma; no llama a ninguna API de verificación de node-forge.
+- Revisión del 2026-10-16: el advisory sigue sin versión parcheada y el [PR
+  upstream #1152](https://github.com/digitalbazaar/forge/pull/1152) continúa
+  abierto.
 - `node:crypto` no sustituye a node-forge por completo: no lee PKCS#12, así que
   seguiría haciendo falta un parser de `.p12`.
 - Vigencia: hasta el **2026-11-16** o hasta que exista versión corregida, lo
