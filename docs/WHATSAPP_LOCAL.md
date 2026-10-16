@@ -1,7 +1,8 @@
 # Totem Bot: implementación y pruebas locales
 
-La implementación está en la rama local `feat/whatsapp-bot`; commits locales
-`4d7073a` y `3b8f2a0`. No se hizo push a `main`, PR ni merge. El número del bot
+La implementación está en la rama local `feat/whatsapp-bot`; los commits de
+implementación incluyen `4d7073a`, `3b8f2a0`, `24552bb` y `b5fc503`. No se hizo
+push a `main`, PR ni merge. El número del bot
 se vinculó y su identidad quedó verificada. La sesión persiste en la base de
 producción; allí se mantiene la pausa global y los clientes bloqueados, y el
 worker local está detenido.
@@ -9,7 +10,8 @@ worker local está detenido.
 El worker de staging está desplegado en
 <https://palevioletred-viper-585081.hostingersite.com>, desde un artefacto de
 `feat/whatsapp-bot` sin push. Usa una base Neon separada
-`totem_whatsapp_staging` y `WA_DISABLED=1`, `WA_PAIRING_ONLY=1`, `SRI_ENABLED=0`.
+`totem_whatsapp_staging` y `WA_DISABLED=1`, `WA_PAIRING_ONLY=1`, `SRI_ENABLED=0`;
+`WA_HEALTH_TOKEN` está configurado como secreto del servicio.
 `/health/live` y `/health` responden 200 como disabled; el QR sin autorización
 responde 401. La base de staging registra solo latidos de conexión: cero grupos,
 entradas, mensajes, eventos de sincronización de grupos o envíos. Así, el
@@ -129,8 +131,10 @@ El worker remoto está en Hostinger con WhatsApp desactivado y una base de stagi
 separada. Se reconstruyó desde el estado con `b5fc503` en el build Hostinger
 `01a145c2-3899-71e3-847f-2e4209bac652`; `/health/live` y `/health` responden
 200 con `disabled=true`, y la base conserva cero grupos, entradas y mensajes.
-Siguen pendientes las 48–72 h de estabilidad, desplegar el panel y el puente
-backend, instalar crons y cualquier activación de mensajes. AUTO, SRI y crons
+Un cron Hostinger hace `GET /health` cada minuto (UID `d6tlvmxJDl`), y su salida
+reciente fue `HEALTH_OK`. La ventana de estabilidad de 48–72 h está en curso.
+Siguen pendientes desplegar el panel y el puente backend, instalar los crons
+que llaman rutas de Vercel y cualquier activación de mensajes. AUTO, SRI y crons
 de correo permanecen desactivados.
 
 ### Dependencias auditadas

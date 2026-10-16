@@ -145,8 +145,8 @@ Clínica X respondió "perfecto 👍" al video "Rematch – Tu be".
 - [ ] Leer: `prisma/schema.prisma`, `src/actions/notification-actions.ts`, `src/lib/shooting-notifications.ts`, `src/lib/shooting-service.ts`, `src/lib/finance-cobranza-service.ts`, `src/lib/content-review.ts`, `src/lib/client-matcher.ts`, `src/lib/cron-auth.ts`, `src/lib/roles.ts`, `src/lib/assistant/*`, `worker/*`, `CRONS.md`, rutas en `src/app/api/cron/*`.
 - [ ] Verificar accesos: Hostinger API (listar sitios/web apps), SSH al plan Cloud, Vercel, `gh`.
 - [ ] **Por SSH**: `date`, `cat /etc/timezone || timedatectl` → anotar zona horaria del servidor (resuelve la duda de crons sin preguntar). `node -v` en `/opt/alt/alt-nodejs22/root/bin/node`.
-- [ ] Presentar el formulario §2 (H1) y continuar con Fase 1 mientras el dueño responde.
-- [ ] Diagnóstico (solo lectura) de las 2 Web Apps con alerta roja y de `Web Checks`; anotar en §19.
+- [x] Presentar el formulario §2 (H1). Respuestas recibidas y registradas en producción el 2026-10-16.
+- [x] Diagnóstico (solo lectura) de las Web Apps con alerta roja y de `Web Checks`; resultados anotados en §19.
 
 ---
 
@@ -277,10 +277,10 @@ Campos nuevos (todos nullable o con default):
 - `GlobalConfig` (claves): `whatsapp.paused`, `whatsapp.clientsEnabled` (false), `whatsapp.ownerPhone`, `whatsapp.approvalReminderHours` (48), `whatsapp.maxApprovalReminders` (2), `whatsapp.skipWeekends` (true), `whatsapp.teamDailyHour` ("08:00"), `whatsapp.amountsInGroups` (false), `whatsapp.aiModel` (opcional, modelo económico).
 
 Tareas:
-- [ ] Migración + `prisma generate` + typecheck.
-- [ ] Aplicar en base de pruebas (`npm run db:seed:test`, `npm run test:integration`).
-- [ ] Producción: `prisma migrate deploy` (pre-autorizado si es aditiva).
-- [ ] Cargar teléfonos del formulario H1 en `User`/`GlobalConfig`.
+- [x] Migración + `prisma generate` + typecheck.
+- [x] Aplicar en base de pruebas (`npm run db:seed:test`, `npm run test:integration`).
+- [x] Producción: `prisma migrate deploy` (solo migración aditiva; ver §19).
+- [x] Cargar teléfonos y configuración H1 en `User`/`GlobalConfig`.
 
 ---
 
@@ -331,9 +331,9 @@ Para que el dueño pueda revisar sin tocar nada si no quiere:
 ## 10. Fase 4 — Despliegue y vinculación
 
 ### 10.1 Hostinger Web App (agente)
-- [ ] Crear Web App Node.js **`totem-worker`** en FM Cloud (subdominio Hostinger). No tocar otras.
-- [ ] Origen GitHub, rama `feat/whatsapp-bot` para pruebas (luego `main`), root `worker/`, build `npm ci && npm run build:wa`, start `npm run start:wa`, Node 22, escuchar en `process.env.PORT`.
-- [ ] Env vars en el panel: `DATABASE_URL`, `WA_HEALTH_TOKEN` (generar aleatorio), `WA_INSTANCE_ID=hostinger`, `WA_DISABLED=1`, `TOTEM_API_URL`, claves IA si no se leen de `GlobalConfig`.
+- [x] Crear una Web App Node.js de staging en un subdominio Hostinger nuevo. No tocar otras.
+- [x] Desplegar un ZIP creado localmente desde `feat/whatsapp-bot` (sin push), con root `worker/`, build `build:wa:hostinger`, Node 22 y entry `dist/whatsapp/index.js`.
+- [x] Configurar base Neon separada, `WA_DISABLED=1`, `WA_PAIRING_ONLY=1`, `SRI_ENABLED=0`, `WA_HEALTH_TOKEN` y `WA_INSTANCE_ID` de staging. El puente de notificaciones no se configura mientras el worker esté desactivado.
 - [ ] **Prueba de estabilidad 48 h con `WA_DISABLED=1`** (en paralelo seguir con Fases 5–8 en código). Criterio: ≤ 2 reinicios/día y ninguna caída > 5 min.
 - [ ] Si no pasa → desplegar el mismo código en **Render Free Web Service** (pre-autorizado), con ping desde cron de Hostinger. Si Render tampoco pasa → H5 (Oracle) y `scripts/provision-oracle.sh`.
 
@@ -347,7 +347,7 @@ Para que el dueño pueda revisar sin tocar nada si no quiere:
 
 | Cron | Hora Ecuador |
 |---|---|
-| Ping `/health` (keep-alive + watchdog) | cada 1 min |
+| Ping staging `/health` (keep-alive) | cada 1 min, activo (Hostinger cron UID `d6tlvmxJDl`) |
 | `whatsapp-team-daily` | 08:00 |
 | `shooting-reminders-morning` | 07:00 |
 | `shooting-reminders-hourly` | cada 15 min |
@@ -356,10 +356,11 @@ Para que el dueño pueda revisar sin tocar nada si no quiere:
 | `whatsapp-watchdog` (Vercel: si `/health` falla 5 min → push al dueño) | cada 5 min |
 | `daily-digest`, `calendar-webhook-renew`, `monthly-payments`, `sync-compact` | **no** (bloqueo duro; proponer al final) |
 
-- [ ] Actualizar `CRONS.md`.
+- [x] Actualizar `CRONS.md`; por ahora solo está instalado el ping de salud del staging. Los cron jobs a rutas Vercel siguen pendientes.
 
 ### 10.3 Vinculación
-- [ ] Al pasar la prueba: `WA_DISABLED=0`, redeploy → el worker envía push al dueño con el link del QR (**H2**).
+- [x] H2: el número real se vinculó mediante QR y la identidad quedó verificada. La sesión de producción persiste en Neon; el worker de staging usa una base separada y sigue desactivado.
+- [ ] Tras la prueba de estabilidad, desplegar la ruta de aviso y probar la entrega automática del QR al dueño; no se habilita hasta resolver el gate de producción.
 - [ ] Al conectar: sync de grupos, auto-match, crear grupo **"Totem Bot – Pruebas"** con dueño + equipo (pre-autorizado), mensaje de bienvenida ahí.
 - [ ] Enviar al dueño por WhatsApp el resumen: grupos detectados, emparejados, dudosos (prompts `GROUP_MATCH`). Pedir **H3** (agregar el número a los grupos que falten).
 
@@ -494,16 +495,17 @@ En `src/lib/assistant/tools.ts`:
 ---
 
 ## 19. Bitácora del agente (rellenar)
-- **Ejecución 2026-10-16, rama local `feat/whatsapp-bot`, commit `4d7073a` más configuración H1.** Implementación validada con subagentes GPT-6 Luna high/xhigh. Sin push, PR, merge, despliegue remoto ni crons remotos.
+- **Ejecución 2026-10-16, rama local `feat/whatsapp-bot`.** Código implementado y probado localmente; commits de código `4d7073a`, `3b8f2a0`, `24552bb` y `b5fc503`. La excepción de auditoría quedó documentada en `d7a1ed2`. Sin push a `main`, PR ni merge.
 - **Zona horaria del servidor Hostinger:** no verificada. El acceso SSH `Hostinger` autentica, pero la sesión remota termina con `/sbin/nologin: No such file or directory`. No se modificó la cuenta ni se habilitó SSH. Los horarios implementados se calculan explícitamente en America/Guayaquil, sin depender del host.
-- **Estabilidad/host final:** la migración aditiva probada en PostgreSQL aislado se aplicó en Neon tras confirmar que era la única migración pendiente y que sus columnas no existían. El worker local se conectó a la sesión verificada de +593994782827 y está en modo normal con destinos de clientes bloqueados. Hostinger/Render aún no tienen un servicio del worker; faltan 48–72 horas de estabilidad en el host final.
+- **Staging Hostinger:** subdominio nuevo `palevioletred-viper-585081.hostingersite.com`, build `01a145c2-3899-71e3-847f-2e4209bac652` desde el artefacto de la rama local. Node 22, `WA_DISABLED=1`, `WA_PAIRING_ONLY=1`, `SRI_ENABLED=0`; la base `totem_whatsapp_staging` y su usuario están aislados de las tablas de producción. `/health/live` y `/health` responden 200; el audit del build deja solo `node-forge@1.4.0`. La migración aditiva de producción se probó con PostgreSQL aislado y se aplicó en Neon tras confirmar que era la única pendiente.
+- **Estabilidad:** Hostinger recibe un `GET /health` por minuto mediante un cron nuevo (UID `d6tlvmxJDl`). La salida observada es `HEALTH_OK`; la ventana de 48–72 h está en curso y todavía no se cumple el criterio de aceptación.
 - **Diagnóstico Web Apps (API, solo lectura):** mediumspringgreen-wren… tiene último build fallido; registra Node solicitado 24.19.0 frente a 24.6.0 y termina después de Prisma, sin causa final concluyente en ese log. eternavida.com.ec tiene último build fallido por Turbopack/PostCSS en `src/app/globals.css` (el proceso del loader terminó antes de conectar). novaleappediatricpt.com tiene último build completado. No se repararon ni alteraron esos sitios.
 - **Diagnóstico `Web Checks`:** el run 38877740992 de `25f5636` falla en `web-dashboard-route.test.mjs` por esperar `getTasks()` después de una optimización anterior. Se actualizó el contrato al comportamiento real, conservando la comprobación del dashboard. Lint local también estaba entrando en artefactos de `.claude/worktrees`; se excluyen. El fetch posterior funcionó: HEAD y origin/main estaban iguales antes de estos cambios.
 - **Diferencias del despliegue:** el worker se compila a un bundle independiente; necesita el checkout completo para construir (`src/`, `prisma/`, `worker/`), pero solo sus dependencias y `dist/` para ejecutar. Docker y `render.yaml` preparan el fallback gratis sin crear servicios. El QR se muestra mediante proxy ADMIN, sin enviar el token al navegador o en notificaciones. Se añadió un puente interno autenticado (`WA_WORKER_SECRET`) para conservar los avisos push/Pusher en Vercel sin arrastrar Next al worker. `/health/live` permite completar el despliegue antes del escaneo; `/health` refleja la conexión operativa.
 - **Diferencias funcionales:** recordatorio de 24 h usa la dedupe key persistente, sin agregar flags de rodaje. Una conversación posterior detiene recordatorios sin cancelar la aprobación. Se cancelan colas y decisiones obsoletas al reasignar un cliente, y las métricas de AUTO se reinician. Un envío con resultado desconocido no se reintenta automáticamente, para evitar duplicados: queda FAILED y requiere revisión; los fallos anteriores al envío conservan el límite de tres intentos.
-- **H1 recibido:** dueño Stuart +593995905100; Paty +593998813559, opt-in y horario L–V; renovación de Hostinger confirmada. Daniela no tiene teléfono ni opt-in; `dates: []` la mantiene sin avisos hasta que Paty asigne fechas específicas en Administración. Pausa desactivada para el equipo; `clientsEnabled=false`, AUTO apagado y grupos de clientes deshabilitados.
-- **Mensajes:** un saludo se envió a `Totem Bot – Pruebas`. La auditoría no encontró envíos a clientes y ningún grupo de cliente está habilitado. SRI y crons de correo siguen apagados.
-- **Rollout remoto pendiente:** desplegar el worker en Hostinger/Render con sus secretos y puente API, completar 48–72 h de estabilidad en el host definitivo, instalar los crons y desplegar el panel. Clientes, AUTO, SRI y correo siguen sujetos a sus gates; no hubo PR, merge ni push.
+- **H1 recibido:** dueño y Paty configurados con opt-in; Paty tiene horario L–V; renovación de Hostinger confirmada. Daniela no tiene teléfono ni opt-in; `dates: []` la mantiene sin avisos hasta que Paty asigne fechas específicas en Administración. En producción `whatsapp.paused=true`, `clientsEnabled=false`, AUTO apagado y grupos de clientes deshabilitados.
+- **Mensajes y grupos:** antes de la instrucción de solo vincular se envió un saludo a `Totem Bot – Pruebas`; no hubo envíos a clientes. Desde entonces los workers están desactivados y el staging no contiene grupos, entradas ni mensajes. No añadir números a grupos ni procesarlos hasta nueva instrucción.
+- **Rollout de producción pendiente:** panel y puente API aún no están desplegados; tampoco los crons de rutas Vercel. No se ha hecho push, PR ni merge. SRI permanece desactivado hasta probar la firma con facturas reales en el ambiente SRI; no está autorizada su activación de producción.
 - **Evidencia y reproducción:** `docs/WHATSAPP_LOCAL.md`, `reports/whatsapp-*.log` y captura `reports/whatsapp-admin-local.png`.
 
 ---
