@@ -37,7 +37,7 @@ export async function POST() {
       if (!key) {
         return Response.json({ error: "Falta la API key de OpenAI (OPENAI_API_KEY)." }, { status: 400 });
       }
-      const model = process.env.OPENAI_REALTIME_MODEL || DEFAULT_OPENAI_REALTIME_MODEL;
+      const model = voice.openaiModel || DEFAULT_OPENAI_REALTIME_MODEL;
       const res = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
         method: "POST",
         headers: { Authorization: `Bearer ${key.key}`, "Content-Type": "application/json" },

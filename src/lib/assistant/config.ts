@@ -25,6 +25,7 @@ import {
   DEFAULT_PROVIDER,
   DEFAULT_LIVE_VOICE,
   DEFAULT_OPENAI_VOICE,
+  DEFAULT_OPENAI_REALTIME_MODEL,
   DEFAULT_VOICE_PROVIDER,
   type VoiceProvider,
   PROVIDER_CATALOG,
@@ -136,6 +137,7 @@ export async function getAssistantModel(): Promise<
 const KEY_VOICE = "assistant.voice";
 const KEY_VOICE_PROVIDER = "assistant.voiceProvider";
 const KEY_OPENAI_VOICE = "assistant.openaiVoice";
+const KEY_OPENAI_MODEL = "assistant.openaiRealtimeModel";
 
 export interface VoiceSettings {
   voiceProvider: VoiceProvider;
@@ -143,11 +145,13 @@ export interface VoiceSettings {
   voice: string;
   /** Voz de OpenAI Realtime. */
   openaiVoice: string;
+  /** Modelo de OpenAI Realtime (mini o completo). */
+  openaiModel: string;
 }
 
 export async function getVoiceSettings(): Promise<VoiceSettings> {
   const rows = await db.globalConfig.findMany({
-    where: { key: { in: [KEY_VOICE, KEY_VOICE_PROVIDER, KEY_OPENAI_VOICE] } },
+    where: { key: { in: [KEY_VOICE, KEY_VOICE_PROVIDER, KEY_OPENAI_VOICE, KEY_OPENAI_MODEL] } },
   });
   const byKey = new Map(rows.map((r) => [r.key, r.value]));
   const provider = byKey.get(KEY_VOICE_PROVIDER);
@@ -155,6 +159,7 @@ export async function getVoiceSettings(): Promise<VoiceSettings> {
     voiceProvider: provider === "openai" || provider === "gemini" ? provider : DEFAULT_VOICE_PROVIDER,
     voice: byKey.get(KEY_VOICE) || DEFAULT_LIVE_VOICE,
     openaiVoice: byKey.get(KEY_OPENAI_VOICE) || DEFAULT_OPENAI_VOICE,
+    openaiModel: byKey.get(KEY_OPENAI_MODEL) || DEFAULT_OPENAI_REALTIME_MODEL,
   };
 }
 
@@ -163,6 +168,7 @@ export async function saveVoiceSettings(input: Partial<VoiceSettings>): Promise<
     [KEY_VOICE_PROVIDER, input.voiceProvider],
     [KEY_VOICE, input.voice],
     [KEY_OPENAI_VOICE, input.openaiVoice],
+    [KEY_OPENAI_MODEL, input.openaiModel],
   ];
   await db.$transaction(
     entries

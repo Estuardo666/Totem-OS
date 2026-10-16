@@ -19,6 +19,7 @@ import {
   DEFAULT_LIVE_VOICE,
   DEFAULT_OPENAI_VOICE,
   LIVE_VOICES,
+  OPENAI_REALTIME_MODELS,
   OPENAI_VOICES,
   VOICE_PROVIDERS,
   type VoiceProvider,
@@ -45,6 +46,7 @@ export function AssistantSettingsForm() {
   const [voice, setVoice] = useState<string>(DEFAULT_LIVE_VOICE);
   const [voiceProvider, setVoiceProvider] = useState<VoiceProvider>("gemini");
   const [openaiVoice, setOpenaiVoice] = useState<string>(DEFAULT_OPENAI_VOICE);
+  const [openaiModel, setOpenaiModel] = useState<string>(OPENAI_REALTIME_MODELS[0].id);
   const [test, setTest] = useState<{ ok: boolean; message: string } | null>(null);
   const [isTesting, startTest] = useTransition();
   const [isSaving, startSave] = useTransition();
@@ -58,6 +60,7 @@ export function AssistantSettingsForm() {
     setVoice(data.voiceSettings.voice);
     setVoiceProvider(data.voiceSettings.voiceProvider);
     setOpenaiVoice(data.voiceSettings.openaiVoice);
+    setOpenaiModel(data.voiceSettings.openaiModel);
     const known = PROVIDER_CATALOG[data.provider].models.some((m) => m.id === data.model);
     setModel(known ? data.model : CUSTOM_MODEL);
     setCustomModel(known ? "" : data.model);
@@ -70,7 +73,7 @@ export function AssistantSettingsForm() {
   const models = PROVIDER_CATALOG[provider].models;
   const resolvedModel = model === CUSTOM_MODEL ? customModel.trim() : model;
   const savedKey = settings?.keys[provider] ?? null;
-  const payload = { provider, model: resolvedModel, apiKey: apiKey.trim() || undefined, voice, voiceProvider, openaiVoice };
+  const payload = { provider, model: resolvedModel, apiKey: apiKey.trim() || undefined, voice, voiceProvider, openaiVoice, openaiModel };
 
   const onProviderChange = (value: string) => {
     const next = value as AssistantProvider;
@@ -255,6 +258,23 @@ export function AssistantSettingsForm() {
                 </Select>
               )}
             </div>
+            {voiceProvider === "openai" && (
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Modelo Realtime</Label>
+                <Select value={openaiModel} onValueChange={setOpenaiModel}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OPENAI_REALTIME_MODELS.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground sm:col-span-2">
               {voiceProvider === "openai"
                 ? "Usa OPENAI_API_KEY (de pago, sin plan gratuito). Se aplica en la próxima conversación."

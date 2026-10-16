@@ -64,7 +64,7 @@ export const DEFAULT_LIVE_VOICE = "Sulafat";
 
 export const VOICE_PROVIDERS = [
   { id: "gemini", label: "Gemini Live" },
-  { id: "openai", label: "GPT Realtime Mini" },
+  { id: "openai", label: "GPT Realtime (OpenAI)" },
 ] as const;
 export type VoiceProvider = (typeof VOICE_PROVIDERS)[number]["id"];
 export const DEFAULT_VOICE_PROVIDER: VoiceProvider = "gemini";
@@ -78,3 +78,9 @@ export const OPENAI_VOICES = [
   { id: "cedar", label: "Cedar · natural (masculina)" },
 ] as const;
 export const DEFAULT_OPENAI_VOICE = "marin";
+
+export const OPENAI_REALTIME_MODELS = [
+  { id: "gpt-realtime-mini", label: "Realtime Mini · económico" },
+  { id: "gpt-realtime-2.1", label: "Realtime 2.1 · completo" },
+] as const;
+export const DEFAULT_OPENAI_REALTIME_MODEL = "gpt-realtime-mini";

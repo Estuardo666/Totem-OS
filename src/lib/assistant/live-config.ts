@@ -11,12 +11,12 @@
  */
 
 import { Modality, type LiveConnectConfig } from "@google/genai";
-import { DEFAULT_LIVE_VOICE, DEFAULT_OPENAI_VOICE } from "./catalog";
+import { DEFAULT_LIVE_VOICE, DEFAULT_OPENAI_REALTIME_MODEL, DEFAULT_OPENAI_VOICE } from "./catalog";
 
 export { DEFAULT_LIVE_VOICE };
 
 export const DEFAULT_LIVE_MODEL = "gemini-3.8-live";
-export const DEFAULT_OPENAI_REALTIME_MODEL = "gpt-realtime-mini";
+export { DEFAULT_OPENAI_REALTIME_MODEL };
 
 export function buildVoiceInstructions(userName: string): string {
   return `Eres la voz del asistente de Totem OS, una agencia de marketing en Ecuador. Hablas español latino natural, cálido y con buena onda, como un colega (tuteo). Respuestas cortas, de 1 a 3 frases, nunca leas listas largas ni suenes a robot. Usuario: ${userName}.
