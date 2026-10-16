@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { auth } from "@/auth";
 import { resolveRoleCode } from "@/lib/roles";
 import { checkRateLimit } from "@/lib/rate-limiter";
-import { getProviderApiKey } from "@/lib/assistant/config";
+import { getLiveVoice, getProviderApiKey } from "@/lib/assistant/config";
 import { DEFAULT_LIVE_MODEL, buildLiveConfig } from "@/lib/assistant/live-config";
 
 export const runtime = "nodejs";
@@ -39,7 +39,7 @@ export async function POST() {
         newSessionExpireTime: new Date(now + 60_000).toISOString(),
         liveConnectConstraints: {
           model,
-          config: buildLiveConfig(session.user.name ?? "usuario"),
+          config: buildLiveConfig(session.user.name ?? "usuario", await getLiveVoice()),
         },
         httpOptions: { apiVersion: "v1alpha" },
       },

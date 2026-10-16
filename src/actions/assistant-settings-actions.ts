@@ -5,6 +5,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import type { ApiResponse } from "@/types";
 import { resolveRoleCode } from "@/lib/roles";
+import { LIVE_VOICES } from "@/lib/assistant/catalog";
 import {
   ASSISTANT_PROVIDERS,
   PROVIDER_CATALOG,
@@ -12,14 +13,17 @@ import {
   buildModel,
   deleteProviderApiKey,
   getAssistantSelection,
+  getLiveVoice,
   getProviderApiKey,
   maskKey,
+  saveLiveVoice,
   saveAssistantSelection,
 } from "@/lib/assistant/config";
 
 export interface AssistantSettingsView {
   provider: AssistantProvider;
   model: string;
+  voice: string;
   keys: Record<AssistantProvider, { masked: string; source: "db" | "env" } | null>;
 }
 
@@ -43,7 +47,7 @@ export async function getAssistantSettings(): Promise<ApiResponse<AssistantSetti
 
     return {
       success: true,
-      data: { ...selection, keys: Object.fromEntries(entries) as AssistantSettingsView["keys"] },
+      data: { ...selection, voice: await getLiveVoice(), keys: Object.fromEntries(entries) as AssistantSettingsView["keys"] },
     };
   } catch (error) {
     return {
@@ -57,6 +61,7 @@ const settingsSchema = z.object({
   provider: z.enum(ASSISTANT_PROVIDERS),
   model: z.string().trim().min(1, "Elige un modelo").max(100),
   apiKey: z.string().trim().max(500).optional(),
+  voice: z.enum(LIVE_VOICES.map((v) => v.id) as [string, ...string[]]).optional(),
 });
 
 export async function saveAssistantSettings(input: unknown): Promise<ApiResponse<void>> {
@@ -72,6 +77,7 @@ export async function saveAssistantSettings(input: unknown): Promise<ApiResponse
     }
 
     await saveAssistantSelection({ ...data, apiKey: data.apiKey || undefined });
+    if (data.voice) await saveLiveVoice(data.voice);
     return { success: true, data: undefined };
   } catch (error) {
     return {

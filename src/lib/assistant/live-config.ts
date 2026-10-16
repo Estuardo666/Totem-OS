@@ -10,9 +10,11 @@
  */
 
 import { Modality, type LiveConnectConfig } from "@google/genai";
+import { DEFAULT_LIVE_VOICE } from "./catalog";
+
+export { DEFAULT_LIVE_VOICE };
 
 export const DEFAULT_LIVE_MODEL = "gemini-3.8-live";
-export const DEFAULT_LIVE_VOICE = "Kore";
 
 export function buildLiveConfig(userName: string, voice = DEFAULT_LIVE_VOICE): LiveConnectConfig {
   return {

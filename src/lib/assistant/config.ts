@@ -23,6 +23,7 @@ import {
   ASSISTANT_PROVIDERS,
   DEFAULT_MODEL,
   DEFAULT_PROVIDER,
+  DEFAULT_LIVE_VOICE,
   PROVIDER_CATALOG,
   type AssistantProvider,
   isAssistantProvider,
@@ -127,4 +128,19 @@ export async function getAssistantModel(): Promise<
     };
   }
   return { model: buildModel(provider, model, key.key), provider, modelId: model };
+}
+
+const KEY_VOICE = "assistant.voice";
+
+export async function getLiveVoice(): Promise<string> {
+  const row = await db.globalConfig.findUnique({ where: { key: KEY_VOICE } });
+  return row?.value || DEFAULT_LIVE_VOICE;
+}
+
+export async function saveLiveVoice(voice: string): Promise<void> {
+  await db.globalConfig.upsert({
+    where: { key: KEY_VOICE },
+    update: { value: voice },
+    create: { key: KEY_VOICE, value: voice },
+  });
 }

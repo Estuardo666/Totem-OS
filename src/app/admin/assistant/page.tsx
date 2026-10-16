@@ -8,5 +8,5 @@ export default async function AssistantPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
 
-  return <AssistantWorkspace />;
+  return <AssistantWorkspace userName={session.user.name ?? "Usuario"} userImage={session.user.image ?? null} />;
 }

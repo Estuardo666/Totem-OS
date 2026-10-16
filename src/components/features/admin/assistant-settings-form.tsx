@@ -16,6 +16,8 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import {
   ASSISTANT_PROVIDERS,
+  DEFAULT_LIVE_VOICE,
+  LIVE_VOICES,
   PROVIDER_CATALOG,
   type AssistantProvider,
 } from "@/lib/assistant/catalog";
@@ -36,6 +38,7 @@ export function AssistantSettingsForm() {
   const [model, setModel] = useState("");
   const [customModel, setCustomModel] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [voice, setVoice] = useState<string>(DEFAULT_LIVE_VOICE);
   const [test, setTest] = useState<{ ok: boolean; message: string } | null>(null);
   const [isTesting, startTest] = useTransition();
   const [isSaving, startSave] = useTransition();
@@ -46,6 +49,7 @@ export function AssistantSettingsForm() {
     const data = result.data;
     setSettings(data);
     setProvider(data.provider);
+    setVoice(data.voice);
     const known = PROVIDER_CATALOG[data.provider].models.some((m) => m.id === data.model);
     setModel(known ? data.model : CUSTOM_MODEL);
     setCustomModel(known ? "" : data.model);
@@ -58,7 +62,7 @@ export function AssistantSettingsForm() {
   const models = PROVIDER_CATALOG[provider].models;
   const resolvedModel = model === CUSTOM_MODEL ? customModel.trim() : model;
   const savedKey = settings?.keys[provider] ?? null;
-  const payload = { provider, model: resolvedModel, apiKey: apiKey.trim() || undefined };
+  const payload = { provider, model: resolvedModel, apiKey: apiKey.trim() || undefined, voice };
 
   const onProviderChange = (value: string) => {
     const next = value as AssistantProvider;
@@ -195,6 +199,23 @@ export function AssistantSettingsForm() {
             <p className="text-xs text-muted-foreground">
               Se guarda cifrada en el servidor y nunca se envía al navegador.
             </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Voz en vivo (Gemini Live)</Label>
+            <Select value={voice} onValueChange={setVoice}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LIVE_VOICES.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Se aplica en la próxima conversación de voz.</p>
           </div>
 
           {test && (

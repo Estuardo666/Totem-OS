@@ -47,3 +47,16 @@ export const DEFAULT_MODEL = "claude-haiku-5-5";
 export function isAssistantProvider(value: unknown): value is AssistantProvider {
   return typeof value === "string" && (ASSISTANT_PROVIDERS as readonly string[]).includes(value);
 }
+
+/** Voces femeninas de Gemini Live, de la más cálida a la más brillante. */
+export const LIVE_VOICES = [
+  { id: "Sulafat", label: "Sulafat · cálida" },
+  { id: "Achernar", label: "Achernar · suave" },
+  { id: "Vindemiatrix", label: "Vindemiatrix · tranquila" },
+  { id: "Despina", label: "Despina · fluida" },
+  { id: "Aoede", label: "Aoede · ligera" },
+  { id: "Kore", label: "Kore · firme" },
+  { id: "Leda", label: "Leda · juvenil" },
+  { id: "Zephyr", label: "Zephyr · brillante" },
+] as const;
+export const DEFAULT_LIVE_VOICE = "Sulafat";

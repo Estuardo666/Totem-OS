@@ -55,6 +55,11 @@ function monthRange(month?: string): { start: Date; end: Date; value: string } {
   };
 }
 
+/** Mapa nombre de cliente → logo, para que la UI muestre la foto junto al nombre. */
+function logosOf(rows: { name: string; logo: string | null }[]): Record<string, string> {
+  return Object.fromEntries(rows.filter((r) => r.logo).map((r) => [r.name, r.logo as string]));
+}
+
 function adminOnly(user: AssistantUser) {
   return user.role === "ADMIN" ? null : { error: "Solo un administrador puede consultar esto." };
 }
@@ -98,7 +103,7 @@ export function buildAssistantTools(user: AssistantUser) {
           db.client.count({ where }),
           db.client.findMany({
             where,
-            select: { id: true, name: true, status: true, monthlyRate: true, paymentDay: true },
+            select: { id: true, name: true, logo: true, status: true, monthlyRate: true, paymentDay: true },
             orderBy: { name: "asc" },
             take: MAX_ROWS,
           }),
@@ -106,6 +111,7 @@ export function buildAssistantTools(user: AssistantUser) {
         return {
           total,
           mostrando: clients.length,
+          logos: logosOf(clients),
           clientes: clients.map((c) => ({
             clientId: c.id,
             nombre: c.name,
@@ -173,7 +179,7 @@ export function buildAssistantTools(user: AssistantUser) {
             where,
             select: {
               id: true, title: true, type: true, status: true, priority: true, dueDate: true,
-              client: { select: { name: true } },
+              client: { select: { name: true, logo: true } },
               assignedEditor: { select: { name: true } },
             },
             orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }],
@@ -183,6 +189,7 @@ export function buildAssistantTools(user: AssistantUser) {
         return {
           total,
           mostrando: tasks.length,
+          logos: logosOf(tasks.map((t) => t.client)),
           tareas: tasks.map((t) => ({
             titulo: t.title,
             tipo: t.type,
@@ -215,7 +222,7 @@ export function buildAssistantTools(user: AssistantUser) {
           db.expense.groupBy({ by: ["category"], where, _sum: { amount: true }, _count: true }),
           db.expense.findMany({
             where,
-            select: { description: true, amount: true, category: true, date: true, client: { select: { name: true } } },
+            select: { description: true, amount: true, category: true, date: true, client: { select: { name: true, logo: true } } },
             orderBy: { date: "desc" },
             take: MAX_ROWS,
           }),
@@ -223,6 +230,7 @@ export function buildAssistantTools(user: AssistantUser) {
         return {
           mes: range.value,
           total: round(byCategory.reduce((s, c) => s + (c._sum.amount ?? 0), 0)),
+          logos: logosOf(expenses.flatMap((e) => (e.client ? [e.client] : []))),
           porCategoria: byCategory.map((c) => ({ categoria: c.category, total: round(c._sum.amount ?? 0), cantidad: c._count })),
           ultimos: expenses.map((e) => ({
             descripcion: e.description,

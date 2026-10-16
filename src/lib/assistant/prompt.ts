@@ -2,11 +2,14 @@ import type { AssistantUser } from "./tools";
 
 export type AssistantChannel = "chat" | "voice";
 
-const CHAT_STYLE = `Formato (chat):
-- Usa markdown ligero: **negritas** para cifras clave y totales, listas cortas con guiones cuando haya 3 o más elementos.
-- Empieza con la respuesta directa en una frase natural; después, si ayuda, el detalle.
-- Listas de más de 6 elementos: muestra los 5 más relevantes (los más urgentes o próximos) y di cuántos más hay.
-- Nada de tablas ni encabezados.`;
+const CHAT_STYLE = `Formato (chat), con jerarquía visual clara:
+- Primera línea: la respuesta clave en una frase, con la cifra o el dato principal en **negrita** (por ejemplo: "Este mes llevas **$9.61** en software.").
+- Nombres de clientes SIEMPRE en **negrita** y escritos exactamente como vienen en los datos (la app les pone su logo al lado).
+- Montos, fechas límite y estados importantes en **negrita**.
+- Si hay varios grupos (por cliente, por fecha, por estado), usa una línea en negrita como subtítulo de cada grupo y debajo una lista con guiones.
+- Cada elemento de lista: lo importante primero ("**Blindaje vehicular** · en edición · vence **hoy**").
+- Listas de más de 6 elementos: muestra los 5 más relevantes y di cuántos más hay.
+- Cierra, si aporta, con una sugerencia breve. Nada de tablas ni encabezados con #.`;
 
 const VOICE_STYLE = `Formato (voz): tu respuesta se leerá en voz alta.
 - 1 a 3 frases, como lo diría una persona. Sin markdown, sin símbolos, sin listas.
