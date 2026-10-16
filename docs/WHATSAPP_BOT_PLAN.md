@@ -533,7 +533,22 @@ En `src/lib/assistant/tools.ts`:
 
 ---
 
-## 20. Avisos al dueño (entregar en el primer mensaje, una vez)
-- Renovar Hostinger Cloud antes del **2026-11-16** (o se migra a Render).
-- Rotar el Bearer que está en texto plano en el cron de eternavida.com.ec.
-- Pedir a los clientes que guarden el número del bot como contacto (reduce riesgo de bloqueo).
+## 20. Intervención final del dueño
+
+H1 y H2 ya están completados. No solicitar estas decisiones durante la ventana
+de estabilidad; agruparlas al cierre antes de activar cualquier operación real:
+
+- **WhatsApp y grupos:** confirmar expresamente si se autoriza procesamiento y
+  envío. Hasta entonces, mantener la pausa; no sincronizar grupos ni agregar el
+  bot a grupos de clientes. H3 se hará gradualmente solo después de esa
+  autorización. El primer mensaje a clientes sigue sujeto al bloqueo de §3.2.
+- **SRI:** facilitar facturas reales y validar la firma en el ambiente de
+  pruebas. Mantener `SRI_ENABLED=0` hasta que la validación pase; habilitar SRI
+  en producción requiere una aprobación separada.
+- **Hostinger Cloud:** la renovación está confirmada; completarla antes del
+  **2026-11-16**. Si no se renueva, revisar el fallback a Render antes de
+  cambiar el hosting.
+- **Bearer externo:** rotar el secreto del cron de eternavida.com.ec si sigue
+  activo; no copiarlo al repositorio ni a logs. No se modificó ese cron.
+- **Aviso a clientes:** cuando se autoricen mensajes, pedirles que guarden el
+  número del bot como contacto para reducir el riesgo de bloqueo.
