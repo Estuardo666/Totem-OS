@@ -6,7 +6,9 @@
 - Añade panel ADMIN `/admin/whatsapp` con configuración, grupos, equipo, clientes, decisiones, borradores, historial y deshacer de aprobaciones. QR protegido mediante proxy, sin token en el cliente.
 - Integra resúmenes, rodajes, cobros y aprobaciones con deduplicación, horarios de Ecuador, consentimiento y bloqueo global de clientes. La IA consulta solo datos del cliente del grupo y usa DRAFT por defecto.
 - Incorpora decisiones privadas del dueño, propuestas de AUTO por métricas, herramientas firmadas del asistente y puente interno de notificaciones para el worker independiente.
-- Prepara Docker, Render Free y script de fallback Oracle. No se ha desplegado ni enviado mensajes reales. Validación local y pendientes del rollout: `docs/WHATSAPP_LOCAL.md` y §19 del plan.
+- Separa y prueba la decisión de alerta del watchdog (cinco minutos, recuperación y no duplicación); el smoke del panel corre con ADMIN, EDITOR y un worker QR sintético.
+- Retira valores Bearer de `DAILY_DIGEST_SETUP.md` y usa `CRON_SECRET` desde un entorno privado. Los valores del commit histórico `e6b9b44` deben rotarse si siguen activos.
+- Prepara Docker, Render Free y script de fallback Oracle. El worker está desplegado solo en staging desactivado; no se enviaron mensajes a clientes. El saludo previo en el grupo de pruebas está documentado en `docs/WHATSAPP_LOCAL.md`. Pendientes del rollout: §19 del plan.
 
 ## Fase 1: Quick Wins (5 optimizaciones)
 

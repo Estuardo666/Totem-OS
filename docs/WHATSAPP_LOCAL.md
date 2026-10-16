@@ -176,4 +176,7 @@ cambio.
 Hostinger vence el **2026-11-16** según el plan. La zona horaria, alertas y
 capacidad real de hosting no se han vuelto a verificar en esta ejecución local.
 El Bearer expuesto en un cron de eternavida debe rotarse sin copiarlo a este
-repositorio.
+repositorio. `DAILY_DIGEST_SETUP.md` ya no contiene valores Bearer literales,
+pero el commit `e6b9b44` que los contenía también está en `origin/main`; cualquier
+`CRON_SECRET` asociado que siga activo debe rotarse. No se modificaron crons de
+otros sitios ni se reescribió historial compartido.
