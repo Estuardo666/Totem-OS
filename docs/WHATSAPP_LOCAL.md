@@ -1,36 +1,48 @@
 # Totem Bot: implementación y pruebas locales
 
-La implementación está en la rama local `feat/whatsapp-bot`, commit inicial
-`4d7073a`. No se ha hecho push, PR, merge ni despliegue Hostinger/Render. El
-número **0994782827** se vinculó correctamente y el worker local está conectado
-en modo normal, usando sus credenciales persistidas en Neon. La migración
-aditiva se probó con PostgreSQL aislado y se aplicó en Neon tras confirmar que
-era la única migración pendiente y que las columnas no existían.
+La implementación está en la rama local `feat/whatsapp-bot`; commits locales
+`4d7073a` y `3b8f2a0`. No se hizo push a `main`, PR ni merge. El número del bot
+se vinculó y su identidad quedó verificada. La sesión persiste en la base de
+producción; allí se mantiene la pausa global y los clientes bloqueados, y el
+worker local está detenido.
 
-El número del bot es **+593 99 478 2827**. El teléfono del dueño es un dato
-distinto y queda pendiente, junto con los teléfonos y opt-in del equipo.
-Los defaults están en `docs/whatsapp-bot.config.json`: pausado, clientes
-bloqueados, modos DRAFT, recordatorios a 48 horas, máximo dos, sin montos en
-grupos, horario de Ecuador.
+El worker de staging está desplegado en
+<https://palevioletred-viper-585081.hostingersite.com>, desde un artefacto de
+`feat/whatsapp-bot` sin push. Usa una base Neon separada
+`totem_whatsapp_staging` y `WA_DISABLED=1`, `WA_PAIRING_ONLY=1`, `SRI_ENABLED=0`.
+`/health/live` y `/health` responden 200 como disabled; el QR sin autorización
+responde 401. La base de staging registra solo latidos de conexión: cero grupos,
+entradas, mensajes, eventos de sincronización de grupos o envíos. Así, el
+staging no accede a la sesión ni a los grupos de producción.
+
+La migración aditiva de producción se probó con PostgreSQL aislado y se aplicó
+en Neon tras confirmar que era la única migración pendiente y que las columnas
+no existían.
+
+El dueño y Paty están configurados con sus teléfonos y opt-in; Paty tiene
+horario L–V. Daniela trabaja en fechas variables;
+su opt-in sigue apagado y su teléfono no se configuró, y Paty podrá cargar sus
+fechas exactas desde el panel. Hostinger se renovará. Se mantienen los defaults
+del plan: pausa global activada, clientes bloqueados, DRAFT, 48 horas,
+dos recordatorios, omitir fines de semana, 08:00 Ecuador y sin montos en grupos.
 
 ## Resultado verificado el 2026-10-16
 
 - `npm run typecheck`, `npm run build` y `npm run lint` terminaron con exit 0. Lint conserva 14 advertencias previas de imágenes.
-- `npm run test:unit`: 211/211. Integración completa: 30/30, más la prueba adicional de persistencia de credenciales: 1/1.
+- `npm run test:unit`: 211/211. Integración completa: 30/30; las pruebas adicionales de persistencia de credenciales y contactos/LID pasaron: 2/2.
 - Navegador Chromium: ADMIN configura/pausa, responde decisiones, guarda y descarta borradores y deshace una aprobación; EDITOR no puede abrir el panel. El proxy QR entrega PNG al ADMIN, responde 403 al EDITOR y 401 sin sesión. La imagen QR de esta prueba es sintética y no vincula WhatsApp.
 - El puente interno rechaza solicitudes sin bearer y payloads que intentan elegir texto o destinatarios.
 - Worker: `typecheck:wa`, bundle y guard de dependencias verdes; el bundle no requiere Next/Pusher/React. Dos instancias locales compiten por un único lock; solo una queda operativa.
 - Docker construido desde cero, sin `node_modules` padre, y ejecutado con Node **22.23.3**: `/health/live` y `/health` responden 200 en modo disabled, QR sin token 401 y QR deshabilitado 404. El segundo latido persistió; SIGTERM cerró con exit 0 y liberó el lock. No hubo conexión WhatsApp ni envío de mensajes reales.
-- Vinculación real verificada. El worker local quedó en modo normal.
-- Estado real de outbox y grupos: un saludo enviado a `Totem Bot – Pruebas`; cero mensajes enviados a clientes; de los siete grupos sincronizados, seis siguen sin asignar y deshabilitados. AUTO continúa apagado.
-- H1: Stuart (dueño) +593 99 590 5100; Paty +593 99 881 3559, opt-in y horario L–V; Hostinger se renovará. Daniela no tiene teléfono ni opt-in. Paty podrá registrar sus fechas exactas mediante el horario `dates`.
+- Vinculación real verificada. Durante la activación previa a la pausa se envió un saludo al grupo `Totem Bot – Pruebas`; no hubo mensajes a clientes. Se sincronizaron siete grupos, seis sin asignar y deshabilitados. Tras la instrucción de solo vincular, la pausa global quedó activada y se detuvo el worker: no hay procesamiento de grupos ni nuevos envíos. AUTO continúa apagado.
+- H1: dueño y Paty configurados con opt-in; Paty tiene horario L–V. Hostinger se renovará. Daniela sigue sin teléfono ni opt-in; Paty podrá registrar sus fechas mediante el horario `dates`.
 
 Las salidas están en `reports/whatsapp-*.log`. La captura del panel es
-`reports/whatsapp-admin-local.png`. Esos artefactos locales no contienen una
-sesión real ni sustituyen el escaneo o la estabilidad del hosting remoto.
-La base aislada quedó con fixtures iniciales. El worker conectado usa la base
-de producción, mantiene el gate de clientes apagado y está enlazado al número
-verificado del bot.
+`reports/whatsapp-admin-local.png`. La vinculación sí fue real; los smokes
+locales de QR y Docker no sustituyen la estabilidad prolongada del worker remoto.
+La base aislada quedó con fixtures iniciales. La sesión de WhatsApp permanece
+persistida en Neon y la configuración de producción conserva la pausa global,
+el gate de clientes apagado y el número verificado del bot.
 
 ## Instalación y build del worker
 
@@ -100,9 +112,9 @@ el proveedor y la clave que ya están configurados para el asistente; si queda
 vacío, usa el modelo normal del asistente. El resumen del equipo consulta la
 hora configurada cada minuto y se deduplica por usuario y día de Ecuador.
 
-## Activación posterior
+## Staging y rollout de producción pendiente
 
-Antes de conectar el teléfono: completar dueño y equipo en el panel, instalar
+Antes de reactivar el teléfono: completar dueño y equipo en el panel, instalar
 el worker con Node 22, configurar sus secretos fuera del repositorio, y probar
 con `WA_DISABLED=1`. No poner tokens reales en comandos guardados, capturas,
 logs ni parámetros de crons. El QR se protege con `WA_HEALTH_TOKEN`.
@@ -113,10 +125,12 @@ Pusher/Web Push. El worker requiere `TOTEM_API_URL` y la misma
 `TOKEN_ENCRYPTION_KEY` que cifra las claves de IA existentes. Los avisos enlazan
 al panel autenticado; el token QR nunca se envía en esos mensajes.
 
-El QR y el grupo de pruebas ya están verificados. Siguen pendientes el worker
-en Hostinger/Render, las 48–72 h de estabilidad en ese host, instalar crons y
-desplegar el panel. Los mensajes a clientes, AUTO, SRI y crons de correo
-permanecen desactivados según sus gates.
+El worker remoto está en Hostinger con WhatsApp desactivado y una base de staging
+separada. Siguen pendientes las 48–72 h de estabilidad, desplegar el panel y el
+puente backend, instalar crons y cualquier activación de mensajes. El build
+reportó 5 vulnerabilidades en dependencias (3 moderadas y 2 altas; `node-forge`
+no tiene arreglo automático disponible). Mantener el worker desactivado hasta
+revisarlas. AUTO, SRI y crons de correo permanecen desactivados.
 
 Hostinger vence el **2026-11-16** según el plan. La zona horaria, alertas y
 capacidad real de hosting no se han vuelto a verificar en esta ejecución local.

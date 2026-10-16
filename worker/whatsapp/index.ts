@@ -35,6 +35,7 @@ let lastPromptExpirationAt = 0;
 let maintenanceRunning = false;
 let lastTeamDailyMinute = -1;
 let lastFailureAlertCheck = 0;
+let lastLoopFailureLogAt = 0;
 let reconnectBlocked = false;
 let qrOwnerNotified = false;
 let loggedOutOwnerNotified = false;
@@ -66,7 +67,15 @@ export async function startWhatsAppWorker() {
       if (!DISABLED && !reconnectBlocked && !socket) await connectWhatsApp();
       await runMaintenance();
       await sleep(1_000);
-    } catch {
+    } catch (error) {
+      if (Date.now() - lastLoopFailureLogAt >= 60_000) {
+        lastLoopFailureLogAt = Date.now();
+        const code = typeof error === "object" && error !== null && "code" in error
+          && typeof error.code === "string" && /^P\d{4}$/.test(error.code)
+          ? error.code
+          : error instanceof Error ? error.name : "UNKNOWN";
+        console.error("WHATSAPP_WORKER_LOOP_ERROR", code);
+      }
       await sleep(5_000);
     }
   }
@@ -352,6 +361,6 @@ async function shutdown() {
 process.once("SIGINT", () => void shutdown());
 process.once("SIGTERM", () => void shutdown());
 
-if (require.main === module) {
+if (require.main === module || process.env.TOTEM_WHATSAPP_WORKER === "1") {
   void startWhatsAppWorker().catch(async () => { await shutdown(); process.exitCode = 1; });
 }

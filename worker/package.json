@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tsc",
     "build:wa": "node build-wa.mjs",
+    "build:wa:hostinger": "npm install --include=dev --no-audit --no-fund && npm run build:wa && npm prune --omit=dev --no-audit --no-fund",
     "typecheck:wa": "tsc --project tsconfig.wa.json --pretty false",
     "start": "node --env-file=../.env --env-file=.env dist/worker/index.js",
     "start:wa": "node dist/whatsapp/index.js",
