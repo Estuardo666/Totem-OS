@@ -12,6 +12,11 @@ interface P12Data {
   serialNumber: string;
 }
 
+interface BuiltSignedProperties {
+  objectXml: string;
+  referencedElementXml: string;
+}
+
 /**
  * Lee un archivo .p12 (PKCS#12) y extrae la llave privada y el certificado.
  */
@@ -152,7 +157,7 @@ export function firmarXml(
 
   // 3. Construir SignedProperties (XAdES-BES)
   const signedPropertiesId = "Signature1-SignedProperties";
-  const signedPropertiesXml = buildSignedProperties(
+  const signedProperties = buildSignedProperties(
     signedPropertiesId,
     x509SubjectName,
     certNotBefore,
@@ -161,8 +166,9 @@ export function firmarXml(
     serialNumber
   );
 
-  // 4. Calcular digest de SignedProperties
-  const signedPropertiesDigest = calcularDigestXml(signedPropertiesXml);
+  // 4. Calcular el digest del elemento al que apunta la URI SignedProperties,
+  // no del ds:Object que lo contiene.
+  const signedPropertiesDigest = calcularDigestXml(signedProperties.referencedElementXml);
 
   // 5. Construir SignedInfo
   const signedInfoXml = buildSignedInfo(
@@ -183,7 +189,7 @@ export function firmarXml(
     signedInfoXml,
     signatureValue,
     certBase64,
-    signedPropertiesXml
+    signedProperties.objectXml
   );
 
   // 8. Insertar firma en el XML del comprobante
@@ -200,14 +206,18 @@ function buildSignedProperties(
   certNotAfter: string,
   issuerName: string,
   serialNumber: string
-): string {
+): BuiltSignedProperties {
   const doc = create({ version: "1.0", encoding: "UTF-8" })
     .ele("ds:Object", { "xmlns:ds": "http://www.w3.org/2000/09/xmldsig#" })
       .ele("xades:QualifyingProperties", {
         "xmlns:xades": "http://uri.etsi.org/01903/v1.3.2#",
         Target: "#Signature1",
       })
-        .ele("xades:SignedProperties", { Id: signedPropertiesId })
+        .ele("xades:SignedProperties", {
+          "xmlns:ds": "http://www.w3.org/2000/09/xmldsig#",
+          "xmlns:xades": "http://uri.etsi.org/01903/v1.3.2#",
+          Id: signedPropertiesId,
+        })
           .ele("xades:SignedSignatureProperties")
             .ele("xades:SigningTime").txt(new Date().toISOString()).up()
             .ele("xades:SigningCertificate")
@@ -236,7 +246,15 @@ function buildSignedProperties(
       .up()
     .up();
 
-  return canonicalizeExcC14N(doc.end({ prettyPrint: false }));
+  const objectXml = canonicalizeExcC14N(doc.end({ prettyPrint: false }));
+  const referencedElementXml = objectXml.match(
+    /<xades:SignedProperties\b[\s\S]*?<\/xades:SignedProperties>/
+  )?.[0];
+  if (!referencedElementXml) {
+    throw new Error("No se pudo construir xades:SignedProperties");
+  }
+
+  return { objectXml, referencedElementXml };
 }
 
 /**
@@ -277,7 +295,7 @@ function buildSignature(
   signedInfoXml: string,
   signatureValue: string,
   certBase64: string,
-  signedPropertiesXml: string
+  signedPropertiesObjectXml: string
 ): string {
   // Insertar SignedInfo como child directo
   const signedInfoNode = `<ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">` +
@@ -292,7 +310,7 @@ ${signedInfoXml}
 <ds:X509Certificate>${certBase64}</ds:X509Certificate>
 </ds:X509Data>
 </ds:KeyInfo>
-${signedPropertiesXml}
+${signedPropertiesObjectXml}
 </ds:Signature>`;
 }
 
