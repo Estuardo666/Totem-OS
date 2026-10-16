@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     messages: await convertToModelMessages(messages.slice(-MAX_HISTORY), { tools }),
     tools,
     stopWhen: stepCountIs(6),
-    maxOutputTokens: 1024,
+    maxOutputTokens: 4000,
   });
 
   return result.toUIMessageStreamResponse({

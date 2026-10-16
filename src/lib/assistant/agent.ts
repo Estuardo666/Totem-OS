@@ -36,7 +36,7 @@ export async function runAssistantTurn(
     messages,
     tools: buildAssistantTools(user),
     stopWhen: stepCountIs(6),
-    maxOutputTokens: 600,
+    maxOutputTokens: 2000,
   });
 
   const drafts: AgentDraft[] = [];
