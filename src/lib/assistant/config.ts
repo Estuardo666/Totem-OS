@@ -24,6 +24,9 @@ import {
   DEFAULT_MODEL,
   DEFAULT_PROVIDER,
   DEFAULT_LIVE_VOICE,
+  DEFAULT_OPENAI_VOICE,
+  DEFAULT_VOICE_PROVIDER,
+  type VoiceProvider,
   PROVIDER_CATALOG,
   type AssistantProvider,
   isAssistantProvider,
@@ -131,16 +134,41 @@ export async function getAssistantModel(): Promise<
 }
 
 const KEY_VOICE = "assistant.voice";
+const KEY_VOICE_PROVIDER = "assistant.voiceProvider";
+const KEY_OPENAI_VOICE = "assistant.openaiVoice";
 
-export async function getLiveVoice(): Promise<string> {
-  const row = await db.globalConfig.findUnique({ where: { key: KEY_VOICE } });
-  return row?.value || DEFAULT_LIVE_VOICE;
+export interface VoiceSettings {
+  voiceProvider: VoiceProvider;
+  /** Voz de Gemini Live. */
+  voice: string;
+  /** Voz de OpenAI Realtime. */
+  openaiVoice: string;
 }
 
-export async function saveLiveVoice(voice: string): Promise<void> {
-  await db.globalConfig.upsert({
-    where: { key: KEY_VOICE },
-    update: { value: voice },
-    create: { key: KEY_VOICE, value: voice },
+export async function getVoiceSettings(): Promise<VoiceSettings> {
+  const rows = await db.globalConfig.findMany({
+    where: { key: { in: [KEY_VOICE, KEY_VOICE_PROVIDER, KEY_OPENAI_VOICE] } },
   });
+  const byKey = new Map(rows.map((r) => [r.key, r.value]));
+  const provider = byKey.get(KEY_VOICE_PROVIDER);
+  return {
+    voiceProvider: provider === "openai" || provider === "gemini" ? provider : DEFAULT_VOICE_PROVIDER,
+    voice: byKey.get(KEY_VOICE) || DEFAULT_LIVE_VOICE,
+    openaiVoice: byKey.get(KEY_OPENAI_VOICE) || DEFAULT_OPENAI_VOICE,
+  };
+}
+
+export async function saveVoiceSettings(input: Partial<VoiceSettings>): Promise<void> {
+  const entries: [string, string | undefined][] = [
+    [KEY_VOICE_PROVIDER, input.voiceProvider],
+    [KEY_VOICE, input.voice],
+    [KEY_OPENAI_VOICE, input.openaiVoice],
+  ];
+  await db.$transaction(
+    entries
+      .filter((e): e is [string, string] => Boolean(e[1]))
+      .map(([key, value]) =>
+        db.globalConfig.upsert({ where: { key }, update: { value }, create: { key, value } })
+      )
+  );
 }

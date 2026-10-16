@@ -51,6 +51,10 @@ export function useLiveVoice() {
   const [drafts, setDrafts] = useState<DraftEntry[]>([]);
 
   const sessionRef = useRef<Session | null>(null);
+  // OpenAI Realtime (WebRTC): conexión, canal de eventos y audio remoto.
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const dcRef = useRef<RTCDataChannel | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const micCtxRef = useRef<AudioContext | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const outCtxRef = useRef<AudioContext | null>(null);
@@ -215,9 +219,113 @@ export function useLiveVoice() {
     }
   };
 
+  /** Eventos de OpenAI Realtime por el canal de datos. */
+  const handleOpenAIEvent = async (event: { type: string; [key: string]: unknown }) => {
+    switch (event.type) {
+      case "input_audio_buffer.speech_started":
+        setStatus("listening");
+        break;
+      case "conversation.item.input_audio_transcription.completed":
+        if (typeof event.transcript === "string" && event.transcript.trim()) {
+          appendTranscript("user", event.transcript.trim());
+        }
+        break;
+      case "response.output_audio_transcript.delta":
+        if (typeof event.delta === "string") {
+          appendTranscript("assistant", event.delta);
+          setStatus("speaking");
+        }
+        break;
+      case "response.done":
+        setStatus((s) => (s === "thinking" ? s : "listening"));
+        break;
+      case "response.function_call_arguments.done": {
+        setStatus("thinking");
+        let args: Record<string, unknown> = {};
+        try {
+          args = JSON.parse(String(event.arguments || "{}"));
+        } catch {
+          /* argumentos vacíos */
+        }
+        let output: Record<string, unknown>;
+        try {
+          output = await runTool(String(event.name), args);
+        } catch (e) {
+          output = { error: e instanceof Error ? e.message : "Error" };
+        }
+        const dc = dcRef.current;
+        if (dc?.readyState === "open") {
+          dc.send(
+            JSON.stringify({
+              type: "conversation.item.create",
+              item: { type: "function_call_output", call_id: event.call_id, output: JSON.stringify(output) },
+            })
+          );
+          dc.send(JSON.stringify({ type: "response.create" }));
+        }
+        break;
+      }
+      case "error": {
+        const err = event.error as { message?: string } | undefined;
+        setError(err?.message ?? "Error de la sesión de voz");
+        break;
+      }
+    }
+  };
+
+  /** Conecta con OpenAI Realtime por WebRTC usando el token efímero. */
+  const startOpenAI = async (token: string, stream: MediaStream) => {
+    const pc = new RTCPeerConnection();
+    pcRef.current = pc;
+
+    const audio = new Audio();
+    audio.autoplay = true;
+    remoteAudioRef.current = audio;
+    pc.ontrack = (e) => {
+      audio.srcObject = e.streams[0];
+    };
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        setError("Se perdió la conexión de voz");
+        setStatus("error");
+        stop();
+      }
+    };
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+    const dc = pc.createDataChannel("oai-events");
+    dcRef.current = dc;
+    dc.onopen = () => setStatus("listening");
+    dc.onmessage = (e) => {
+      try {
+        void handleOpenAIEvent(JSON.parse(e.data));
+      } catch {
+        /* evento no JSON */
+      }
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    const res = await fetch("https://api.openai.com/v1/realtime/calls", {
+      method: "POST",
+      body: offer.sdp,
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/sdp" },
+    });
+    if (!res.ok) throw new Error(`OpenAI rechazó la conexión (${res.status})`);
+    await pc.setRemoteDescription({ type: "answer", sdp: await res.text() });
+  };
+
   const stop = useCallback(() => {
     sessionRef.current?.close();
     sessionRef.current = null;
+    dcRef.current?.close();
+    dcRef.current = null;
+    pcRef.current?.close();
+    pcRef.current = null;
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = null;
+      remoteAudioRef.current = null;
+    }
     micStreamRef.current?.getTracks().forEach((t) => t.stop());
     micStreamRef.current = null;
     void micCtxRef.current?.close();
@@ -233,7 +341,12 @@ export function useLiveVoice() {
     setStatus("connecting");
     try {
       const tokenRes = await fetch("/api/assistant/live-token", { method: "POST" });
-      const tokenData = (await tokenRes.json()) as { token?: string; model?: string; error?: string };
+      const tokenData = (await tokenRes.json()) as {
+        provider?: "gemini" | "openai";
+        token?: string;
+        model?: string;
+        error?: string;
+      };
       if (!tokenRes.ok || !tokenData.token || !tokenData.model) {
         throw new Error(tokenData.error ?? "No se pudo iniciar la voz");
       }
@@ -242,6 +355,12 @@ export function useLiveVoice() {
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
       micStreamRef.current = stream;
+
+      if (tokenData.provider === "openai") {
+        await startOpenAI(tokenData.token, stream);
+        return;
+      }
+
       outCtxRef.current = new AudioContext({ sampleRate: 24000 });
 
       const ai = new GoogleGenAI({ apiKey: tokenData.token, httpOptions: { apiVersion: "v1alpha" } });

@@ -61,3 +61,20 @@ export const LIVE_VOICES = [
   { id: "Zephyr", label: "Zephyr · brillante" },
 ] as const;
 export const DEFAULT_LIVE_VOICE = "Sulafat";
+
+export const VOICE_PROVIDERS = [
+  { id: "gemini", label: "Gemini Live" },
+  { id: "openai", label: "GPT Realtime Mini" },
+] as const;
+export type VoiceProvider = (typeof VOICE_PROVIDERS)[number]["id"];
+export const DEFAULT_VOICE_PROVIDER: VoiceProvider = "gemini";
+
+/** Voces de OpenAI Realtime; marin y cedar son las más naturales. */
+export const OPENAI_VOICES = [
+  { id: "marin", label: "Marin · natural (femenina)" },
+  { id: "coral", label: "Coral · cálida (femenina)" },
+  { id: "shimmer", label: "Shimmer · suave (femenina)" },
+  { id: "sage", label: "Sage · tranquila (femenina)" },
+  { id: "cedar", label: "Cedar · natural (masculina)" },
+] as const;
+export const DEFAULT_OPENAI_VOICE = "marin";

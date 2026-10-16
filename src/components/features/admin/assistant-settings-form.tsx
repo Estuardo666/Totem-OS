@@ -17,7 +17,11 @@ import { useToast } from "@/components/ui/use-toast";
 import {
   ASSISTANT_PROVIDERS,
   DEFAULT_LIVE_VOICE,
+  DEFAULT_OPENAI_VOICE,
   LIVE_VOICES,
+  OPENAI_VOICES,
+  VOICE_PROVIDERS,
+  type VoiceProvider,
   PROVIDER_CATALOG,
   type AssistantProvider,
 } from "@/lib/assistant/catalog";
@@ -39,6 +43,8 @@ export function AssistantSettingsForm() {
   const [customModel, setCustomModel] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [voice, setVoice] = useState<string>(DEFAULT_LIVE_VOICE);
+  const [voiceProvider, setVoiceProvider] = useState<VoiceProvider>("gemini");
+  const [openaiVoice, setOpenaiVoice] = useState<string>(DEFAULT_OPENAI_VOICE);
   const [test, setTest] = useState<{ ok: boolean; message: string } | null>(null);
   const [isTesting, startTest] = useTransition();
   const [isSaving, startSave] = useTransition();
@@ -49,7 +55,9 @@ export function AssistantSettingsForm() {
     const data = result.data;
     setSettings(data);
     setProvider(data.provider);
-    setVoice(data.voice);
+    setVoice(data.voiceSettings.voice);
+    setVoiceProvider(data.voiceSettings.voiceProvider);
+    setOpenaiVoice(data.voiceSettings.openaiVoice);
     const known = PROVIDER_CATALOG[data.provider].models.some((m) => m.id === data.model);
     setModel(known ? data.model : CUSTOM_MODEL);
     setCustomModel(known ? "" : data.model);
@@ -62,7 +70,7 @@ export function AssistantSettingsForm() {
   const models = PROVIDER_CATALOG[provider].models;
   const resolvedModel = model === CUSTOM_MODEL ? customModel.trim() : model;
   const savedKey = settings?.keys[provider] ?? null;
-  const payload = { provider, model: resolvedModel, apiKey: apiKey.trim() || undefined, voice };
+  const payload = { provider, model: resolvedModel, apiKey: apiKey.trim() || undefined, voice, voiceProvider, openaiVoice };
 
   const onProviderChange = (value: string) => {
     const next = value as AssistantProvider;
@@ -201,21 +209,57 @@ export function AssistantSettingsForm() {
             </p>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Voz en vivo (Gemini Live)</Label>
-            <Select value={voice} onValueChange={setVoice}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {LIVE_VOICES.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">Se aplica en la próxima conversación de voz.</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Voz en vivo</Label>
+              <Select value={voiceProvider} onValueChange={(v) => setVoiceProvider(v as VoiceProvider)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {VOICE_PROVIDERS.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Voz</Label>
+              {voiceProvider === "openai" ? (
+                <Select value={openaiVoice} onValueChange={setOpenaiVoice}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OPENAI_VOICES.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select value={voice} onValueChange={setVoice}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LIVE_VOICES.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground sm:col-span-2">
+              {voiceProvider === "openai"
+                ? "Usa OPENAI_API_KEY (de pago, sin plan gratuito). Se aplica en la próxima conversación."
+                : "Usa GEMINI_API_KEY. Se aplica en la próxima conversación."}
+            </p>
           </div>
 
           {test && (
