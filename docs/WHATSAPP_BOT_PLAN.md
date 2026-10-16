@@ -338,7 +338,7 @@ Para que el dueño pueda revisar sin tocar nada si no quiere:
 - [x] Crear una Web App Node.js de staging en un subdominio Hostinger nuevo. No tocar otras.
 - [x] Desplegar un ZIP creado localmente desde `feat/whatsapp-bot` (sin push), con root `worker/`, build `build:wa:hostinger`, Node 22 y entry `dist/whatsapp/index.js`.
 - [x] Configurar base Neon separada, `WA_DISABLED=1`, `WA_PAIRING_ONLY=1`, `SRI_ENABLED=0`, `WA_HEALTH_TOKEN` y `WA_INSTANCE_ID` de staging. Por petición del dueño, `WA_DISABLED=0` se probó temporalmente el 2026-10-16, pero el worker no pudo leer `WhatsAppAuth`; se restableció `WA_DISABLED=1`. hPanel confirma `WA_PAIRING_ONLY=1` y `SRI_ENABLED=0`. El puente de notificaciones no se configura mientras la prueba de vínculo siga incompleta.
-- [ ] Corregir permisos de la tabla `public."WhatsAppAuth"` en la base de staging para el usuario de la app. El worker registra `42501 permission denied` al leer esa tabla y no puede emitir QR.
+- [ ] Conceder al rol `totem_whatsapp_staging_app` solo `SELECT`, `INSERT`, `UPDATE` y `DELETE` sobre `public."WhatsAppAuth"` en la base `totem_whatsapp_staging`. La consulta de solo lectura confirma owner `neondb_owner` y que el rol de la app carece de esos cuatro permisos; el GRANT está preparado en Neon y espera confirmación de ejecución.
 - [x] Exención expresa del dueño (2026-10-16): omitir la espera de estabilidad de 48 h por confianza en Hostinger. No equivale a evidencia de 48 h estables.
 - [ ] Si el staging presenta un fallo operativo → desplegar el mismo código en **Render Free Web Service** (pre-autorizado), con ping desde cron de Hostinger. Si Render tampoco pasa → H5 (Oracle) y `scripts/provision-oracle.sh`. La espera eximida no activa este fallback.
 
@@ -548,12 +548,12 @@ las decisiones siguientes agrupadas al cierre, antes de activar cualquier operac
   clientes sigue sujeto al bloqueo de §3.2.
 - **Reconexión de staging:** solicitada por el dueño. El worker quedó de nuevo
   en `WA_DISABLED=1`, con `WA_PAIRING_ONLY=1` y `SRI_ENABLED=0`. La prueba está
-  bloqueada por falta de permisos del usuario de staging sobre
-  `public."WhatsAppAuth"`; no se emitió QR. Por precaución, el dueño debe rotar
-  la contraseña de la base staging y actualizar `DATABASE_URL` y
-  `DATABASE_URL_UNPOOLED` en Hostinger; después se corregirá el `GRANT`, se
-  activará brevemente el modo de vínculo, se mostrará el QR para escanearlo y se
-  probará un reinicio sin reutilizar la sesión de producción.
+  bloqueada por falta de permisos del rol de staging sobre
+  `public."WhatsAppAuth"`; no se emitió QR. El dueño decidió continuar sin
+  rotar la credencial de staging. El GRANT limitado está preparado y espera
+  confirmación de ejecución; después se activará brevemente el modo de vínculo,
+  se mostrará el QR para escanearlo y se probará un reinicio sin reutilizar la
+  sesión de producción.
 - **SRI:** facilitar facturas reales y validar la firma en el ambiente de
   pruebas. Mantener `SRI_ENABLED=0` hasta que la validación pase; habilitar SRI
   en producción requiere una aprobación separada.
