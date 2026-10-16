@@ -31,11 +31,11 @@ dos recordatorios, omitir fines de semana, 08:00 Ecuador y sin montos en grupos.
 ## Resultado verificado el 2026-10-16
 
 - `npm run typecheck`, `npm run build` y `npm run lint` terminaron con exit 0. Lint conserva 14 advertencias previas de imágenes.
-- `npm run test:unit`: 211/211. Integración completa: 30/30; las pruebas adicionales de persistencia de credenciales y contactos/LID pasaron: 2/2.
-- Navegador Chromium: ADMIN configura/pausa, responde decisiones, guarda y descarta borradores y deshace una aprobación; EDITOR no puede abrir el panel. El proxy QR entrega PNG al ADMIN, responde 403 al EDITOR y 401 sin sesión. La imagen QR de esta prueba es sintética y no vincula WhatsApp.
-- El puente interno rechaza solicitudes sin bearer y payloads que intentan elegir texto o destinatarios.
+- `npm run test:unit`: 217/217. Integración completa: 32/32 en el contenedor PostgreSQL local protegido por `TOTEM_TEST_DATABASE=1`.
+- Navegador Chromium: ADMIN configura/pausa, responde decisiones, guarda y descarta borradores y deshace una aprobación; EDITOR no puede abrir el panel. El proxy QR entrega PNG al ADMIN, responde 403 al EDITOR y 401 sin sesión. El puente interno rechaza el bearer ausente y el payload que intenta elegir texto o destinatarios. La imagen QR es sintética y no vincula WhatsApp.
 - Worker: `typecheck:wa`, bundle y guard de dependencias verdes; el bundle no requiere Next/Pusher/React. Dos instancias locales compiten por un único lock; solo una queda operativa.
 - Docker construido desde cero, sin `node_modules` padre, y ejecutado con Node **22.23.3**: `/health/live` y `/health` responden 200 en modo disabled, QR sin token 401 y QR deshabilitado 404. El segundo latido persistió; SIGTERM cerró con exit 0 y liberó el lock. No hubo conexión WhatsApp ni envío de mensajes reales.
+- El watchdog tiene pruebas locales para el umbral de cinco minutos, recuperación y no duplicación de alertas. La prueba de inyección usa un generador simulado y comprueba que solo dispone de herramientas de lectura acotadas al cliente; no se llamó a un modelo externo.
 - Vinculación real verificada. Durante la activación previa a la pausa se envió un saludo al grupo `Totem Bot – Pruebas`; no hubo mensajes a clientes. Se sincronizaron siete grupos, seis sin asignar y deshabilitados. Tras la instrucción de solo vincular, la pausa global quedó activada y se detuvo el worker: no hay procesamiento de grupos ni nuevos envíos. AUTO continúa apagado.
 - H1: dueño y Paty configurados con opt-in; Paty tiene horario L–V. Hostinger se renovará. Daniela sigue sin teléfono ni opt-in; Paty podrá registrar sus fechas mediante el horario `dates`.
 

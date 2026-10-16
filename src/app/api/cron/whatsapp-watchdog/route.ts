@@ -3,6 +3,7 @@ import { isAuthorizedCron } from "@/lib/cron-auth";
 import { db } from "@/lib/db";
 import { normalizePhone } from "@/lib/whatsapp/enqueue";
 import { getWhatsAppConfig } from "@/lib/whatsapp/config";
+import { evaluateWhatsAppWatchdog } from "@/lib/whatsapp/watchdog";
 
 export async function POST(request: NextRequest) {
   if (!isAuthorizedCron(request)) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -20,14 +21,16 @@ export async function POST(request: NextRequest) {
     db.whatsAppEvent.findMany({ where: { type: "WATCHDOG_CHECK" }, orderBy: { createdAt: "desc" }, take: 500 }),
     db.whatsAppEvent.findFirst({ where: { type: "WATCHDOG_ALERT" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
   ]);
-  const latestHealthy = checks.find((event) => (event.payload as { healthy?: unknown }).healthy === true);
-  const failures = checks.filter((event) =>
-    (event.payload as { healthy?: unknown }).healthy === false && (!latestHealthy || event.createdAt > latestHealthy.createdAt),
-  );
-  const failedSince = failures.at(-1)?.createdAt ?? check.createdAt;
-  const alreadyAlerted = Boolean(latestAlert && (!latestHealthy || latestAlert.createdAt > latestHealthy.createdAt));
-  const minutesDown = Math.floor((checkedAt.getTime() - failedSince.getTime()) / 60_000);
-  if (minutesDown < 5 || alreadyAlerted) {
+  const watchdog = evaluateWhatsAppWatchdog({
+    checks: checks.map((event) => ({
+      healthy: (event.payload as { healthy?: unknown }).healthy === true,
+      createdAt: event.createdAt,
+    })),
+    latestAlertAt: latestAlert?.createdAt ?? null,
+    checkedAt,
+  });
+  const { failedSince, minutesDown } = watchdog;
+  if (!watchdog.shouldAlert) {
     return NextResponse.json({ success: true, data: { healthy: false, alerted: false, minutesDown } });
   }
 

@@ -286,6 +286,8 @@ Tareas:
 
 ## 8. Fase 2 — Worker (`worker/whatsapp/`)
 
+Los checks de esta fase indican implementación en la rama y pruebas locales; no habilitan mensajes ni lectura de grupos en producción.
+
 ```
 worker/whatsapp/
   index.ts          // http (PORT) + baileys + loops + graceful shutdown
@@ -302,29 +304,31 @@ worker/whatsapp/
   health.ts         // /health, /health/qr (token)
 ```
 
-- [ ] Dependencias en `worker/package.json`: `@whiskeysockets/baileys` (versión estable más reciente con ≥ 2 semanas), `pino`, `qrcode`. Reusar `@prisma/client` y `src/lib/*` como ya hace el worker SRI.
-- [ ] `WA_DISABLED=1` → arranca HTTP + latidos sin conectar WhatsApp (para la prueba de estabilidad).
-- [ ] Conexión: `markOnlineOnConnect:false`, `syncFullHistory:false`, browser estable (`["Totem Bot","Chrome","1.0"]`), backoff 5 s→5 min. `loggedOut` → `WhatsAppEvent(CONNECTION)` + push al dueño "Hay que volver a escanear el QR: <link>"; no reintentar en bucle.
-- [ ] QR: `/health/qr?token=WA_HEALTH_TOKEN` sirve PNG; además se manda el link por push al dueño (H2 sin intervención del agente).
-- [ ] **Sender**: toma 1 `PENDING` vencido; respeta `paused` y, para destinos de clientes, `clientsEnabled` + `WhatsAppGroup.enabled`; jitter 5–30 s; "escribiendo…" 1–3 s; máx. 20/h y 150/día; 3 reintentos → `FAILED` + alerta agrupada.
-- [ ] **Listener**: guarda `WhatsAppInbound` (sin descargar medios), marca `isTeam` vía `WhatsAppContact.userId`; enruta: chat privado del dueño → `owner-control`; grupo → `approvals` y `ai-reply` según `purposes`.
-- [ ] **Grupos**: al conectar y cada 6 h. Auto-match grupo→cliente con `client-matcher` + similitud de nombre; score ≥ 0.85 → asignar `clientId` directo; menor → `WhatsAppOwnerPrompt(GROUP_MATCH)` con top 3 opciones.
-- [ ] Limpieza diaria: `WhatsAppInbound` > 14 días, prompts expirados.
-- [ ] Latido cada minuto en `WhatsAppEvent(CONNECTION)` o tabla dedicada (reusar estilo `WorkerLatido`).
-- [ ] Tests unitarios: normalización de archivos, matcher, clasificador de intención (regex), parser de respuestas del dueño, `activeSchedule`.
+- [x] Dependencias en `worker/package.json`: `@whiskeysockets/baileys@6.7.24` (última estable, publicada el 2026-07-29; `7.0.0-rc14` sigue siendo pre-release), `pino` y `qrcode`. Reusar `@prisma/client` y `src/lib/*` como ya hace el worker SRI.
+- [x] `WA_DISABLED=1` → arranca HTTP + latidos sin conectar WhatsApp (verificado en staging).
+- [x] Conexión: `markOnlineOnConnect:false`, `syncFullHistory:false`, browser estable (`["Totem Bot","Chrome","1.0"]`), backoff 5 s→5 min. `loggedOut` → `WhatsAppEvent(CONNECTION)` + push al dueño "Hay que volver a escanear el QR: <link>"; no reintentar en bucle.
+- [x] QR: `/health/qr?token=WA_HEALTH_TOKEN` sirve PNG; además se manda el link por push al dueño (el envío real de QR se mantiene pendiente del gate de despliegue §10.3).
+- [x] **Sender**: toma 1 `PENDING` vencido; respeta `paused` y, para destinos de clientes, `clientsEnabled` + `WhatsAppGroup.enabled`; jitter 5–30 s; "escribiendo…" 1–3 s; máx. 20/h y 150/día; 3 reintentos → `FAILED` + alerta agrupada.
+- [x] **Listener**: guarda `WhatsAppInbound` (sin descargar medios), marca `isTeam` vía `WhatsAppContact.userId`; enruta: chat privado del dueño → `owner-control`; grupo → `approvals` y `ai-reply` según `purposes`.
+- [x] **Grupos**: al conectar y cada 6 h. Auto-match grupo→cliente con `client-matcher` + similitud de nombre; score ≥ 0.85 → asignar `clientId` directo; menor → `WhatsAppOwnerPrompt(GROUP_MATCH)` con top 3 opciones. Sync real sigue apagado en staging.
+- [x] Limpieza diaria: `WhatsAppInbound` > 14 días, prompts expirados.
+- [x] Latido cada minuto en `WhatsAppEvent(CONNECTION)` o tabla dedicada (reusar estilo `WorkerLatido`).
+- [x] Tests unitarios: normalización de archivos, matcher, clasificador de intención (regex), parser de respuestas del dueño, `activeSchedule`.
 
 ---
 
 ## 9. Fase 3 — Admin en Totem (`src/app/admin/whatsapp/`)
 
+Los checks de esta fase indican que el panel y sus acciones están implementados y verificados localmente; las funciones de envío siguen detrás de la pausa global.
+
 Para que el dueño pueda revisar sin tocar nada si no quiere:
-- [ ] Estado (lee `/health` server-side) + **Pausar/Reanudar**.
-- [ ] Grupos: cliente asignado (editable), `purposes`, `aiMode`, `approvalMode`, `enabled`.
-- [ ] Equipo: teléfono, opt-in, `activeSchedule`.
-- [ ] Clientes: `whatsappPhone`, destino de cobros, horas de recordatorio.
-- [ ] Bandeja (espejo de `WhatsAppOwnerPrompt` y `DRAFT`): Aprobar / Editar / Descartar.
-- [ ] Aprobaciones: pendientes, sin match, aprobadas (**Deshacer** restaura `previousTaskStatus`).
-- [ ] Historial con filtros. Solo ADMIN (`src/lib/roles.ts`). Seguir el estilo de componentes existente.
+- [x] Estado (lee `/health` server-side) + **Pausar/Reanudar**.
+- [x] Grupos: cliente asignado (editable), `purposes`, `aiMode`, `approvalMode`, `enabled`.
+- [x] Equipo: teléfono, opt-in, `activeSchedule`.
+- [x] Clientes: `whatsappPhone`, destino de cobros, horas de recordatorio.
+- [x] Bandeja (espejo de `WhatsAppOwnerPrompt` y `DRAFT`): Aprobar / Editar / Descartar.
+- [x] Aprobaciones: pendientes, sin match, aprobadas (**Deshacer** restaura `previousTaskStatus`).
+- [x] Historial con filtros. Solo ADMIN (`src/lib/roles.ts`). Seguir el estilo de componentes existente.
 
 ---
 
@@ -483,7 +487,7 @@ En `src/lib/assistant/tools.ts`:
 - [ ] Resumen 8 am solo en días activos (incluye miembro de medio mes); sin duplicados.
 - [ ] Rodaje: grupo 24 h antes y en la mañana + crew privado; sin duplicados.
 - [ ] Cobro: grupo o personal según config; sin montos en grupos por defecto.
-- [ ] Los 5 nombres de archivo de ejemplo emparejan con la tarea correcta (test con fixtures).
+- [x] Los 5 nombres de archivo de ejemplo emparejan con la tarea correcta (test con fixtures: `whatsapp-matcher-acceptance.test.mjs`).
 - [ ] "aprobado" citando video → prompt al dueño → "1" → `CLIENT_APPROVED` + confirmación en grupo; "Deshacer" funciona.
 - [ ] Con 2 pendientes y "aprobado" sin cita → no se aprueba a ciegas.
 - [ ] Recordatorio 48 h cita el video y se cancela si hubo respuesta.
@@ -495,10 +499,12 @@ En `src/lib/assistant/tools.ts`:
 ---
 
 ## 19. Bitácora del agente (rellenar)
-- **Ejecución 2026-10-16, rama local `feat/whatsapp-bot`.** Código implementado y probado localmente; commits de código `4d7073a`, `3b8f2a0`, `24552bb` y `b5fc503`. La excepción de auditoría quedó documentada en `d7a1ed2`. Sin push a `main`, PR ni merge.
+- **Ejecución 2026-10-16, rama local `feat/whatsapp-bot`.** Código implementado y probado localmente; commits relevantes `4d7073a`, `3b8f2a0`, `24552bb`, `b5fc503` y `2f4f2c5`. La excepción de auditoría quedó documentada en `d7a1ed2`. Sin push, PR ni merge.
 - **Zona horaria del servidor Hostinger:** no verificada. El acceso SSH `Hostinger` autentica, pero la sesión remota termina con `/sbin/nologin: No such file or directory`. No se modificó la cuenta ni se habilitó SSH. Los horarios implementados se calculan explícitamente en America/Guayaquil, sin depender del host.
 - **Staging Hostinger:** subdominio nuevo `palevioletred-viper-585081.hostingersite.com`, build `01a145c2-3899-71e3-847f-2e4209bac652` desde el artefacto de la rama local. Node 22, `WA_DISABLED=1`, `WA_PAIRING_ONLY=1`, `SRI_ENABLED=0`; la base `totem_whatsapp_staging` y su usuario están aislados de las tablas de producción. `/health/live` y `/health` responden 200; `npm audit --omit=dev` de raíz y worker deja solo `node-forge@1.4.0`. La auditoría completa de raíz aún señala dependencias de desarrollo de Tailwind 3, cuya corrección automática exige migrar a Tailwind 4. La migración aditiva de producción se probó con PostgreSQL aislado y se aplicó en Neon tras confirmar que era la única pendiente.
-- **Estabilidad:** Hostinger recibe un `GET /health` por minuto mediante un cron nuevo (UID `d6tlvmxJDl`). La salida observada es `HEALTH_OK`; la ventana de 48–72 h está en curso y todavía no se cumple el criterio de aceptación.
+- **Estabilidad:** Hostinger recibe un `GET /health` por minuto mediante un cron nuevo (UID `d6tlvmxJDl`). A las 18:04 UTC, `/health` respondió 200 con `disabled=true`, `pairingOnly=true`, `connected=false` y `uptimeSeconds=1522` (aprox. 25 min); el cron reportó `HEALTH_OK`. La ventana de 48–72 h todavía no se cumple. El endpoint de logs de runtime no conserva entradas disponibles para contar reinicios; falta corroborar esa ventana.
+- **Prueba del panel:** `scripts/whatsapp-browser-smoke.mjs` pasó con ADMIN y EDITOR en PostgreSQL local y worker HTTP falso en `127.0.0.1:3082`. Se verificaron pausa, bandeja, borrador, deshacer, acceso por rol, proxy QR sintético y rechazo del puente interno. No se conectó WhatsApp ni se enviaron mensajes.
+- **Pruebas de lógica añadidas:** tres casos del watchdog (5 min, recuperación, evitar alerta duplicada) y una prueba de inyección con proveedor simulado que comprueba que el texto no amplía las herramientas disponibles. El criterio de prueba con un proveedor IA real permanece pendiente.
 - **Diagnóstico Web Apps (API, solo lectura):** mediumspringgreen-wren… tiene último build fallido; registra Node solicitado 24.19.0 frente a 24.6.0 y termina después de Prisma, sin causa final concluyente en ese log. eternavida.com.ec tiene último build fallido por Turbopack/PostCSS en `src/app/globals.css` (el proceso del loader terminó antes de conectar). novaleappediatricpt.com tiene último build completado. No se repararon ni alteraron esos sitios.
 - **Diagnóstico `Web Checks`:** el run 38877740992 de `25f5636` falla en `web-dashboard-route.test.mjs` por esperar `getTasks()` después de una optimización anterior. Se actualizó el contrato al comportamiento real, conservando la comprobación del dashboard. Lint local también estaba entrando en artefactos de `.claude/worktrees`; se excluyen. El fetch posterior funcionó: HEAD y origin/main estaban iguales antes de estos cambios.
 - **Diferencias del despliegue:** el worker se compila a un bundle independiente; necesita el checkout completo para construir (`src/`, `prisma/`, `worker/`), pero solo sus dependencias y `dist/` para ejecutar. Docker y `render.yaml` preparan el fallback gratis sin crear servicios. El QR se muestra mediante proxy ADMIN, sin enviar el token al navegador o en notificaciones. Se añadió un puente interno autenticado (`WA_WORKER_SECRET`) para conservar los avisos push/Pusher en Vercel sin arrastrar Next al worker. `/health/live` permite completar el despliegue antes del escaneo; `/health` refleja la conexión operativa.

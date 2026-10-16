@@ -40,6 +40,16 @@ try {
     const id = `wa-browser-${role.toLowerCase()}`;
     await db.user.upsert({ where: { id }, create: { id, name: `WA Local ${role}`, email: `${id}@totem.test`, roleCode: role, roleLegacy: role }, update: { roleCode: role, roleLegacy: role } });
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+    await context.addInitScript(() => {
+      const diagnostics = [];
+      window.addEventListener("error", (event) => {
+        diagnostics.push(`${event.message} at ${event.filename}:${event.lineno}:${event.colno}`);
+      });
+      window.addEventListener("unhandledrejection", (event) => {
+        diagnostics.push(`unhandled rejection: ${String(event.reason)}`);
+      });
+      window.__whatsappSmokeErrors = diagnostics;
+    });
     await context.route("**/*", (route) => {
       const url = new URL(route.request().url());
       return ["localhost", "127.0.0.1"].includes(url.hostname) ? route.continue() : route.abort();
@@ -48,7 +58,7 @@ try {
     await context.addCookies([{ name: "authjs.session-token", value: token, url: baseURL, httpOnly: true, sameSite: "Lax" }]);
     const page = await context.newPage();
     const errors = [];
-    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("pageerror", (error) => errors.push(error.stack || error.message));
     const response = await page.goto(`${baseURL}/admin/whatsapp`, { waitUntil: "networkidle", timeout: 120000 });
     assert.ok(response && response.status() < 500, `route failed for ${role}`);
     if (role === "ADMIN") {
@@ -57,7 +67,7 @@ try {
         throw new Error(`Admin unexpectedly redirected to ${page.url()}`);
       }
       await page.getByRole("heading", { name: /WhatsApp/ }).first().waitFor();
-      assert.deepEqual(errors, [], "admin must hydrate without runtime errors");
+      assert.deepEqual([...errors, ...(await page.evaluate(() => window.__whatsappSmokeErrors ?? []))], [], "admin must hydrate without runtime errors");
       await page.getByRole("button", { name: "Reanudar", exact: true }).evaluate((button) => new Promise((resolve) => {
         const check = () => Object.keys(button).some((key) => key.startsWith("__reactProps")) ? resolve(true) : setTimeout(check, 100);
         check();
@@ -88,7 +98,7 @@ try {
       await page.getByRole("tab", { name: /Equipo/ }).click();
       await page.getByText("WA Local ADMIN", { exact: true }).first().waitFor();
       await page.screenshot({ path: "reports/whatsapp-admin-local.png", fullPage: true });
-      assert.deepEqual(errors, [], "admin must render without runtime errors");
+      assert.deepEqual([...errors, ...(await page.evaluate(() => window.__whatsappSmokeErrors ?? []))], [], "admin must render without runtime errors");
       const qrResponse = await context.request.get(`${baseURL}/api/admin/whatsapp/qr`);
       assert.equal(qrResponse.status(), 200);
       assert.match(qrResponse.headers()["content-type"], /image\/png/);
