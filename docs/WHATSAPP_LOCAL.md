@@ -160,9 +160,14 @@ cambio.
 - El aviso afecta la *verificación* de firmas RSA PKCS#1 v1.5 y no tiene versión
   corregida. `src/lib/sri/xml-signer.ts` solo parsea el `.p12`, calcula hashes y
   firma; no llama a ninguna API de verificación de node-forge.
-- Revisión del 2026-10-16: el advisory sigue sin versión parcheada y el [PR
-  upstream #1152](https://github.com/digitalbazaar/forge/pull/1152) continúa
-  abierto.
+- Revisión del 2026-10-16: `npm audit --omit=dev` en raíz y worker sigue
+  reportando solo `node-forge` como alta, sin versión corregida. Los PR upstream
+  [#1152](https://github.com/digitalbazaar/forge/pull/1152) y
+  [#1159](https://github.com/digitalbazaar/forge/pull/1159) continúan abiertos.
+  El autor de #1159 advierte que el conteo de elementos propuesto en #1152 puede
+  aceptar bytes dentro del `NULL` y longitudes DER no mínimas; no tratar ninguno
+  como parche publicado o definitivo. Mantener la excepción temporal hasta una
+  versión revisada y publicada.
 - `node:crypto` no sustituye a node-forge por completo: no lee PKCS#12, así que
   seguiría haciendo falta un parser de `.p12`.
 - Prueba local 2026-10-16: `tests/unit/sri-xml-signer.test.mjs` crea un `.p12`
