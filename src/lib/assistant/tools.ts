@@ -18,6 +18,7 @@ import { createContentTaskSchema } from "@/schemas/content";
 import { getMonthlyFinancialSummaryFromDb } from "@/lib/finance-monthly-summary-service";
 import { createDraftToken, type DraftAction } from "./drafts";
 import { buildAnalysisTools } from "./analysis-tools";
+import { buildMetaTools } from "./meta-tools";
 import { fuzzyMatch } from "./fuzzy";
 
 export interface AssistantUser {
@@ -89,6 +90,7 @@ async function findClient(clientId: string) {
 export function buildAssistantTools(user: AssistantUser) {
   return {
     ...buildAnalysisTools(user),
+    ...buildMetaTools(user),
 
     // ─────────────────────────── LECTURA ───────────────────────────
     buscarClientes: tool({
