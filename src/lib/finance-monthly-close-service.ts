@@ -42,6 +42,12 @@ export type ClientMonthlyClosureListItem = {
     amount: number;
     reason: string;
   };
+  /** Excepción de facturación del mes (exonerado, monto distinto, marcado como pagado). */
+  exception: null | {
+    type: "SKIP" | "OVERRIDE_AMOUNT" | "MARK_AS_PAID";
+    reason: string;
+    overrideAmount: number | null;
+  };
   closure: null | {
     id: string;
     accrualStatus: MonthlyClosureAccrualStatus;
@@ -351,6 +357,25 @@ export async function getClientMonthlyClosureRows(
   return rows as MonthlyClosureOverrideRow[];
 }
 
+/** La excepción registrada en la ficha del cliente manda sobre la sugerencia por entregas. */
+function recommendationFromException(
+  client: { monthlyRate: number },
+  exception: { type: string; reason: string; overrideAmount: number | null }
+): ClientMonthlyClosureListItem["recommendation"] {
+  if (exception.type === "SKIP") {
+    return { status: "NONE", amount: 0, reason: `Exonerado: ${exception.reason}` };
+  }
+  if (exception.type === "MARK_AS_PAID") {
+    return { status: "NONE", amount: 0, reason: `Marcado como pagado: ${exception.reason}` };
+  }
+  const amount = exception.overrideAmount ?? client.monthlyRate;
+  return {
+    status: amount >= client.monthlyRate ? "FULL" : amount > 0 ? "PARTIAL" : "NONE",
+    amount,
+    reason: `Monto acordado para este mes: ${exception.reason}`,
+  };
+}
+
 export async function getClientMonthlyClosuresFromDb(
   year: number,
   month: number
@@ -374,7 +399,7 @@ export async function getClientMonthlyClosuresFromDb(
     });
 
     const clientIds = clients.map((client) => client.id);
-    const [evidenceMap, paidMap, closures] = await Promise.all([
+    const [evidenceMap, paidMap, closures, exceptions] = await Promise.all([
       collectEvidenceByClient(clientIds, year, month),
       collectPaidAmountsByClient(clientIds, year, month),
       db.clientMonthlyClosure.findMany({
@@ -385,13 +410,19 @@ export async function getClientMonthlyClosuresFromDb(
           },
         },
       }),
+      db.clientBillingException.findMany({
+        where: { year, month, clientId: { in: clientIds } },
+        select: { clientId: true, type: true, reason: true, overrideAmount: true },
+      }),
     ]);
+    const exceptionMap = new Map(exceptions.map((e) => [e.clientId, e]));
 
     const closureMap = new Map(closures.map((closure) => [`${closure.clientId}-${closure.year}-${closure.month}`, closure]));
 
     const items: ClientMonthlyClosureListItem[] = clients.map((client) => {
       const evidence = evidenceMap.get(client.id) ?? createEmptyEvidence();
-      const recommendation = buildRecommendation(client, evidence);
+      const exception = exceptionMap.get(client.id) ?? null;
+      const recommendation = exception ? recommendationFromException(client, exception) : buildRecommendation(client, evidence);
       const closure = closureMap.get(`${client.id}-${year}-${month}`) ?? null;
 
       return {
@@ -406,6 +437,13 @@ export async function getClientMonthlyClosuresFromDb(
         evidence,
         paidThisMonth: paidMap.get(client.id) ?? 0,
         recommendation,
+        exception: exception
+          ? {
+              type: exception.type as "SKIP" | "OVERRIDE_AMOUNT" | "MARK_AS_PAID",
+              reason: exception.reason,
+              overrideAmount: exception.overrideAmount,
+            }
+          : null,
         closure: closure
           ? {
               id: closure.id,

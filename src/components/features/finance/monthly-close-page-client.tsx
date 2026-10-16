@@ -4,6 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, Wand2 } from "lucide-react";
 import type { ClientMonthlyClosurePageData } from "@/actions/finance-actions";
+
+type ClientMonthlyClosureListItem = ClientMonthlyClosurePageData["items"][number];
 import { closeMonthRecommended } from "@/actions/finance-actions";
 import { useToast } from "@/components/ui/use-toast";
 import { FinanceSectionNav } from "@/components/features/finance/finance-section-nav";
@@ -43,6 +45,11 @@ function getClosureTone(status: "FULL" | "PARTIAL" | "NONE") {
   return "text-muted-foreground";
 }
 
+/** Un mes exonerado o marcado como pagado ya está decidido aunque no tenga cierre. */
+const isDecidedByException = (item: ClientMonthlyClosureListItem) =>
+  !item.closure && (item.exception?.type === "SKIP" || item.exception?.type === "MARK_AS_PAID");
+const isDone = (item: ClientMonthlyClosureListItem) => Boolean(item.closure) || isDecidedByException(item);
+
 export function MonthlyClosePageClient({ data, userRole }: MonthlyClosePageClientProps) {
   const router = useRouter();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -52,7 +59,7 @@ export function MonthlyClosePageClient({ data, userRole }: MonthlyClosePageClien
   // Cierra solo los casos sin ambiguedad. Los parciales se quedan para revisar
   // a mano, porque ahi la cifra la decide el socio y no el sistema.
   const pendientesAutomaticos = data.items.filter(
-    (item) => !item.closure && item.recommendation.status !== "PARTIAL"
+    (item) => !isDone(item) && item.recommendation.status !== "PARTIAL"
   ).length;
 
   const handleCloseRecommended = () => {
@@ -77,6 +84,7 @@ export function MonthlyClosePageClient({ data, userRole }: MonthlyClosePageClien
 
   const stats = useMemo(() => {
     const closed = data.items.filter((item) => item.closure);
+    const exempted = data.items.filter(isDecidedByException).length;
     const full = closed.filter((item) => item.closure?.accrualStatus === "FULL").length;
     const partial = closed.filter((item) => item.closure?.accrualStatus === "PARTIAL").length;
     const none = closed.filter((item) => item.closure?.accrualStatus === "NONE").length;
@@ -84,17 +92,17 @@ export function MonthlyClosePageClient({ data, userRole }: MonthlyClosePageClien
 
     return {
       totalClients: data.items.length,
-      pending: data.items.length - closed.length,
+      pending: data.items.length - closed.length - exempted,
       full,
       partial,
-      none,
+      none: none + exempted,
       totalAccrued,
     };
   }, [data.items]);
 
   // Pendientes primero: es lo único que requiere acción
   const sortedItems = useMemo(
-    () => [...data.items].sort((a, b) => Number(Boolean(a.closure)) - Number(Boolean(b.closure))),
+    () => [...data.items].sort((a, b) => Number(isDone(a)) - Number(isDone(b))),
     [data.items]
   );
   const doneCount = stats.totalClients - stats.pending;
@@ -193,14 +201,19 @@ export function MonthlyClosePageClient({ data, userRole }: MonthlyClosePageClien
                               {getClosureLabel(item.closure.accrualStatus)}
                               {item.closure.accrualStatus === "PARTIAL" ? ` · ${formatCurrency(item.closure.accruedAmount)}` : ""}
                             </span>
+                          ) : isDecidedByException(item) ? (
+                            <span className="inline-flex items-center gap-1.5 font-medium text-muted-foreground" title={item.recommendation.reason}>
+                              <CheckCircle2 className="h-4 w-4" />
+                              {item.exception?.type === "SKIP" ? "Exonerado" : "Marcado como pagado"}
+                            </span>
                           ) : (
                             <span className="text-amber-600">Pendiente</span>
                           )}
                         </TableCell>
                         <TableCell className="text-right text-sm tabular-nums">{formatCurrency(item.paidThisMonth)}</TableCell>
                         <TableCell className="pr-5 text-right">
-                          <Button size="sm" variant={item.closure ? "ghost" : "outline"} onClick={() => setSelectedClientId(item.clientId)}>
-                            {item.closure ? "Cambiar" : "Decidir"}
+                          <Button size="sm" variant={isDone(item) ? "ghost" : "outline"} onClick={() => setSelectedClientId(item.clientId)}>
+                            {isDone(item) ? "Cambiar" : "Decidir"}
                           </Button>
                         </TableCell>
                       </TableRow>
