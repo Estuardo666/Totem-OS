@@ -126,10 +126,12 @@ Pusher/Web Push. El worker requiere `TOTEM_API_URL` y la misma
 al panel autenticado; el token QR nunca se envía en esos mensajes.
 
 El worker remoto está en Hostinger con WhatsApp desactivado y una base de staging
-separada. Siguen pendientes las 48–72 h de estabilidad, desplegar el panel y el
-puente backend, instalar crons y cualquier activación de mensajes. AUTO, SRI y
-crons de correo permanecen desactivados. El staging de Hostinger sigue con el
-paquete anterior; aún no se ha reconstruido con `b5fc503`.
+separada. Se reconstruyó desde el estado con `b5fc503` en el build Hostinger
+`01a145c2-3899-71e3-847f-2e4209bac652`; `/health/live` y `/health` responden
+200 con `disabled=true`, y la base conserva cero grupos, entradas y mensajes.
+Siguen pendientes las 48–72 h de estabilidad, desplegar el panel y el puente
+backend, instalar crons y cualquier activación de mensajes. AUTO, SRI y crons
+de correo permanecen desactivados.
 
 ### Dependencias auditadas
 
