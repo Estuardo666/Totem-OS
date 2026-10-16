@@ -19,8 +19,9 @@ export const PROVIDER_CATALOG: Record<
     label: "OpenAI",
     envKey: "OPENAI_API_KEY",
     models: [
+      { id: "gpt-5.4-mini", label: "GPT-5.4 mini" },
+      { id: "gpt-5.4-nano", label: "GPT-5.4 nano" },
       { id: "gpt-5-mini", label: "GPT-5 mini" },
-      { id: "gpt-5-nano", label: "GPT-5 nano" },
     ],
   },
   groq: {
