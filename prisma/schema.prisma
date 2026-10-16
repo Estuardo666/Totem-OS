@@ -1557,3 +1557,21 @@ model WorkerLatido {
   @@index([workerId])
   @@index([timestamp])
 }
+
+// Acciones ejecutadas por el asistente de IA tras la confirmación del usuario.
+// draftHash único hace idempotente la confirmación: un mismo borrador no se
+// ejecuta dos veces aunque el usuario pulse "Confirmar" repetidamente.
+model AiActionLog {
+  id        String   @id @default(cuid())
+  draftHash String   @unique
+  action    String // crearGasto, crearTarea, registrarHonorario
+  payload   String // JSON del borrador confirmado
+  resultId  String?
+  status    String   @default("PENDING") // PENDING, DONE, FAILED
+  error     String?
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}

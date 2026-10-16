@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { AppearanceForm } from "@/components/features/settings/appearance-form";
 import { NotificationSettings } from "@/components/features/settings/notification-settings";
 import { AiConfigForm } from "@/components/features/admin/ai-config-form";
+import { AssistantSettingsForm } from "@/components/features/admin/assistant-settings-form";
 import { BrandingSettings } from "@/components/features/admin/branding-settings";
 import { SessionControlSettings } from "@/components/features/admin/session-control-settings";
 import { GoogleCalendarSettings } from "@/components/features/admin/google-calendar-settings";
@@ -119,6 +120,7 @@ async function SettingsContent() {
                 Inteligencia Artificial
               </h2>
             </div>
+            <AssistantSettingsForm />
             <AiConfigForm />
           </section>
         )}
