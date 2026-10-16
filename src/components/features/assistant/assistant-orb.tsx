@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, CheckSquare, HandCoins, Keyboard, Loader2, Mic, MicOff, Receipt, X } from "lucide-react";
+import { Keyboard, Loader2, Mic, MicOff, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AssistantChat, Avatar } from "./assistant-chat";
 import { type DraftEntry, type VoiceStatus, useLiveVoice } from "./use-live-voice";
@@ -59,13 +59,7 @@ function OrbSphere({ size, active, className }: { size?: number; active?: boolea
   );
 }
 
-const DRAFT_ICONS: Record<string, typeof Receipt> = {
-  crearGasto: Receipt,
-  crearTarea: CheckSquare,
-  registrarHonorario: HandCoins,
-};
-
-/** Aprobación estilo alerta de macOS: compacta, con icono y botones a la derecha. */
+/** Aprobación compacta: datos arriba y Cancelar | Confirmar abajo, sin iconos. */
 function DraftCard({
   draft,
   onConfirm,
@@ -77,81 +71,71 @@ function DraftCard({
 }) {
   const error = typeof draft.state === "object" ? draft.state.error : null;
   const open = draft.state === "pending" || Boolean(error);
-  const Icon = DRAFT_ICONS[draft.action] ?? Receipt;
   const rows = Object.entries(draft.summary).filter(([, v]) => v !== null && v !== "");
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, transform: "translateY(6px) scale(0.97)" }}
+      initial={{ opacity: 0, transform: "translateY(6px) scale(0.98)" }}
       animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
-      transition={{ type: "spring", duration: 0.4, bounce: 0.15 }}
-      className="rounded-xl border border-black/[0.08] bg-white/80 p-3 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.25)] backdrop-blur-xl dark:border-white/10 dark:bg-zinc-800/80"
+      transition={{ type: "spring", duration: 0.35, bounce: 0.12 }}
+      className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm"
     >
-      <div className="flex gap-2.5">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-b from-sky-400 to-blue-600 text-white shadow-sm">
-          <Icon className="h-3.5 w-3.5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold leading-tight">{DRAFT_TITLES[draft.action] ?? draft.action}</p>
-          <dl className="mt-1 space-y-0.5 text-[12px] leading-snug">
-            {rows.map(([k, v]) => (
-              <div key={k} className="flex gap-2">
-                <dt className="w-16 shrink-0 text-muted-foreground">{k}</dt>
-                <dd className={cn("min-w-0 truncate", k === "Monto" && "font-semibold tabular-nums")}>
-                  {typeof v === "number" && k === "Monto" ? `$${v.toFixed(2)}` : String(v)}
-                </dd>
-              </div>
-            ))}
-          </dl>
-          {error && <p className="mt-1 text-[11px] text-destructive">{error}</p>}
-        </div>
+      <div className="px-3.5 pb-2.5 pt-3">
+        <p className="text-[13px] font-semibold tracking-tight">{DRAFT_TITLES[draft.action] ?? draft.action}</p>
+        <dl className="mt-1.5 space-y-0.5 text-[12.5px]">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-3">
+              <dt className="shrink-0 text-muted-foreground">{k}</dt>
+              <dd className={cn("min-w-0 truncate text-right", k === "Monto" && "font-semibold tabular-nums")}>
+                {typeof v === "number" && k === "Monto" ? `$${v.toFixed(2)}` : String(v)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        {error && <p className="mt-1.5 text-[11.5px] text-destructive">{error}</p>}
       </div>
-      <div className="mt-2.5 flex justify-end">
-        <AnimatePresence mode="wait" initial={false}>
-          {open ? (
-            <motion.div
-              key="actions"
-              exit={{ opacity: 0, filter: "blur(2px)", transition: { duration: 0.12 } }}
-              className="flex gap-1.5"
+      <AnimatePresence mode="wait" initial={false}>
+        {open ? (
+          <motion.div
+            key="actions"
+            exit={{ opacity: 0, filter: "blur(2px)", transition: { duration: 0.12 } }}
+            className="grid grid-cols-2 border-t border-border/60 text-[14px]"
+          >
+            <button
+              type="button"
+              onClick={onCancel}
+              className="py-2 text-muted-foreground transition-[background-color,transform] duration-150 hover:bg-muted/60 active:scale-[0.97]"
             >
-              <button
-                type="button"
-                onClick={onCancel}
-                className="h-6 rounded-md border border-black/10 bg-white px-3 text-[12px] font-medium shadow-sm transition-transform duration-100 active:scale-[0.97] dark:border-white/10 dark:bg-zinc-700"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={onConfirm}
-                className="h-6 rounded-md bg-gradient-to-b from-sky-500 to-blue-600 px-3 text-[12px] font-medium text-white shadow-sm shadow-blue-600/30 transition-transform duration-100 active:scale-[0.97]"
-              >
-                Confirmar
-              </button>
-            </motion.div>
-          ) : (
-            <motion.span
-              key={typeof draft.state === "string" ? draft.state : "error"}
-              initial={{ opacity: 0, filter: "blur(2px)" }}
-              animate={{ opacity: 1, filter: "blur(0px)" }}
-              transition={{ duration: 0.18, ease: EASE_OUT }}
-              className="flex h-6 items-center text-[12px]"
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="border-l border-border/60 py-2 font-semibold text-emerald-600 transition-[background-color,transform] duration-150 hover:bg-emerald-500/10 active:scale-[0.97] dark:text-emerald-400"
             >
-              {draft.state === "saving" ? (
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Guardando…
-                </span>
-              ) : draft.state === "done" ? (
-                <span className="flex items-center gap-1 font-medium text-emerald-600">
-                  <Check className="h-3.5 w-3.5" /> Guardado
-                </span>
-              ) : (
-                <span className="text-muted-foreground">Cancelado</span>
-              )}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </div>
+              Confirmar
+            </button>
+          </motion.div>
+        ) : (
+          <motion.div
+            key={typeof draft.state === "string" ? draft.state : "error"}
+            initial={{ opacity: 0, filter: "blur(2px)" }}
+            animate={{ opacity: 1, filter: "blur(0px)" }}
+            transition={{ duration: 0.18, ease: EASE_OUT }}
+            className="border-t border-border/60 py-2 text-center text-[12.5px]"
+          >
+            {draft.state === "saving" ? (
+              <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Guardando…
+              </span>
+            ) : draft.state === "done" ? (
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">Guardado</span>
+            ) : (
+              <span className="text-muted-foreground">Cancelado</span>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -281,8 +265,7 @@ export function AssistantOrb() {
   const [paused, setPaused] = useState(false);
   const [chatMounted, setChatMounted] = useState(false);
   const voice = useLiveVoice();
-  const { status, transcript, drafts, start, stop, reset, prefetchToken, getInputLevel } = voice;
-  const [chatKey, setChatKey] = useState(0);
+  const { status, transcript, drafts, start, stop, prefetchToken, getInputLevel } = voice;
   const live = status !== "idle" && status !== "error";
 
   const orbRef = useRef<HTMLButtonElement>(null);
@@ -295,14 +278,6 @@ export function AssistantOrb() {
     lastActivityRef.current = Date.now();
     void start();
   }, [start]);
-
-  /** Terminar: corta la voz y deja la ventana limpia para empezar de cero. */
-  const endConversation = useCallback(() => {
-    stop();
-    reset();
-    setPaused(false);
-    setChatKey((k) => k + 1);
-  }, [stop, reset]);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -484,11 +459,11 @@ export function AssistantOrb() {
 
             <div className="relative min-h-0 flex-1">
               <div className={cn("absolute inset-0", mode !== "voice" && "invisible")}>
-                <VoiceView userName={userName} userImage={userImage} voice={voice} paused={paused} onToggle={live ? endConversation : startVoice} orbRef={orbRef} />
+                <VoiceView userName={userName} userImage={userImage} voice={voice} paused={paused} onToggle={live ? stop : startVoice} orbRef={orbRef} />
               </div>
               {chatMounted && (
                 <div className={cn("absolute inset-0", mode !== "chat" && "invisible")}>
-                  <AssistantChat key={chatKey} userName={userName} userImage={userImage} compact />
+                  <AssistantChat userName={userName} userImage={userImage} compact />
                 </div>
               )}
             </div>
@@ -497,7 +472,7 @@ export function AssistantOrb() {
               <footer className="flex items-center justify-center gap-3 border-t border-border/50 px-4 py-3">
                 <button
                   type="button"
-                  onClick={live ? endConversation : startVoice}
+                  onClick={live ? stop : startVoice}
                   disabled={status === "connecting"}
                   className={cn(
                     "flex h-11 items-center gap-2 rounded-full px-5 text-[14px] font-medium transition-[background-color,transform] duration-150 active:scale-[0.97] disabled:opacity-60",
