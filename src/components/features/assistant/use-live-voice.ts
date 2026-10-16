@@ -11,6 +11,8 @@ export interface TranscriptLine {
   id: number;
   role: "user" | "assistant";
   text: string;
+  /** Id del item de OpenAI: la transcripción del usuario llega después. */
+  itemId?: string;
 }
 
 export interface DraftEntry extends AgentDraft {
@@ -77,13 +79,39 @@ export function useLiveVoice() {
     setDrafts(draftsRef.current);
   };
 
+  // Fuerza una línea nueva aunque el último mensaje sea del mismo rol.
+  const newLineRef = useRef(false);
+
   const appendTranscript = (role: TranscriptLine["role"], text: string) => {
+    const forceNew = newLineRef.current;
+    newLineRef.current = false;
     setTranscript((prev) => {
       const last = prev[prev.length - 1];
-      if (last && last.role === role) {
+      if (last && last.role === role && !forceNew) {
         return [...prev.slice(0, -1), { ...last, text: last.text + text }];
       }
       return [...prev, { id: ++lineIdRef.current, role, text }];
+    });
+  };
+
+  /** Reserva el lugar del mensaje del usuario hasta que llegue su texto. */
+  const reserveUserLine = (itemId: string) => {
+    setTranscript((prev) =>
+      prev.some((l) => l.itemId === itemId)
+        ? prev
+        : [...prev, { id: ++lineIdRef.current, role: "user", text: "…", itemId }]
+    );
+    newLineRef.current = true;
+  };
+
+  const fillUserLine = (itemId: string, text: string) => {
+    setTranscript((prev) => {
+      if (!prev.some((l) => l.itemId === itemId)) {
+        return [...prev, { id: ++lineIdRef.current, role: "user", text, itemId }];
+      }
+      return text
+        ? prev.map((l) => (l.itemId === itemId ? { ...l, text } : l))
+        : prev.filter((l) => l.itemId !== itemId);
     });
   };
 
@@ -236,9 +264,12 @@ export function useLiveVoice() {
       case "input_audio_buffer.speech_started":
         setStatus("listening");
         break;
+      case "input_audio_buffer.committed":
+        if (typeof event.item_id === "string") reserveUserLine(event.item_id);
+        break;
       case "conversation.item.input_audio_transcription.completed":
-        if (typeof event.transcript === "string" && event.transcript.trim()) {
-          appendTranscript("user", event.transcript.trim());
+        if (typeof event.item_id === "string") {
+          fillUserLine(event.item_id, typeof event.transcript === "string" ? event.transcript.trim() : "");
         }
         break;
       case "response.output_audio_transcript.delta":
@@ -249,6 +280,7 @@ export function useLiveVoice() {
         break;
       case "response.created":
         responseActiveRef.current = true;
+        newLineRef.current = true;
         break;
       case "response.done":
         responseActiveRef.current = false;
