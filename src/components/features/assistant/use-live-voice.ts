@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, type LiveServerMessage, type Session } from "@google/genai";
 import { confirmAssistantDraft } from "@/actions/assistant-actions";
 import type { AgentDraft, AgentTurn } from "@/lib/assistant/agent";
+import type { PostCardData } from "./post-strip";
 
 export type VoiceStatus = "idle" | "connecting" | "listening" | "thinking" | "speaking" | "error";
 
@@ -69,6 +70,8 @@ export function useLiveVoice() {
   const [drafts, setDrafts] = useState<DraftEntry[]>([]);
   // Logos de los clientes que aparecieron en las respuestas del pensador.
   const [logos, setLogos] = useState<Record<string, string>>({});
+  // Miniaturas de la última respuesta que trajo publicaciones.
+  const [posts, setPosts] = useState<PostCardData[]>([]);
 
   const sessionRef = useRef<Session | null>(null);
   // OpenAI Realtime (WebRTC): conexión, canal de eventos y audio remoto.
@@ -238,6 +241,7 @@ export function useLiveVoice() {
       if (!res.ok || data.error) return { error: data.error ?? "No pude consultar" };
       historyRef.current = [...historyRef.current, { role: "assistant" as const, content: data.text }].slice(-12);
       if (data.logos && Object.keys(data.logos).length) setLogos((prev) => ({ ...prev, ...data.logos }));
+      if (data.posts?.length) setPosts(data.posts as PostCardData[]);
       if (data.drafts.length) {
         updateDrafts((prev) => [
           ...prev.map((d) => (d.state === "pending" ? { ...d, state: "cancelled" as const } : d)),
@@ -483,6 +487,7 @@ export function useLiveVoice() {
   const reset = useCallback(() => {
     setTranscript([]);
     setLogos({});
+    setPosts([]);
     updateDrafts(() => []);
     historyRef.current = [];
     setError(null);
@@ -631,5 +636,5 @@ export function useLiveVoice() {
     return Math.min(1, Math.sqrt(sum / buf.length) * 4);
   }, []);
 
-  return { status, error, transcript, drafts, logos, start, stop, reset, prefetchToken, confirmDraft, cancelDraft, getInputLevel };
+  return { status, error, transcript, drafts, logos, posts, start, stop, reset, prefetchToken, confirmDraft, cancelDraft, getInputLevel };
 }

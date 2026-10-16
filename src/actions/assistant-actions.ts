@@ -7,6 +7,7 @@ import type { ApiResponse } from "@/types";
 import { hashDraftToken, verifyDraftToken } from "@/lib/assistant/drafts";
 import { createExpense, createTransaction } from "@/actions/finance-actions";
 import { createTask } from "@/actions/content-actions";
+import { createShooting } from "@/actions/shooting-actions";
 
 /**
  * Ejecuta un borrador del asistente que el usuario confirmó.
@@ -49,7 +50,14 @@ export async function confirmAssistantDraft(
       ? await createExpense(input)
       : action === "crearTarea"
         ? await createTask(input)
-        : await createTransaction(input);
+        : action === "crearRodaje"
+          ? await createShooting({
+              // El borrador viaja como JSON: las fechas llegan como texto.
+              ...(input as { title: string; clientId: string; address?: string; notes?: string; crewIds?: string[] }),
+              startTime: new Date(String(input.startTime)),
+              endTime: new Date(String(input.endTime)),
+            })
+          : await createTransaction(input);
 
   const resultId =
     result.success && result.data && typeof result.data === "object" && "id" in result.data

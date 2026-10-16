@@ -23,6 +23,8 @@ export interface AgentTurn {
   drafts: AgentDraft[];
   /** Nombre de cliente → logo, para mostrarlo junto al nombre en la transcripción. */
   logos: Record<string, string>;
+  /** Publicaciones destacadas (miniaturas) que devolvieron las herramientas de Meta. */
+  posts: unknown[];
 }
 
 export async function runAssistantTurn(
@@ -43,15 +45,18 @@ export async function runAssistantTurn(
 
   const drafts: AgentDraft[] = [];
   const logos: Record<string, string> = {};
+  const posts: unknown[] = [];
   for (const step of result.steps) {
     for (const r of step.toolResults) {
       const out = r.output as Partial<AgentDraft> & { status?: string; logos?: Record<string, string> };
       if (out?.logos) Object.assign(logos, out.logos);
+      const featured = (out as { publicacionesDestacadas?: unknown[] })?.publicacionesDestacadas;
+      if (Array.isArray(featured)) posts.push(...featured);
       if (out?.status === "requires_confirmation" && out.draftToken && out.action && out.summary) {
         drafts.push({ action: out.action, summary: out.summary, draftToken: out.draftToken });
       }
     }
   }
 
-  return { text: result.text.trim(), drafts, logos };
+  return { text: result.text.trim(), drafts, logos, posts };
 }

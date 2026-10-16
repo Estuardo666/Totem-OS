@@ -243,7 +243,7 @@ export function buildMetaTools(_user: AssistantUser) {
             publishedAt: { gte: p.start, lt: p.end },
           },
           select: {
-            platform: true, mediaType: true, productType: true, permalink: true, caption: true, publishedAt: true,
+            platform: true, mediaType: true, productType: true, permalink: true, caption: true, publishedAt: true, thumbnailUrl: true,
             reach: true, views: true, likes: true, comments: true, saves: true, shares: true, interactions: true,
             profileVisits: true, follows: true,
             client: { select: { name: true, logo: true } },
@@ -259,6 +259,7 @@ export function buildMetaTools(_user: AssistantUser) {
             fecha: day(m.publishedAt),
             texto: (m.caption ?? "").replace(/\s+/g, " ").slice(0, 80),
             enlace: m.permalink,
+            miniatura: m.thumbnailUrl,
             alcance: m.reach,
             vistas: m.views,
             interacciones: inter,
@@ -313,6 +314,17 @@ export function buildMetaTools(_user: AssistantUser) {
             .sort((a, b) => b.vistasPromedio - a.vistasPromedio),
           top: sorted.slice(0, 5),
           peores: sorted.slice(-3).reverse(),
+          // La UI muestra estas miniaturas debajo de la respuesta.
+          publicacionesDestacadas: sorted.slice(0, 5).map((r) => ({
+            miniatura: r.miniatura,
+            enlace: r.enlace,
+            formato: r.formato,
+            cliente: r.cliente,
+            fecha: r.fecha,
+            alcance: r.alcance,
+            vistas: r.vistas,
+            engagementPct: r.engagementPct,
+          })),
         };
       },
     }),

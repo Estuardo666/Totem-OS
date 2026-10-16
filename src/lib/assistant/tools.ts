@@ -400,6 +400,58 @@ export function buildAssistantTools(user: AssistantUser) {
       },
     }),
 
+    crearRodaje: tool({
+      description:
+        "Prepara un rodaje (sesión de grabación) para que el usuario lo confirme. NO lo guarda. Al confirmar se crea en Totem OS y en Google Calendar. Requiere clientId (usa buscarClientes); para el equipo usa buscarUsuarios.",
+      inputSchema: z.object({
+        clientId: z.string(),
+        titulo: z.string().min(1).describe("Ej.: 'Rodaje reels octubre'"),
+        fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("YYYY-MM-DD"),
+        hora: z.string().regex(/^\d{2}:\d{2}$/).describe("Hora de inicio HH:mm en 24 h, hora de Ecuador"),
+        duracionMinutos: z.number().int().min(15).max(720).optional().describe("Por defecto 60"),
+        direccion: z.string().optional(),
+        notas: z.string().optional(),
+        equipoUserIds: z.array(z.string()).optional().describe("userIds del equipo que va al rodaje"),
+      }),
+      execute: async ({ clientId, titulo, fecha, hora, duracionMinutos = 60, direccion, notas, equipoUserIds }) => {
+        const [client, crew] = await Promise.all([
+          findClient(clientId),
+          equipoUserIds?.length
+            ? db.user.findMany({ where: { id: { in: equipoUserIds } }, select: { id: true, name: true } })
+            : [],
+        ]);
+        if (!client) return { error: "Cliente no encontrado; usa buscarClientes." };
+        if (equipoUserIds?.length && crew.length !== equipoUserIds.length) {
+          return { error: "Alguien del equipo no se encontró; usa buscarUsuarios." };
+        }
+        const start = new Date(`${fecha}T${hora}:00-05:00`);
+        if (Number.isNaN(start.getTime())) return { error: "Fecha u hora inválida." };
+        if (start.getTime() < Date.now() - 60 * 60 * 1000) return { error: "Esa fecha ya pasó; confirma la fecha del rodaje." };
+        const end = new Date(start.getTime() + duracionMinutos * 60 * 1000);
+        const input = {
+          title: titulo,
+          clientId: client.id,
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+          ...(direccion && { address: direccion }),
+          ...(notas && { notes: notas }),
+          ...(crew.length && { crewIds: crew.map((u) => u.id) }),
+        };
+        const fmt = new Intl.DateTimeFormat("es-EC", {
+          timeZone: "America/Guayaquil", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+        });
+        return draft(user, "crearRodaje", input, {
+          Título: titulo,
+          Cliente: client.name,
+          Cuándo: fmt.format(start),
+          Duración: duracionMinutos >= 60 ? `${duracionMinutos / 60} h` : `${duracionMinutos} min`,
+          Lugar: direccion ?? null,
+          Equipo: crew.map((u) => u.name).join(", ") || null,
+          Notas: notas ?? null,
+        });
+      },
+    }),
+
     registrarHonorario: tool({
       description:
         "Prepara el registro de un pago de honorarios para que el usuario lo confirme. NO lo guarda. Solo admin. Requiere userId (usa buscarUsuarios).",

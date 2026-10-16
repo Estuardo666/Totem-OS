@@ -10,6 +10,7 @@ import { ArrowUp, Check, Loader2, Sparkles, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { confirmAssistantDraft } from "@/actions/assistant-actions";
 import { cn } from "@/lib/utils";
+import { PostStrip, postsFromOutput } from "./post-strip";
 
 // Curva fuerte de ease-out para entradas: respuesta inmediata.
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
@@ -39,12 +40,14 @@ const TOOL_LABELS: Record<string, string> = {
   metaAudiencia: "Revisando audiencia",
   metaRankingClientes: "Comparando clientes en redes",
   metaAnuncios: "Analizando anuncios",
+  crearRodaje: "Preparando rodaje",
   crearGasto: "Preparando gasto",
   crearTarea: "Preparando tarea",
   registrarHonorario: "Preparando honorario",
 };
 
 const DRAFT_TITLES: Record<string, string> = {
+  crearRodaje: "Nuevo rodaje",
   crearGasto: "Nuevo gasto",
   crearTarea: "Nueva tarea",
   registrarHonorario: "Pago de honorarios",
@@ -230,6 +233,9 @@ function ToolStatus({ part }: { part: ToolPart }) {
 }
 
 function AssistantBubble({ message }: { message: UIMessage }) {
+  const posts = message.parts.flatMap((part) =>
+    part.type.startsWith("tool-") ? postsFromOutput((part as unknown as ToolPart).output) : []
+  );
   return (
     <div className="min-w-0 flex-1 space-y-2.5 pt-0.5 text-[15px]">
       {message.parts.map((part, i) => {
@@ -251,6 +257,7 @@ function AssistantBubble({ message }: { message: UIMessage }) {
         }
         return null;
       })}
+      <PostStrip posts={posts} className="pt-1" />
     </div>
   );
 }

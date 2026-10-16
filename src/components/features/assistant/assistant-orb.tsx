@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { AssistantChat, Avatar } from "./assistant-chat";
 import { type DraftEntry, type VoiceStatus, useLiveVoice } from "./use-live-voice";
 import { spokenNumbersToDigits } from "@/lib/assistant/spoken-numbers";
+import { PostStrip } from "./post-strip";
 
 const ACCENTS: Record<string, string> = { a: "aáàä", e: "eéèë", i: "iíìï", o: "oóòö", u: "uúùü", n: "nñ" };
 
@@ -72,6 +73,7 @@ const STATUS_LABEL: Record<VoiceStatus, string> = {
 };
 
 const DRAFT_TITLES: Record<string, string> = {
+  crearRodaje: "Nuevo rodaje",
   crearGasto: "Nuevo gasto",
   crearTarea: "Nueva tarea",
   registrarHonorario: "Pago de honorarios",
@@ -194,7 +196,7 @@ function VoiceView({
   onToggle: () => void;
   orbRef: React.RefObject<HTMLButtonElement | null>;
 }) {
-  const { status, error, transcript, drafts, logos, confirmDraft, cancelDraft } = voice;
+  const { status, error, transcript, drafts, logos, posts, confirmDraft, cancelDraft } = voice;
   const live = status !== "idle" && status !== "error";
   const bottomRef = useRef<HTMLDivElement>(null);
   
@@ -271,6 +273,7 @@ function VoiceView({
               </motion.div>
             ))}
           </AnimatePresence>
+          <PostStrip posts={posts} className="pt-1" />
           {drafts.map((d) => (
             <DraftCard
               key={d.draftToken}
