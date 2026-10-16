@@ -311,14 +311,14 @@ export function AssistantChat({
   const bubbleEnter = reduceMotion
     ? { initial: { opacity: 0 }, animate: { opacity: 1 } }
     : {
-        initial: { opacity: 0, transform: "translateY(10px) scale(0.94)" },
-        animate: { opacity: 1, transform: "translateY(0px) scale(1)" },
+        initial: { opacity: 0, filter: "blur(6px)", transform: "translateY(10px) scale(0.96)" },
+        animate: { opacity: 1, filter: "blur(0px)", transform: "translateY(0px) scale(1)" },
       };
 
   return (
     <ClientLogos.Provider value={logos}>
       <div className="flex h-full flex-col">
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain">
           <div className={cn("mx-auto max-w-2xl space-y-6 px-4", compact ? "py-4" : "py-8")}>
             {messages.length === 0 && (
               <motion.div {...enter} transition={{ duration: 0.3, ease: EASE_OUT }} className={cn("space-y-6 text-center", compact ? "py-6" : "py-12")}>
@@ -350,7 +350,7 @@ export function AssistantChat({
               <motion.div
                 key={m.id}
                 {...bubbleEnter}
-                transition={reduceMotion ? { duration: 0.2 } : { type: "spring", duration: 0.4, bounce: 0.18 }}
+                transition={reduceMotion ? { duration: 0.2 } : { duration: 0.45, ease: EASE_OUT }}
                 style={{ transformOrigin: m.role === "user" ? "bottom right" : "bottom left" }}
                 className={cn("flex gap-3", m.role === "user" && "flex-row-reverse")}
               >

@@ -158,7 +158,7 @@ function VoiceView({
   const { status, error, transcript, drafts, confirmDraft, cancelDraft } = voice;
   const live = status !== "idle" && status !== "error";
   const bottomRef = useRef<HTMLDivElement>(null);
-  const recent = transcript.slice(-6);
+  
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -200,7 +200,7 @@ function VoiceView({
         </AnimatePresence>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4">
+      <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-4">
         <div className="space-y-2 pb-4">
           {transcript.length === 0 && !live && !paused && (
             <p className="px-6 pt-2 text-center text-[13px] leading-relaxed text-muted-foreground">
@@ -208,13 +208,13 @@ function VoiceView({
             </p>
           )}
           <AnimatePresence initial={false}>
-            {recent.map((line) => (
+            {transcript.map((line) => (
               <motion.div
                 key={line.id}
                 layout="position"
-                initial={{ opacity: 0, transform: "translateY(10px) scale(0.94)" }}
-                animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
-                transition={{ type: "spring", duration: 0.4, bounce: 0.18 }}
+                initial={{ opacity: 0, filter: "blur(6px)", transform: "translateY(10px) scale(0.96)" }}
+                animate={{ opacity: 1, filter: "blur(0px)", transform: "translateY(0px) scale(1)" }}
+                transition={{ duration: 0.45, ease: EASE_OUT }}
                 style={{ transformOrigin: line.role === "user" ? "bottom right" : "bottom left" }}
                 className={cn("flex items-end gap-2", line.role === "user" && "flex-row-reverse")}
               >
@@ -265,7 +265,7 @@ export function AssistantOrb() {
   const [paused, setPaused] = useState(false);
   const [chatMounted, setChatMounted] = useState(false);
   const voice = useLiveVoice();
-  const { status, transcript, drafts, start, stop, prefetchToken, getInputLevel } = voice;
+  const { status, transcript, drafts, start, stop, reset, prefetchToken, getInputLevel } = voice;
   const live = status !== "idle" && status !== "error";
 
   const orbRef = useRef<HTMLButtonElement>(null);
@@ -279,11 +279,14 @@ export function AssistantOrb() {
     void start();
   }, [start]);
 
+  // Cerrar descarta la conversación: al abrir de nuevo empieza limpia.
   const close = useCallback(() => {
     setOpen(false);
     stop();
+    reset();
     setPaused(false);
-  }, [stop]);
+    setChatMounted(false);
+  }, [stop, reset]);
 
   // Cualquier cambio de la conversación cuenta como actividad.
   useEffect(() => {
@@ -399,8 +402,7 @@ export function AssistantOrb() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={close}
-            className="fixed inset-0 z-50 bg-black/20 backdrop-blur-[2px] md:bg-transparent md:backdrop-blur-0"
+            className="pointer-events-none fixed inset-0 z-50 bg-black/20 backdrop-blur-[2px] md:hidden"
           />
         )}
       </AnimatePresence>
@@ -413,7 +415,7 @@ export function AssistantOrb() {
             {...panelMotion}
             transition={{ duration: 0.32, ease: EASE_DRAWER }}
             style={{ transformOrigin: "bottom right" }}
-            className="fixed inset-x-2 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] z-50 flex h-[min(640px,82dvh)] flex-col overflow-hidden rounded-[28px] border border-white/20 bg-background/85 shadow-2xl shadow-black/20 backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 md:inset-x-auto md:bottom-6 md:right-6 md:w-[400px]"
+            className="fixed inset-x-2 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] z-50 flex h-[min(720px,88dvh)] flex-col overflow-hidden rounded-[28px] border border-white/20 bg-background/85 shadow-2xl shadow-black/20 backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 md:inset-x-auto md:bottom-6 md:right-6 md:w-[400px]"
           >
             <header className="flex items-center gap-2 px-3 pb-1 pt-3">
               <div className="flex flex-1 justify-center pl-9">
