@@ -8,6 +8,7 @@ import { appendSystemReviewNote } from "@/lib/content-review";
 import { revalidatePath } from "next/cache";
 import { setWhatsAppConfigValue, setWhatsAppPaused } from "@/lib/whatsapp";
 import { applyOwnerPromptAnswer } from "@/lib/whatsapp/decisions";
+import { isSupportedWhatsAppSchedule } from "@/lib/whatsapp/schedule";
 
 const PAGE = "/admin/whatsapp";
 const BOT_PHONE = "593994782827";
@@ -131,34 +132,13 @@ export async function updateWhatsAppTeamMemberAction(input: { id: string; phone:
   if (scheduleText) {
     try { activeSchedule = JSON.parse(scheduleText); }
     catch { throw new Error("El horario activo debe ser JSON válido."); }
-    if (!isSupportedSchedule(activeSchedule)) {
-      throw new Error("Usa un horario válido: weekdays con días 1–7 o monthRange con días del mes 1–31.");
+    if (!isSupportedWhatsAppSchedule(activeSchedule)) {
+      throw new Error("Usa un horario válido: dates con fechas YYYY-MM-DD, weekdays con días 1–7 o monthRange con días del mes 1–31.");
     }
   }
   await db.user.update({ where: { id }, data: { phone, whatsappOptIn: input.optedIn, activeSchedule: activeSchedule === null ? Prisma.JsonNull : activeSchedule as Prisma.InputJsonValue } });
   revalidatePath(PAGE);
   return { success: true };
-}
-
-function isSupportedSchedule(value: unknown): value is Prisma.InputJsonObject {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
-  const schedule = value as Record<string, unknown>;
-  if (schedule.type === "weekdays") {
-    if (Object.keys(schedule).some((key) => key !== "type" && key !== "days")) return false;
-    return Array.isArray(schedule.days)
-      && schedule.days.length > 0
-      && schedule.days.length <= 7
-      && schedule.days.every((day) => Number.isInteger(day) && (day as number) >= 1 && (day as number) <= 7)
-      && new Set(schedule.days).size === schedule.days.length;
-  }
-  if (schedule.type === "monthRange") {
-    if (Object.keys(schedule).some((key) => !["type", "from", "to"].includes(key))) return false;
-    return Number.isInteger(schedule.from) && Number.isInteger(schedule.to)
-      && (schedule.from as number) >= 1 && (schedule.from as number) <= 31
-      && (schedule.to as number) >= 1 && (schedule.to as number) <= 31
-      && (schedule.from as number) <= (schedule.to as number);
-  }
-  return false;
 }
 
 export async function updateWhatsAppClientAction(input: { id: string; phone: string; target: string; reminderHours: number }) {

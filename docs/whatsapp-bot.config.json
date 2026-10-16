@@ -1,9 +1,38 @@
 {
   "botPhone": "593994782827",
-  "ownerPhone": null,
-  "team": [],
-  "partTimeSchedule": { "type": "monthRange", "from": 1, "to": 15 },
-  "paused": true,
+  "ownerPhone": "593995905100",
+  "team": [
+    {
+      "whatsappOptIn": true,
+      "activeSchedule": {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "type": "weekdays"
+      },
+      "phone": "593998813559",
+      "name": "Paty"
+    },
+    {
+      "whatsappOptIn": false,
+      "scheduleManagedBy": "Paty",
+      "activeSchedule": {
+        "dates": [],
+        "type": "dates"
+      },
+      "phone": null,
+      "name": "Daniela"
+    }
+  ],
+  "partTimeSchedule": {
+    "dates": [],
+    "type": "dates"
+  },
+  "paused": false,
   "clientsEnabled": false,
   "approvalReminderHours": 48,
   "maxApprovalReminders": 2,
@@ -12,6 +41,12 @@
   "amountsInGroups": false,
   "aiModel": null,
   "timezone": "America/Guayaquil",
-  "deployment": "LOCAL_ONLY",
-  "pendingOwnerInput": ["ownerPhone", "teamPhonesAndOptIns", "hostingerRenewal"]
+  "deployment": "LOCAL_NORMAL_WORKER",
+  "pendingOwnerInput": [
+    "danyPhone",
+    "danyDatesByPaty",
+    "hosting72HourStability",
+    "featureBranchCI"
+  ],
+  "hostingerRenewal": true
 }

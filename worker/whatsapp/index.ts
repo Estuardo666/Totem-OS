@@ -14,11 +14,13 @@ import { recoverStaleSendingMessages, sendNextWhatsAppMessage } from "./sender";
 import { useWhatsAppAuthState } from "./auth-store";
 import { acquireWhatsAppLock, refreshWhatsAppLock, releaseWhatsAppLock } from "./lock";
 import { startHealthServer, type WhatsAppHealthState } from "./health";
+import { matchesExpectedWhatsAppIdentity } from "./pairing-guard";
 
 const INSTANCE_ID = `${process.env.WA_INSTANCE_ID ?? "totem"}:${randomUUID()}`;
 // Connecting to WhatsApp requires the explicit production opt-in WA_DISABLED=0.
 const DISABLED = process.env.WA_DISABLED !== "0";
-const state: WhatsAppHealthState = { connected: false, qr: null, startedAt: new Date(), lastHeartbeatAt: null, disabled: DISABLED, lockHeld: false };
+const PAIRING_ONLY = process.env.WA_PAIRING_ONLY === "1";
+const state: WhatsAppHealthState = { connected: false, connectedId: null, qr: null, startedAt: new Date(), lastHeartbeatAt: null, disabled: DISABLED, lockHeld: false, pairingOnly: PAIRING_ONLY };
 const server = startHealthServer(state);
 let running = true;
 let socket: WASocket | null = null;
@@ -41,11 +43,11 @@ let freshQrReconnectAttempted = false;
 type OwnerNotificationEvent = "QR_REQUIRED" | "LOGGED_OUT";
 
 export async function startWhatsAppWorker() {
-  if (process.env.SRI_ENABLED === "1") {
+  if (!PAIRING_ONLY && process.env.SRI_ENABLED === "1") {
     const { startSRIWorker } = await import("../index");
     void startSRIWorker().catch(() => undefined);
   }
-  await recoverStaleSendingMessages();
+  if (!PAIRING_ONLY) await recoverStaleSendingMessages();
   while (running) {
     try {
       if (!state.lockHeld) {
@@ -75,9 +77,11 @@ async function connectWhatsApp() {
   connecting = true;
   let wa: WASocket;
   let saveCreds: () => Promise<void> = async () => undefined;
+  let getCredsIdentity: () => string | undefined = () => undefined;
   try {
     const authState = await useWhatsAppAuthState();
     saveCreds = authState.saveCreds;
+    getCredsIdentity = () => authState.state.creds.me?.id;
     wa = makeWASocket({
       auth: authState.state,
       logger: pino({ level: "silent" }),
@@ -92,35 +96,59 @@ async function connectWhatsApp() {
   }
   connecting = false;
   wa.ev.on("creds.update", saveCreds);
-  wa.ev.on("messages.upsert", ({ messages, type }) => {
-    if (type === "notify") void handleMessagesUpsert(messages).catch(() => undefined);
-  });
-  wa.ev.on("contacts.upsert", (contacts) => { void handleContactUpdates(contacts).catch(() => undefined); });
-  wa.ev.on("contacts.update", (contacts) => { void handleContactUpdates(contacts).catch(() => undefined); });
+  if (!PAIRING_ONLY) {
+    wa.ev.on("messages.upsert", ({ messages, type }) => {
+      if (type === "notify") void handleMessagesUpsert(messages).catch(() => undefined);
+    });
+    wa.ev.on("contacts.upsert", (contacts) => { void handleContactUpdates(contacts).catch(() => undefined); });
+    wa.ev.on("contacts.update", (contacts) => { void handleContactUpdates(contacts).catch(() => undefined); });
+  }
   wa.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
     if (qr) {
       state.qr = qr;
       await recordWhatsAppEvent({ type: "CONNECTION", payload: { state: "QR_PENDING" } });
-      if (!qrOwnerNotified) {
+      if (!PAIRING_ONLY && !qrOwnerNotified) {
         qrOwnerNotified = true;
         if (!loggedOutOwnerNotified) await notifyOwner("QR_REQUIRED");
       }
     }
     if (connection === "open") {
+      const expectedPhone = process.env.WA_BOT_PHONE ?? "593994782827";
+      const socketIdentity = wa.user?.id;
+      const identities = [socketIdentity, getCredsIdentity()].filter((identity): identity is string => typeof identity === "string");
+      if (!socketIdentity || !matchesExpectedWhatsAppIdentity(expectedPhone, identities)) {
+        state.connected = false;
+        state.connectedId = null;
+        state.qr = null;
+        reconnectBlocked = true;
+        await recordWhatsAppEvent({ type: "ACCOUNT_MISMATCH", payload: { state: "BLOCKED" } }).catch(() => undefined);
+        wa.end(new Error("WhatsApp account identity mismatch"));
+        return;
+      }
       state.connected = true;
+      state.connectedId = "verified";
       state.qr = null;
       reconnectDelay = 5_000;
       qrOwnerNotified = false;
       loggedOutOwnerNotified = false;
       freshQrReconnectAttempted = false;
       await recordWhatsAppEvent({ type: "CONNECTION", payload: { state: "CONNECTED" } });
-      void ensureWhatsAppTestGroup(wa).then(() => syncWhatsAppGroups(wa)).then(() => { lastGroupSync = Date.now(); }).catch(() => undefined);
+      if (!PAIRING_ONLY) void ensureWhatsAppTestGroup(wa).then(() => syncWhatsAppGroups(wa)).then(() => { lastGroupSync = Date.now(); }).catch(() => undefined);
     }
     if (connection === "close") {
       state.connected = false;
+      state.connectedId = null;
       socket = null;
       const statusCode = (lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output?.statusCode;
       await recordWhatsAppEvent({ type: "CONNECTION", payload: { state: statusCode === DisconnectReason.loggedOut ? "LOGGED_OUT" : "DISCONNECTED", statusCode: statusCode ?? null } });
+      if (PAIRING_ONLY) {
+        if (statusCode === DisconnectReason.loggedOut) reconnectBlocked = true;
+        else if (!reconnectBlocked) {
+          reconnectDelay = Math.min(Math.max(5_000, reconnectDelay * 2), 5 * 60_000);
+          setTimeout(() => { if (running && state.lockHeld && !socket && !reconnectBlocked) void connectWhatsApp(); }, reconnectDelay);
+        }
+        return;
+      }
       if (statusCode === DisconnectReason.loggedOut) {
         reconnectBlocked = true;
         state.qr = null;
@@ -142,7 +170,7 @@ async function connectWhatsApp() {
             void connectWhatsApp().catch(() => { reconnectBlocked = true; });
           }, 1_500);
         }
-      } else {
+      } else if (!reconnectBlocked) {
         reconnectDelay = Math.min(Math.max(5_000, reconnectDelay * 2), 5 * 60_000);
         setTimeout(() => { if (running && state.lockHeld && !socket) void connectWhatsApp(); }, reconnectDelay);
       }
@@ -205,6 +233,7 @@ async function runMaintenance() {
       if (!(await assertCurrentLock())) return;
       lastLockRefresh = Date.now();
     }
+    if (PAIRING_ONLY) return;
     await expireStaleData();
     if (!DISABLED && state.connected && socket) {
       if (Date.now() - lastGroupSync >= 6 * 60 * 60 * 1000) {

@@ -7,9 +7,25 @@ export async function identifyContact(jid: string, alternateJid?: string | null,
     ...(lid ? [{ lid }] : []), ...(pnJid ? [{ pnJid }] : []),
   ] } });
   const userId = known?.userId ?? (pnJid ? await findTeamUserId(pnJid) : null);
-  if (known) return db.whatsAppContact.update({ where: { id: known.id }, data: { lid: lid ?? known.lid, pnJid: pnJid ?? known.pnJid, pushName: pushName ?? known.pushName, userId } });
+  if (known) {
+    return db.whatsAppContact.update({ where: { id: known.id }, data: { lid: lid ?? known.lid, pnJid: pnJid ?? known.pnJid, pushName: pushName ?? known.pushName, userId } });
+  }
   if (!lid && !pnJid) return null;
-  return db.whatsAppContact.create({ data: { lid, pnJid, pushName, userId } });
+  try {
+    return await db.whatsAppContact.create({ data: { lid, pnJid, pushName, userId } });
+  } catch (error) {
+    // Baileys may emit the same lid mapping in contacts.upsert and update.
+    if (typeof error !== "object" || error === null || !("code" in error) || (error as { code?: string }).code !== "P2002") throw error;
+    const winner = await db.whatsAppContact.findFirst({ where: { OR: [ ...(lid ? [{ lid }] : []), ...(pnJid ? [{ pnJid }] : []) ] } });
+    if (!winner) throw error;
+    // Concurrent duplicate updates are expected; never log contact identifiers.
+    return db.whatsAppContact.update({ where: { id: winner.id }, data: {
+      lid: lid ?? winner.lid,
+      pnJid: pnJid ?? winner.pnJid,
+      pushName: pushName ?? winner.pushName,
+      userId: userId ?? winner.userId,
+    } });
+  }
 }
 
 export async function resolveContact(jid: string) {

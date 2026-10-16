@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   ecuadorDayBounds,
   isConfiguredTeamDailyMinute,
+  isSupportedWhatsAppSchedule,
   isWhatsAppScheduleActive,
   nextWhatsAppReminderWindow,
 } from "../../src/lib/whatsapp/schedule.ts";
@@ -15,6 +16,17 @@ test("activeSchedule usa día ISO y fecha local de Ecuador", () => {
   assert.equal(isWhatsAppScheduleActive({ type: "monthRange", from: 1, to: 31 }, fridayAtEcuador), true);
   assert.equal(isWhatsAppScheduleActive({ type: "monthly-days", days: "1-15" }, fridayAtEcuador), false);
   assert.equal(isWhatsAppScheduleActive(null, fridayAtEcuador), false);
+});
+
+test("fechas específicas se validan como fechas reales y usan el día de Ecuador", () => {
+  const schedule = { type: "dates", dates: ["2026-10-15"] };
+  // 04:30Z ya es 23:30 del día anterior en Ecuador.
+  assert.equal(isWhatsAppScheduleActive(schedule, new Date("2026-10-16T04:30:00.000Z")), true);
+  assert.equal(isWhatsAppScheduleActive(schedule, new Date("2026-10-16T05:00:00.000Z")), false);
+  assert.equal(isSupportedWhatsAppSchedule({ type: "dates", dates: [] }), true);
+  assert.equal(isSupportedWhatsAppSchedule({ type: "dates", dates: ["2026-02-29"] }), false);
+  assert.equal(isSupportedWhatsAppSchedule({ type: "dates", dates: ["2024-02-29"] }), true);
+  assert.equal(isSupportedWhatsAppSchedule({ type: "dates", dates: ["2026-1-05"] }), false);
 });
 
 test("resumen diario y límites de día respetan UTC-5", () => {

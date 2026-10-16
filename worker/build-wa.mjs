@@ -1,21 +1,29 @@
 import { build } from "esbuild";
-import { copyFileSync, unlinkSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, unlinkSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { builtinModules } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const workerRoot = dirname(fileURLToPath(import.meta.url));
+const schemaSource = resolve(workerRoot, "..", "prisma", "schema.prisma");
+const existingGeneratedSchema = resolve(workerRoot, "node_modules", ".prisma", "client", "schema.prisma");
 const buildSchema = resolve(workerRoot, ".whatsapp-build-schema.prisma");
+const needsPrismaGenerate = !existsSync(existingGeneratedSchema)
+  || !readFileSync(existingGeneratedSchema).equals(readFileSync(schemaSource));
 
-copyFileSync(resolve(workerRoot, "..", "prisma", "schema.prisma"), buildSchema);
-try {
-  execFileSync(process.execPath, [resolve(workerRoot, "node_modules", "prisma", "build", "index.js"), "generate", "--schema", buildSchema], {
-    cwd: workerRoot,
-    stdio: "inherit",
-  });
-} finally {
-  unlinkSync(buildSchema);
+if (needsPrismaGenerate) {
+  copyFileSync(schemaSource, buildSchema);
+  try {
+    execFileSync(process.execPath, [resolve(workerRoot, "node_modules", "prisma", "build", "index.js"), "generate", "--schema", buildSchema], {
+      cwd: workerRoot,
+      stdio: "inherit",
+    });
+  } finally {
+    unlinkSync(buildSchema);
+  }
+} else {
+  console.log("Prisma Client ya corresponde al schema actual; se reutiliza sin modificar archivos activos.");
 }
 
 const packageJson = JSON.parse(await (await import("node:fs/promises")).readFile(resolve(workerRoot, "package.json"), "utf8"));

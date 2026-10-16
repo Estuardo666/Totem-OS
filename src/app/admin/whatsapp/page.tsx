@@ -11,13 +11,17 @@ export const metadata = { title: "WhatsApp · Totem" };
 async function getWorkerHealth() {
   const url = process.env.WA_HEALTH_URL;
   const token = process.env.WA_HEALTH_TOKEN;
-  if (!url || !token) return { configured: false, online: null as boolean | null, details: null as string | null };
+  if (!url || !token) return { configured: false, online: null as boolean | null, connected: false, pairingOnly: false, qrAvailable: false, details: null as string | null };
   try {
     const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.timeout(4000) });
-    const payload = await response.json().catch(() => null) as { status?: string; connected?: boolean; connection?: string } | null;
-    return { configured: true, online: response.ok, details: payload?.connection ?? payload?.status ?? (payload?.connected ? "conectado" : null) };
+    const payload = await response.json().catch(() => null) as { status?: string; connected?: boolean; pairingOnly?: boolean; qrAvailable?: boolean; connection?: string } | null;
+    const connected = payload?.connected === true;
+    const pairingOnly = payload?.pairingOnly === true;
+    const qrAvailable = payload?.qrAvailable === true;
+    const details = connected ? pairingOnly ? "Vinculación local verificada" : "Conexión WhatsApp activa" : qrAvailable ? "QR local disponible" : payload?.connection ?? payload?.status ?? null;
+    return { configured: true, online: response.ok, connected, pairingOnly, qrAvailable, details };
   } catch {
-    return { configured: true, online: false, details: "Sin respuesta del worker" };
+    return { configured: true, online: false, connected: false, pairingOnly: false, qrAvailable: false, details: "Sin respuesta del worker" };
   }
 }
 

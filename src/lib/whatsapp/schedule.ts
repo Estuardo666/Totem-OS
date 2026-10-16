@@ -1,7 +1,44 @@
 const ECUADOR_OFFSET_MS = 5 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-type Schedule = { type?: unknown; days?: unknown; from?: unknown; to?: unknown } | number[];
+type Schedule = { type?: unknown; days?: unknown; dates?: unknown; from?: unknown; to?: unknown } | number[];
+
+/** Accept only real calendar dates written in canonical YYYY-MM-DD form. */
+export function isValidWhatsAppDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(0, 0, 0, 0);
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+export function isSupportedWhatsAppSchedule(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const schedule = value as Record<string, unknown>;
+  if (schedule.type === "dates") {
+    return Object.keys(schedule).every((key) => key === "type" || key === "dates")
+      && Array.isArray(schedule.dates)
+      && schedule.dates.every(isValidWhatsAppDate)
+      && new Set(schedule.dates).size === schedule.dates.length;
+  }
+  if (schedule.type === "weekdays") {
+    return Object.keys(schedule).every((key) => key === "type" || key === "days")
+      && Array.isArray(schedule.days)
+      && schedule.days.length > 0
+      && schedule.days.length <= 7
+      && schedule.days.every((day) => Number.isInteger(day) && (day as number) >= 1 && (day as number) <= 7)
+      && new Set(schedule.days).size === schedule.days.length;
+  }
+  if (schedule.type === "monthRange") {
+    return Object.keys(schedule).every((key) => ["type", "from", "to"].includes(key))
+      && Number.isInteger(schedule.from) && Number.isInteger(schedule.to)
+      && (schedule.from as number) >= 1 && (schedule.from as number) <= 31
+      && (schedule.to as number) >= 1 && (schedule.to as number) <= 31
+      && (schedule.from as number) <= (schedule.to as number);
+  }
+  return false;
+}
 
 export function ecuadorDayBounds(now = new Date()) {
   const shifted = new Date(now.getTime() - ECUADOR_OFFSET_MS);
@@ -17,6 +54,12 @@ export function isWhatsAppScheduleActive(value: unknown, now = new Date()): bool
   const schedule = value as Schedule;
   const type = !Array.isArray(schedule) ? schedule.type : undefined;
   const days = !Array.isArray(schedule) ? schedule.days : schedule;
+
+  if (type === "dates") {
+    const dates = !Array.isArray(schedule) ? schedule.dates : undefined;
+    const today = `${String(shifted.getUTCFullYear()).padStart(4, "0")}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}-${String(dayOfMonth).padStart(2, "0")}`;
+    return Array.isArray(dates) && dates.some((date) => isValidWhatsAppDate(date) && date === today);
+  }
 
   if (type === "weekdays" || type === "weekdays-only") {
     return Array.isArray(days) && days.some((day) => Number(day) === weekday);

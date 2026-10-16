@@ -35,6 +35,7 @@ const { sendNextWhatsAppMessage } = await import("../../worker/whatsapp/sender.t
 const { enqueueWhatsAppPaymentReminders } = await import("../../src/lib/finance-cobranza-service.ts");
 const { routeClientApprovalReply } = await import("../../worker/whatsapp/approvals.ts");
 const { useWhatsAppAuthState } = await import("../../worker/whatsapp/auth-store.ts");
+const { identifyContact, resolveContact } = await import("../../worker/whatsapp/contacts.ts");
 
 beforeEach(async () => { await resetDatabase(); });
 after(async () => { await Promise.all([prisma.$disconnect(), db.$disconnect()]); });
@@ -334,4 +335,14 @@ test("credenciales y claves de sesión sobreviven a reconstruir el worker desde 
   assert.deepEqual(Buffer.from((await restored.state.keys.get("session", ["local-session"]))["local-session"]), Buffer.from([1, 2, 3, 4]));
   await restored.state.keys.set({ session: { "local-session": null } });
   assert.equal((await restored.state.keys.get("session", ["local-session"]))["local-session"], undefined);
+});
+
+test("los eventos repetidos de contactos/lid no duplican el contacto del equipo", async () => {
+  const { editor } = await seedTestDatabase();
+  await prisma.user.update({ where: { id: editor.id }, data: { phone: "0998813559", whatsappOptIn: true } });
+  await Promise.all(Array.from({ length: 8 }, () => identifyContact("local-user@lid", "593998813559@s.whatsapp.net", "Paty")));
+  assert.equal(await prisma.whatsAppContact.count(), 1);
+  const resolved = await resolveContact("local-user@lid");
+  assert.equal(resolved.pnJid, "593998813559@s.whatsapp.net");
+  assert.equal(resolved.userId, editor.id);
 });
