@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthorizedCron } from "@/lib/cron-auth";
-import { checkAndMarkOverdueInvoices, checkPaymentAlerts72Hours } from "@/lib/finance-cobranza-service";
+import { checkAndMarkOverdueInvoices, checkPaymentAlerts72Hours, enqueueWhatsAppPaymentReminders } from "@/lib/finance-cobranza-service";
 
 /**
  * API Route para ejecutar cobranza checks diariamente
@@ -28,21 +28,25 @@ export async function POST(request: NextRequest) {
     // 2. Alertas críticas 72h
     const alertsResult = await checkPaymentAlerts72Hours();
 
+    // Los recordatorios WhatsApp se encolan y el worker aplica el control de destino.
+    const whatsappResult = await enqueueWhatsAppPaymentReminders();
+
     return NextResponse.json({
       success: true,
       message: "Cobranza checks completados",
       data: {
         overdue: overdueResult,
         alerts72h: alertsResult,
+        whatsapp: whatsappResult,
         executedAt: new Date().toISOString(),
       },
     });
-  } catch (error) {
-    console.error("❌ Error en cron cobranza-check:", error);
+  } catch {
+    console.error("❌ Error en cron cobranza-check");
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Error desconocido",
+        error: "No se pudieron completar las verificaciones de cobranza",
       },
       { status: 500 }
     );

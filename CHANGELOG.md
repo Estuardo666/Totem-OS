@@ -1,5 +1,13 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## 2026-10-16 — Totem Bot WhatsApp (implementación local)
+
+- Añade migración aditiva, cola auditable, autenticación persistida y lock de instancia para el worker Baileys; arranque desconectado por defecto.
+- Añade panel ADMIN `/admin/whatsapp` con configuración, grupos, equipo, clientes, decisiones, borradores, historial y deshacer de aprobaciones. QR protegido mediante proxy, sin token en el cliente.
+- Integra resúmenes, rodajes, cobros y aprobaciones con deduplicación, horarios de Ecuador, consentimiento y bloqueo global de clientes. La IA consulta solo datos del cliente del grupo y usa DRAFT por defecto.
+- Incorpora decisiones privadas del dueño, propuestas de AUTO por métricas, herramientas firmadas del asistente y puente interno de notificaciones para el worker independiente.
+- Prepara Docker, Render Free y script de fallback Oracle. No se ha desplegado ni enviado mensajes reales. Validación local y pendientes del rollout: `docs/WHATSAPP_LOCAL.md` y §19 del plan.
+
 ## Fase 1: Quick Wins (5 optimizaciones)
 
 ### ✅ Cambio 1: Debounce en búsqueda de clientes

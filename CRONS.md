@@ -1,5 +1,32 @@
 # Cron jobs
 
+## WhatsApp — preparación local, sin activación
+
+El worker es el único emisor; las rutas de Vercel solo encolan. Todos los
+recordatorios respetan pausa, consentimiento y habilitación de clientes.
+No se han creado crons en Hostinger ni modificado `vercel.json` con este trabajo.
+
+| Ruta | Horario Ecuador | UTC si el servidor usa UTC |
+|---|---|---|
+| Worker `/health` | Cada minuto | `* * * * *` |
+| `/api/cron/whatsapp-team-daily` | 08:00 | `0 13 * * *` |
+| `/api/cron/shooting-reminders-morning` | 07:00 | `0 12 * * *` |
+| `/api/cron/shooting-reminders-hourly` | Cada 15 minutos | `*/15 * * * *` |
+| `/api/cron/cobranza-check` | 09:00 | `0 14 * * *` |
+| `/api/cron/whatsapp-approval-reminders` | Cada hora, 08:00–19:00 | `0 0,13-23 * * *` |
+| `/api/cron/whatsapp-watchdog` | Cada 5 minutos | `*/5 * * * *` |
+
+Antes de instalar: comprobar la zona horaria real del servidor. Guardar secretos
+en `~/.totem_cron` con permisos 600 y cargar ese archivo desde el cron; nunca
+pegar el Bearer en el panel. Ejemplo sin credenciales literales:
+
+```sh
+. ~/.totem_cron && curl -fsS --max-time 60 -X POST -H "Authorization: Bearer $CRON_SECRET" https://totem-os.vercel.app/api/cron/whatsapp-team-daily
+```
+
+`daily-digest`, `calendar-webhook-renew`, `monthly-payments`, `sync-compact` y
+SRI no se activan dentro de este rollout. Detalles en `docs/WHATSAPP_LOCAL.md`.
+
 ## Programados
 
 | Ruta | Horario (UTC) | Hora Ecuador | Qué hace |

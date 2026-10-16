@@ -24,7 +24,7 @@ const WORKER_SECRET = process.env.FACTURACION_WORKER_SECRET;
 let running = true;
 let lastHeartbeat = 0;
 
-async function main() {
+export async function startSRIWorker() {
   console.log(`[SRI Worker] Iniciando - ID: ${WORKER_ID}, Modo: ${MODO}, Ambiente: ${AMBIENTE}`);
   console.log(`[SRI Worker] Polling cada ${POLL_INTERVAL}ms`);
 
@@ -531,7 +531,9 @@ process.on("SIGTERM", () => {
   running = false;
 });
 
-main().catch((error) => {
-  console.error("[SRI Worker] Error fatal:", error);
-  process.exit(1);
-});
+if (require.main === module) {
+  startSRIWorker().catch((error) => {
+    console.error("[SRI Worker] Error fatal:", error);
+    process.exit(1);
+  });
+}

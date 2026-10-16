@@ -20,6 +20,8 @@ import { createDraftToken, type DraftAction } from "./drafts";
 import { buildAnalysisTools } from "./analysis-tools";
 import { buildMetaTools } from "./meta-tools";
 import { fuzzyMatch } from "./fuzzy";
+import { getWhatsAppConfig, getWhatsAppStatus } from "@/lib/whatsapp";
+import { approvalReminderText, paymentReminderText, shootReminderText } from "@/lib/whatsapp/templates";
 
 export interface AssistantUser {
   id: string;
@@ -483,6 +485,201 @@ export function buildAssistantTools(user: AssistantUser) {
           Mes: period,
           Descripción: input.description,
         });
+      },
+    }),
+
+    aprobacionesPendientes: tool({
+      description: "Lista solicitudes de aprobación pendientes de WhatsApp. Solo admin.",
+      inputSchema: z.object({ clientId: z.string().optional() }),
+      execute: async ({ clientId }) => {
+        const denied = adminOnly(user);
+        if (denied) return denied;
+        const groups = await db.whatsAppGroup.findMany({ where: { ...(clientId ? { clientId } : {}) }, select: { jid: true, name: true } });
+        const rows = await db.whatsAppApprovalRequest.findMany({
+          where: { status: "PENDING", ...(clientId ? { groupJid: { in: groups.map((g) => g.jid) } } : {}) },
+          select: { id: true, groupJid: true, fileName: true, sentAt: true, task: { select: { title: true, status: true } } },
+          orderBy: { sentAt: "asc" }, take: 20,
+        });
+        return rows.map((r) => ({ id: r.id, grupo: groups.find((g) => g.jid === r.groupJid)?.name ?? r.groupJid, titulo: r.task?.title ?? r.fileName, estado: r.task?.status ?? "sin tarea", fecha: r.sentAt.toISOString() }));
+      },
+    }),
+
+    historialWhatsApp: tool({
+      description: "Consulta historial reciente de WhatsApp por nombre de cliente o de grupo. Incluye mensajes entrantes y salientes; solo admin.",
+      inputSchema: z.object({ clienteOGrupo: z.string().min(1), dias: z.number().int().min(1).max(30).default(7) }),
+      execute: async ({ clienteOGrupo, dias }) => {
+        const denied = adminOnly(user);
+        if (denied) return denied;
+        const since = new Date(Date.now() - dias * 86_400_000);
+        const [clients, groups] = await Promise.all([
+          db.client.findMany({ select: { id: true, name: true, whatsappPhone: true } }),
+          db.whatsAppGroup.findMany({ select: { jid: true, name: true, clientId: true } }),
+        ]);
+        const directGroup = groups.find((group) => group.jid === clienteOGrupo);
+        const directClient = clients.find((client) => client.id === clienteOGrupo);
+        const clientMatches = directClient ? [{ ...directClient, score: 1 }] : fuzzyMatch(clienteOGrupo, clients).slice(0, 4);
+        const groupMatches = directGroup ? [{ ...directGroup, score: 1 }] : fuzzyMatch(clienteOGrupo, groups).slice(0, 4);
+        const bestClient = clientMatches[0];
+        const bestGroup = groupMatches[0];
+        const clientIsClear = bestClient && (clientMatches.length === 1 || bestClient.score - clientMatches[1].score >= 0.05);
+        const groupIsClear = bestGroup && (groupMatches.length === 1 || bestGroup.score - groupMatches[1].score >= 0.05);
+        const selectedClient = clientIsClear && (!groupIsClear || bestClient.score >= bestGroup.score) ? bestClient : null;
+        const selectedGroup = groupIsClear && (!clientIsClear || bestGroup.score > bestClient.score) ? bestGroup : null;
+        if (!selectedClient && !selectedGroup) {
+          const names = [...clientMatches.slice(0, 3).map((row) => row.name), ...groupMatches.slice(0, 3).map((row) => row.name)];
+          return { error: names.length ? `Hay varios destinos posibles: ${names.join(", ")}. Pregunta cuál.` : "No encontré ese cliente o grupo." };
+        }
+
+        const jids = new Set<string>();
+        let destino = selectedGroup?.name ?? selectedClient?.name ?? clienteOGrupo;
+        if (selectedGroup) jids.add(selectedGroup.jid);
+        if (selectedClient) {
+          groups.filter((group) => group.clientId === selectedClient.id).forEach((group) => jids.add(group.jid));
+          if (selectedClient.whatsappPhone) {
+            const { normalizePhone } = await import("@/lib/whatsapp/enqueue");
+            jids.add(`${normalizePhone(selectedClient.whatsappPhone)}@s.whatsapp.net`);
+          }
+        }
+        const [outbound, inbound] = await Promise.all([
+          db.whatsAppMessage.findMany({ where: { to: { in: [...jids] }, createdAt: { gte: since } }, select: { to: true, body: true, kind: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 30 }),
+          db.whatsAppInbound.findMany({ where: { chatJid: { in: [...jids] }, ts: { gte: since } }, select: { chatJid: true, type: true, text: true, fileName: true, isTeam: true, ts: true }, orderBy: { ts: "desc" }, take: 30 }),
+        ]);
+        const messages = [
+          ...outbound.map((row) => ({ direccion: "saliente", mensaje: row.body, tipo: row.kind, estado: row.status, fecha: row.createdAt })),
+          ...inbound.map((row) => ({ direccion: row.isTeam ? "entrante del equipo" : "entrante del cliente", mensaje: row.text ?? row.fileName ?? `[${row.type}]`, tipo: row.type, estado: "RECIBIDO", fecha: row.ts })),
+        ].sort((a, b) => b.fecha.getTime() - a.fecha.getTime()).slice(0, 40);
+        return { destino, mensajes: messages.map(({ fecha, ...row }) => ({ ...row, fecha: fecha.toISOString() })) };
+      },
+    }),
+
+    estadoBot: tool({
+      description: "Consulta estado, cola y pausa del bot de WhatsApp. Solo admin.",
+      inputSchema: z.object({}),
+      execute: async () => adminOnly(user) ?? await getWhatsAppStatus(),
+    }),
+
+    preguntasSinResponder: tool({
+      description: "Lista los prompts abiertos que esperan respuesta del dueño. Solo admin.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const denied = adminOnly(user);
+        if (denied) return denied;
+        const rows = await db.whatsAppOwnerPrompt.findMany({ where: { status: "OPEN", expiresAt: { gt: new Date() } }, orderBy: { createdAt: "asc" }, take: 20 });
+        return rows.map(({ id, type, payload, options, expiresAt }) => ({ id, tipo: type, detalle: payload, opciones: options, vence: expiresAt.toISOString() }));
+      },
+    }),
+
+    enviarWhatsApp: tool({
+      description: "Prepara un borrador de WhatsApp firmado que requiere confirmación. Solo admin. Para recordatorios usa datos guardados; para mensajes libres usa texto y exactamente un destinatario: teamUserId (equipo con opt-in) o clientId (grupo habilitado, luego teléfono personal).",
+      inputSchema: z.object({ tipo: z.enum(["recordatorio_pago", "recordatorio_rodaje", "recordatorio_aprobacion", "libre"]), clientId: z.string().optional(), teamUserId: z.string().optional(), texto: z.string().max(1000).optional() }),
+      execute: async ({ tipo, clientId, teamUserId, texto }) => {
+        const denied = adminOnly(user);
+        if (denied) return denied;
+        let to: string | null = null;
+        let destinationLabel = "";
+        let body = "";
+        let quotedId: string | null = null;
+        let dedupeKey = `assistant:${user.id}:${Date.now()}`;
+        if (tipo === "libre") {
+          if (!texto?.trim()) return { error: "Escribe el mensaje libre que quieres preparar." };
+          if ((teamUserId && clientId) || (!teamUserId && !clientId)) return { error: "Para un mensaje libre indica exactamente una persona del equipo o un cliente." };
+          if (teamUserId) {
+            const teammate = await db.user.findUnique({ where: { id: teamUserId }, select: { phone: true, whatsappOptIn: true, name: true } });
+            if (!teammate?.phone || !teammate.whatsappOptIn) return { error: "El miembro no tiene WhatsApp habilitado." };
+            const { normalizePhone } = await import("@/lib/whatsapp/enqueue");
+            to = `${normalizePhone(teammate.phone)}@s.whatsapp.net`;
+            destinationLabel = `Equipo · ${teammate.name || "persona"}`;
+          } else if (clientId) {
+            const client = await db.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, whatsappPhone: true } });
+            if (!client) return { error: "Cliente no encontrado; usa buscarClientes." };
+            const group = await db.whatsAppGroup.findFirst({ where: { clientId: client.id, enabled: true }, orderBy: { name: "asc" }, select: { jid: true, name: true } });
+            if (group) {
+              to = group.jid;
+              destinationLabel = `Grupo ${group.name} · ${client.name}`;
+            } else if (client.whatsappPhone) {
+              const { normalizePhone } = await import("@/lib/whatsapp/enqueue");
+              to = `${normalizePhone(client.whatsappPhone)}@s.whatsapp.net`;
+              destinationLabel = `${client.name} · WhatsApp personal`;
+            } else {
+              return { error: "El cliente no tiene un grupo habilitado ni un teléfono WhatsApp." };
+            }
+          }
+          body = texto.trim();
+        } else {
+          if (!clientId) return { error: "Busca al cliente y pasa clientId." };
+          const client = await db.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, whatsappPhone: true, paymentReminderTarget: true } });
+          if (!client) return { error: "Cliente no encontrado." };
+          if (tipo === "recordatorio_pago") {
+            const invoice = await db.invoice.findFirst({ where: { clientId, status: { in: ["PENDING", "SENT", "OVERDUE"] } }, orderBy: { dueDate: "asc" }, select: { id: true, amount: true, dueDate: true } });
+            if (!invoice) return { error: "No hay facturas pendientes para ese cliente." };
+            dedupeKey = `assistant:pay:${invoice.id}`;
+            const waConfig = await getWhatsAppConfig();
+            body = paymentReminderText({
+              clientName: client.name,
+              timing: "está pendiente",
+              dueDate: invoice.dueDate?.toLocaleDateString("es-EC", { timeZone: "America/Guayaquil" }),
+              amount: invoice.amount,
+              isGroup: client.paymentReminderTarget !== "PERSONAL",
+              amountsInGroups: waConfig.amountsInGroups,
+              variantKey: dedupeKey,
+            });
+            if (client.paymentReminderTarget === "PERSONAL") {
+              if (!client.whatsappPhone) return { error: "El cliente está configurado para recibir cobros personalmente, pero no tiene teléfono WhatsApp." };
+              const { normalizePhone } = await import("@/lib/whatsapp/enqueue");
+              to = `${normalizePhone(client.whatsappPhone)}@s.whatsapp.net`;
+              destinationLabel = `${client.name} · WhatsApp personal`;
+            } else {
+              const group = await db.whatsAppGroup.findFirst({ where: { clientId, enabled: true, purposes: { has: "PAYMENT" } }, select: { jid: true, name: true } });
+              to = group?.jid ?? null;
+              if (group) destinationLabel = `Grupo ${group.name} · ${client.name}`;
+            }
+          } else if (tipo === "recordatorio_rodaje") {
+            const shoot = await db.shoot.findFirst({ where: { clientId, status: "SCHEDULED", startTime: { gte: new Date() } }, orderBy: { startTime: "asc" }, select: { id: true, title: true, startTime: true } });
+            if (!shoot) return { error: "No hay rodajes próximos para ese cliente." };
+            dedupeKey = `assistant:shoot:${shoot.id}`;
+            body = shootReminderText({ title: shoot.title, date: shoot.startTime.toLocaleString("es-EC", { timeZone: "America/Guayaquil" }), variantKey: dedupeKey });
+            const group = await db.whatsAppGroup.findFirst({ where: { clientId, enabled: true, purposes: { has: "SHOOT" } }, select: { jid: true, name: true } });
+            to = group?.jid ?? null;
+            if (group) destinationLabel = `Grupo ${group.name} · ${client.name}`;
+          } else {
+            const group = await db.whatsAppGroup.findFirst({ where: { clientId, enabled: true, purposes: { has: "APPROVAL" } }, select: { jid: true, name: true } });
+            const request = group ? await db.whatsAppApprovalRequest.findFirst({ where: { groupJid: group.jid, status: "PENDING" }, orderBy: { sentAt: "asc" }, select: { id: true, messageId: true, task: { select: { title: true } } } }) : null;
+            if (!group || !request) return { error: "No hay aprobación pendiente en un grupo habilitado." };
+            to = group.jid;
+            destinationLabel = `Grupo ${group.name} · ${client.name}`;
+            quotedId = request.messageId;
+            dedupeKey = `assistant:approval:${request.id}`;
+            body = approvalReminderText({ title: request.task?.title ?? "el contenido enviado", variantKey: dedupeKey });
+          }
+        }
+        if (!to) return { error: "No hay destino habilitado para este cliente." };
+        const { canSendToWhatsAppDestination } = await import("@/lib/whatsapp/enqueue");
+        if (!(await canSendToWhatsAppDestination(to))) return { error: "WhatsApp está pausado o este destino no está habilitado." };
+        const kind = tipo === "recordatorio_pago" ? "PAYMENT_REMINDER" : tipo === "recordatorio_rodaje" ? "SHOOT_REMINDER" : tipo === "recordatorio_aprobacion" ? "APPROVAL_REMINDER" : "MANUAL";
+        return draft(user, "enviarWhatsApp", { to, body, kind, dedupeKey, quotedId }, { Destino: destinationLabel || "Destino autorizado", Mensaje: body, Tipo: tipo });
+      },
+    }),
+
+    pausarBot: tool({
+      description: "Prepara el cambio de pausa del bot; solo se aplica al confirmar el borrador. Solo admin.",
+      inputSchema: z.object({ pausado: z.boolean() }),
+      execute: async ({ pausado }) => {
+        const denied = adminOnly(user);
+        if (denied) return denied;
+        return draft(user, "pausarBot", { pausado }, { Bot: pausado ? "Pausar" : "Reanudar" });
+      },
+    }),
+
+    marcarAprobado: tool({
+      description: "Prepara la aprobación de una tarea de cliente; requiere confirmación explícita. Solo admin.",
+      inputSchema: z.object({ taskId: z.string() }),
+      execute: async ({ taskId }) => {
+        const denied = adminOnly(user);
+        if (denied) return denied;
+        const task = await db.contentTask.findUnique({ where: { id: taskId }, select: { id: true, title: true, status: true, client: { select: { name: true } } } });
+        if (!task || !["REVIEW_CLIENT", "CLIENT_APPROVED"].includes(task.status)) return { error: "La tarea no está pendiente de aprobación del cliente." };
+        if (task.status === "CLIENT_APPROVED") return { error: "La tarea ya está aprobada." };
+        return draft(user, "marcarAprobado", { taskId }, { Tarea: task.title, Cliente: task.client.name, Estado: "CLIENT_APPROVED" });
       },
     }),
   };

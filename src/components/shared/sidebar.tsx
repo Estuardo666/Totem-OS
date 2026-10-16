@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, FileText, Moon, Sun, Receipt, BarChart3 } from "lucide-react";
+import { Users, Clapperboard, Wallet, LogOut, LayoutDashboard, Layout, Video, ChevronRight, Settings, Plug, Clock, Home, FileText, Moon, Sun, Receipt, BarChart3, MessageCircle } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useBrandSettings } from "@/components/providers/brand-settings-provider";
@@ -136,6 +136,11 @@ const adminNavItems: NavItem[] = [
     href: "/admin/files",
     label: "Gestión de Archivos",
     icon: FileText,
+  },
+  {
+    href: "/admin/whatsapp",
+    label: "WhatsApp",
+    icon: MessageCircle,
   },
 ];
 

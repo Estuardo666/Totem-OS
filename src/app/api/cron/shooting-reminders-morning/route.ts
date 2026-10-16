@@ -68,6 +68,8 @@ export async function POST(request: NextRequest) {
           shootingTitle: shoot.title,
           startTime: shoot.startTime,
           crewIds,
+          clientId: shoot.clientId,
+          stage: "MORNING",
         });
 
         notificationsSent += result.notifiedCount;

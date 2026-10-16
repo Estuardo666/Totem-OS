@@ -1,0 +1,13 @@
+**
+!src/
+!src/**
+!prisma/
+!prisma/schema.prisma
+!worker/
+!worker/package.json
+!worker/package-lock.json
+!worker/build-wa.mjs
+!worker/index.ts
+!worker/tsconfig.wa.json
+!worker/whatsapp/
+!worker/whatsapp/**

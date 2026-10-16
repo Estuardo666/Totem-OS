@@ -1,0 +1,17 @@
+{
+  "botPhone": "593994782827",
+  "ownerPhone": null,
+  "team": [],
+  "partTimeSchedule": { "type": "monthRange", "from": 1, "to": 15 },
+  "paused": true,
+  "clientsEnabled": false,
+  "approvalReminderHours": 48,
+  "maxApprovalReminders": 2,
+  "skipWeekends": true,
+  "teamDailyHour": "08:00",
+  "amountsInGroups": false,
+  "aiModel": null,
+  "timezone": "America/Guayaquil",
+  "deployment": "LOCAL_ONLY",
+  "pendingOwnerInput": ["ownerPhone", "teamPhonesAndOptIns", "hostingerRenewal"]
+}
