@@ -11,13 +11,13 @@ El worker de staging está desplegado en
 <https://palevioletred-viper-585081.hostingersite.com>, desde un artefacto de
 `feat/whatsapp-bot` sin push. Usa una base Neon separada
 `totem_whatsapp_staging`; las claves `WA_DISABLED`, `WA_PAIRING_ONLY`,
-`SRI_ENABLED` y `WA_HEALTH_TOKEN` están configuradas. Por autorización del dueño,
-`WA_DISABLED=0` se aplicó solo al staging para probar el QR y la reconexión;
-`WA_PAIRING_ONLY=1` y `SRI_ENABLED=0` se mantienen. El build actual es
-`01a14705-8d33-7238-9610-b748ea9a0824`. `/health` responde 503 con
-`connected=false`, `pairingOnly=true`, `disabled=false` y `qrAvailable=false`:
-el usuario de staging no tiene permiso sobre `WhatsAppAuth`, así que todavía no
-se puede generar QR. No se procesaron grupos ni se enviaron mensajes.
+`SRI_ENABLED` y `WA_HEALTH_TOKEN` están configuradas. El dueño autorizó probar
+la reconexión; `WA_DISABLED=0` se aplicó temporalmente, pero el worker no pudo
+leer `WhatsAppAuth` por falta de permisos. Se volvió a `WA_DISABLED=1`, con
+`WA_PAIRING_ONLY=1` y `SRI_ENABLED=0`. El build actual es
+`01a1470a-5c2b-72cf-b09e-6df45fa8e749`; `/health` responde 200 como disabled,
+con `connected=false` y `qrAvailable=false`. No se procesaron grupos ni se
+enviaron mensajes.
 
 La migración aditiva de producción se probó con PostgreSQL aislado y se aplicó
 en Neon tras confirmar que era la única migración pendiente y que las columnas
@@ -40,7 +40,7 @@ dos recordatorios, omitir fines de semana, 08:00 Ecuador y sin montos en grupos.
 - El watchdog tiene pruebas locales de autorización, umbral de cinco minutos, destinatario, recuperación y no duplicación; el transporte push se simuló y no se enviaron notificaciones. La prueba de inyección usa un generador simulado y comprueba que solo dispone de herramientas de lectura acotadas al cliente; no se llamó a un modelo externo.
 - Vinculación real verificada. Durante la activación previa a la pausa se envió un saludo al grupo `Totem Bot – Pruebas`; no hubo mensajes a clientes. Se sincronizaron siete grupos, seis sin asignar y deshabilitados. Tras la instrucción de solo vincular, la pausa global quedó activada y se detuvo el worker: no hay procesamiento de grupos ni nuevos envíos. AUTO continúa apagado.
 - H1: dueño y Paty configurados con opt-in; Paty tiene horario L–V. Hostinger se renovará. Daniela sigue sin teléfono ni opt-in; Paty podrá registrar sus fechas mediante el horario `dates`.
-- El dueño autorizó el procesamiento de grupos y los envíos el 2026-10-16, y pidió probar la reconexión en staging. La producción permanece pausada. Staging ya tiene `WA_DISABLED=0`, `WA_PAIRING_ONLY=1` y `SRI_ENABLED=0`; falta corregir el permiso de `WhatsAppAuth` para que aparezca el QR.
+- El dueño autorizó el procesamiento de grupos y los envíos el 2026-10-16, y pidió probar la reconexión en staging. La producción permanece pausada. Staging vuelve a `WA_DISABLED=1`, con `WA_PAIRING_ONLY=1` y `SRI_ENABLED=0`; falta rotar la contraseña de staging y corregir el permiso de `WhatsAppAuth` para continuar.
 
 Las salidas están en `reports/whatsapp-*.log`. La captura del panel es
 `reports/whatsapp-admin-local.png`. La vinculación sí fue real. El dueño eximió
@@ -133,17 +133,17 @@ Pusher/Web Push. El worker requiere `TOTEM_API_URL` y la misma
 al panel autenticado; el token QR nunca se envía en esos mensajes.
 
 El worker remoto usa una base de staging separada. El build actual
-`01a14705-8d33-7238-9610-b748ea9a0824` se generó desde el ZIP local validado
+`01a1470a-5c2b-72cf-b09e-6df45fa8e749` se generó desde el ZIP local validado
 `totem-worker-20261016-230223.zip`, sin `.env`, `node_modules` ni `dist`.
 Hostinger no registra un SHA de commit para archivos. hPanel confirma
-`WA_DISABLED=0`, `WA_PAIRING_ONLY=1` y `SRI_ENABLED=0`. `/health` devuelve 503
-con `status=disconnected` y `qrAvailable=false`; el runtime log muestra falta de
-permiso del usuario de staging sobre `WhatsAppAuth`. No se procesaron grupos ni
-se enviaron mensajes. El dueño eximió las esperas de 48/72 h; este intento no
-prueba estabilidad ni reconexión. La automatización de sondeo se eliminó.
-Siguen pendientes desplegar el panel y el puente backend, instalar los crons
-que llaman rutas de Vercel y completar la prueba de QR/reinicio. AUTO y SRI
-permanecen desactivados.
+`WA_DISABLED=1`, `WA_PAIRING_ONLY=1` y `SRI_ENABLED=0`. `/health` responde 200
+con `status=disabled`, `connected=false` y `qrAvailable=false`. El intento de
+vínculo no pudo leer la tabla `WhatsAppAuth` por permisos insuficientes; no se
+procesaron grupos ni se enviaron mensajes. El dueño eximió las esperas de
+48/72 h; este intento no prueba estabilidad ni reconexión. La automatización de
+sondeo se eliminó. Siguen pendientes desplegar el panel y el puente backend,
+instalar los crons que llaman rutas de Vercel y completar la prueba de
+QR/reinicio. AUTO y SRI permanecen desactivados.
 
 ### Dependencias auditadas
 
