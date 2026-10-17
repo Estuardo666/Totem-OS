@@ -40,6 +40,34 @@ async function fetchLiveToken(): Promise<LiveToken> {
   return { provider: data.provider ?? "gemini", token: data.token, model: data.model, session: data.session };
 }
 
+/**
+ * Log de la sesión de voz en la consola. Se activa con
+ * `localStorage.setItem("totem:voice-debug", "1")` y se recarga la página.
+ */
+const VOICE_DEBUG_KEY = "totem:voice-debug";
+const NOISY_EVENTS = new Set([
+  "ping",
+  "response.output_audio.delta",
+  "response.audio.delta",
+  "response.output_audio_transcript.delta",
+  "response.audio_transcript.delta",
+  "response.function_call_arguments.delta",
+]);
+
+function voiceDebugEnabled(): boolean {
+  try {
+    return localStorage.getItem(VOICE_DEBUG_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function logVoice(direction: "←" | "→" | "tool", label: string, detail?: unknown) {
+  if (!voiceDebugEnabled() || NOISY_EVENTS.has(label)) return;
+  const time = new Date().toISOString().slice(11, 23);
+  console.debug(`[voz ${time}] ${direction} ${label}`, detail ?? "");
+}
+
 function toBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -189,6 +217,7 @@ export function useLiveVoice() {
 
   /** Envía un evento Realtime por el canal abierto (WebRTC de OpenAI o WebSocket de xAI). */
   const sendRealtime = (event: Record<string, unknown>): boolean => {
+    logVoice("→", String(event.type), event);
     const dc = dcRef.current;
     if (dc?.readyState === "open") {
       dc.send(JSON.stringify(event));
@@ -246,6 +275,13 @@ export function useLiveVoice() {
   }, []);
 
   const runTool = async (name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    logVoice("tool", `${name} ←`, args);
+    const output = await runToolInner(name, args);
+    logVoice("tool", `${name} →`, output);
+    return output;
+  };
+
+  const runToolInner = async (name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> => {
     if (name === "asistente") {
       const pedido = String(args.pedido ?? "");
       historyRef.current = [...historyRef.current, { role: "user" as const, content: pedido }].slice(-12);
@@ -295,6 +331,7 @@ export function useLiveVoice() {
   };
 
   const handleMessage = async (message: LiveServerMessage) => {
+    if (!message.serverContent?.modelTurn) logVoice("←", "gemini", message);
     const content = message.serverContent;
     if (content?.interrupted) stopPlayback();
     if (content?.inputTranscription?.text) appendTranscript("user", content.inputTranscription.text);
@@ -353,6 +390,7 @@ export function useLiveVoice() {
 
   /** Eventos de OpenAI Realtime (canal de datos) y de Grok Voice (WebSocket). */
   const handleOpenAIEvent = async (event: { type: string; [key: string]: unknown }) => {
+    logVoice("←", event.type, event);
     switch (event.type) {
       case "input_audio_buffer.speech_started":
         // xAI: el usuario interrumpe y se corta el audio local en curso.
@@ -494,7 +532,7 @@ export function useLiveVoice() {
     wsRef.current = ws;
     const opened = new Promise<void>((resolve, reject) => {
       ws.onopen = () => {
-        ws.send(JSON.stringify({ type: "session.update", session: tokenData.session ?? {} }));
+        sendRealtime({ type: "session.update", session: tokenData.session ?? {} });
         setStatus("listening");
         resolve();
       };
