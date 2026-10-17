@@ -5,7 +5,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import type { ApiResponse } from "@/types";
 import { resolveRoleCode } from "@/lib/roles";
-import { LIVE_VOICES, OPENAI_REALTIME_MODELS, OPENAI_VOICES, VOICE_PROVIDERS } from "@/lib/assistant/catalog";
+import { LIVE_VOICES, OPENAI_REALTIME_MODELS, OPENAI_VOICES, VOICE_PROVIDERS, XAI_VOICES } from "@/lib/assistant/catalog";
 import {
   ASSISTANT_PROVIDERS,
   PROVIDER_CATALOG,
@@ -62,10 +62,11 @@ const settingsSchema = z.object({
   provider: z.enum(ASSISTANT_PROVIDERS),
   model: z.string().trim().min(1, "Elige un modelo").max(100),
   apiKey: z.string().trim().max(500).optional(),
-  voiceProvider: z.enum(VOICE_PROVIDERS.map((v) => v.id) as ["gemini", "openai"]).optional(),
+  voiceProvider: z.enum(VOICE_PROVIDERS.map((v) => v.id) as ["gemini", "openai", "xai"]).optional(),
   voice: z.enum(LIVE_VOICES.map((v) => v.id) as [string, ...string[]]).optional(),
   openaiVoice: z.enum(OPENAI_VOICES.map((v) => v.id) as [string, ...string[]]).optional(),
   openaiModel: z.enum(OPENAI_REALTIME_MODELS.map((m) => m.id) as [string, ...string[]]).optional(),
+  xaiVoice: z.enum(XAI_VOICES.map((v) => v.id) as [string, ...string[]]).optional(),
 });
 
 export async function saveAssistantSettings(input: unknown): Promise<ApiResponse<void>> {
@@ -81,7 +82,7 @@ export async function saveAssistantSettings(input: unknown): Promise<ApiResponse
     }
 
     await saveAssistantSelection({ ...data, apiKey: data.apiKey || undefined });
-    await saveVoiceSettings({ voiceProvider: data.voiceProvider, voice: data.voice, openaiVoice: data.openaiVoice, openaiModel: data.openaiModel });
+    await saveVoiceSettings({ voiceProvider: data.voiceProvider, voice: data.voice, openaiVoice: data.openaiVoice, openaiModel: data.openaiModel, xaiVoice: data.xaiVoice });
     return { success: true, data: undefined };
   } catch (error) {
     return {

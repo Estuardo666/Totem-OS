@@ -27,6 +27,8 @@ import {
   DEFAULT_OPENAI_VOICE,
   DEFAULT_OPENAI_REALTIME_MODEL,
   DEFAULT_VOICE_PROVIDER,
+  DEFAULT_XAI_VOICE,
+  VOICE_PROVIDERS,
   type VoiceProvider,
   PROVIDER_CATALOG,
   type AssistantProvider,
@@ -144,6 +146,7 @@ const KEY_VOICE = "assistant.voice";
 const KEY_VOICE_PROVIDER = "assistant.voiceProvider";
 const KEY_OPENAI_VOICE = "assistant.openaiVoice";
 const KEY_OPENAI_MODEL = "assistant.openaiRealtimeModel";
+const KEY_XAI_VOICE = "assistant.xaiVoice";
 
 export interface VoiceSettings {
   voiceProvider: VoiceProvider;
@@ -153,19 +156,22 @@ export interface VoiceSettings {
   openaiVoice: string;
   /** Modelo de OpenAI Realtime (mini o completo). */
   openaiModel: string;
+  /** Voz de Grok Voice (xAI). */
+  xaiVoice: string;
 }
 
 export async function getVoiceSettings(): Promise<VoiceSettings> {
   const rows = await db.globalConfig.findMany({
-    where: { key: { in: [KEY_VOICE, KEY_VOICE_PROVIDER, KEY_OPENAI_VOICE, KEY_OPENAI_MODEL] } },
+    where: { key: { in: [KEY_VOICE, KEY_VOICE_PROVIDER, KEY_OPENAI_VOICE, KEY_OPENAI_MODEL, KEY_XAI_VOICE] } },
   });
   const byKey = new Map(rows.map((r) => [r.key, r.value]));
   const provider = byKey.get(KEY_VOICE_PROVIDER);
   return {
-    voiceProvider: provider === "openai" || provider === "gemini" ? provider : DEFAULT_VOICE_PROVIDER,
+    voiceProvider: VOICE_PROVIDERS.find((p) => p.id === provider)?.id ?? DEFAULT_VOICE_PROVIDER,
     voice: byKey.get(KEY_VOICE) || DEFAULT_LIVE_VOICE,
     openaiVoice: byKey.get(KEY_OPENAI_VOICE) || DEFAULT_OPENAI_VOICE,
     openaiModel: byKey.get(KEY_OPENAI_MODEL) || DEFAULT_OPENAI_REALTIME_MODEL,
+    xaiVoice: byKey.get(KEY_XAI_VOICE) || DEFAULT_XAI_VOICE,
   };
 }
 
@@ -175,6 +181,7 @@ export async function saveVoiceSettings(input: Partial<VoiceSettings>): Promise<
     [KEY_VOICE, input.voice],
     [KEY_OPENAI_VOICE, input.openaiVoice],
     [KEY_OPENAI_MODEL, input.openaiModel],
+    [KEY_XAI_VOICE, input.xaiVoice],
   ];
   await db.$transaction(
     entries

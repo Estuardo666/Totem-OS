@@ -6,15 +6,17 @@ import { getProviderApiKey, getVoiceSettings } from "@/lib/assistant/config";
 import {
   DEFAULT_LIVE_MODEL,
   DEFAULT_OPENAI_REALTIME_MODEL,
+  DEFAULT_XAI_VOICE_MODEL,
   buildLiveConfig,
   buildOpenAIRealtimeSession,
+  buildXaiVoiceSession,
 } from "@/lib/assistant/live-config";
 
 export const runtime = "nodejs";
 
 /**
  * Emite un token efímero para la voz en vivo del proveedor configurado
- * (Gemini Live u OpenAI Realtime). La API key nunca sale del servidor y el
+ * (Gemini Live, OpenAI Realtime o Grok Voice). La API key nunca sale del servidor y el
  * modelo, las instrucciones y las herramientas quedan fijados en el token.
  */
 export async function POST() {
@@ -32,6 +34,34 @@ export async function POST() {
   const voice = await getVoiceSettings();
 
   try {
+    if (voice.voiceProvider === "xai") {
+      const key = process.env.XAI_API_KEY;
+      if (!key) {
+        return Response.json({ error: "Falta la API key de xAI (XAI_API_KEY)." }, { status: 400 });
+      }
+      const res = await fetch("https://api.x.ai/v1/realtime/client_secrets", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ expires_after: { seconds: 60 } }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        value?: string;
+        client_secret?: { value?: string };
+        error?: { message?: string } | string;
+      };
+      const token = data.value ?? data.client_secret?.value;
+      if (!res.ok || !token) {
+        const message = typeof data.error === "string" ? data.error : data.error?.message;
+        return Response.json({ error: message ?? "No se pudo crear la sesión de voz de xAI" }, { status: 502 });
+      }
+      return Response.json({
+        provider: "xai",
+        token,
+        model: DEFAULT_XAI_VOICE_MODEL,
+        session: buildXaiVoiceSession(userName, voice.xaiVoice),
+      });
+    }
+
     if (voice.voiceProvider === "openai") {
       const key = await getProviderApiKey("openai");
       if (!key) {

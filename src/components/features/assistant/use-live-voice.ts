@@ -23,9 +23,11 @@ export interface DraftEntry extends AgentDraft {
 
 
 interface LiveToken {
-  provider: "gemini" | "openai";
+  provider: "gemini" | "openai" | "xai";
   token: string;
   model: string;
+  /** Solo xAI: su token no fija la sesión, se envía en session.update. */
+  session?: Record<string, unknown>;
 }
 
 /** Un token se reutiliza solo si tiene menos de 40 s (caducan a los 60 s). */
@@ -35,7 +37,7 @@ async function fetchLiveToken(): Promise<LiveToken> {
   const res = await fetch("/api/assistant/live-token", { method: "POST" });
   const data = (await res.json()) as Partial<LiveToken> & { error?: string };
   if (!res.ok || !data.token || !data.model) throw new Error(data.error ?? "No se pudo iniciar la voz");
-  return { provider: data.provider ?? "gemini", token: data.token, model: data.model };
+  return { provider: data.provider ?? "gemini", token: data.token, model: data.model, session: data.session };
 }
 
 function toBase64(buffer: ArrayBuffer): string {
@@ -79,6 +81,9 @@ export function useLiveVoice() {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Grok Voice (xAI): WebSocket con los mismos eventos que OpenAI Realtime;
+  // el audio va en PCM por el socket y se reproduce como el de Gemini.
+  const wsRef = useRef<WebSocket | null>(null);
   // OpenAI solo admite una respuesta activa: response.create se envía cuando
   // la anterior terminó (response.done).
   const responseActiveRef = useRef(false);
@@ -182,17 +187,27 @@ export function useLiveVoice() {
   // Confirmaciones en curso por token: la voz y el botón comparten la misma.
   const confirmingRef = useRef(new Map<string, ReturnType<typeof confirmAssistantDraft>>());
 
-  /** Avisa a la voz de algo que pasó fuera de la conversación, sin pedirle respuesta. */
-  const notifyVoice = (text: string) => {
+  /** Envía un evento Realtime por el canal abierto (WebRTC de OpenAI o WebSocket de xAI). */
+  const sendRealtime = (event: Record<string, unknown>): boolean => {
     const dc = dcRef.current;
     if (dc?.readyState === "open") {
-      dc.send(
-        JSON.stringify({
-          type: "conversation.item.create",
-          item: { type: "message", role: "user", content: [{ type: "input_text", text }] },
-        })
-      );
+      dc.send(JSON.stringify(event));
+      return true;
     }
+    const ws = wsRef.current;
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(event));
+      return true;
+    }
+    return false;
+  };
+
+  /** Avisa a la voz de algo que pasó fuera de la conversación, sin pedirle respuesta. */
+  const notifyVoice = (text: string) => {
+    sendRealtime({
+      type: "conversation.item.create",
+      item: { type: "message", role: "user", content: [{ type: "input_text", text }] },
+    });
     sessionRef.current?.sendClientContent({ turns: [{ role: "user", parts: [{ text }] }], turnComplete: false });
   };
 
@@ -333,17 +348,26 @@ export function useLiveVoice() {
   };
 
   const requestOpenAIResponse = () => {
-    const dc = dcRef.current;
-    if (dc?.readyState !== "open") return;
-    responseActiveRef.current = true;
-    dc.send(JSON.stringify({ type: "response.create" }));
+    if (sendRealtime({ type: "response.create" })) responseActiveRef.current = true;
   };
 
-  /** Eventos de OpenAI Realtime por el canal de datos. */
+  /** Eventos de OpenAI Realtime (canal de datos) y de Grok Voice (WebSocket). */
   const handleOpenAIEvent = async (event: { type: string; [key: string]: unknown }) => {
     switch (event.type) {
       case "input_audio_buffer.speech_started":
+        // xAI: el usuario interrumpe y se corta el audio local en curso.
+        stopPlayback();
         setStatus("listening");
+        break;
+      case "response.output_audio.delta":
+      case "response.audio.delta":
+        if (typeof event.delta === "string") playChunk(event.delta);
+        break;
+      case "conversation.item.input_audio_transcription.updated":
+        // xAI manda la transcripción acumulada del usuario.
+        if (typeof event.item_id === "string" && typeof event.transcript === "string") {
+          fillUserLine(event.item_id, event.transcript.trim());
+        }
         break;
       case "input_audio_buffer.committed":
         if (typeof event.item_id === "string") reserveUserLine(event.item_id);
@@ -354,6 +378,7 @@ export function useLiveVoice() {
         }
         break;
       case "response.output_audio_transcript.delta":
+      case "response.audio_transcript.delta":
         if (typeof event.delta === "string") {
           appendTranscript("assistant", event.delta);
           setStatus("speaking");
@@ -397,14 +422,11 @@ export function useLiveVoice() {
         } catch (e) {
           output = { error: e instanceof Error ? e.message : "Error" };
         }
-        const dc = dcRef.current;
-        if (dc?.readyState === "open") {
-          dc.send(
-            JSON.stringify({
-              type: "conversation.item.create",
-              item: { type: "function_call_output", call_id: event.call_id, output: JSON.stringify(output) },
-            })
-          );
+        const sent = sendRealtime({
+          type: "conversation.item.create",
+          item: { type: "function_call_output", call_id: event.call_id, output: JSON.stringify(output) },
+        });
+        if (sent) {
           if (responseActiveRef.current) pendingResponseRef.current = true;
           else requestOpenAIResponse();
         }
@@ -460,6 +482,53 @@ export function useLiveVoice() {
     await pc.setRemoteDescription({ type: "answer", sdp: await res.text() });
   };
 
+  /** Conecta con Grok Voice por WebSocket: el token va como subprotocolo. */
+  const startXai = async (tokenData: LiveToken, stream: MediaStream) => {
+    outCtxRef.current = new AudioContext({ sampleRate: 24000 });
+    const micCtx = new AudioContext({ sampleRate: 16000 });
+    micCtxRef.current = micCtx;
+
+    const ws = new WebSocket(`wss://api.x.ai/v1/realtime?model=${encodeURIComponent(tokenData.model)}`, [
+      `xai-client-secret.${tokenData.token}`,
+    ]);
+    wsRef.current = ws;
+    const opened = new Promise<void>((resolve, reject) => {
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: "session.update", session: tokenData.session ?? {} }));
+        setStatus("listening");
+        resolve();
+      };
+      ws.onerror = () => reject(new Error("xAI rechazó la conexión de voz"));
+    });
+    ws.onmessage = (e) => {
+      if (typeof e.data !== "string") return;
+      try {
+        void handleOpenAIEvent(JSON.parse(e.data));
+      } catch {
+        /* evento no JSON */
+      }
+    };
+    ws.onclose = (e) => {
+      if (wsRef.current !== ws) return;
+      if (e.code !== 1000) {
+        setError(e.reason || "Se perdió la conexión de voz");
+        setStatus("error");
+      }
+      stop();
+    };
+
+    await Promise.all([opened, micCtx.audioWorklet.addModule("/audio-worklets/pcm16-capture.js")]);
+    const node = new AudioWorkletNode(micCtx, "pcm16-capture");
+    node.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
+      // Mientras suena la respuesta no se envía el micrófono (evita el eco).
+      if (sourcesRef.current.size > 0) return;
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "input_audio_buffer.append", audio: toBase64(e.data) }));
+      }
+    };
+    micCtx.createMediaStreamSource(stream).connect(node);
+  };
+
   const stop = useCallback(() => {
     genRef.current++;
     startingRef.current = false;
@@ -469,6 +538,9 @@ export function useLiveVoice() {
     dcRef.current = null;
     pcRef.current?.close();
     pcRef.current = null;
+    const ws = wsRef.current;
+    wsRef.current = null;
+    ws?.close(1000);
     if (remoteAudioRef.current) {
       remoteAudioRef.current.srcObject = null;
       remoteAudioRef.current = null;
@@ -521,7 +593,7 @@ export function useLiveVoice() {
 
   const start = useCallback(async () => {
     // Evita dos sesiones a la vez (doble toque, o tocar mientras conecta).
-    if (startingRef.current || sessionRef.current || pcRef.current) return;
+    if (startingRef.current || sessionRef.current || pcRef.current || wsRef.current) return;
     startingRef.current = true;
     const gen = ++genRef.current;
     // Si el usuario cerró mientras conectaba, lo recién abierto se descarta.
@@ -551,6 +623,12 @@ export function useLiveVoice() {
       levelCtx.createMediaStreamSource(stream).connect(analyser);
       analyserRef.current = analyser;
       levelBufRef.current = new Uint8Array(analyser.fftSize);
+
+      if (tokenData.provider === "xai") {
+        await startXai(tokenData, stream);
+        if (cancelled()) stop();
+        return;
+      }
 
       if (tokenData.provider === "openai") {
         await startOpenAI(tokenData.token, stream);

@@ -22,6 +22,8 @@ import {
   OPENAI_REALTIME_MODELS,
   OPENAI_VOICES,
   VOICE_PROVIDERS,
+  XAI_VOICES,
+  DEFAULT_XAI_VOICE,
   type VoiceProvider,
   PROVIDER_CATALOG,
   type AssistantProvider,
@@ -47,6 +49,7 @@ export function AssistantSettingsForm() {
   const [voiceProvider, setVoiceProvider] = useState<VoiceProvider>("gemini");
   const [openaiVoice, setOpenaiVoice] = useState<string>(DEFAULT_OPENAI_VOICE);
   const [openaiModel, setOpenaiModel] = useState<string>(OPENAI_REALTIME_MODELS[0].id);
+  const [xaiVoice, setXaiVoice] = useState<string>(DEFAULT_XAI_VOICE);
   const [test, setTest] = useState<{ ok: boolean; message: string } | null>(null);
   const [isTesting, startTest] = useTransition();
   const [isSaving, startSave] = useTransition();
@@ -61,6 +64,7 @@ export function AssistantSettingsForm() {
     setVoiceProvider(data.voiceSettings.voiceProvider);
     setOpenaiVoice(data.voiceSettings.openaiVoice);
     setOpenaiModel(data.voiceSettings.openaiModel);
+    setXaiVoice(data.voiceSettings.xaiVoice);
     const known = PROVIDER_CATALOG[data.provider].models.some((m) => m.id === data.model);
     setModel(known ? data.model : CUSTOM_MODEL);
     setCustomModel(known ? "" : data.model);
@@ -73,7 +77,7 @@ export function AssistantSettingsForm() {
   const models = PROVIDER_CATALOG[provider].models;
   const resolvedModel = model === CUSTOM_MODEL ? customModel.trim() : model;
   const savedKey = settings?.keys[provider] ?? null;
-  const payload = { provider, model: resolvedModel, apiKey: apiKey.trim() || undefined, voice, voiceProvider, openaiVoice, openaiModel };
+  const payload = { provider, model: resolvedModel, apiKey: apiKey.trim() || undefined, voice, voiceProvider, openaiVoice, openaiModel, xaiVoice };
 
   const onProviderChange = (value: string) => {
     const next = value as AssistantProvider;
@@ -230,7 +234,20 @@ export function AssistantSettingsForm() {
             </div>
             <div className="space-y-1.5">
               <Label>Voz</Label>
-              {voiceProvider === "openai" ? (
+              {voiceProvider === "xai" ? (
+                <Select value={xaiVoice} onValueChange={setXaiVoice}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {XAI_VOICES.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : voiceProvider === "openai" ? (
                 <Select value={openaiVoice} onValueChange={setOpenaiVoice}>
                   <SelectTrigger>
                     <SelectValue />
@@ -278,6 +295,8 @@ export function AssistantSettingsForm() {
             <p className="text-xs text-muted-foreground sm:col-span-2">
               {voiceProvider === "openai"
                 ? "Usa OPENAI_API_KEY (de pago, sin plan gratuito). Se aplica en la próxima conversación."
+                : voiceProvider === "xai"
+                ? "Usa XAI_API_KEY con Grok Voice 3.0 ($0.08/min). Se aplica en la próxima conversación."
                 : "Usa GEMINI_API_KEY. Se aplica en la próxima conversación."}
             </p>
           </div>
