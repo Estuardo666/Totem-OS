@@ -345,7 +345,7 @@ Para que el dueño pueda revisar sin tocar nada si no quiere:
 - [ ] Si el staging presenta un fallo operativo → desplegar el mismo código en **Render Free Web Service** (pre-autorizado), con ping desde cron de Hostinger. Si Render tampoco pasa → H5 (Oracle) y `scripts/provision-oracle.sh`. La espera eximida no activa este fallback.
 
 ### 10.2 Cron Jobs de Hostinger (agente)
-- [ ] Crear `~/.message_worker_cron` (chmod 600) con `CRON_SECRET=…` y `WA_HEALTH_URL=…`.
+- [ ] Crear `~/.message_worker_cron` (chmod 600) con `CRON_SECRET=…` y `WA_HEALTH_URL=…`; la API actual no permite crear ese archivo fuera de `public_html` sin una sesión SSH con shell.
 - [ ] Comandos tipo:
   ```bash
   . ~/.message_worker_cron && curl -fsS --max-time 60 -X POST -H "Authorization: Bearer $CRON_SECRET" https://totem-os.vercel.app/api/cron/whatsapp-team-daily
@@ -363,7 +363,7 @@ Para que el dueño pueda revisar sin tocar nada si no quiere:
 | `whatsapp-watchdog` (Vercel: si `/health` falla 5 min → push al dueño) | cada 5 min |
 | `daily-digest`, `calendar-webhook-renew`, `monthly-payments`, `sync-compact` | **no** (bloqueo duro; proponer al final) |
 
-- [x] Actualizar `CRONS.md`; por ahora solo está instalado el ping de salud del staging. Los cron jobs a rutas Vercel siguen pendientes.
+- [x] Actualizar `CRONS.md`; el segundo cron diario de Vercel queda definido para `/api/cron/whatsapp-team-daily` a las 08:00 Ecuador. El ping de staging sigue activo; los crons de frecuencia subdiaria requieren Hostinger y un archivo privado de secretos.
 
 ### 10.3 Vinculación
 - [x] H2: el número real se vinculó mediante QR y la identidad quedó verificada. La sesión de producción persiste en Neon; el worker de staging usa una base separada y sigue desactivado.
