@@ -11,7 +11,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { getEncryptionKey } from "@/lib/crypto/token-cipher";
 
-export const DRAFT_ACTIONS = ["crearGasto", "crearTarea", "registrarHonorario", "crearRodaje", "registrarIngreso"] as const;
+export const DRAFT_ACTIONS = ["crearGasto", "crearTarea", "registrarHonorario", "crearRodaje", "registrarIngreso", "enviarWhatsApp", "pausarBot", "marcarAprobado"] as const;
 export type DraftAction = (typeof DRAFT_ACTIONS)[number];
 
 export interface DraftPayload {

@@ -2,7 +2,10 @@
 // Usa node-forge para leer el .p12 y construir la firma según el estándar XMLDSig + XAdES
 
 import forge from "node-forge";
+import { X509Certificate } from "node:crypto";
 import { create } from "xmlbuilder2";
+import { DOMParser } from "@xmldom/xmldom";
+import { C14nCanonicalization, ExclusiveCanonicalization } from "xml-crypto";
 
 interface P12Data {
   privateKey: forge.pki.PrivateKey;
@@ -10,6 +13,21 @@ interface P12Data {
   certificatePem: string;
   issuerName: string;
   serialNumber: string;
+}
+
+interface BuiltSignedProperties {
+  objectXml: string;
+  referencedElementXml: string;
+}
+
+interface NamespaceContext {
+  prefix: string;
+  namespaceURI: string;
+}
+
+interface C14nContext {
+  attributes: Record<string, string>;
+  namespaces: NamespaceContext[];
 }
 
 /**
@@ -51,11 +69,8 @@ export function leerP12(p12Buffer: Buffer, password: string): P12Data {
     }
 
     const certificatePem = forge.pki.certificateToPem(certificate);
-    const issuerAttrs = certificate.issuer.attributes;
-    const issuerName = issuerAttrs
-      .map((a) => `${a.shortName || a.name}=${a.value}`)
-      .join(", ");
-    const serialNumber = certificate.serialNumber;
+    const issuerName = formatXmlDsigIssuerName(certificatePem);
+    const serialNumber = serialNumberHexToDecimal(certificate.serialNumber);
 
     return {
       privateKey,
@@ -89,24 +104,123 @@ function sha256Base64(content: string): string {
   return forge.util.encode64(md.digest().bytes());
 }
 
-/**
- * Canonicaliza un XML usando Exclusive C14N (exc-c14n).
- * Implementación simplificada que remueve declaraciones XML y normaliza espacios.
- */
-function canonicalizeExcC14N(xml: string): string {
-  // Remover declaración XML si existe
-  let result = xml.replace(/<\?xml[^?]*\?>\s*/g, "");
-  // Remover saltos de línea entre tags y normalizar espacios
-  result = result.replace(/>\s+</g, "><");
-  return result;
+function parseXmlForSigning(xml: string): Document {
+  if (/<!DOCTYPE\b/i.test(xml)) {
+    throw new Error("No se permite DOCTYPE al canonicalizar XML de firma");
+  }
+
+  const failOnParseIssue = (message: string) => {
+    throw new Error(`XML inválido para firma: ${message}`);
+  };
+  const document = new DOMParser({
+    errorHandler: {
+      warning: failOnParseIssue,
+      error: failOnParseIssue,
+      fatalError: failOnParseIssue,
+    },
+  }).parseFromString(xml, "application/xml");
+
+  if (!document.documentElement) {
+    throw new Error("XML vacío para canonicalizar");
+  }
+
+  return document;
 }
 
 /**
- * Genera el digest SHA-1 del XML canonicalizado para el SignedInfo.
+ * XMLDSig expects the issuer DN in RFC 2253 order. OpenSSL (via Node's
+ * X509Certificate) formats each RDN on a separate line and retains escaping
+ * and multi-valued RDNs; reverse those lines, remove display spaces around
+ * multi-value separators, and use RFC 2253 commas.
+ */
+function formatXmlDsigIssuerName(certificatePem: string): string {
+  const renderedName = new X509Certificate(certificatePem).issuer;
+  const rdns = renderedName.split(/\r?\n/).filter(Boolean);
+  if (rdns.length === 0) {
+    throw new Error("El certificado no contiene un nombre de emisor válido");
+  }
+  return rdns.reverse().map(removeOpenSslRdnSeparatorPadding).join(",");
+}
+
+function removeOpenSslRdnSeparatorPadding(rdn: string): string {
+  let normalized = "";
+  for (let index = 0; index < rdn.length; index += 1) {
+    if (rdn[index] === "+") {
+      let precedingBackslashes = 0;
+      for (let cursor = index - 1; cursor >= 0 && rdn[cursor] === "\\"; cursor -= 1) {
+        precedingBackslashes += 1;
+      }
+
+      if (precedingBackslashes % 2 === 0) {
+        if (normalized.endsWith(" ")) normalized = normalized.slice(0, -1);
+        normalized += "+";
+        if (rdn[index + 1] === " ") index += 1;
+        continue;
+      }
+    }
+    normalized += rdn[index];
+  }
+  return normalized;
+}
+
+/** node-forge stores the ASN.1 INTEGER serial in hexadecimal; XMLDSig uses decimal text. */
+function serialNumberHexToDecimal(serialNumberHex: string): string {
+  const normalized = serialNumberHex.trim().replace(/^0x/i, "");
+  if (!/^[0-9a-f]+$/i.test(normalized)) {
+    throw new Error("El número de serie del certificado no es hexadecimal válido");
+  }
+  return BigInt(`0x${normalized}`).toString(10);
+}
+
+/**
+ * Copy the invoice root's in-scope namespace and xml:* attributes onto the
+ * SignedProperties apex. This preserves the context required by inclusive
+ * Canonical XML 1.0 when the referenced subtree is detached by XMLDSig.
+ */
+function inheritedC14nContext(xml: string): C14nContext {
+  const root = parseXmlForSigning(xml).documentElement;
+  const attributes: Record<string, string> = {};
+  const namespaces: NamespaceContext[] = [];
+  const xmlNamespace = "http://www.w3.org/XML/1998/namespace";
+  const xmlnsNamespace = "http://www.w3.org/2000/xmlns/";
+
+  for (let i = 0; i < root.attributes.length; i += 1) {
+    const attribute = root.attributes.item(i);
+    if (!attribute) continue;
+
+    if (attribute.namespaceURI === xmlnsNamespace) {
+      const prefix = attribute.nodeName === "xmlns" ? "" : attribute.localName;
+      if (prefix !== "ds" && prefix !== "xades") {
+        attributes[attribute.nodeName] = attribute.value;
+        if (attribute.value) {
+          namespaces.push({ prefix, namespaceURI: attribute.value });
+        }
+      }
+    } else if (attribute.namespaceURI === xmlNamespace) {
+      attributes[attribute.nodeName] = attribute.value;
+    }
+  }
+
+  return { attributes, namespaces };
+}
+
+/** Canonicaliza con Exclusive C14N, usada por SignedInfo y la referencia de factura. */
+function canonicalizeExcC14N(xml: string): string {
+  const document = parseXmlForSigning(xml);
+  return new ExclusiveCanonicalization().process(document.documentElement, {});
+}
+
+/** Canonical XML 1.0 es la conversión implícita para una referencia node-set sin Transform. */
+function canonicalizeC14N10(xml: string, ancestorNamespaces: NamespaceContext[] = []): string {
+  const document = parseXmlForSigning(xml);
+  return new C14nCanonicalization().process(document.documentElement, { ancestorNamespaces });
+}
+
+/**
+ * Genera el digest SHA-1 de un XML canonicalizado.
  */
 function calcularDigestXml(xml: string): string {
-  const canonical = canonicalizeExcC14N(xml);
-  return sha1Base64(canonical);
+  return sha1Base64(canonicalizeExcC14N(xml));
 }
 
 /**
@@ -140,29 +254,28 @@ export function firmarXml(
     forge.asn1.toDer(forge.pki.certificateToAsn1(certificate)).bytes()
   );
 
-  // Subject del certificado
-  const subjectAttrs = certificate.subject.attributes;
-  const x509SubjectName = subjectAttrs
-    .map((a) => `${a.shortName || a.name}=${a.value}`)
-    .join(", ");
-
   // Fecha de emisión y expiración del certificado
   const certNotBefore = certificate.validity.notBefore.toISOString();
   const certNotAfter = certificate.validity.notAfter.toISOString();
 
   // 3. Construir SignedProperties (XAdES-BES)
   const signedPropertiesId = "Signature1-SignedProperties";
-  const signedPropertiesXml = buildSignedProperties(
+  const c14nContext = inheritedC14nContext(xmlContent);
+  const signedProperties = buildSignedProperties(
     signedPropertiesId,
-    x509SubjectName,
+    certificate,
+    c14nContext.attributes,
     certNotBefore,
     certNotAfter,
     issuerName,
     serialNumber
   );
 
-  // 4. Calcular digest de SignedProperties
-  const signedPropertiesDigest = calcularDigestXml(signedPropertiesXml);
+  // 4. Calcular el digest del elemento al que apunta la URI SignedProperties,
+  // no del ds:Object que lo contiene.
+  const signedPropertiesDigest = sha1Base64(
+    canonicalizeC14N10(signedProperties.referencedElementXml, c14nContext.namespaces)
+  );
 
   // 5. Construir SignedInfo
   const signedInfoXml = buildSignedInfo(
@@ -183,7 +296,7 @@ export function firmarXml(
     signedInfoXml,
     signatureValue,
     certBase64,
-    signedPropertiesXml
+    signedProperties.objectXml
   );
 
   // 8. Insertar firma en el XML del comprobante
@@ -195,26 +308,32 @@ export function firmarXml(
  */
 function buildSignedProperties(
   signedPropertiesId: string,
-  x509SubjectName: string,
+  certificate: forge.pki.Certificate,
+  inheritedAttributes: Record<string, string>,
   certNotBefore: string,
   certNotAfter: string,
   issuerName: string,
   serialNumber: string
-): string {
+): BuiltSignedProperties {
   const doc = create({ version: "1.0", encoding: "UTF-8" })
     .ele("ds:Object", { "xmlns:ds": "http://www.w3.org/2000/09/xmldsig#" })
       .ele("xades:QualifyingProperties", {
         "xmlns:xades": "http://uri.etsi.org/01903/v1.3.2#",
         Target: "#Signature1",
       })
-        .ele("xades:SignedProperties", { Id: signedPropertiesId })
+        .ele("xades:SignedProperties", {
+          "xmlns:ds": "http://www.w3.org/2000/09/xmldsig#",
+          "xmlns:xades": "http://uri.etsi.org/01903/v1.3.2#",
+          ...inheritedAttributes,
+          Id: signedPropertiesId,
+        })
           .ele("xades:SignedSignatureProperties")
             .ele("xades:SigningTime").txt(new Date().toISOString()).up()
             .ele("xades:SigningCertificate")
               .ele("xades:Cert")
                 .ele("xades:CertDigest")
                   .ele("ds:DigestMethod", { Algorithm: "http://www.w3.org/2000/09/xmldsig#sha1" }).up()
-                  .ele("ds:DigestValue").txt(calcularDigestCert(issuerName + serialNumber)).up()
+                  .ele("ds:DigestValue").txt(calcularDigestCert(certificate)).up()
                 .up()
                 .ele("xades:IssuerSerial")
                   .ele("ds:X509IssuerName").txt(issuerName).up()
@@ -236,7 +355,30 @@ function buildSignedProperties(
       .up()
     .up();
 
-  return canonicalizeExcC14N(doc.end({ prettyPrint: false }));
+  let objectXml = doc.end({ prettyPrint: false, headless: true });
+  let referencedElementXml = objectXml.match(
+    /<xades:SignedProperties\b[\s\S]*?<\/xades:SignedProperties>/
+  )?.[0];
+  if (!referencedElementXml) {
+    throw new Error("No se pudo construir xades:SignedProperties");
+  }
+
+  const openTag = referencedElementXml.match(/^<xades:SignedProperties\b([^>]*)>/);
+  if (!openTag) {
+    throw new Error("No se pudo leer la etiqueta xades:SignedProperties");
+  }
+  const attributes = openTag[1]
+    .replace(/\s+xmlns:ds="[^"]*"/g, "")
+    .replace(/\s+xmlns:xades="[^"]*"/g, "")
+    .trim();
+  const explicitNamespaceElement =
+    `<xades:SignedProperties xmlns:ds="http://www.w3.org/2000/09/xmldsig#" ` +
+    `xmlns:xades="http://uri.etsi.org/01903/v1.3.2#"${attributes ? ` ${attributes}` : ""}>` +
+    referencedElementXml.slice(openTag[0].length);
+  objectXml = objectXml.replace(referencedElementXml, explicitNamespaceElement);
+  referencedElementXml = explicitNamespaceElement;
+
+  return { objectXml, referencedElementXml };
 }
 
 /**
@@ -261,13 +403,16 @@ function buildSignedInfo(
         .ele("ds:DigestValue").txt(documentDigest).up()
       .up()
       // Reference a SignedProperties
-      .ele("ds:Reference", { URI: `#${signedPropertiesId}` })
+      .ele("ds:Reference", {
+        URI: `#${signedPropertiesId}`,
+        Type: "http://uri.etsi.org/01903#SignedProperties",
+      })
         .ele("ds:DigestMethod", { Algorithm: "http://www.w3.org/2000/09/xmldsig#sha1" }).up()
         .ele("ds:DigestValue").txt(signedPropertiesDigest).up()
       .up()
     .up();
 
-  return canonicalizeExcC14N(doc.end({ prettyPrint: false }));
+  return doc.end({ prettyPrint: false, headless: true });
 }
 
 /**
@@ -277,7 +422,7 @@ function buildSignature(
   signedInfoXml: string,
   signatureValue: string,
   certBase64: string,
-  signedPropertiesXml: string
+  signedPropertiesObjectXml: string
 ): string {
   // Insertar SignedInfo como child directo
   const signedInfoNode = `<ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">` +
@@ -292,7 +437,7 @@ ${signedInfoXml}
 <ds:X509Certificate>${certBase64}</ds:X509Certificate>
 </ds:X509Data>
 </ds:KeyInfo>
-${signedPropertiesXml}
+${signedPropertiesObjectXml}
 </ds:Signature>`;
 }
 
@@ -311,11 +456,11 @@ function insertarFirmaEnXml(xmlContent: string, signatureXml: string): string {
   for (const pattern of rootClosePatterns) {
     const idx = xmlContent.lastIndexOf(pattern);
     if (idx !== -1) {
+      // No añadir whitespace fuera de Signature: el transform enveloped lo elimina
+      // junto con el nodo, y el digest debe reconstruir el XML de entrada.
       return (
         xmlContent.substring(0, idx) +
-        "\n" +
         signatureXml +
-        "\n" +
         pattern
       );
     }
@@ -327,9 +472,10 @@ function insertarFirmaEnXml(xmlContent: string, signatureXml: string): string {
 /**
  * Calcula un digest simplificado del certificado para XAdES.
  */
-function calcularDigestCert(input: string): string {
+function calcularDigestCert(certificate: forge.pki.Certificate): string {
+  const certDer = forge.asn1.toDer(forge.pki.certificateToAsn1(certificate)).bytes();
   const md = forge.md.sha1.create();
-  md.update(input, "utf8");
+  md.update(certDer);
   return forge.util.encode64(md.digest().bytes());
 }
 

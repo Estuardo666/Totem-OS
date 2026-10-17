@@ -5,11 +5,72 @@
 
 import { db } from "@/lib/db";
 import { addDays } from "date-fns";
+import { enqueueClientGroupWhatsApp, enqueueWhatsApp, normalizePhone } from "@/lib/whatsapp/enqueue";
+import { getWhatsAppConfig } from "@/lib/whatsapp/config";
+import { paymentReminderText } from "@/lib/whatsapp/templates";
 
 interface CobranzaResult {
   overdueCount: number;
   alertCount: number;
   alertsSent: number;
+}
+
+/** Encola recordatorios de cliente; la cola permanece cerrada si el bot está pausado. */
+export async function enqueueWhatsAppPaymentReminders(now = new Date()) {
+  const config = await getWhatsAppConfig();
+  if (config.paused || !config.clientsEnabled) return { checked: 0, enqueued: 0, skipped: "disabled" as const };
+
+  // Compare calendar days in Ecuador, independent of the database/server timezone.
+  const today = new Date(now.getTime() - 5 * 60 * 60 * 1000);
+  today.setUTCHours(0, 0, 0, 0);
+  const dateOffset = (date: Date) => {
+    const local = new Date(date.getTime() - 5 * 60 * 60 * 1000);
+    local.setUTCHours(0, 0, 0, 0);
+    return Math.round((local.getTime() - today.getTime()) / 86_400_000);
+  };
+  const from = new Date(now.getTime() - 3 * 86_400_000 - 24 * 60 * 60 * 1000);
+  const through = new Date(now.getTime() + 4 * 86_400_000);
+  const invoices = await db.invoice.findMany({
+    where: { status: { in: ["PENDING", "SENT", "OVERDUE"] }, dueDate: { gte: from, lt: through } },
+    include: { client: { select: { id: true, name: true, paymentReminderTarget: true, whatsappPhone: true } } },
+  });
+  let enqueued = 0;
+  for (const invoice of invoices) {
+    if (!invoice.dueDate) continue;
+    const delta = dateOffset(invoice.dueDate);
+    const overdueHours = now.getTime() - invoice.dueDate.getTime();
+    const stage = delta === 3
+      ? "before"
+      : delta === 0
+        ? "due"
+        : delta <= -3 && overdueHours >= 72 * 60 * 60 * 1000
+          ? "after72h"
+          : null;
+    if (!stage) continue;
+    const personal = invoice.client.paymentReminderTarget === "PERSONAL";
+    const dedupeKey = `pay:${invoice.id}:${stage}`;
+    const timing = stage === "before" ? "vence en 3 días" : stage === "due" ? "vence hoy" : "venció hace 3 días";
+    const body = paymentReminderText({
+      clientName: invoice.client.name,
+      timing,
+      dueDate: invoice.dueDate.toLocaleDateString("es-EC", { timeZone: "America/Guayaquil" }),
+      amount: invoice.amount,
+      isGroup: !personal,
+      amountsInGroups: config.amountsInGroups,
+      variantKey: dedupeKey,
+    });
+    try {
+      const result = personal
+        ? invoice.client.whatsappPhone
+          ? await enqueueWhatsApp({ to: `${normalizePhone(invoice.client.whatsappPhone)}@s.whatsapp.net`, body, kind: "PAYMENT_REMINDER", dedupeKey })
+          : null
+        : await enqueueClientGroupWhatsApp({ clientId: invoice.client.id, purpose: "PAYMENT", body, kind: "PAYMENT_REMINDER", dedupeKey });
+      if (result && "id" in result && result.created) enqueued++;
+    } catch {
+      // Do not log invoice details or database/transport exceptions.
+    }
+  }
+  return { checked: invoices.length, enqueued };
 }
 
 /**

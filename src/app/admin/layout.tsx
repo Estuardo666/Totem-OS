@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { resolveRoleCode } from "@/lib/roles";
 
 export default async function AdminLayout({
   children,
@@ -19,6 +20,7 @@ export default async function AdminLayout({
     where: { id: session.user.id },
     select: {
       id: true,
+      roleCode: true,
       roleLegacy: true,
     },
   });
@@ -29,7 +31,7 @@ export default async function AdminLayout({
   }
 
   // Solo los usuarios ADMIN pueden acceder a las rutas de admin
-  if (user.roleLegacy !== "ADMIN") {
+  if (resolveRoleCode(user) !== "ADMIN") {
     redirect("/");
   }
 

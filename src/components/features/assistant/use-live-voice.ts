@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, type LiveServerMessage, type Session } from "@google/genai";
 import { confirmAssistantDraft } from "@/actions/assistant-actions";
 import type { AgentDraft, AgentTurn } from "@/lib/assistant/agent";
+import { voiceDraftConfirmationMessage } from "@/lib/assistant/voice-draft-messages";
 import type { PostCardData } from "./post-strip";
 
 export type VoiceStatus = "idle" | "connecting" | "listening" | "thinking" | "speaking" | "error";
@@ -176,7 +177,7 @@ export function useLiveVoice() {
   };
 
   const pendingDraft = () =>
-    [...draftsRef.current].reverse().find((d) => d.state === "pending" || typeof d.state === "object");
+    [...draftsRef.current].reverse().find((d) => d.state === "pending" || d.state === "saving" || typeof d.state === "object");
 
   // Confirmaciones en curso por token: la voz y el botón comparten la misma.
   const confirmingRef = useRef(new Map<string, ReturnType<typeof confirmAssistantDraft>>());
@@ -205,13 +206,14 @@ export function useLiveVoice() {
     confirmingRef.current.set(token, promise);
     const result = await promise.finally(() => confirmingRef.current.delete(token));
     if (result.success) {
-      // El pensador no debe volver a preparar lo que ya se guardó.
+      const confirmationMessage = voiceDraftConfirmationMessage(current?.action);
+      // El pensador no debe volver a preparar lo que ya se confirmó.
       historyRef.current = [
         ...historyRef.current,
-        { role: "assistant" as const, content: "Listo, quedó guardado. No hay nada pendiente." },
+        { role: "assistant" as const, content: confirmationMessage },
       ].slice(-12);
       if (!fromVoice) {
-        notifyVoice("(Sistema: el usuario confirmó con el botón y ya quedó guardado. No vuelvas a preguntar.)");
+        notifyVoice(`(Sistema: el usuario confirmó con el botón. ${confirmationMessage} No vuelvas a preguntar.)`);
       }
     }
     updateDrafts((prev) =>
@@ -261,12 +263,14 @@ export function useLiveVoice() {
       if (!draft) {
         const last = draftsRef.current[draftsRef.current.length - 1];
         if (last && (last.state === "done" || last.state === "saving")) {
-          return { ok: true, mensaje: "Ya quedó guardado." };
+          return { ok: true, mensaje: voiceDraftConfirmationMessage(last.action) };
         }
         return { error: "No hay ningún borrador pendiente." };
       }
       const result = await confirmDraft(draft.draftToken, true);
-      return result.success ? { ok: true, mensaje: "Guardado." } : { ok: false, error: result.error };
+      return result.success
+        ? { ok: true, mensaje: voiceDraftConfirmationMessage(draft.action) }
+        : { ok: false, error: result.error };
     }
     if (name === "cancelar") {
       if (draft) cancelDraft(draft.draftToken);

@@ -38,19 +38,22 @@ datasource db {
 
 // USUARIOS Y EQUIPO (compatible con Auth.js)
 model User {
-  id            String    @id @default(cuid())
-  name          String
-  firstName     String?
-  lastName      String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String? // URL de la foto de perfil
-  password      String? // Opcional: solo para usuarios con credenciales (no Google)
+  phone          String?
+  whatsappOptIn  Boolean   @default(false)
+  activeSchedule Json?
+  id             String    @id @default(cuid())
+  name           String
+  firstName      String?
+  lastName       String?
+  email          String    @unique
+  emailVerified  DateTime?
+  image          String? // URL de la foto de perfil
+  password       String? // Opcional: solo para usuarios con credenciales (no Google)
 
   // Legacy: Campo string para compatibilidad
   roleLegacy String @default("EDITOR") @map("role") // "ADMIN", "EDITOR"
   // Fuente canónica de autorización; roleLegacy se mantiene durante la transición.
-  roleCode String @default("EDITOR") @map("role_code") // "ADMIN", "EDITOR", "USER"
+  roleCode   String @default("EDITOR") @map("role_code") // "ADMIN", "EDITOR", "USER"
 
   // Campo de texto para especialidad (se llena desde la tabla Specialty)
   specialty             String? // Ej: "Community Manager", "Diseñador Gráfico"
@@ -95,7 +98,8 @@ model User {
   electronicRetentions    ElectronicRetention[]    @relation("ElectronicRetentionUser")
   pushSubscriptions       PushSubscription[] // Web Push suscripciones propias
   apnsInstallations       ApnsDeviceInstallation[] // Instalaciones de la app nativa iOS
-  routeOverrides           UserRouteOverride[]
+  routeOverrides          UserRouteOverride[]
+  socialPosts             SocialPost[] @relation("SocialPostAuthor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -167,12 +171,16 @@ model VerificationToken {
 
 // CLIENTES (COMMAND CENTER)
 model Client {
-  id            String  @id @default(cuid())
-  name          String
-  email         String?
-  contactEmails String? // JSON array de correos adicionales (usados para Calendar)
-  status        String  @default("ACTIVE") // ACTIVE, PAUSED, DEBT, INACTIVE
-  color         String  @default("#000000") // Color de marca del cliente
+  whatsappPhone         String?
+  paymentReminderTarget String          @default("GROUP")
+  approvalReminderHours Int?
+  whatsappGroups        WhatsAppGroup[]
+  id                    String          @id @default(cuid())
+  name                  String
+  email                 String?
+  contactEmails         String? // JSON array de correos adicionales (usados para Calendar)
+  status                String          @default("ACTIVE") // ACTIVE, PAUSED, DEBT, INACTIVE
+  color                 String          @default("#000000") // Color de marca del cliente
 
   // JSON Blobs para flexibilidad (almacenados como String en SQLite)
   brandKit      String? // { colors: [], fonts: [], driveLink: "" }
@@ -235,6 +243,7 @@ model Client {
   shootings         Shoot[]
   metrics           ClientMetric[]
   mediaMetrics      ClientMediaMetric[]
+  socialPosts       SocialPost[]
   adAccounts        ClientAdAccount[]
   adMetrics         ClientAdMetric[]
   monthlyClosures   ClientMonthlyClosure[]
@@ -273,14 +282,15 @@ model Credential {
 
 // PRODUCCIÓN (CONTENT FACTORY)
 model ContentTask {
-  id          String    @id @default(cuid())
-  title       String
-  type        String // REEL, FLYER, STORY
-  status      String // IDEA, RECORDED, EDITING, REVIEW_INTERNAL, REVIEW_CLIENT, CLIENT_APPROVED, APPROVED, PUBLISHED
-  priority    String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
-  dueDate     DateTime?
-  scheduledAt DateTime? // Fecha y hora programada para publicación
-  publishedAt DateTime?
+  whatsappApprovals WhatsAppApprovalRequest[]
+  id                String                    @id @default(cuid())
+  title             String
+  type              String // REEL, FLYER, STORY
+  status            String // IDEA, RECORDED, EDITING, REVIEW_INTERNAL, REVIEW_CLIENT, CLIENT_APPROVED, APPROVED, PUBLISHED
+  priority          String                    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  dueDate           DateTime?
+  scheduledAt       DateTime? // Fecha y hora programada para publicación
+  publishedAt       DateTime?
 
   // Link Mágico
   reviewToken    String? @unique
@@ -309,6 +319,7 @@ model ContentTask {
 
   // Relación con métricas
   metrics TaskMetrics?
+  socialPosts SocialPost[]
 
   @@index([clientId])
   @@index([assignedEditorId])
@@ -748,7 +759,7 @@ model SyncEntity {
 
 model SyncChange {
   id         String    @id @default(cuid())
-  sequence   BigInt    @default(autoincrement()) @unique
+  sequence   BigInt    @unique @default(autoincrement())
   ownerId    String
   entityType String
   entityId   String
@@ -783,10 +794,10 @@ model SyncMutationReceipt {
 }
 
 model SyncCursorBoundary {
-  id            String   @id @default(cuid())
-  ownerId       String   @unique
+  id             String   @id @default(cuid())
+  ownerId        String   @unique
   oldestSequence BigInt
-  updatedAt     DateTime @updatedAt
+  updatedAt      DateTime @updatedAt
 
   @@index([oldestSequence])
 }
@@ -1036,14 +1047,14 @@ model TimeEntry {
 // RATE LIMITING DISTRIBUIDO PARA LA API V1
 // Se guarda solo un hash del identificador para no persistir IPs en claro.
 model ApiRateLimitBucket {
-  id            String   @id @default(cuid())
-  bucket        String
+  id             String   @id @default(cuid())
+  bucket         String
   identifierHash String
-  windowStart   DateTime
-  count         Int      @default(0)
-  expiresAt     DateTime
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  windowStart    DateTime
+  count          Int      @default(0)
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@unique([bucket, identifierHash, windowStart])
   @@index([expiresAt])
@@ -1130,7 +1141,7 @@ model ApnsDeviceInstallation {
   lastSeenAt     DateTime  @default(now())
   invalidatedAt  DateTime?
   createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  updatedAt      DateTime  @default(now()) @updatedAt
 
   @@unique([installationId, environment])
   @@unique([deviceToken, environment])
@@ -1574,4 +1585,193 @@ model AiActionLog {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model WhatsAppAuth {
+  id        String   @id // "creds" | "<type>:<id>"
+  data      Json
+  updatedAt DateTime @updatedAt
+}
+
+model WhatsAppLock {
+  id        String   @id // "default"
+  holder    String // WA_INSTANCE_ID
+  heartbeat DateTime
+}
+
+model WhatsAppContact {
+  id        String   @id @default(cuid())
+  lid       String?  @unique
+  pnJid     String?  @unique // 5939...@s.whatsapp.net
+  pushName  String?
+  userId    String? // miembro del equipo
+  clientId  String? // contacto de cliente
+  updatedAt DateTime @updatedAt
+}
+
+model WhatsAppGroup {
+  id           String    @id @default(cuid())
+  jid          String    @unique
+  name         String
+  clientId     String?
+  client       Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  matchScore   Float? // sugerencia automática grupo→cliente
+  purposes     String[]  @default(["SHOOT", "PAYMENT", "APPROVAL", "AI_QA"])
+  aiMode       String    @default("DRAFT") // OFF | DRAFT | AUTO
+  approvalMode String    @default("DRAFT") // OFF | DRAFT | AUTO
+  enabled      Boolean   @default(false) // nada sale a este grupo hasta true
+  participants Json?
+  lastSeenAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([clientId])
+}
+
+model WhatsAppInbound {
+  id        String   @id // id del mensaje WA
+  chatJid   String
+  senderJid String
+  isTeam    Boolean
+  type      String // text | video | document | image | audio | other
+  text      String?
+  fileName  String?
+  quotedId  String?
+  rawKey    Json // key para poder citarlo luego
+  ts        DateTime
+
+  @@index([chatJid, ts])
+}
+
+model WhatsAppMessage {
+  id           String    @id @default(cuid())
+  to           String
+  body         String
+  quotedId     String?
+  kind         String // TEAM_DAILY, SHOOT_REMINDER, PAYMENT_REMINDER, APPROVAL_REMINDER, APPROVAL_CONFIRM, AI_REPLY, OWNER_PROMPT, MANUAL
+  status       String    @default("PENDING") // DRAFT | PENDING | SENDING | SENT | FAILED | CANCELLED
+  dedupeKey    String?   @unique
+  scheduledFor DateTime  @default(now())
+  attempts     Int       @default(0)
+  error        String?
+  waMessageId  String?
+  createdById  String?
+  approvedById String?
+  sentAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([status, scheduledFor])
+}
+
+model WhatsAppApprovalRequest {
+  id                 String       @id @default(cuid())
+  groupJid           String
+  messageId          String // video
+  fileName           String?
+  senderJid          String
+  taskId             String?
+  task               ContentTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  candidates         Json? // [{taskId, title, score}]
+  matchScore         Float?
+  status             String       @default("PENDING") // PENDING | APPROVED | CHANGES | UNMATCHED | CANCELLED
+  sentAt             DateTime
+  remindersSent      Int          @default(0)
+  lastReminderAt     DateTime?
+  resolvedByJid      String?
+  resolvedText       String?
+  resolvedAt         DateTime?
+  previousTaskStatus String? // para "deshacer"
+  createdAt          DateTime     @default(now())
+
+  @@index([groupJid, status])
+  @@index([taskId])
+}
+
+model WhatsAppOwnerPrompt {
+  id        String   @id // corto: A12, P3…
+  type      String // APPROVAL_DRAFT, AI_DRAFT, TASK_PICK, GROUP_MATCH, ENABLE_CLIENTS, PROMOTE_AUTO, ALERT
+  payload   Json
+  options   Json
+  status    String   @default("OPEN") // OPEN | ANSWERED | EXPIRED
+  answer    String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model WhatsAppEvent {
+  id        String   @id @default(cuid())
+  type      String // CONNECTION, VIDEO_DETECTED, APPROVAL, CHANGES, AI_QUESTION, AI_ESCALATED, OWNER_ANSWER, ERROR
+  groupJid  String?
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
+}
+
+
+// Preserve existing production social publishing tables; no activation or data migration.
+model SocialPost {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /// Pieza de contenido de origen, si la publicación nace del calendario.
+  taskId String?
+  task   ContentTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  platform  String // "FACEBOOK" | "INSTAGRAM"
+  mediaType String // "TEXT" | "IMAGE" | "VIDEO" | "REEL" | "STORY" | "CAROUSEL"
+
+  caption   String? // Texto del post
+  mediaUrls String  @default("[]") // JSON array de URLs públicas (Instagram exige que Meta pueda descargarlas)
+  linkUrl   String? // Solo Facebook: enlace adjunto
+
+  scheduledAt DateTime? // Cuándo debe salir. NULL = borrador sin fecha.
+  status      String    @default("DRAFT") // DRAFT | SCHEDULED | PUBLISHING | PUBLISHED | FAILED | CANCELED
+  publishedAt DateTime?
+
+  /// Id del post ya creado en la red. Es la clave de idempotencia: si existe,
+  /// nunca se vuelve a publicar aunque el estado se haya quedado a medias.
+  remotePostId String?
+  permalink    String?
+
+  /// Id del contenedor de Instagram entre la creación y la publicación.
+  /// Se conserva para poder reanudar sin volver a subir el medio.
+  containerId String?
+
+  errorMessage  String?
+  errorCode     String?
+  attemptCount  Int       @default(0)
+  lastAttemptAt DateTime?
+
+  createdById String?
+  createdBy   User?   @relation("SocialPostAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  metrics SocialPostMetric[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([platform, remotePostId])
+  @@index([clientId, status])
+  @@index([status, scheduledAt])
+  @@index([taskId])
+}
+
+/// Métricas de una publicación concreta, capturadas como foto diaria.
+///
+/// Los valores de la API son acumulados desde que se publicó (likes totales,
+/// alcance total), no incrementos del día. Se guarda una fila por día para ver
+/// la curva; sumarlas daría un número sin sentido.
+model SocialPostMetric {
+  id         String     @id @default(cuid())
+  postId     String
+  post       SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  metricName String // "reach", "likes", "comments", "shares", "saved", "video_views"
+  value      Float
+  date       DateTime // Día de la captura, a medianoche UTC
+  fetchedAt  DateTime   @default(now())
+
+  @@unique([postId, metricName, date])
+  @@index([postId, date])
 }

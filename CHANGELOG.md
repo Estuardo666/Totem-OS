@@ -1,5 +1,17 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## 2026-10-16 — Totem Bot WhatsApp (implementación local)
+
+- Añade migración aditiva, cola auditable, autenticación persistida y lock de instancia para el worker Baileys; arranque desconectado por defecto.
+- Añade panel ADMIN `/admin/whatsapp` con configuración, grupos, equipo, clientes, decisiones, borradores, historial y deshacer de aprobaciones. QR protegido mediante proxy, sin token en el cliente.
+- Integra resúmenes, rodajes, cobros y aprobaciones con deduplicación, horarios de Ecuador, consentimiento y bloqueo global de clientes. La IA consulta solo datos del cliente del grupo y usa DRAFT por defecto.
+- Incorpora decisiones privadas del dueño, propuestas de AUTO por métricas, herramientas firmadas del asistente y puente interno de notificaciones para el worker independiente. La voz guía consultas y acciones WhatsApp, y explica que confirmar solo pone el mensaje en cola, sin afirmar entrega.
+- Centraliza la política de `WA_PAIRING_ONLY` para bloquear listeners de entrada, notificaciones al dueño, sincronización de grupos, recuperación de colas y automatización de mensajes; añade pruebas del modo de vinculación aislado y del lock concurrente sobre PostgreSQL.
+- Separa y prueba la decisión de alerta del watchdog (cinco minutos, recuperación y no duplicación); el smoke del panel corre con ADMIN, EDITOR y un worker QR sintético.
+- Corrige el digest de `xades:SignedProperties` conservando el contexto heredado de namespaces y atributos `xml:*`, añade el `Type` XAdES, calcula `CertDigest` sobre DER, emite el serial X.509 como entero decimal y formatea el emisor DN en orden RFC 2253, incluidos escapes y RDNs multivaluados; aplica C14N según XMLDSig. `SRI_ENABLED` inicia el worker SRI independientemente de `WA_PAIRING_ONLY`. Las pruebas sintéticas validan parser, firma RSA, digests, contexto, política de inicio y `xml-crypto.checkSignature`. No sustituyen las facturas reales en el ambiente SRI, que permanece apagado.
+- Retira valores Bearer de `DAILY_DIGEST_SETUP.md` y usa `CRON_SECRET` desde un entorno privado. Los valores del commit histórico `e6b9b44` deben rotarse si siguen activos.
+- Prepara Docker, Render Free y script de fallback Oracle. El worker está desplegado solo en staging desactivado; no se enviaron mensajes a clientes. El saludo previo en el grupo de pruebas está documentado en `docs/WHATSAPP_LOCAL.md`. Pendientes del rollout: §19 del plan.
+
 ## Fase 1: Quick Wins (5 optimizaciones)
 
 ### ✅ Cambio 1: Debounce en búsqueda de clientes

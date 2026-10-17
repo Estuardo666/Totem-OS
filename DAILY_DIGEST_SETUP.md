@@ -19,14 +19,14 @@ El smart digest consolida todas las tareas programadas para el día en **UNA SOL
 
 ### 1️⃣ **Agregar variable de entorno**
 
-Edita tu archivo `.env` y agrega:
+Guarda `CRON_SECRET` fuera del repositorio, por ejemplo en `~/.totem_cron` con permisos `600` (o en el gestor de secretos del hosting). No pegues el valor en este documento ni en el comando del cron.
 
 ```env
-# Secret para proteger endpoints de cron
-CRON_SECRET="tu-secreto-aleatorio-muy-seguro-123456"
+# En ~/.totem_cron, archivo privado que no se versiona
+CRON_SECRET="<secreto generado localmente>"
 ```
 
-⚠️ **Importante:** Genera un secreto fuerte y único. Ejemplo:
+⚠️ **Importante:** Genera un secreto fuerte y único. Ejemplo local:
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
@@ -54,13 +54,14 @@ Día de semana: *
 
 **Comando:**
 ```bash
+. "$HOME/.totem_cron"
 curl -X POST https://tu-dominio.com/api/cron/daily-digest \
-  -H "Authorization: Bearer tu-secreto-aleatorio-muy-seguro-123456"
+  -H "Authorization: Bearer $CRON_SECRET"
 ```
 
 Reemplaza:
 - `tu-dominio.com` → Tu dominio real de Totem OS
-- `tu-secreto-aleatorio-muy-seguro-123456` → El valor de `CRON_SECRET` de tu `.env`
+- `CRON_SECRET` se carga desde `~/.totem_cron`; no incrustes su valor en el comando.
 
 ---
 
@@ -116,7 +117,7 @@ jobs:
 
 Luego agrega el secreto en GitHub:
 1. Repo → Settings → Secrets → Actions
-2. Crea `CRON_SECRET` con el mismo valor de tu `.env`
+2. Crea `CRON_SECRET` con el valor guardado fuera del repositorio
 
 ---
 
@@ -125,8 +126,9 @@ Luego agrega el secreto en GitHub:
 Ejecuta en tu terminal para probar:
 
 ```bash
+. "$HOME/.totem_cron"
 curl -X POST http://localhost:3000/api/cron/daily-digest \
-  -H "Authorization: Bearer tu-secreto-aleatorio-muy-seguro-123456"
+  -H "Authorization: Bearer $CRON_SECRET"
 ```
 
 El secreto no se acepta en la URL (`?secret=`): siempre va en el header `Authorization`.
@@ -209,7 +211,7 @@ Si en el futuro quieres permitir que cada usuario configure su horario preferido
 
 ## ✅ Checklist de implementación
 
-- [ ] Agregar `CRON_SECRET` a `.env` y `.env.production`
+- [ ] Guardar `CRON_SECRET` en un entorno privado no versionado
 - [ ] Configurar cron job en cPanel/Vercel/GitHub Actions
 - [ ] Probar endpoint manualmente con curl
 - [ ] Verificar que las notificaciones lleguen con imagen

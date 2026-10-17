@@ -1,0 +1,31 @@
+# Optional free fallback. This file does not create or deploy a service by itself.
+# Use the repository root as context; runtime remains a standalone worker image.
+services:
+  - type: web
+    name: totem-worker
+    runtime: docker
+    plan: free
+    branch: feat/whatsapp-bot
+    autoDeployTrigger: "off"
+    dockerfilePath: ./worker/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health/live
+    envVars:
+      - key: WA_DISABLED
+        value: "1"
+      - key: SRI_ENABLED
+        value: "0"
+      - key: WA_INSTANCE_ID
+        value: render
+      - key: TOTEM_API_URL
+        value: https://totem-os.vercel.app
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
+      - key: WA_HEALTH_TOKEN
+        sync: false
+      - key: WA_WORKER_SECRET
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false

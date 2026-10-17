@@ -121,10 +121,16 @@ export function buildModel(
 }
 
 /** Modelo activo del asistente, listo para streamText/generateText. */
-export async function getAssistantModel(): Promise<
+export async function getAssistantModel(modelOverride?: string): Promise<
   { model: LanguageModel; provider: AssistantProvider; modelId: string } | { error: string }
 > {
-  const { provider, model } = await getAssistantSelection();
+  if (modelOverride !== undefined && (typeof modelOverride !== "string" || !modelOverride.trim() || modelOverride.trim().length > 200)) {
+    return { error: "El modelo configurado para WhatsApp no es válido." };
+  }
+  const selection = await getAssistantSelection();
+  const model = modelOverride?.trim() ?? selection.model.trim();
+  if (!model || model.length > 200) return { error: "El modelo del asistente no es válido." };
+  const { provider } = selection;
   const key = await getProviderApiKey(provider);
   if (!key) {
     return {

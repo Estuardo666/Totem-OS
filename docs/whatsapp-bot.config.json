@@ -1,0 +1,26 @@
+{
+  "botPhone": null,
+  "ownerPhone": null,
+  "team": [],
+  "partTimeSchedule": {
+    "dates": [],
+    "type": "dates"
+  },
+  "paused": true,
+  "clientsEnabled": false,
+  "approvalReminderHours": 48,
+  "maxApprovalReminders": 2,
+  "skipWeekends": true,
+  "teamDailyHour": "08:00",
+  "amountsInGroups": false,
+  "aiModel": null,
+  "timezone": "America/Guayaquil",
+  "deployment": "DISABLED_WORKER_TEMPLATE",
+  "pendingOwnerInput": [
+    "ownerPhone",
+    "teamPhones",
+    "danyDatesByPaty",
+    "featureBranchCI"
+  ],
+  "hostingerRenewal": true
+}

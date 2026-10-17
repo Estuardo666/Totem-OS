@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import { db } from "@/lib/db";
-import { sendShootingReminders } from "@/lib/shooting-notifications";
+import { enqueueDueShoot24h, sendShootingReminders } from "@/lib/shooting-notifications";
 
 /**
- * Cron: Recordatorio 1 hora antes del rodaje
+ * Cron: recordatorio de 24 horas y recordatorio legacy de 1 hora antes
  * Schedule: every 15 minutes
  *
  * Busca rodajes que empiezan en los próximos 75 minutos.
@@ -56,6 +56,8 @@ export async function POST(request: NextRequest) {
           shootingTitle: shoot.title,
           startTime: shoot.startTime,
           crewIds,
+          clientId: shoot.clientId,
+          stage: "HOUR",
         });
 
         notificationsSent += result.notifiedCount;
@@ -72,16 +74,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let whatsapp24h: { shootsChecked: number; destinations: number; enqueued: number } | { error: string };
+    try {
+      whatsapp24h = await enqueueDueShoot24h(now);
+    } catch {
+      whatsapp24h = { error: "No se pudieron preparar recordatorios de 24 horas" };
+      errors.push("Error en recordatorios de 24 horas");
+    }
+
     return NextResponse.json({
       success: true,
-      data: { shootsProcessed, notificationsSent, errors: errors.length },
+      data: { shootsProcessed, notificationsSent, whatsapp24h, errors: errors.length },
     });
-  } catch (error) {
-    console.error("❌ Error en cron shooting-reminders-hourly:", error);
+  } catch {
+    console.error("❌ Error en cron shooting-reminders-hourly");
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Error desconocido",
+        error: "No se pudieron completar los recordatorios de rodaje",
       },
       { status: 500 }
     );
