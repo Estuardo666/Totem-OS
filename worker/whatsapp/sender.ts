@@ -1,3 +1,4 @@
+import { readFunctionalTestScope, functionalMessageWhere } from "./functional-test-policy";
 import { db } from "../../src/lib/db";
 import type { WASocket } from "@whiskeysockets/baileys";
 import { canSendToWhatsAppDestination } from "../../src/lib/whatsapp/enqueue";
@@ -13,10 +14,11 @@ export async function sendNextWhatsAppMessage(
   assertLock: () => Promise<boolean>,
   options: { sleep?: (ms: number) => Promise<void> } = {},
 ): Promise<boolean> {
+  const scope = readFunctionalTestScope(process.env);
   const wait = options.sleep ?? sleep;
   const config = await getWhatsAppConfig();
   if (config.paused) return false;
-  const message = await db.whatsAppMessage.findFirst({ where: { status: "PENDING", scheduledFor: { lte: new Date() } }, orderBy: { scheduledFor: "asc" } });
+  const message = await db.whatsAppMessage.findFirst({ where: { ...(scope ? functionalMessageWhere(scope) : {}), status: "PENDING", scheduledFor: { lte: new Date() } }, orderBy: { scheduledFor: "asc" } });
   if (!message) return false;
   const claim = await db.whatsAppMessage.updateMany({ where: { id: message.id, status: "PENDING" }, data: { status: "SENDING", attempts: { increment: 1 }, error: null } });
   if (!claim.count) return true;

@@ -1,3 +1,4 @@
+import { readFunctionalTestScope, filterFunctionalTestMessages } from "./functional-test-policy";
 import makeWASocket, { DisconnectReason, type Contact, type WASocket } from "@whiskeysockets/baileys";
 import pino from "pino";
 import { randomUUID } from "node:crypto";
@@ -19,13 +20,14 @@ import { getWhatsAppPairingPolicy } from "./pairing-policy";
 import { shouldStartSRIWorker } from "./sri-start-policy";
 import { filterMessagesToWhatsAppGroup, isWhatsAppTestGroupStartMessage, isWhatsAppTestGroupSubject, TEST_WHATSAPP_GROUP_NAME } from "./test-group-scope";
 
+const FUNCTIONAL_SCOPE = readFunctionalTestScope(process.env);
 const INSTANCE_ID = `${process.env.WA_INSTANCE_ID ?? "totem"}:${randomUUID()}`;
 // Connecting to WhatsApp requires the explicit production opt-in WA_DISABLED=0.
 const DISABLED = process.env.WA_DISABLED !== "0";
 const PAIRING_ONLY = process.env.WA_PAIRING_ONLY === "1";
 const TEST_GROUP_ONLY = process.env.WA_TEST_GROUP_ONLY === "1";
 const PAIRING_POLICY = getWhatsAppPairingPolicy(PAIRING_ONLY);
-const state: WhatsAppHealthState = { connected: false, connectedId: null, qr: null, startedAt: new Date(), lastHeartbeatAt: null, disabled: DISABLED, lockHeld: false, pairingOnly: PAIRING_ONLY, testGroupOnly: TEST_GROUP_ONLY };
+const state: WhatsAppHealthState = { connected: false, connectedId: null, qr: null, startedAt: new Date(), lastHeartbeatAt: null, disabled: DISABLED, lockHeld: false, pairingOnly: PAIRING_ONLY, testGroupOnly: TEST_GROUP_ONLY, functionalTestOnly: Boolean(FUNCTIONAL_SCOPE) };
 const server = startHealthServer(state);
 let running = true;
 let socket: WASocket | null = null;
@@ -56,7 +58,7 @@ export async function startWhatsAppWorker() {
     const { startSRIWorker } = await import("../index");
     void startSRIWorker().catch(() => undefined);
   }
-  if (PAIRING_POLICY.recoverSendingMessages && !TEST_GROUP_ONLY) await recoverStaleSendingMessages();
+  if (PAIRING_POLICY.recoverSendingMessages && !TEST_GROUP_ONLY && !FUNCTIONAL_SCOPE) await recoverStaleSendingMessages();
   while (running) {
     try {
       if (!state.lockHeld) {
@@ -117,10 +119,10 @@ async function connectWhatsApp() {
   if (PAIRING_POLICY.registerInboundHandlers) {
     wa.ev.on("messages.upsert", ({ messages, type }) => {
       if (type !== "notify") return;
-      const handler = TEST_GROUP_ONLY ? handleStagingTestGroupMessages(wa, messages) : handleMessagesUpsert(messages);
+      const handler = TEST_GROUP_ONLY ? handleStagingTestGroupMessages(wa, messages) : handleMessagesUpsert(FUNCTIONAL_SCOPE ? filterFunctionalTestMessages(messages, FUNCTIONAL_SCOPE) : messages, { functionalOnly: Boolean(FUNCTIONAL_SCOPE) });
       void handler.catch(() => { if (TEST_GROUP_ONLY) console.error("WHATSAPP_STAGING_TEST_GROUP_HANDLER_FAILED"); });
     });
-    if (!TEST_GROUP_ONLY) {
+    if (!TEST_GROUP_ONLY && !FUNCTIONAL_SCOPE) {
       wa.ev.on("contacts.upsert", (contacts) => { void handleContactUpdates(contacts).catch(() => undefined); });
       wa.ev.on("contacts.update", (contacts) => { void handleContactUpdates(contacts).catch(() => undefined); });
     }
@@ -129,7 +131,7 @@ async function connectWhatsApp() {
     if (qr) {
       state.qr = qr;
       await recordWhatsAppEvent({ type: "CONNECTION", payload: { state: "QR_PENDING" } });
-      if (PAIRING_POLICY.notifyOwner && !TEST_GROUP_ONLY && !qrOwnerNotified) {
+      if (PAIRING_POLICY.notifyOwner && !TEST_GROUP_ONLY && !FUNCTIONAL_SCOPE && !qrOwnerNotified) {
         qrOwnerNotified = true;
         if (!loggedOutOwnerNotified) await notifyOwner("QR_REQUIRED");
       }
@@ -155,7 +157,7 @@ async function connectWhatsApp() {
       loggedOutOwnerNotified = false;
       freshQrReconnectAttempted = false;
       await recordWhatsAppEvent({ type: "CONNECTION", payload: { state: "CONNECTED" } });
-      if (PAIRING_POLICY.syncGroups) {
+      if (PAIRING_POLICY.syncGroups && !FUNCTIONAL_SCOPE) {
         const sync = TEST_GROUP_ONLY ? prepareStagingTestGroup(wa) : ensureWhatsAppTestGroup(wa).then(() => syncWhatsAppGroups(wa));
         void sync.then(() => { lastGroupSync = Date.now(); }).catch(() => {
           if (TEST_GROUP_ONLY) console.error("WHATSAPP_STAGING_TEST_GROUP_SYNC_FAILED");
@@ -168,7 +170,7 @@ async function connectWhatsApp() {
       socket = null;
       const statusCode = (lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output?.statusCode;
       await recordWhatsAppEvent({ type: "CONNECTION", payload: { state: statusCode === DisconnectReason.loggedOut ? "LOGGED_OUT" : "DISCONNECTED", statusCode: statusCode ?? null } });
-      if (PAIRING_ONLY) {
+      if (PAIRING_ONLY || FUNCTIONAL_SCOPE) {
         if (statusCode === DisconnectReason.loggedOut) reconnectBlocked = true;
         else if (!reconnectBlocked) {
           reconnectDelay = Math.min(Math.max(5_000, reconnectDelay * 2), 5 * 60_000);
@@ -179,7 +181,7 @@ async function connectWhatsApp() {
       if (statusCode === DisconnectReason.loggedOut) {
         reconnectBlocked = true;
         state.qr = null;
-        if (PAIRING_POLICY.notifyOwner && !TEST_GROUP_ONLY && !loggedOutOwnerNotified) {
+        if (PAIRING_POLICY.notifyOwner && !TEST_GROUP_ONLY && !FUNCTIONAL_SCOPE && !loggedOutOwnerNotified) {
           loggedOutOwnerNotified = true;
           await notifyOwner("LOGGED_OUT");
         }
@@ -327,6 +329,10 @@ async function runMaintenance() {
     if (Date.now() - lastLockRefresh >= 30_000) {
       if (!(await assertCurrentLock())) return;
       lastLockRefresh = Date.now();
+    }
+    if (FUNCTIONAL_SCOPE) {
+      if (!DISABLED && state.connected && socket) await sendNextWhatsAppMessage(socket, assertCurrentLock);
+      return;
     }
     if (TEST_GROUP_ONLY || !PAIRING_POLICY.runMessageAutomation) return;
     await expireStaleData();

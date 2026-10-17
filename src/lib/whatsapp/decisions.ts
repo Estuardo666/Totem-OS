@@ -179,6 +179,7 @@ async function resolveApprovalDecision(
 }
 
 async function notifyApprovalParticipants(outcome: Record<string, unknown>) {
+  if (process.env.WA_FUNCTIONAL_TEST_ONLY === "1") return;
   const requestId = typeof outcome.requestId === "string" ? outcome.requestId : null;
   if (!requestId) return;
   if (process.env.TOTEM_WHATSAPP_WORKER === "1") {

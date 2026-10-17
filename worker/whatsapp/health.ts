@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { timingSafeEqual } from "node:crypto";
 import QRCode from "qrcode";
 
-export type WhatsAppHealthState = { connected: boolean; connectedId?: string | null; qr: string | null; startedAt: Date; lastHeartbeatAt: Date | null; disabled: boolean; lockHeld: boolean; pairingOnly?: boolean; testGroupOnly?: boolean };
+export type WhatsAppHealthState = { connected: boolean; connectedId?: string | null; qr: string | null; startedAt: Date; lastHeartbeatAt: Date | null; disabled: boolean; lockHeld: boolean; pairingOnly?: boolean; testGroupOnly?: boolean; functionalTestOnly?: boolean };
 
 export function startHealthServer(state: WhatsAppHealthState, port = Number(process.env.PORT ?? process.env.WA_PORT ?? 3081)) {
   const server = createServer(async (request, response) => {
@@ -26,6 +26,7 @@ export function startHealthServer(state: WhatsAppHealthState, port = Number(proc
         connected: state.connected,
         pairingOnly: state.pairingOnly ?? false,
         testGroupOnly: state.testGroupOnly ?? false,
+        functionalTestOnly: state.functionalTestOnly ?? false,
         connectedId: state.connectedId ?? null,
         disabled: state.disabled,
         lastHeartbeatAt: state.lastHeartbeatAt?.toISOString() ?? null,
@@ -38,6 +39,7 @@ export function startHealthServer(state: WhatsAppHealthState, port = Number(proc
       connected: state.connected,
       pairingOnly: state.pairingOnly ?? false,
       testGroupOnly: state.testGroupOnly ?? false,
+        functionalTestOnly: state.functionalTestOnly ?? false,
       connectedId: state.connectedId ?? null,
       disabled: state.disabled,
       qrAvailable: Boolean(state.qr) && !state.connected,

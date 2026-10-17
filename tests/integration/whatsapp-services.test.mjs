@@ -346,3 +346,107 @@ test("los eventos repetidos de contactos/lid no duplican el contacto del equipo"
   assert.equal(resolved.pnJid, "593990000003@s.whatsapp.net");
   assert.equal(resolved.userId, editor.id);
 });
+
+test("sender en modo funcional solo entrega MANUAL del grupo y corrida autorizados", async () => {
+  const envKeys = [
+    "WA_FUNCTIONAL_TEST_ONLY",
+    "WA_FUNCTIONAL_TEST_DATABASE",
+    "WA_FUNCTIONAL_TEST_GROUP_JID",
+    "WA_FUNCTIONAL_TEST_RUN_ID",
+    "WA_PAIRING_ONLY",
+    "WA_TEST_GROUP_ONLY",
+    "SRI_ENABLED",
+    "DATABASE_URL",
+  ];
+  const previousEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
+  try {
+    process.env.WA_FUNCTIONAL_TEST_ONLY = "1";
+    process.env.WA_FUNCTIONAL_TEST_DATABASE = decodeURIComponent(new URL(process.env.DATABASE_URL).pathname.slice(1));
+    process.env.WA_FUNCTIONAL_TEST_GROUP_JID = "123456789@g.us";
+    process.env.WA_FUNCTIONAL_TEST_RUN_ID = "local-run-123";
+    process.env.WA_PAIRING_ONLY = "0";
+    process.env.WA_TEST_GROUP_ONLY = "0";
+    process.env.SRI_ENABLED = "0";
+
+    const { client, task } = await seedTestDatabase();
+    await config("paused", false);
+    await config("clientsEnabled", false);
+    await config("ownerPhone", "593999999999");
+    await prisma.whatsAppGroup.create({ data: { jid: "123456789@g.us", name: "Grupo sintético", enabled: true, purposes: ["TEST"] } });
+
+    const outsideOwner = await prisma.whatsAppMessage.create({ data: { to: "593999999999@s.whatsapp.net", body: "Fuera del alcance", kind: "MANUAL" } });
+    const outsideGroup = await prisma.whatsAppMessage.create({ data: { to: "123456789@g.us", body: "Otra corrida", kind: "MANUAL", dedupeKey: "functional:another-run:manual" } });
+    const allowed = await prisma.whatsAppMessage.create({ data: { to: "123456789@g.us", body: "Prueba sintética", kind: "MANUAL", dedupeKey: "functional:local-run-123:manual" } });
+
+    const sends = [];
+    const socket = {
+      sendPresenceUpdate: async () => {},
+      sendMessage: async (...args) => { sends.push(args); return { key: { id: "local-functional-send" } }; },
+    };
+    assert.equal(await sendNextWhatsAppMessage(socket, async () => true, { sleep: async () => {} }), true);
+    assert.equal(sends.length, 1);
+    assert.equal(sends[0][0], "123456789@g.us");
+    assert.equal((await prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: allowed.id } })).status, "SENT");
+    assert.equal((await prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: outsideOwner.id } })).status, "PENDING");
+    assert.equal((await prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: outsideGroup.id } })).status, "PENDING");
+    assert.equal(await sendNextWhatsAppMessage(socket, async () => true, { sleep: async () => {} }), false);
+    assert.equal(sends.length, 1);
+
+    await config("paused", true);
+    const paused = await prisma.whatsAppMessage.create({ data: { to: "123456789@g.us", body: "Pausado", kind: "MANUAL", dedupeKey: "functional:local-run-123:paused", scheduledFor: new Date(Date.now() + 60_000) } });
+    assert.equal(await sendNextWhatsAppMessage(socket, async () => true, { sleep: async () => {} }), false);
+    assert.equal(sends.length, 1);
+    assert.equal((await prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: paused.id } })).status, "PENDING");
+
+    await config("paused", false);
+    await config("clientsEnabled", true);
+    await prisma.contentTask.update({ where: { id: task.id }, data: { status: "REVIEW_CLIENT" } });
+    await prisma.whatsAppGroup.update({ where: { jid: "123456789@g.us" }, data: { clientId: client.id, purposes: ["TEST", "APPROVAL"] } });
+    const videoTs = new Date(Date.now() - 60_000);
+    await prisma.whatsAppInbound.create({ data: {
+      id: "functional-video-local",
+      chatJid: "123456789@g.us",
+      senderJid: "593990000001@s.whatsapp.net",
+      isTeam: true,
+      type: "video",
+      rawKey: { id: "functional-video-local", remoteJid: "123456789@g.us", participant: "593990000001@s.whatsapp.net" },
+      ts: videoTs,
+    } });
+    const requestId = "functional:local-run-123:approval";
+    await prisma.whatsAppApprovalRequest.create({ data: {
+      id: requestId,
+      groupJid: "123456789@g.us",
+      messageId: "functional-video-local",
+      senderJid: "593990000001@s.whatsapp.net",
+      taskId: task.id,
+      sentAt: videoTs,
+      previousTaskStatus: "REVIEW_CLIENT",
+    } });
+    const prompt = await prisma.whatsAppOwnerPrompt.create({ data: {
+      id: "FUNCTIONAL_APPROVAL_DRAFT",
+      type: "APPROVAL_DRAFT",
+      payload: { requestId, groupJid: "123456789@g.us", intent: "APPROVE" },
+      options: ["Aprobar", "Pedir cambios"],
+      expiresAt: new Date(Date.now() + 60_000),
+    } });
+    await applyOwnerPromptAnswer({ id: prompt.id, answer: "1" });
+    assert.equal((await prisma.contentTask.findUniqueOrThrow({ where: { id: task.id } })).status, "CLIENT_APPROVED");
+    const confirmation = await prisma.whatsAppMessage.findFirstOrThrow({ where: { kind: "APPROVAL_CONFIRM", dedupeKey: `approval-confirm:${requestId}` } });
+    assert.equal(confirmation.status, "PENDING");
+    await assert.rejects(applyOwnerPromptAnswer({ id: prompt.id, answer: "1" }));
+
+    assert.equal(await sendNextWhatsAppMessage(socket, async () => true, { sleep: async () => {} }), true);
+    assert.equal(sends.length, 2);
+    assert.equal(sends[1][0], "123456789@g.us");
+    assert.equal(sends[1][2].quoted.key.id, "functional-video-local");
+    assert.equal(Boolean(sends[1][2].quoted.message.videoMessage), true);
+    assert.equal((await prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: confirmation.id } })).status, "SENT");
+    assert.equal(await prisma.whatsAppMessage.count({ where: { kind: "APPROVAL_CONFIRM" } }), 1);
+  } finally {
+    await config("paused", true);
+    for (const key of envKeys) {
+      if (previousEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = previousEnv[key];
+    }
+  }
+});

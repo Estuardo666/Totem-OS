@@ -1,3 +1,4 @@
+import { readFunctionalTestScope } from "./functional-test-policy";
 import { db } from "../../src/lib/db";
 import { identifyContact, saveLidMappings, resolveContact } from "./contacts";
 import { detectVideoApproval, routeClientApprovalReply } from "./approvals";
@@ -7,12 +8,20 @@ import { handleOwnerReply } from "./owner-control";
 type WaMessage = { key?: { id?: string; remoteJid?: string | null; participant?: string | null; participantAlt?: string | null; fromMe?: boolean }; message?: Record<string, any>; messageTimestamp?: number | LongLike; pushName?: string | null };
 type LongLike = { toNumber?: () => number };
 
-export async function handleMessagesUpsert(messages: unknown[]) {
+export async function handleMessagesUpsert(messages: unknown[], options: { functionalOnly?: boolean } = {}) {
   for (const raw of messages) {
     const item = raw as WaMessage;
     const id = item.key?.id;
     const chatJid = item.key?.remoteJid;
     if (!id || !chatJid || !item.message) continue;
+    if (options.functionalOnly) {
+      const scope = readFunctionalTestScope(process.env);
+      if (!scope || chatJid !== scope.groupJid) continue;
+      const parsed = readPayload(item.message);
+      if (!parsed.quotedId || !/^(aprobado|aprobar|cambios)$/i.test(parsed.text?.trim() ?? "")) continue;
+      const scopedRequest = await db.whatsAppApprovalRequest.findFirst({ where: { id: { startsWith: scope.messagePrefix }, groupJid: scope.groupJid, messageId: parsed.quotedId, status: "PENDING" }, select: { id: true } });
+      if (!scopedRequest) continue;
+    }
     const fromMe = item.key?.fromMe === true;
     if (fromMe && await db.whatsAppMessage.findFirst({ where: { waMessageId: id }, select: { id: true } })) continue;
     const group = chatJid.endsWith("@g.us");
@@ -43,7 +52,7 @@ export async function handleMessagesUpsert(messages: unknown[]) {
     if (isTeam && parsed.isVideo) await detectVideoApproval(inbound);
     else {
       await routeClientApprovalReply(inbound);
-      if (parsed.text) await draftClientReply({ groupJid: chatJid, inboundId: id, text: parsed.text, quotedId: parsed.quotedId });
+      if (!options.functionalOnly && parsed.text) await draftClientReply({ groupJid: chatJid, inboundId: id, text: parsed.text, quotedId: parsed.quotedId });
     }
   }
 }
