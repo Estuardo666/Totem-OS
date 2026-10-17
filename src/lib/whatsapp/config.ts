@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
 export type WhatsAppConfig = {
@@ -41,8 +42,8 @@ function int(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : fallback;
 }
 
-export async function getWhatsAppConfig(): Promise<WhatsAppConfig> {
-  const rows = await db.globalConfig.findMany({
+export async function getWhatsAppConfig(client: Pick<Prisma.TransactionClient, "globalConfig"> = db): Promise<WhatsAppConfig> {
+  const rows = await client.globalConfig.findMany({
     where: { key: { startsWith: "whatsapp." } },
     select: { key: true, value: true },
   });

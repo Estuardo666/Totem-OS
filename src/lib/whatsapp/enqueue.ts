@@ -50,13 +50,13 @@ export async function enqueueWhatsApp(input: EnqueueWhatsAppInput) {
 }
 
 /** Fail closed: groups need explicit enablement; private chats need an opted-in team contact or owner. */
-export async function canSendToWhatsAppDestination(to: string): Promise<boolean> {
-  const config = await getWhatsAppConfig();
+export async function canSendToWhatsAppDestination(to: string, client: Prisma.TransactionClient = db): Promise<boolean> {
+  const config = await getWhatsAppConfig(client);
   // Pause is a global hard stop. Owner prompts are queued only while running.
   if (config.paused) return false;
 
   if (to.endsWith("@g.us")) {
-    const group = await db.whatsAppGroup.findUnique({ where: { jid: to }, select: { enabled: true, clientId: true, purposes: true } });
+    const group = await client.whatsAppGroup.findUnique({ where: { jid: to }, select: { enabled: true, clientId: true, purposes: true } });
     if (!group?.enabled) return false;
     const testGroup = group.clientId === null && group.purposes.includes("TEST");
     return testGroup || config.clientsEnabled;
@@ -66,19 +66,19 @@ export async function canSendToWhatsAppDestination(to: string): Promise<boolean>
   if (!/^\d{7,15}@s\.whatsapp\.net$/.test(to)) return false;
   const number = to.slice(0, to.indexOf("@"));
   if (config.ownerPhone && normalizePhone(config.ownerPhone) === number) return true;
-  const optedInUsers = await db.user.findMany({
+  const optedInUsers = await client.user.findMany({
     where: { whatsappOptIn: true, phone: { not: null } },
     select: { phone: true },
   });
   if (optedInUsers.some((user) => user.phone && normalizePhone(user.phone) === number)) return true;
 
   const clientNumbers = config.clientsEnabled
-    ? await db.client.findMany({ where: { whatsappPhone: { not: null } }, select: { whatsappPhone: true } })
+    ? await client.client.findMany({ where: { whatsappPhone: { not: null } }, select: { whatsappPhone: true } })
     : [];
   if (config.clientsEnabled && clientNumbers.some((row) => row.whatsappPhone && normalizePhone(row.whatsappPhone) === number)) return true;
-  const contact = await db.whatsAppContact.findUnique({ where: { pnJid: to }, select: { userId: true } });
+  const contact = await client.whatsAppContact.findUnique({ where: { pnJid: to }, select: { userId: true } });
   if (!contact?.userId) return false;
-  const user = await db.user.findUnique({ where: { id: contact.userId }, select: { whatsappOptIn: true } });
+  const user = await client.user.findUnique({ where: { id: contact.userId }, select: { whatsappOptIn: true } });
   return user?.whatsappOptIn === true;
 }
 

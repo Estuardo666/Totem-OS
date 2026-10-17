@@ -156,7 +156,7 @@ async function resolveApprovalDecision(
   });
   if (taskUpdated.count !== 1) throw new Error("La tarea cambió durante la decisión");
 
-  if (!isChangeRequest && await canSendToWhatsAppDestination(request.groupJid)) {
+  if (!isChangeRequest && await canSendToWhatsAppDestination(request.groupJid, tx)) {
     await tx.whatsAppMessage.create({ data: {
       to: request.groupJid,
       body: `🤖 Totem Bot: ¡Gracias! Registramos “${task.title}” como aprobado ✅`,
