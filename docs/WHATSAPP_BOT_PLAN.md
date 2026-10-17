@@ -345,7 +345,7 @@ Para que el dueño pueda revisar sin tocar nada si no quiere:
 - [ ] Si el staging presenta un fallo operativo → desplegar el mismo código en **Render Free Web Service** (pre-autorizado), con ping desde cron de Hostinger. Si Render tampoco pasa → H5 (Oracle) y `scripts/provision-oracle.sh`. La espera eximida no activa este fallback.
 
 ### 10.2 Cron Jobs de Hostinger (agente)
-- [ ] Crear `~/.message_worker_cron` (chmod 600) con `CRON_SECRET=…` y `WA_HEALTH_URL=…`; la API actual no permite crear ese archivo fuera de `public_html` sin una sesión SSH con shell.
+- [ ] Crear `~/.message_worker_cron` (chmod 600) con `CRON_SECRET=…` y `WA_HEALTH_URL=…`; la API actual no permite crear ese archivo fuera de `public_html` sin una sesión SSH con shell. El cron diario del equipo ya usa el segundo espacio de Vercel Hobby.
 - [ ] Comandos tipo:
   ```bash
   . ~/.message_worker_cron && curl -fsS --max-time 60 -X POST -H "Authorization: Bearer $CRON_SECRET" https://totem-os.vercel.app/api/cron/whatsapp-team-daily

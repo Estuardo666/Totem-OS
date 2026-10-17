@@ -2,6 +2,14 @@
 
 Web promovida a `totem-os.vercel.app`: despliegue `dpl_5aQJB6cCHorvHEAv7FZW5E9ATAph`, commit `359d766`, rama `codex/whatsapp-production-release-20261016`. CI `38998247969` pasó. Login 200 y puente sin autorización 401. El correo Git coincide con GitHub y Vercel. Se corrigió el agotamiento del pool al compartir el cliente transaccional en la validación de destinos; 17 pruebas afectadas pasan con cinco conexiones. Worker desactivado, pairingOnly activo, connected=false, SRI apagado. No se hizo push ni merge a main. Las pruebas funcionales y activación siguen pendientes. Un despliegue posterior de main puede reemplazar esta publicación; integrar la rama requiere revisión posterior. Evidencia privada en `publication-final.json`.
 
+La publicación posterior `dpl_DWG4Z9DpiHrsHGUBBPqYa9BzMxaQ` (commit `144702f`)
+añadió el segundo cron diario permitido por Vercel Hobby:
+`/api/cron/whatsapp-team-daily` a las 13:00 UTC (08:00 Ecuador). El cron social
+existente permanece como el primero. `/sign-in` responde 200 y la ruta cron
+responde 401 sin Bearer; falta observar la primera ejecución programada. No se
+activaron recordatorios de clientes, correos, SRI ni mensajes: `paused=true` y
+`clientsEnabled=false` siguen en producción.
+
 # Preparación de producción: WhatsApp
 
 Preparado el 2026-10-16 (Ecuador). El worker productivo ya se publicó desactivado;
