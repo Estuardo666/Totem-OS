@@ -11,14 +11,20 @@
  */
 
 import { Modality, type LiveConnectConfig } from "@google/genai";
-import { DEFAULT_LIVE_VOICE, DEFAULT_OPENAI_REALTIME_MODEL, DEFAULT_OPENAI_VOICE } from "./catalog";
+import {
+  DEFAULT_LIVE_VOICE,
+  DEFAULT_OPENAI_REALTIME_MODEL,
+  DEFAULT_OPENAI_VOICE,
+  DEFAULT_XAI_VOICE,
+  DEFAULT_XAI_VOICE_MODEL,
+} from "./catalog";
 import { buildVoiceInstructions, VOICE_TOOLS } from "./voice-guidance";
 
 export { DEFAULT_LIVE_VOICE };
 export { buildVoiceInstructions, VOICE_TOOLS } from "./voice-guidance";
 
 export const DEFAULT_LIVE_MODEL = "gemini-3.8-live";
-export { DEFAULT_OPENAI_REALTIME_MODEL };
+export { DEFAULT_OPENAI_REALTIME_MODEL, DEFAULT_XAI_VOICE_MODEL };
 
 export function buildLiveConfig(userName: string, voice = DEFAULT_LIVE_VOICE): LiveConnectConfig {
   return {
@@ -55,6 +61,27 @@ export function buildOpenAIRealtimeSession(userName: string, voice = DEFAULT_OPE
         noise_reduction: { type: "far_field" },
       },
       output: { voice },
+    },
+    tools: VOICE_TOOLS.map((t) => ({ type: "function", ...t })),
+  };
+}
+
+/**
+ * Sesión de Grok Voice (xAI). El token efímero de xAI no admite `session`,
+ * así que el navegador la envía en `session.update` al conectar. El
+ * micrófono sale a 16 kHz y la voz vuelve a 24 kHz, como en Gemini.
+ */
+export function buildXaiVoiceSession(userName: string, voice = DEFAULT_XAI_VOICE) {
+  return {
+    voice,
+    instructions: buildVoiceInstructions(userName),
+    turn_detection: { type: "server_vad" },
+    audio: {
+      input: {
+        format: { type: "audio/pcm", rate: 16000 },
+        transcription: { model: "grok-transcribe", language_hint: "es-CL" },
+      },
+      output: { format: { type: "audio/pcm", rate: 24000 } },
     },
     tools: VOICE_TOOLS.map((t) => ({ type: "function", ...t })),
   };

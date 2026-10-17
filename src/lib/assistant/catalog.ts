@@ -68,6 +68,7 @@ export const DEFAULT_LIVE_VOICE = "Sulafat";
 export const VOICE_PROVIDERS = [
   { id: "gemini", label: "Gemini Live" },
   { id: "openai", label: "GPT Realtime (OpenAI)" },
+  { id: "xai", label: "Grok Voice (xAI)" },
 ] as const;
 export type VoiceProvider = (typeof VOICE_PROVIDERS)[number]["id"];
 export const DEFAULT_VOICE_PROVIDER: VoiceProvider = "gemini";
@@ -87,3 +88,16 @@ export const OPENAI_REALTIME_MODELS = [
   { id: "gpt-realtime-2.1", label: "Realtime 2.1 · completo" },
 ] as const;
 export const DEFAULT_OPENAI_REALTIME_MODEL = "gpt-realtime-mini";
+
+/** Voces integradas de Grok Voice. */
+export const XAI_VOICES = [
+  { id: "eve", label: "Eve · cálida (femenina)" },
+  { id: "ara", label: "Ara · amable (femenina)" },
+  { id: "sal", label: "Sal · neutra" },
+  { id: "rex", label: "Rex · firme (masculina)" },
+  { id: "leo", label: "Leo · seguro (masculino)" },
+] as const;
+export const DEFAULT_XAI_VOICE = "eve";
+
+/** Versión fija: `grok-voice-latest` cambia de modelo sin aviso. */
+export const DEFAULT_XAI_VOICE_MODEL = "grok-voice-3.0";
