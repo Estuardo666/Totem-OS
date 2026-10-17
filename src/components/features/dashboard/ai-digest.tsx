@@ -29,7 +29,7 @@ export function AiDigest({ showFinance }: { showFinance: boolean }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/assistant/digest${refresh ? "?refresh=1" : ""}`, { cache: "no-store" });
+      const res = await fetch("/api/assistant/digest", { method: refresh ? "POST" : "GET", cache: "no-store" });
       const data = (await res.json()) as { digest?: Digest; error?: string };
       if (!res.ok || !data.digest) throw new Error(data.error ?? "No se pudo generar el digest.");
       setDigest(data.digest);
@@ -65,7 +65,7 @@ export function AiDigest({ showFinance }: { showFinance: boolean }) {
             <h2 className="text-[15px] font-semibold tracking-[-0.01em]">Digest del día</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {loading
-                ? "Analizando tareas y finanzas…"
+                ? digest ? "Actualizando con datos de ahora…" : "Analizando tareas y finanzas… puede tardar unos segundos"
                 : digest
                   ? `Generado ${formatDistanceToNow(new Date(digest.generadoEn), { locale: es, addSuffix: true })} con el asistente`
                   : "Resumen generado con IA a partir de tus datos"}
@@ -76,21 +76,21 @@ export function AiDigest({ showFinance }: { showFinance: boolean }) {
           type="button"
           onClick={() => load(true)}
           disabled={loading}
-          aria-label="Regenerar digest"
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-[color,background-color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:opacity-50"
+          title="Se genera una vez al día. Actualiza para recalcular con datos de ahora."
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border/70 px-3 text-xs font-medium text-muted-foreground transition-[color,background-color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.97] disabled:opacity-60"
         >
-          <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />{loading ? "Actualizando" : "Actualizar"}
         </button>
       </header>
 
       <AnimatePresence mode="wait" initial={false}>
         {loading && !digest ? (
           <motion.div key="skeleton" exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-3 px-5 pb-5 pt-4 sm:px-6">
-            <div className="h-5 w-3/4 animate-pulse rounded-md bg-muted" />
+            <div className="h-5 w-3/4 animate-pulse rounded-md bg-foreground/[0.07]" />
             <div className={`grid gap-3 ${showFinance ? "md:grid-cols-2" : ""}`}>
               {columns.map((c) => (
                 <div key={c.key} className="space-y-2">
-                  {[0, 1].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-muted/70" />)}
+                  {[0, 1].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-foreground/[0.05]" />)}
                 </div>
               ))}
             </div>
