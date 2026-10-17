@@ -485,6 +485,44 @@ export function buildAssistantTools(user: AssistantUser) {
         });
       },
     }),
+
+    registrarIngreso: tool({
+      description:
+        "Prepara el registro de un ingreso (pago de un cliente u otro ingreso) para que el usuario lo confirme. NO lo guarda. Solo admin. Si es de un cliente, pasa clientId (usa buscarClientes); si no, describe de quién o de qué es.",
+      inputSchema: z.object({
+        monto: z.number().positive(),
+        clientId: z.string().optional().describe("Cliente que pagó"),
+        descripcion: z.string().optional().describe("Obligatoria si no es de un cliente: persona, trabajo extra, etc."),
+        mes: monthSchema.describe("Mes al que corresponde el pago (YYYY-MM). Por defecto el mes en curso."),
+        pendiente: z.boolean().optional().describe("true si aún no se cobró (queda por cobrar). Por defecto ya cobrado."),
+      }),
+      execute: async ({ monto, clientId, descripcion, mes, pendiente }) => {
+        const denied = adminOnly(user);
+        if (denied) return denied;
+        const client = clientId ? await findClient(clientId) : null;
+        if (clientId && !client) return { error: "Cliente no encontrado; usa buscarClientes." };
+        if (!client && !descripcion?.trim()) return { error: "Falta de quién o de qué es el ingreso." };
+        const period = monthRange(mes).value;
+        // Igual que el formulario de la app: la descripción es el nombre del cliente.
+        const input = {
+          type: "INCOME",
+          status: pendiente ? "PENDING" : "PAID",
+          amount: monto,
+          description: client ? (descripcion?.trim() ? `${client.name} · ${descripcion.trim()}` : client.name) : descripcion!.trim(),
+          ...(client && { clientId: client.id, relatedClientId: client.id }),
+          periodMonth: period,
+        };
+        const check = createTransactionSchema.safeParse(input);
+        if (!check.success) return { error: check.error.issues.map((i) => i.message).join("; ") };
+        return draft(user, "registrarIngreso", input, {
+          Cliente: client?.name ?? null,
+          Concepto: client ? descripcion?.trim() || null : input.description,
+          Monto: monto,
+          Mes: period,
+          Estado: pendiente ? "Por cobrar" : "Cobrado",
+        });
+      },
+    }),
   };
 }
 

@@ -74,6 +74,7 @@ const STATUS_LABEL: Record<VoiceStatus, string> = {
 
 const DRAFT_TITLES: Record<string, string> = {
   crearRodaje: "Nuevo rodaje",
+  registrarIngreso: "Nuevo ingreso",
   crearGasto: "Nuevo gasto",
   crearTarea: "Nueva tarea",
   registrarHonorario: "Pago de honorarios",
