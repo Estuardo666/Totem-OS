@@ -16,6 +16,9 @@ export async function sendNotification({
   createdBy,
   clientLogo,
   clientName,
+  whatsappDedupeKey,
+  whatsappKind,
+  whatsappBody,
 }: {
   userId: string;
   message: string;
@@ -23,6 +26,9 @@ export async function sendNotification({
   createdBy?: string;
   clientLogo?: string;
   clientName?: string;
+  whatsappDedupeKey?: string;
+  whatsappKind?: string;
+  whatsappBody?: string;
 }): Promise<ApiResponse<Notification>> {
   try {
     // 1. Guardar notificación en Prisma
@@ -37,6 +43,33 @@ export async function sendNotification({
         clientName: clientName || null,
       },
     });
+
+    // WhatsApp is an optional mirror for opted-in team members. The shared
+    // queue applies pause, allow-list and dedupe rules; a queue outage must not
+    // make the in-app notification fail.
+    const whatsappTypes = new Set(["SHOOT_NEW", "SHOOT_REMINDER", "SHOOT_CANCELED", "DAILY_DIGEST"]);
+    if (whatsappTypes.has(type)) {
+      try {
+        const recipient = await db.user.findUnique({
+          where: { id: userId },
+          select: { phone: true, whatsappOptIn: true },
+        });
+        const { normalizePhone } = await import("@/lib/whatsapp/enqueue");
+        const digits = recipient?.phone ? normalizePhone(recipient.phone) : "";
+        if (recipient?.whatsappOptIn && digits) {
+          const { enqueueWhatsApp } = await import("@/lib/whatsapp/enqueue");
+          await enqueueWhatsApp({
+            to: `${digits}@s.whatsapp.net`,
+            body: whatsappBody ?? message,
+            kind: whatsappKind ?? (type === "DAILY_DIGEST" ? "TEAM_DAILY" : "SHOOT_REMINDER"),
+            dedupeKey: whatsappDedupeKey ? `${whatsappDedupeKey}:${digits}@s.whatsapp.net` : `notification:${notification.id}`,
+          });
+        }
+      } catch {
+        // Queue exceptions can contain transport or payload details; never log them.
+        console.warn("WhatsApp notification enqueue failed");
+      }
+    }
 
     // 2. Disparar evento a Pusher en canal privado del usuario
     try {

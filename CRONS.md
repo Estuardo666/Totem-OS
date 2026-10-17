@@ -1,5 +1,37 @@
 # Cron jobs
 
+## WhatsApp — staging desactivado
+
+El worker es el único emisor; las rutas de Vercel solo encolan. Todos los
+recordatorios respetan pausa, consentimiento y habilitación de clientes. El
+staging tiene `WA_DISABLED=1`, `WA_PAIRING_ONLY=1` y `SRI_ENABLED=0`.
+
+Hay un único cron de Hostinger: ping al `/health` del subdominio de staging cada
+minuto. UID `d6tlvmxJDl`; comando termina en `HEALTH_OK` si la solicitud tiene
+éxito. No encola mensajes ni llama rutas de Vercel. No hay crons de WhatsApp en
+Vercel ni cambios a `vercel.json`.
+
+| Ruta | Horario Ecuador | Cron | Estado |
+|---|---|---|---|
+| Worker staging `/health` | Cada minuto | `* * * * *` | Activo en Hostinger |
+| `/api/cron/whatsapp-team-daily` | 08:00 | `0 13 * * *` | Pendiente de despliegue del backend |
+| `/api/cron/shooting-reminders-morning` | 07:00 | `0 12 * * *` | Pendiente |
+| `/api/cron/shooting-reminders-hourly` | Cada 15 minutos | `*/15 * * * *` | Pendiente |
+| `/api/cron/cobranza-check` | 09:00 | `0 14 * * *` | Pendiente |
+| `/api/cron/whatsapp-approval-reminders` | Cada hora, 08:00–19:00 | `0 0,13-23 * * *` | Pendiente |
+| `/api/cron/whatsapp-watchdog` | Cada 5 minutos | `*/5 * * * *` | Pendiente |
+
+Antes de instalar crons que llaman las rutas POST de Vercel: comprobar la zona
+horaria real del servidor y guardar secretos en `~/.totem_cron` con permisos
+600; nunca pegar el Bearer en el panel. Ejemplo sin credenciales literales:
+
+```sh
+. ~/.totem_cron && curl -fsS --max-time 60 -X POST -H "Authorization: Bearer $CRON_SECRET" https://totem-os.vercel.app/api/cron/whatsapp-team-daily
+```
+
+`daily-digest`, `calendar-webhook-renew`, `monthly-payments`, `sync-compact` y
+SRI no se activan dentro de este rollout. Detalles en `docs/WHATSAPP_LOCAL.md`.
+
 ## Programados
 
 | Ruta | Horario (UTC) | Hora Ecuador | Qué hace |

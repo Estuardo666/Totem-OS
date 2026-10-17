@@ -14,9 +14,9 @@ const dashboardContract = readFileSync(resolve(root, "src/contracts/api-contract
 
 test("la portada web conserva el dashboard completo mientras Swift usa la API nativa", () => {
   assert.match(dashboardRoute, /HomeCommandCenter/);
-  assert.match(dashboardRoute, /getTasks\(\)/);
-  assert.match(dashboardRoute, /getClients\(\)/);
-  assert.match(dashboardRoute, /getFinancialStats\(\)/);
+  assert.match(dashboardRoute, /getTasks\(undefined, \{ includeBrandAssets: false \}\)/);
+  assert.match(dashboardRoute, /db\.client\s*\.findMany\(/);
+  assert.match(dashboardRoute, /isAdmin \? getFinancialStats\(\{ recentLimit: 3 \}\)/);
   assert.match(dashboardRoute, /getReceivables\(\)/);
   assert.doesNotMatch(dashboardRoute, /ApiDashboardView/);
 });

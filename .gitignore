@@ -76,6 +76,12 @@ next-env.d.ts
 !components.json
 !.eslintrc.json
 !contracts/openapi.json
+!docs/whatsapp-bot.config.json
+!/worker/tsconfig.wa.json
+
+# Generated WhatsApp worker bundle; build from source for the target platform.
+/worker/dist/
+/worker/.whatsapp-build-schema.prisma
 !contracts/openapi.baseline.json
 !contracts/fixtures/*.json
 !public/manifest.json

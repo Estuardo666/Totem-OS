@@ -18,13 +18,13 @@ const POLL_INTERVAL = parseInt(process.env.SRI_POLL_INTERVAL ?? "5000");
 const WORKER_ID = process.env.SRI_WORKER_ID ?? `worker-${Date.now()}`;
 const MODO = process.env.SRI_MODO ?? "LOCAL";
 const AMBIENTE = process.env.SRI_AMBIENTE ?? "1";
-const TOTEM_API_URL = process.env.TOTEM_API_URL;
+const APP_API_URL = process.env.APP_API_URL || process.env.TOTEM_API_URL;
 const WORKER_SECRET = process.env.FACTURACION_WORKER_SECRET;
 
 let running = true;
 let lastHeartbeat = 0;
 
-async function main() {
+export async function startSRIWorker() {
   console.log(`[SRI Worker] Iniciando - ID: ${WORKER_ID}, Modo: ${MODO}, Ambiente: ${AMBIENTE}`);
   console.log(`[SRI Worker] Polling cada ${POLL_INTERVAL}ms`);
 
@@ -488,11 +488,11 @@ function formatDate(date: Date): string {
 
 async function heartbeat(sriAlcanzable: boolean) {
   try {
-    if (!TOTEM_API_URL || !WORKER_SECRET) {
-      throw new Error("Faltan TOTEM_API_URL o FACTURACION_WORKER_SECRET");
+    if (!APP_API_URL || !WORKER_SECRET) {
+      throw new Error("Faltan APP_API_URL o FACTURACION_WORKER_SECRET");
     }
 
-    const response = await fetch(`${TOTEM_API_URL.replace(/\/$/, "")}/api/facturacion/worker/latido`, {
+    const response = await fetch(`${APP_API_URL.replace(/\/$/, "")}/api/facturacion/worker/latido`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -531,7 +531,9 @@ process.on("SIGTERM", () => {
   running = false;
 });
 
-main().catch((error) => {
-  console.error("[SRI Worker] Error fatal:", error);
-  process.exit(1);
-});
+if (require.main === module) {
+  startSRIWorker().catch((error) => {
+    console.error("[SRI Worker] Error fatal:", error);
+    process.exit(1);
+  });
+}
