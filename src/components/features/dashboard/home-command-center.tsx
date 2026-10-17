@@ -27,6 +27,7 @@ import { DashboardRefresh } from "@/components/features/content/dashboard-refres
 import { AnimatedNumber } from "@/components/features/dashboard/animated-number";
 import { isOverdueEditingTask, isOverduePublicationTask } from "@/components/features/dashboard/dashboard-overdue";
 import { HomeMotion } from "@/components/features/dashboard/home-motion";
+import { AiDigest } from "@/components/features/dashboard/ai-digest";
 
 type Feedback = {
   id: string;
@@ -176,7 +177,7 @@ function Metric({ label, value, animatedValue, valueKind = "number", delta, tone
   valueKind?: "number" | "currency";
   delta: string;
   tone: "success" | "warning" | "error" | "info" | "neutral";
-  points: number[];
+  points?: number[];
   icon: typeof TrendUp;
   href?: string;
 }) {
@@ -188,19 +189,43 @@ function Metric({ label, value, animatedValue, valueKind = "number", delta, tone
     neutral: "text-foreground",
   }[tone];
   const content = (
-    <div className="group flex h-full min-w-0 flex-col rounded-2xl border border-border/70 bg-card p-4 shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] transition-colors hover:border-border sm:p-5">
+    <div className="group flex h-full min-w-0 flex-col rounded-2xl border border-border/70 bg-card p-4 shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] transition-[border-color,transform] duration-200 ease-out hover:border-border motion-safe:hover:-translate-y-0.5 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted ${toneClass}`}>
           <Icon className="size-4" strokeWidth={1.8} />
         </span>
-        <Sparkline points={points} color={tone === "neutral" ? "hsl(var(--muted-foreground))" : `hsl(var(--theme-${tone}))`} />
+        {points && points.length > 1 && <Sparkline points={points} color={tone === "neutral" ? "hsl(var(--muted-foreground))" : `hsl(var(--theme-${tone}))`} />}
       </div>
       <p className="mt-4 truncate text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
-      <p className={`mt-1 truncate text-[22px] font-semibold tracking-[-0.045em] ${toneClass}`}>{animatedValue !== undefined ? <AnimatedNumber value={animatedValue} kind={valueKind} /> : typeof value === "number" ? <AnimatedNumber value={value} kind={valueKind} /> : value}</p>
+      <p className={`mt-1 truncate text-[22px] font-semibold tabular-nums tracking-[-0.045em] ${toneClass}`}>{animatedValue !== undefined ? <AnimatedNumber value={animatedValue} kind={valueKind} /> : typeof value === "number" ? <AnimatedNumber value={value} kind={valueKind} /> : value}</p>
       <p className="mt-1 truncate text-[11px] text-muted-foreground">{delta}</p>
     </div>
   );
   return href ? <Link href={href} className="totem-kpi block h-full last:col-span-2 xl:last:col-span-1">{content}</Link> : <div className="totem-kpi last:col-span-2 xl:last:col-span-1">{content}</div>;
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+function greeting(date: Date) {
+  const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: "America/Guayaquil" }).format(date));
+  return hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
+}
+
+/** Conteo semanal real (últimas `weeks` semanas, la última es la actual). */
+function weeklySeries(dates: Date[], now: Date, weeks = 7) {
+  const week = 7 * 86_400_000;
+  const series = Array(weeks).fill(0) as number[];
+  for (const d of dates) {
+    const idx = weeks - 1 - Math.floor((now.getTime() - d.getTime()) / week);
+    if (idx >= 0 && idx < weeks) series[idx] += 1;
+  }
+  return series;
+}
+
+function deltaLabel(now: number, before: number) {
+  if (!before) return now ? "nuevo" : "sin cambios";
+  const pct = Math.round(((now - before) / before) * 100);
+  return `${pct >= 0 ? "+" : ""}${pct}%`;
 }
 
 function getTaskOwner(task: ContentTaskWithClient) {
@@ -252,6 +277,18 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
     .slice(0, 3);
   const projectedBalance = (finance?.netProfit || 0) + (finance?.closureControl?.pendingAmount || 0);
   const activeClients = clients.filter((client) => client.status === "ACTIVE").length;
+  const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const sameDayPrevMonth = new Date(prevMonthStart.getFullYear(), prevMonthStart.getMonth(), Math.min(today.getDate(), new Date(today.getFullYear(), today.getMonth(), 0).getDate()), 23, 59);
+  const published = tasks.filter((task) => task.status === "PUBLISHED" && task.publishedAt).map((task) => ({ task, at: new Date(task.publishedAt!) }));
+  const publishedPrevToDate = published.filter(({ at }) => at >= prevMonthStart && at <= sameDayPrevMonth);
+  const prevWithDates = publishedPrevToDate.filter(({ task }) => task.dueDate);
+  const prevOnTimeRate = prevWithDates.length ? Math.round((prevWithDates.filter(({ task, at }) => at <= new Date(task.dueDate!)).length / prevWithDates.length) * 100) : 0;
+  const publishedSeries = weeklySeries(published.map(({ at }) => at), now);
+  const cycleDays = published.filter(({ at }) => at >= monthStart).map(({ task, at }) => (at.getTime() - new Date(task.createdAt).getTime()) / 86_400_000).filter((d) => d >= 0);
+  const avgCycle = cycleDays.length ? (cycleDays.reduce((a, b) => a + b, 0) / cycleDays.length).toLocaleString("es-EC", { maximumFractionDigits: 1 }) : "—";
+  const weeksElapsed = Math.max(today.getDate() / 7, 1);
+  const weeklyPace = Math.round(publishedThisMonth / weeksElapsed);
+  const prevWeeklyPace = Math.round(publishedPrevToDate.length / weeksElapsed);
   const activeRoleLabel = specialty?.replace(/\b\w/g, (letter) => letter.toUpperCase()) || (userRole === "ADMIN" ? "Administrador" : "Equipo de contenido");
 
   return (
@@ -261,30 +298,32 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
         <header className="relative z-10 mb-9 flex flex-wrap items-center justify-between gap-4 pb-1">
           <div>
             <div className="flex items-baseline gap-3">
-              <h1 className="totem-home-title text-[25px] font-semibold tracking-[-0.045em] text-foreground sm:text-[29px]">Buenos días, {firstName}</h1>
+              <h1 className="totem-home-title text-[25px] font-semibold tracking-[-0.045em] text-foreground sm:text-[29px]">{greeting(now)}, {firstName}</h1>
               <span className="totem-home-subtitle hidden text-sm text-muted-foreground sm:inline">{format(new Date(), "EEEE, d 'de' MMMM", { locale: es })}</span>
             </div>
-            <p className="totem-home-subtitle mt-1 text-sm text-muted-foreground">{scheduledToday.length} actividades y {priorityTasks.length} tareas requieren atención hoy.</p>
+            <p className="totem-home-subtitle mt-1 text-sm text-muted-foreground">{scheduledToday.length || priorityTasks.length ? `${plural(scheduledToday.length, "actividad", "actividades")} hoy · ${plural(priorityTasks.length, "tarea requiere", "tareas requieren")} atención` : "Todo al día. No hay pendientes urgentes."}</p>
           </div>
           <div className="flex items-center gap-2">
             <DashboardRefresh />
           </div>
         </header>
 
+        <AiDigest showFinance={isAdmin} />
+
         <section aria-label="Resumen ejecutivo" className="mb-5">
           <div className={`grid grid-cols-2 gap-3 lg:grid-cols-3 ${isAdmin ? "xl:grid-cols-6" : "xl:grid-cols-4"}`}>
-            {isAdmin && finance && <Metric label="Ingresos del mes" value={finance.totalIncome} valueKind="currency" delta={`${finance.incomeDeltaPct && finance.incomeDeltaPct >= 0 ? "+" : ""}${Math.round(finance.incomeDeltaPct || 0)}%`} tone="success" points={[4, 5, 4, 7, 8, 9, 11]} icon={WalletCards} href="/finance" />}
-            {isAdmin && receivables && <Metric label="Saldo pendiente total" value={receivables.totalReceivable} valueKind="currency" delta={`${receivables.clientsWithDebt} clientes con deuda`} tone="warning" points={[8, 7, 8, 6, 5, 5, receivables.totalReceivable]} icon={FileText} href="/finance/receivables" />}
-            <Metric label="Tareas vencidas edición" value={overdueEditingTasks.length} delta={overdueEditingTasks.length ? "siguen en edición" : "edición al día"} tone={overdueEditingTasks.length ? "error" : "success"} points={[7, 6, 6, 5, 4, 4, overdueEditingTasks.length]} icon={CircleAlert} href="/content?status=EDITING" />
-            <Metric label="Tareas vencidas publicación" value={overduePublicationTasks.length} delta={overduePublicationTasks.length ? "pendientes de publicar" : "publicación al día"} tone={overduePublicationTasks.length ? "error" : "success"} points={[6, 6, 5, 5, 4, 3, overduePublicationTasks.length]} icon={FileCheck2} href="/content?status=CLIENT_APPROVED" />
-            <Metric label="Contenido publicado" value={publishedThisMonth} delta="este mes" tone="info" points={[3, 4, 4, 6, 5, 8, publishedThisMonth]} icon={PanelTop} href="/content" />
-            <Metric label={isAdmin ? "Clientes activos" : "Tareas asignadas"} value={isAdmin ? activeClients : tasks.length} delta={isAdmin ? "en el sistema" : activeRoleLabel} tone="neutral" points={[5, 6, 5, 7, 7, 8, 9]} icon={UsersRound} href={isAdmin ? "/clients" : "/content"} />
+            {isAdmin && finance && <Metric label="Ingresos del mes" value={finance.totalIncome} valueKind="currency" delta={`${(finance.incomeDeltaPct ?? 0) >= 0 ? "+" : ""}${Math.round(finance.incomeDeltaPct || 0)}% vs. mes anterior`} tone={(finance.incomeDeltaPct ?? 0) >= 0 ? "success" : "warning"} icon={WalletCards} href="/finance" />}
+            {isAdmin && receivables && <Metric label="Saldo pendiente total" value={receivables.totalReceivable} valueKind="currency" delta={plural(receivables.clientsWithDebt, "cliente con deuda", "clientes con deuda")} tone="warning" icon={FileText} href="/finance/receivables" />}
+            <Metric label="Vencidas edición" value={overdueEditingTasks.length} delta={overdueEditingTasks.length ? "siguen en edición" : "edición al día"} tone={overdueEditingTasks.length ? "error" : "success"} icon={CircleAlert} href="/content?status=EDITING" />
+            <Metric label="Vencidas publicación" value={overduePublicationTasks.length} delta={overduePublicationTasks.length ? "pendientes de publicar" : "publicación al día"} tone={overduePublicationTasks.length ? "error" : "success"} icon={FileCheck2} href="/content?status=CLIENT_APPROVED" />
+            <Metric label="Contenido publicado" value={publishedThisMonth} delta="este mes" tone="info" points={publishedSeries} icon={PanelTop} href="/content" />
+            <Metric label={isAdmin ? "Clientes activos" : "Tareas asignadas"} value={isAdmin ? activeClients : tasks.length} delta={isAdmin ? "en el sistema" : activeRoleLabel} tone="neutral" icon={UsersRound} href={isAdmin ? "/clients" : "/content"} />
           </div>
         </section>
 
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
           <section className="totem-agenda-enter overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] xl:col-span-5">
-            <SectionHeading icon={CalendarDays} title="Agenda de hoy" description={`${scheduledToday.length} actividades programadas`} href="/content" action="Ver agenda" />
+            <SectionHeading icon={CalendarDays} title="Agenda de hoy" description={plural(scheduledToday.length, "actividad programada", "actividades programadas")} href="/content" action="Ver agenda" />
             <div className="px-5 py-3 sm:px-6">
               {scheduledToday.length > 0 ? scheduledToday.map((task, index) => (
                 <div key={task.id} className="relative flex gap-3 border-b border-border/60 py-3 last:border-0">
@@ -306,7 +345,7 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
           </section>
 
           <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] xl:col-span-7">
-            <SectionHeading icon={CircleAlert} title="Requieren atención" description={`${priorityTasks.length} tareas en los próximos días`} href="/content" action="Ver todas" />
+            <SectionHeading icon={CircleAlert} title="Requieren atención" description={`${plural(priorityTasks.length, "tarea", "tareas")} · vencidas y próximos 4 días`} href="/content" action="Ver todas" />
             <div className="divide-y divide-border/60">
               {priorityTasks.length > 0 ? priorityTasks.map((task) => {
                 const dueDate = task.dueDate ? new Date(task.dueDate) : null;
@@ -314,7 +353,7 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                 const priority = task.priority === "URGENT" || task.priority === "HIGH";
                 const owner = getTaskOwnerRecord(task);
                 return (
-                  <div key={task.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-l-2 border-transparent px-5 py-3.5 transition-colors hover:bg-muted/25 sm:grid-cols-[minmax(0,1fr)_112px_88px_82px] sm:px-6">
+                  <Link href={`/content?task=${task.id}`} key={task.id} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-l-2 ${overdue ? "border-[hsl(var(--theme-error)/0.7)]" : "border-transparent"} px-5 py-3.5 transition-colors hover:bg-muted/25 sm:grid-cols-[minmax(0,1fr)_112px_88px_82px] sm:px-6`}>
                     <div className="min-w-0">
                       <p className="truncate text-[13px] font-medium text-card-foreground">{task.title}</p>
                       <p className="mt-1 flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground"><ClientMark name={task.client.name} logo={task.client.logo} color={task.client.color} /><span className="truncate">{task.client.name}</span></p>
@@ -324,7 +363,7 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                       <span className={`text-xs font-medium ${overdue ? "text-[hsl(var(--theme-error))]" : priority ? "text-[hsl(var(--theme-warning))]" : "text-muted-foreground"}`}>{overdue ? "Vencida" : priority ? "Alta" : "Normal"}</span>
                       <span className={`text-right text-xs ${overdue ? "font-semibold text-[hsl(var(--theme-error))]" : "text-muted-foreground"}`}>{relativeDate(dueDate)}</span>
                     </div>
-                  </div>
+                  </Link>
                 );
               }) : <EmptyState icon={CheckCircle2} title="Sin pendientes críticos" description="Las tareas prioritarias están bajo control." />}
             </div>
@@ -351,7 +390,7 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
               <div className="mt-5 grid grid-cols-3 divide-x divide-border/70 rounded-xl bg-muted/45 py-3">
                 <div className="px-3 sm:px-4"><p className="text-[11px] text-muted-foreground">Piezas del mes</p><p className="mt-1 text-lg font-semibold tracking-[-0.03em]"><AnimatedNumber value={totalPipeline} /></p></div>
                 <div className="px-3 sm:px-4"><p className="flex items-center gap-1 text-[11px] text-muted-foreground">Bloqueadas <MetricHelper text="Piezas detenidas en revisión interna o revisión del cliente." /></p><p className={`mt-1 text-lg font-semibold tracking-[-0.03em] ${blockedCount ? "text-[hsl(var(--theme-warning))]" : "text-foreground"}`}><AnimatedNumber value={blockedCount} /></p></div>
-                <div className="px-3 sm:px-4"><p className="flex items-center gap-1 text-[11px] text-muted-foreground">Producción media <MetricHelper text="Días promedio entre la creación y la publicación de una pieza." /></p><p className="mt-1 text-lg font-semibold tracking-[-0.03em]">6,2 <span className="text-xs font-normal text-muted-foreground">días</span></p></div>
+                <div className="px-3 sm:px-4"><p className="flex items-center gap-1 text-[11px] text-muted-foreground">Producción media <MetricHelper text="Días promedio entre la creación y la publicación de una pieza." /></p><p className="mt-1 text-lg font-semibold tracking-[-0.03em]">{avgCycle} <span className="text-xs font-normal text-muted-foreground">días</span></p></div>
               </div>
             </div>
           </section>
@@ -419,11 +458,11 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
           </section> : <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] xl:col-span-6"><SectionHeading icon={Clock3} title="Próximas entregas" description="Fechas que se acercan" href="/content" action="Ver calendario" /><div className="divide-y divide-border/60">{tasks.filter((task) => task.dueDate && task.status !== "PUBLISHED").sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()).slice(0, 3).map((task) => <Link href={`/content?task=${task.id}`} key={task.id} className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-muted/25 sm:px-6"><span className="flex size-7 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Clock3 className="size-3.5" /></span><span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-medium">{task.title}</span><span className="flex items-center gap-1.5 text-xs text-muted-foreground"><ClientMark name={task.client.name} logo={task.client.logo} color={task.client.color} /><span className="truncate">{task.client.name}</span></span></span><span className="text-xs text-muted-foreground">{relativeDate(new Date(task.dueDate!))}</span></Link>)}</div></section>}
 
           <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] xl:col-span-12">
-            <SectionHeading icon={TrendUp} title="Rendimiento del mes" description="Señales rápidas frente al mes anterior" />
+            <SectionHeading icon={TrendUp} title="Rendimiento del mes" description="Comparado con el mismo punto del mes anterior" />
             <div className="grid grid-cols-1 divide-y divide-border/70 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-              <PerformanceMetric label="Tareas completadas" value={publishedThisMonth} delta="+12%" points={[2, 3, 4, 3, 6, 7, 9]} color="hsl(var(--theme-info))" />
-              <PerformanceMetric label="Cumplimiento de fechas" value={`${onTimeRate}%`} delta="+8%" points={[7, 6, 7, 8, 7, 9, 10]} color="hsl(var(--theme-success))" />
-              <PerformanceMetric label="Productividad promedio" value={publishedThisMonth ? `${Math.round(publishedThisMonth / Math.max(new Date().getDate() / 7, 1))}` : "0"} delta="+6%" points={[3, 4, 4, 5, 6, 6, 8]} color="hsl(var(--theme-peach))" />
+              <PerformanceMetric label="Piezas publicadas" value={publishedThisMonth} delta={deltaLabel(publishedThisMonth, publishedPrevToDate.length)} positive={publishedThisMonth >= publishedPrevToDate.length} points={publishedSeries} color="hsl(var(--theme-info))" />
+              <PerformanceMetric label="Cumplimiento de fechas" value={`${onTimeRate}%`} delta={`${onTimeRate - prevOnTimeRate >= 0 ? "+" : ""}${onTimeRate - prevOnTimeRate} pts`} positive={onTimeRate >= prevOnTimeRate} color="hsl(var(--theme-success))" />
+              <PerformanceMetric label="Ritmo semanal" value={`${weeklyPace}/sem`} delta={deltaLabel(weeklyPace, prevWeeklyPace)} positive={weeklyPace >= prevWeeklyPace} color="hsl(var(--theme-peach))" />
             </div>
           </section>
         </div>
@@ -475,8 +514,8 @@ function FinanceMetric({ label, value, tone }: { label: string; value: number; t
   return <div><p className="text-[11px] text-muted-foreground">{label}</p><p className={`mt-1 truncate text-sm font-semibold tracking-[-0.02em] ${tone === "positive" ? "text-[hsl(var(--theme-success))]" : tone === "pending" ? "text-[hsl(var(--theme-warning))]" : "text-foreground"}`}>{formatCurrency(value)}</p></div>;
 }
 
-function PerformanceMetric({ label, value, delta, points, color }: { label: string; value: string | number; delta: string; points: number[]; color: string }) {
-  return <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5"><div><p className="text-xs text-muted-foreground">{label}</p><div className="mt-1.5 flex items-baseline gap-2"><span className="text-2xl font-semibold tracking-[-0.04em]">{value}</span><span className="text-xs font-medium text-[hsl(var(--theme-success))]">{delta}</span></div><p className="mt-1 text-[11px] text-muted-foreground">vs. mes anterior</p></div><Sparkline points={points} color={color} /></div>;
+function PerformanceMetric({ label, value, delta, positive, points, color }: { label: string; value: string | number; delta: string; positive: boolean; points?: number[]; color: string }) {
+  return <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5"><div><p className="text-xs text-muted-foreground">{label}</p><div className="mt-1.5 flex items-baseline gap-2"><span className="text-2xl font-semibold tabular-nums tracking-[-0.04em]">{value}</span><span className={`text-xs font-medium ${positive ? "text-[hsl(var(--theme-success))]" : "text-[hsl(var(--theme-error))]"}`}>{delta}</span></div><p className="mt-1 text-[11px] text-muted-foreground">vs. mes anterior a la fecha</p></div>{points && points.length > 1 ? <Sparkline points={points} color={color} /> : <span className="size-2 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />}</div>;
 }
 
 function EmptyState({ icon: Icon, title, description, href, action }: { icon: typeof CalendarDays; title: string; description: string; href?: string; action?: string }) {
