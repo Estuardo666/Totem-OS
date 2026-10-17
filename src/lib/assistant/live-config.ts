@@ -35,7 +35,7 @@ export function buildLiveConfig(userName: string, voice = DEFAULT_LIVE_VOICE): L
     },
     inputAudioTranscription: {},
     outputAudioTranscription: {},
-    systemInstruction: buildVoiceInstructions(userName),
+    systemInstruction: buildVoiceInstructions(userName, "Gemini Live, de Google"),
     tools: [
       {
         functionDeclarations: VOICE_TOOLS.map((t) => ({
@@ -53,7 +53,7 @@ export function buildOpenAIRealtimeSession(userName: string, voice = DEFAULT_OPE
   return {
     type: "realtime",
     model,
-    instructions: buildVoiceInstructions(userName),
+    instructions: buildVoiceInstructions(userName, "GPT Realtime, de OpenAI"),
     audio: {
       input: {
         transcription: { model: "gpt-4o-mini-transcribe", language: "es" },
@@ -74,7 +74,7 @@ export function buildOpenAIRealtimeSession(userName: string, voice = DEFAULT_OPE
 export function buildXaiVoiceSession(userName: string, voice = DEFAULT_XAI_VOICE) {
   return {
     voice,
-    instructions: buildVoiceInstructions(userName),
+    instructions: buildVoiceInstructions(userName, "Grok Voice 3.0, de xAI"),
     turn_detection: { type: "server_vad" },
     audio: {
       input: {
