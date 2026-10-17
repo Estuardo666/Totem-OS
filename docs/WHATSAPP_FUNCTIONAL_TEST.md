@@ -1,8 +1,12 @@
+## Resultado real: aprobado
+
+El 16 de octubre de 2026, 23:09 Ecuador, la respuesta citada del dueño recorrió el listener real de WhatsApp, generó el borrador, aplicó la decisión y cambió únicamente la tarea sintética a CLIENT_APPROVED. La solicitud quedó APPROVED; se registraron un MANUAL enviado y exactamente un APPROVAL_CONFIRM enviado con identificador de WhatsApp, sin errores. El controlador comprobó esos resultados, dejó whatsapp.paused=true y detuvo su worker. Estado final PASSED_AND_PAUSED. Evidencia privada: functional-real-result.json y functional-local-run.json. Producción no se activó; SRI sigue apagado. La idempotencia concurrente y repetición de envíos se verificaron localmente con transporte simulado; esta pasada real verificó una respuesta citada y una confirmación.
+
 # Prueba funcional controlada
 
-Estado: preparación local completada; sesión nueva pendiente de QR. Producción permanece desactivada.
+Estado: PASSED_AND_PAUSED; QR y respuesta citada completados. Producción permanece desactivada.
 
-Verificación: 234/234 unitarias y 39/39 integración. El nuevo ensayo usa PostgreSQL local `message_worker_functional_test`, grupo existente seleccionado explícitamente, cliente/tarea sintéticos y una sesión WhatsApp nueva. No se copiaron credenciales productivas. El worker rechaza producción, limita la cola al grupo/ejecución y solo acepta respuestas exactas citando la solicitud sintética. Sin sincronización general, IA, resúmenes, cobros, avisos privados ni SRI. La cola real se probó con transporte simulado; todavía no se afirma entrega funcional real.
+Verificación: 234/234 unitarias y 39/39 integración. El nuevo ensayo usa PostgreSQL local `message_worker_functional_test`, grupo existente seleccionado explícitamente, cliente/tarea sintéticos y una sesión WhatsApp nueva. No se copiaron credenciales productivas. El worker rechaza producción, limita la cola al grupo/ejecución y solo acepta respuestas exactas citando la solicitud sintética. Sin sincronización general, IA, resúmenes, cobros, avisos privados ni SRI. La cola y la confirmación se verificaron también por transporte real en el ensayo descrito arriba; los casos de repetición y pausa se cubrieron en integración.
 
 Página local: `http://127.0.0.1:3091/`. Al escanear el QR, llega un único mensaje al grupo de pruebas; citarlo y responder `aprobado`. El controlador aplica la aprobación ficticia y espera una sola confirmación. Al terminar pausa la base local y detiene esa sesión de worker. La autenticación nueva queda en la base local para repetir el ensayo; no cambia la sesión almacenada en producción.
 

@@ -227,3 +227,8 @@ que podía aceptar un directorio interno cuyo nombre comenzara con `..`.
   sintéticos de Pusher. Lint: PASS, con 14 advertencias existentes de imágenes.
 - Comparación productiva de esquema: vacía; barrera de base de datos: PASS.
 - No se afirma estabilidad de 48/72 h ni aceptación de facturas por el SRI.
+
+
+## Ensayo funcional real completado
+
+16 de octubre, 23:09 Ecuador: aprobación citada recibida en el grupo existente, tarea sintética CLIENT_APPROVED y una única confirmación enviada con identificador WhatsApp. Base local separada, pausa automática confirmada y worker del ensayo detenido. Producción y SRI permanecen desactivados. Ver docs/WHATSAPP_FUNCTIONAL_TEST.md. No equivale a habilitación de clientes ni a validación del SRI.
