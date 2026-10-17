@@ -41,6 +41,7 @@ const TOOL_LABELS: Record<string, string> = {
   metaRankingClientes: "Comparando clientes en redes",
   metaAnuncios: "Analizando anuncios",
   crearRodaje: "Preparando rodaje",
+  registrarIngreso: "Preparando ingreso",
   crearGasto: "Preparando gasto",
   crearTarea: "Preparando tarea",
   registrarHonorario: "Preparando honorario",
@@ -48,6 +49,7 @@ const TOOL_LABELS: Record<string, string> = {
 
 const DRAFT_TITLES: Record<string, string> = {
   crearRodaje: "Nuevo rodaje",
+  registrarIngreso: "Nuevo ingreso",
   crearGasto: "Nuevo gasto",
   crearTarea: "Nueva tarea",
   registrarHonorario: "Pago de honorarios",
