@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Calendar, Link2 } from "lucide-react";
+import { Calendar, Link2, RefreshCw } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -50,15 +50,40 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
 
   // Google Calendar connection status
   const [isCalendarConnected, setIsCalendarConnected] = useState<boolean | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
+  const [syncError, setSyncError] = useState(false);
+
+  const syncCalendar = useCallback(async () => {
+    setIsSyncing(true);
+    setSyncError(false);
+    setSyncMessage("");
+    try {
+      const response = await fetch("/api/google-calendar/sync", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "No se pudo sincronizar Google Calendar.");
+      setSyncMessage(`Sincronización completada: ${data.created} nuevos, ${data.updated} actualizados, ${data.cancelled} cancelados.`);
+      router.refresh();
+    } catch (error) {
+      setSyncError(true);
+      setSyncMessage(error instanceof Error ? error.message : "No se pudo sincronizar Google Calendar.");
+      router.refresh();
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [router]);
 
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/google-calendar/status", { signal: controller.signal })
       .then((res) => res.json())
-      .then((data) => setIsCalendarConnected(data.connected))
+      .then((data) => {
+        setIsCalendarConnected(data.connected);
+        if (data.connected) void syncCalendar();
+      })
       .catch(() => setIsCalendarConnected(false));
     return () => controller.abort();
-  }, []);
+  }, [syncCalendar]);
 
   // Paginación: 25 rodajes por página
   const ITEMS_PER_PAGE = 25;
@@ -269,9 +294,14 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
         </div>
       )}
       {isCalendarConnected === true && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground px-1">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground px-1">
           <Calendar className="h-4 w-4 text-green-600" />
-          <span>Google Calendar conectado — los rodajes se sincronizan automáticamente</span>
+          <span>Google Calendar conectado</span>
+          <Button variant="outline" size="sm" disabled={isSyncing} onClick={() => void syncCalendar()}>
+            <RefreshCw className={`h-4 w-4 mr-1 ${isSyncing ? "animate-spin" : ""}`} />
+            {isSyncing ? "Sincronizando…" : "Sincronizar ahora"}
+          </Button>
+          {syncMessage && <span role="status" className={syncError ? "text-destructive" : ""}>{syncMessage}</span>}
         </div>
       )}
 

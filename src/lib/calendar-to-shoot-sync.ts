@@ -213,7 +213,7 @@ export async function syncCalendarEventsToShoots(
     } while (nextPageToken);
 
     // Save syncToken for next incremental sync
-    if (lastSyncToken) {
+    if (lastSyncToken && result.errors.length === 0) {
       await (db as any).googleCalendarToken.update({
         where: { userId },
         data: {

@@ -1,5 +1,13 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.1.1] - 2026-10-20
+
+### Fixed
+
+- Rodajes vuelve a consultar Google Calendar al abrirse y permite sincronizar de nuevo con un resultado visible.
+- Los eventos que fallan al importarse se reintentan; los avisos de Google esperan a que termine el guardado.
+
+
 ## 2026-10-16 — Totem Bot WhatsApp (implementación local)
 
 - Añade migración aditiva, cola auditable, autenticación persistida y lock de instancia para el worker Baileys; arranque desconectado por defecto.

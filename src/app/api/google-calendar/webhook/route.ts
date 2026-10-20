@@ -66,10 +66,12 @@ export async function POST(request: NextRequest) {
     if (resourceState === "exists") {
       console.log(`[Calendar Webhook] Change detected for user ${token.userId}, syncing...`);
 
-      // Run sync in background — don't block the response to Google
-      syncCalendarEventsToShoots(token.userId).catch((error) => {
-        console.error(`[Calendar Webhook] Sync error for user ${token.userId}:`, error);
-      });
+      // Await persistence before the serverless invocation can be suspended.
+      const result = await syncCalendarEventsToShoots(token.userId);
+      if (result.errors.length > 0) {
+        console.error('[Calendar Webhook] Sync failed:', result.errors);
+        return new NextResponse(null, { status: 503 });
+      }
     }
 
     // Always return 200 — Google retries on non-2xx
