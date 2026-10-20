@@ -137,7 +137,10 @@ export class GoogleCalendarService {
       } catch (refreshError) {
         // Refresh token inválido/revocado → auto-disconnect
         console.error('Error refrescando token, desconectando:', refreshError);
-        await this.disconnect(userId);
+        // An expired grant cannot authenticate channels.stop. Calling disconnect
+        // here would recurse through stopWebhookChannel -> getAuthenticatedClient.
+        // Google will expire the abandoned channel; discard only this user's grant.
+        await googleCalendarToken.deleteMany({ where: { userId } });
         throw new Error('Sesión de Google Calendar expirada. Por favor reconecta desde Configuración.');
       }
       const refreshedToken = await googleCalendarToken.findUnique({

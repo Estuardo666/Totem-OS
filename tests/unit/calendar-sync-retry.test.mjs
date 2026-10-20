@@ -68,22 +68,28 @@ function loadRoute(path, mocks) {
   return testModule.exports;
 }
 
-for (const scenario of ["unauthenticated", "disconnected", "success", "partial-failure"]) {
+for (const scenario of ["unauthenticated", "disconnected", "success", "partial-failure", "expired"]) {
   test(`manual sync: ${scenario}`, async () => {
     const calls = [];
+    let connectionChecks = 0;
     const { POST } = loadRoute("sync", {
       "@/auth": { auth: async () => scenario === "unauthenticated" ? null : { user: { id: "session-owner" } } },
-      "@/lib/google-calendar": { GoogleCalendarService: { isConnected: async () => scenario !== "disconnected" } },
+      "@/lib/google-calendar": { GoogleCalendarService: { isConnected: async () => {
+        connectionChecks++;
+        return scenario !== "disconnected" && !(scenario === "expired" && connectionChecks > 1);
+      } } },
       "@/lib/calendar-to-shoot-sync": { fullCalendarSync: async (userId) => {
         calls.push(userId);
-        return { created: 2, updated: 0, cancelled: 0, errors: scenario === "partial-failure" ? ["private event error"] : [] };
+        return { created: 2, updated: 0, cancelled: 0, errors: ["partial-failure", "expired"].includes(scenario) ? ["private event error"] : [] };
       } },
       "next/cache": { revalidatePath: () => {} },
     });
     const response = await POST();
-    assert.equal(response.status, { unauthenticated: 401, disconnected: 409, success: 200, "partial-failure": 502 }[scenario]);
-    assert.deepEqual(calls, ["success", "partial-failure"].includes(scenario) ? ["session-owner"] : []);
-    assert.doesNotMatch(await response.text(), /private event error/);
+    assert.equal(response.status, { unauthenticated: 401, disconnected: 409, success: 200, "partial-failure": 502, expired: 502 }[scenario]);
+    assert.deepEqual(calls, ["success", "partial-failure", "expired"].includes(scenario) ? ["session-owner"] : []);
+    const body = await response.json();
+    if (scenario === "expired") assert.equal(body.connected, false);
+    assert.doesNotMatch(JSON.stringify(body), /private event error/);
   });
 }
 
@@ -102,4 +108,29 @@ test("webhook waits for persistence and requests retry when import fails", async
   assert.equal(returned, false);
   finishSync({ errors: ["retry"] });
   assert.equal((await responsePromise).status, 503);
+});
+
+test("expired Google grant disconnects once without authenticating webhook cleanup", async () => {
+  const deletedUsers = [];
+  const testModule = { exports: {} };
+  const code = readFileSync(new URL("../../src/lib/google-calendar.ts", import.meta.url), "utf8");
+  const mocks = {
+    "@googleapis/calendar": { auth: { OAuth2: class {} } },
+    "google-auth-library": { CodeChallengeMethod: {} },
+    "@/lib/db": { db: { googleCalendarToken: {
+      findUnique: async () => ({ expiresAt: new Date(0), refreshToken: "expired" }),
+      deleteMany: async (args) => { deletedUsers.push(args.where.userId); },
+    } } },
+  };
+  vm.runInNewContext(ts.transpileModule(code, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS },
+  }).outputText, {
+    module: testModule, exports: testModule.exports, require: (id) => mocks[id] ?? require(id),
+    process: { env: {} }, Date, console: { error() {} },
+  });
+  const service = testModule.exports.GoogleCalendarService;
+  service.refreshToken = async () => { throw new Error("invalid_grant"); };
+  service.disconnect = async () => { throw new Error("recursive authenticated cleanup"); };
+  await assert.rejects(service.getAuthenticatedClient("session-owner"), /Sesión de Google Calendar expirada/);
+  assert.deepEqual(deletedUsers, ["session-owner"]);
 });

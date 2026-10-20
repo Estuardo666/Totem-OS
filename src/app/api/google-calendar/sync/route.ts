@@ -18,7 +18,8 @@ export async function POST() {
     revalidatePath("/content/shoots");
     if (result.errors.length > 0) {
       console.error("[Calendar Sync] Import failed:", result.errors);
-      return NextResponse.json({ error: "No se completó la sincronización. Reintenta o reconecta Google Calendar desde Configuración." }, { status: 502 });
+      const connected = await GoogleCalendarService.isConnected(session.user.id);
+      return NextResponse.json({ connected, error: "No se completó la sincronización. Reintenta o reconecta Google Calendar desde Configuración." }, { status: 502 });
     }
     return NextResponse.json({ success: true, ...result });
   } catch (error) {

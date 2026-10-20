@@ -61,6 +61,7 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
     try {
       const response = await fetch("/api/google-calendar/sync", { method: "POST" });
       const data = await response.json();
+      if (data.connected === false) setIsCalendarConnected(false);
       if (!response.ok) throw new Error(data.error || "No se pudo sincronizar Google Calendar.");
       setSyncMessage(`Sincronización completada: ${data.created} nuevos, ${data.updated} actualizados, ${data.cancelled} cancelados.`);
       router.refresh();
@@ -301,9 +302,9 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
             <RefreshCw className={`h-4 w-4 mr-1 ${isSyncing ? "animate-spin" : ""}`} />
             {isSyncing ? "Sincronizando…" : "Sincronizar ahora"}
           </Button>
-          {syncMessage && <span role="status" className={syncError ? "text-destructive" : ""}>{syncMessage}</span>}
         </div>
       )}
+      {syncMessage && <p role="status" className={`text-sm px-1 ${syncError ? "text-destructive" : "text-muted-foreground"}`}>{syncMessage}</p>}
 
       {/* Información de paginación */}
       {filteredShootings.length > 0 && (
