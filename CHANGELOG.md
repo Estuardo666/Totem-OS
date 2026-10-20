@@ -1,5 +1,12 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.1.2] - 2026-10-20
+
+### Fixed
+
+- Una autorización de Google Calendar vencida termina la sincronización con un aviso para reconectar, sin reintentar indefinidamente.
+
+
 ## [0.1.1] - 2026-10-20
 
 ### Fixed
