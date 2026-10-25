@@ -1,3 +1,6 @@
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { resolveRoleCode } from "@/lib/roles";
 import { getClients } from "@/actions/client-actions";
 import { getUsers } from "@/actions/user.actions";
 import { TaskForm } from "@/components/features/content/task-form";
@@ -5,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared";
 
 export default async function NewContentTaskPage() {
+  if (resolveRoleCode((await auth())?.user) !== "ADMIN") redirect("/content");
   // Obtener la lista de clientes y usuarios en el servidor
   const [clientsResult, usersResult] = await Promise.all([
     getClients(),

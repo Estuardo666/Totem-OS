@@ -1,4 +1,4 @@
-"use server";
+// Internal server service. Public mutations must go through authorized actions.
 
 import { db } from "./db.ts";
 import { clientMonthlyClosureSchema } from "../schemas/finance.ts";

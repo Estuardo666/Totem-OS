@@ -213,9 +213,9 @@ async function notifyApprovalParticipants(outcome: Record<string, unknown>) {
       ? `El cliente pidió cambios para “${title}”. Revisa los comentarios en Totem.`
       : `El cliente aprobó “${title}”.`;
     try {
-      const { sendNotification } = await import("@/actions/notification-actions");
+      const { sendNotification } = await import("@/lib/system-notifications");
       await Promise.allSettled(userIds.map((userId) => sendNotification({ userId, message, type: changed ? "TASK_CLIENT_CHANGES" : "TASK_CLIENT_APPROVED" })));
-      const { sendPushNotification } = await import("@/actions/push-actions");
+      const { sendPushNotification } = await import("@/lib/system-push");
       await sendPushNotification({ title: changed ? "Cambios solicitados" : "Contenido aprobado", message, userIds, url: "/content" });
     } catch {
       // Notifications do not roll back the already committed approval decision.

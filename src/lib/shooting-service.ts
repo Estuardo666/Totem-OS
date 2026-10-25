@@ -7,7 +7,7 @@
 
 import { db } from "@/lib/db";
 import { startOfMonth, endOfMonth } from "date-fns";
-import type { Shoot, User, ContentTask, Client } from "@prisma/client";
+import type { Prisma, Shoot, User, ContentTask, Client } from "@prisma/client";
 
 export type ShootWithRelations = (Shoot & {
   googleEventId?: string | null;
@@ -131,10 +131,11 @@ export async function updateShootingInDb(
  * Obtiene un rodaje por ID
  */
 export async function getShootingByIdFromDb(
-  id: string
+  id: string,
+  scope: Prisma.ShootWhereInput = {},
 ): Promise<ShootWithRelations | null> {
-  return db.shoot.findUnique({
-    where: { id },
+  return db.shoot.findFirst({
+    where: { AND: [{ id }, scope] },
     include: SHOOT_INCLUDE,
   }) as Promise<ShootWithRelations | null>;
 }
@@ -145,8 +146,9 @@ export async function getShootingByIdFromDb(
 export async function getShootingsFromDb(options?: {
   month?: Date;
   clientId?: string;
+  scope?: Prisma.ShootWhereInput;
 }): Promise<ShootWithRelations[]> {
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { AND: [options?.scope ?? {}] };
 
   if (options?.clientId) {
     where.clientId = options.clientId;

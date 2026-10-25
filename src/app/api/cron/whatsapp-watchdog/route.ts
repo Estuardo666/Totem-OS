@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
   let pushSucceeded = false;
   try {
-    const { sendPushNotification } = await import("@/actions/push-actions");
+    const { sendPushNotification } = await import("@/lib/system-push");
     const result = await sendPushNotification({
       title: "Totem Bot desconectado",
       message: "El worker de WhatsApp no responde desde hace más de cinco minutos.",

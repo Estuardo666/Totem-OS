@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus, Video } from "lucide-react";
 import { Suspense } from "react";
+import { resolveRoleCode } from "@/lib/roles";
 import { auth } from "@/auth";
 import { getTasks } from "@/actions/content-actions";
 import { getContentMonthlyStrategies } from "@/actions/content-strategy-actions";
@@ -78,7 +79,8 @@ export default async function ContentPage({
 }: {
   searchParams: Promise<{ bulk?: string | string[] }>;
 }) {
-  const [resolvedSearchParams] = await Promise.all([searchParams]);
+  const [resolvedSearchParams, session] = await Promise.all([searchParams, auth()]);
+  const isAdmin = resolveRoleCode(session?.user) === "ADMIN";
 
   const bulkParam = Array.isArray(resolvedSearchParams?.bulk)
     ? resolvedSearchParams?.bulk[0]
@@ -102,16 +104,16 @@ export default async function ContentPage({
                 </Link>
               </Button>
               {/* BulkTaskDialog streams in after getClients() resolves */}
-              <Suspense fallback={<div className="h-8 w-24 rounded-full bg-muted/50 animate-pulse sm:w-28" />}>
+              {isAdmin && <Suspense fallback={<div className="h-8 w-24 rounded-full bg-muted/50 animate-pulse sm:w-28" />}>
                 <BulkTaskDialogServer shouldOpenBulkDialog={shouldOpenBulkDialog} />
-              </Suspense>
-              <Button asChild size="sm" className="rounded-full px-2 sm:px-4">
+              </Suspense>}
+              {isAdmin && <Button asChild size="sm" className="rounded-full px-2 sm:px-4">
                 <Link href="/content/new">
                   <Plus className="h-3.5 w-3.5 sm:mr-1.5" />
                   <span className="hidden sm:inline">Nueva Tarea</span>
                   <span className="sm:hidden text-xs">Nueva</span>
                 </Link>
-              </Button>
+              </Button>}
           </>
         }
       />

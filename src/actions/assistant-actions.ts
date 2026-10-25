@@ -154,7 +154,7 @@ async function approveTaskFromAssistant(taskId: string, userId: string): Promise
   // atomic task/request update. They must not turn a completed approval into a
   // failed assistant action if a push provider is temporarily unavailable.
   try {
-    const { sendNotification } = await import("@/actions/notification-actions");
+    const { sendNotification } = await import("@/lib/system-notifications");
     await Promise.allSettled(approved.recipients.map((recipient) => sendNotification({
       userId: recipient,
       message: `El contenido “${approved.task.title}” fue aprobado por el cliente.`,
@@ -162,7 +162,7 @@ async function approveTaskFromAssistant(taskId: string, userId: string): Promise
       createdBy: userId,
     })));
     if (approved.recipients.length) {
-      const { sendPushNotification } = await import("@/actions/push-actions");
+      const { sendPushNotification } = await import("@/lib/system-push");
       await sendPushNotification({ title: "Contenido aprobado", message: `“${approved.task.title}” fue aprobado por el cliente.`, userIds: approved.recipients, url: "/content" });
     }
   } catch {

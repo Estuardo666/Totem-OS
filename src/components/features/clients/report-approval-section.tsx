@@ -22,6 +22,7 @@ import { approveReport, submitFeedback } from "@/actions/client-feedback-actions
 
 interface ReportApprovalSectionProps {
   clientId: string;
+  shareToken?: string;
   month: number;
   year: number;
   monthName: string;
@@ -31,6 +32,7 @@ interface ReportApprovalSectionProps {
 
 export function ReportApprovalSection({
   clientId,
+  shareToken,
   month,
   year,
   monthName,
@@ -60,7 +62,7 @@ export function ReportApprovalSection({
     try {
       const result = await approveReport({
         clientId,
-        month,
+        shareToken,        month,
         year,
       });
 
@@ -103,7 +105,7 @@ export function ReportApprovalSection({
     try {
       const result = await submitFeedback({
         clientId,
-        month,
+        shareToken,        month,
         year,
         comment: comment.trim(),
       });

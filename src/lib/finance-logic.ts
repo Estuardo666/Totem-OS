@@ -1,9 +1,9 @@
-"use server";
+// Internal server service. Public mutations must go through authorized actions.
 
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { startOfMonth, endOfMonth } from "date-fns";
-import { sendNotification } from "@/actions/notification-actions";
+import { sendNotification } from "@/lib/system-notifications";
 import { getClientMonthlyClosureRows } from "@/lib/finance-monthly-close-service";
 
 type MonthlyBillingExceptionRow = {

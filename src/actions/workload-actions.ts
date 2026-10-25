@@ -1,5 +1,6 @@
 "use server";
 
+import { requireActor } from "@/lib/server-access";
 import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
 import { resolveRoleCode } from "@/lib/roles";
@@ -34,6 +35,7 @@ const COMMUNITY_RESPONSIBLE_STATUSES = ["IDEA", "SCRIPT", "CLIENT_APPROVED"] as 
  */
 export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
   try {
+    const actor = await requireActor();
     // 0. Verificar autenticación
     const { auth } = await import("@/auth");
     const session = await auth();
@@ -43,6 +45,7 @@ export async function getUserWorkloads(): Promise<ApiResponse<UserWorkload[]>> {
 
     // Obtener todos los usuarios con su specialty
     const users = await db.user.findMany({
+      where: actor.role === "ADMIN" ? {} : { id: actor.userId },
       select: {
         id: true,
         name: true,

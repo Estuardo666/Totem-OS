@@ -12,7 +12,7 @@ export default async function ClientsPage() {
   const session = await auth();
   const userRole = resolveRoleCode(session?.user);
   const isAdmin = userRole === "ADMIN";
-  const canEditClient = isAdmin || userRole === "EDITOR";
+  const canEditClient = isAdmin;
   
   const [clientsResult, usersResult] = await Promise.all([
     getClients(),

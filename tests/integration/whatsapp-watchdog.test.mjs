@@ -11,7 +11,7 @@ const originalHealthUrl = process.env.WA_HEALTH_URL;
 const fakePushUrl = new URL("./fakes/whatsapp-watchdog-push.mjs", import.meta.url);
 
 registerHooks({ resolve(specifier, context, nextResolve) {
-  if (specifier === "@/actions/push-actions") return nextResolve(fakePushUrl.href, context);
+  if (specifier === "@/lib/system-push") return nextResolve(fakePushUrl.href, context);
   if (["next/server", "next/headers", "next/navigation", "next/cache"].includes(specifier)) {
     return nextResolve(`${specifier}.js`, context);
   }

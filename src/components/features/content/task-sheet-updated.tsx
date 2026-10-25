@@ -1,5 +1,7 @@
 "use client";
 
+import { useSession } from "next-auth/react";
+import { resolveRoleCode } from "@/lib/roles";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -76,6 +78,8 @@ const formatToDatetimeLocal = (date: Date | string | undefined): string => {
 };
 
 export function TaskSheet({ task, open, onOpenChange, users, clients = [], initialScheduledAt }: TaskSheetProps) {
+  const { data: session } = useSession();
+  const isAdmin = resolveRoleCode(session?.user) === "ADMIN";
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -183,7 +187,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
       } else {
         // Actualizar tarea existente
         if (!task) return;
-        result = await updateTask(task.id, taskData as UpdateContentTaskInput);
+        result = await updateTask(task.id, isAdmin ? taskData as UpdateContentTaskInput : { status: task.status as UpdateContentTaskInput["status"] });
         if (result.success) {
           toast({
             title: "Tarea actualizada",
@@ -262,7 +266,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
+      <Sheet open={open && (Boolean(task) || isAdmin)} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{isNewTask ? "Nueva Tarea" : "Editar Tarea"}</SheetTitle>
@@ -288,7 +292,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                       <Input
                         placeholder="Título de la tarea"
                         {...field}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !isAdmin}
                       />
                     </FormControl>
                     <FormMessage />
@@ -307,7 +311,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !isAdmin}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -337,7 +341,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !isAdmin}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -364,7 +368,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     <Select
                       onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
                       value={field.value || "none"}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !isAdmin}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -411,7 +415,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                             form.setValue("dueDate", undefined);
                           }
                         }}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !isAdmin}
                         className={task?.status === "CLIENT_APPROVED" ? "border-orange-300 focus:border-orange-500 focus:ring-orange-500" : ""}
                       />
                     </FormControl>
@@ -426,7 +430,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
               <div className="flex gap-4 pt-4">
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isAdmin}
                   className="flex-1"
                 >
                   {isSubmitting ? (
@@ -442,7 +446,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isAdmin}
                 >
                   Cancelar
                 </Button>
@@ -544,7 +548,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
           )}
 
           {/* Botón de eliminar - Solo para tareas existentes */}
-          {!isNewTask && (
+          {isAdmin && !isNewTask && (
             <div className="mt-8 border-t pt-6">
               <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <DialogTrigger asChild>

@@ -12,6 +12,9 @@
  * - shooting-notifications.ts (notificaciones)
  */
 
+import { requireActor, requireAdmin } from "@/lib/server-access";
+import { shootScope, operationalClient, directoryUser } from "@/lib/access-policy";
+import type { AccessActor } from "@/lib/access-policy";
 import { revalidatePath } from "next/cache";
 import type { ApiResponse } from "@/types";
 
@@ -89,6 +92,18 @@ function revalidateShootingPaths() {
   revalidatePath("/content/dashboard");
 }
 
+function projectShooting(shoot: ShootWithRelations, actor: AccessActor): ShootWithRelations {
+  return {
+    ...shoot,
+    client: operationalClient(shoot.client),
+    crew: shoot.crew.map(directoryUser),
+    tasks: shoot.tasks.filter((task) => actor.role === "ADMIN" ||
+      task.assignedEditorId === actor.userId || task.assignedCommunityId === actor.userId)
+      .map((task) => ({ ...task, reviewToken: actor.role === "ADMIN" ? task.reviewToken : null,
+        client: operationalClient(task.client) })),
+  };
+}
+
 // ==================== ACTIONS ====================
 
 /**
@@ -98,6 +113,7 @@ export async function createShooting(
   input: CreateShootingInput
 ): Promise<ApiResponse<ShootWithRelations>> {
   try {
+    await requireAdmin();
     const sessionUserId = await getAuthenticatedUserId();
     if (!sessionUserId) {
       return { success: false, error: "No autenticado" };
@@ -192,6 +208,7 @@ export async function updateShooting(
   input: UpdateShootingInput
 ): Promise<ApiResponse<ShootWithRelations>> {
   try {
+    await requireAdmin();
     const sessionUserId = await getAuthenticatedUserId();
     if (!sessionUserId) {
       return { success: false, error: "No autenticado" };
@@ -288,13 +305,14 @@ export async function getShootings(
   clientId?: string
 ): Promise<ApiResponse<ShootWithRelations[]>> {
   try {
+    const actor = await requireActor("shoots.read");
     const sessionUserId = await getAuthenticatedUserId();
     if (!sessionUserId) {
       return { success: false, error: "No autenticado" };
     }
 
-    const shootings = await getShootingsFromDb({ month, clientId });
-    return { success: true, data: shootings };
+    const shootings = await getShootingsFromDb({ month, clientId, scope: shootScope(actor) });
+    return { success: true, data: shootings.map((shoot) => projectShooting(shoot, actor)) };
   } catch (error) {
     return {
       success: false,
@@ -310,17 +328,18 @@ export async function getShootingById(
   id: string
 ): Promise<ApiResponse<ShootWithRelations>> {
   try {
+    const actor = await requireActor("shoots.read");
     const sessionUserId = await getAuthenticatedUserId();
     if (!sessionUserId) {
       return { success: false, error: "No autenticado" };
     }
 
-    const shooting = await getShootingByIdFromDb(id);
+    const shooting = await getShootingByIdFromDb(id, shootScope(actor));
     if (!shooting) {
       return { success: false, error: "Rodaje no encontrado" };
     }
 
-    return { success: true, data: shooting };
+    return { success: true, data: projectShooting(shooting, actor) };
   } catch (error) {
     return {
       success: false,
@@ -336,6 +355,7 @@ export async function cancelShooting(
   id: string
 ): Promise<ApiResponse<ShootWithRelations>> {
   try {
+    await requireAdmin();
     const sessionUserId = await getAuthenticatedUserId();
     if (!sessionUserId) {
       return { success: false, error: "No autenticado" };
@@ -377,6 +397,7 @@ export async function deleteShooting(
   id: string
 ): Promise<ApiResponse<void>> {
   try {
+    await requireAdmin();
     const sessionUserId = await getAuthenticatedUserId();
     if (!sessionUserId) {
       return { success: false, error: "No autenticado" };
@@ -425,6 +446,7 @@ export async function duplicateShooting(
   newStartTime?: Date
 ): Promise<ApiResponse<ShootWithRelations>> {
   try {
+    await requireAdmin();
     const sessionUserId = await getAuthenticatedUserId();
     if (!sessionUserId) {
       return { success: false, error: "No autenticado" };
@@ -481,6 +503,7 @@ export async function changeShootingStatus(
   status: "SCHEDULED" | "COMPLETED" | "CANCELED"
 ): Promise<ApiResponse<ShootWithRelations>> {
   try {
+    await requireAdmin();
     const sessionUserId = await getAuthenticatedUserId();
     if (!sessionUserId) {
       return { success: false, error: "No autenticado" };
@@ -526,6 +549,7 @@ export async function checkUpcomingShoots(): Promise<
   ApiResponse<{ checked: number; notified: number }>
 > {
   try {
+    await requireAdmin();
     const upcomingShoots = await getUpcomingShootingsFromDb(12);
     let totalNotified = 0;
 

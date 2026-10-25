@@ -1,5 +1,6 @@
 "use server";
 
+import { requireAdmin } from "@/lib/server-access";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
@@ -13,6 +14,7 @@ export async function checkContractFulfillment(
   clientId: string
 ): Promise<ApiResponse<{ fulfilled: boolean; transactionCreated: boolean }>> {
   try {
+    await requireAdmin();
     // Obtener el cliente con su contrato
     const client = await db.client.findUnique({
       where: { id: clientId },

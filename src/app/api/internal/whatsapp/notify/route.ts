@@ -55,8 +55,8 @@ export async function POST(request: Request) {
       url = "/admin/whatsapp";
     }
     if (!userIds.length) return NextResponse.json({ success: false, error: "No hay destinatarios configurados" }, { status: 409 });
-    const { sendNotification } = await import("@/actions/notification-actions");
-    const { sendPushNotification } = await import("@/actions/push-actions");
+    const { sendNotification } = await import("@/lib/system-notifications");
+    const { sendPushNotification } = await import("@/lib/system-push");
     const notifications = await Promise.all(userIds.map((userId) => sendNotification({ userId, message, type, createdBy: "Totem Bot" })));
     const pushed = await sendPushNotification({ title, message, userIds, url });
     if (notifications.some((result) => !result.success) || !pushed.success) {

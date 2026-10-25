@@ -54,7 +54,7 @@ export default async function ContentDashboardPage() {
         actions={
           <>
             <DashboardRefresh />
-              <QuickActions clients={clients} />
+              {isAdmin && <QuickActions clients={clients} />}
           </>
         }
       />

@@ -6,6 +6,8 @@
  * but backed by our own Web Push + VAPID infrastructure.
  */
 
+import { requireAdmin } from "@/lib/server-access";
+import { sendPushNotification as systemSendPush } from "@/lib/system-push";
 import { z } from "zod";
 
 import { auth } from "@/auth";
@@ -30,16 +32,6 @@ const subscribeParamsSchema = z.object({
 // ---------------------------------------------------------------------------
 // Types (same shape as old OneSignal actions for compatibility)
 // ---------------------------------------------------------------------------
-
-interface SendNotificationOptions {
-  title: string;
-  message: string;
-  url?: string;
-  userIds?: string[];
-  segments?: string[]; // kept for compat, maps to "all" or role
-  data?: Record<string, string>;
-  imageUrl?: string;
-}
 
 // ---------------------------------------------------------------------------
 // subscribePush / unsubscribePush
@@ -127,47 +119,12 @@ export async function unsubscribePush(
  * - `userIds`: send to specific users
  * - `segments`: if includes "Subscribed Users", sends to all. Otherwise treated as role.
  */
-export async function sendPushNotification(
-  options: SendNotificationOptions
-): Promise<{ success: boolean; data?: { sent: number; failed: number; cleaned: number }; error?: string }> {
+export async function sendPushNotification(...args: Parameters<typeof systemSendPush>): Promise<Awaited<ReturnType<typeof systemSendPush>>> {
   try {
-    const payload: PushPayload = {
-      title: options.title,
-      body: options.message,
-      url: options.url,
-      image: options.imageUrl,
-      data: options.data,
-    };
-
-    let target: SendTargetOptions;
-
-    if (options.userIds && options.userIds.length > 0) {
-      target = { userIds: options.userIds };
-    } else if (options.segments && options.segments.length > 0) {
-      if (options.segments.includes("Subscribed Users")) {
-        target = { all: true };
-      } else {
-        // Treat segment names as roles (e.g., "ADMIN", "EDITOR")
-        // For simplicity, send to all if multiple segments
-        target = { all: true };
-      }
-    } else {
-      // Default: send to all
-      target = { all: true };
-    }
-
-    const result = await sendPush(payload, target);
-
-    return {
-      success: result.success,
-      data: { sent: result.sent, failed: result.failed, cleaned: result.cleaned },
-    };
+    await requireAdmin();
+    return await systemSendPush(...args);
   } catch (error) {
-    console.error("[PushActions] sendPushNotification error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Error al enviar push",
-    };
+    return { success: false, error: error instanceof Error ? error.message : "No autorizado" };
   }
 }
 

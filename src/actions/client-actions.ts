@@ -1,5 +1,7 @@
 "use server";
 
+import { requireActor, requireAdmin, requireClientAccess, requireReportAccess } from "@/lib/server-access";
+import { clientScope, taskScope, shootScope, operationalClient } from "@/lib/access-policy";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
@@ -181,6 +183,7 @@ export async function getClientBillingExceptions(
   clientId: string
 ): Promise<ApiResponse<ClientBillingExceptionRecord[]>> {
   try {
+    await requireAdmin();
     const { auth } = await import("@/auth");
     const session = await auth();
 
@@ -216,6 +219,7 @@ export async function upsertClientBillingException(
   input: unknown
 ): Promise<ApiResponse<{ id: string }>> {
   try {
+    await requireAdmin();
     const { auth } = await import("@/auth");
     const session = await auth();
 
@@ -308,6 +312,7 @@ export async function deleteClientBillingException(
   exceptionId: string
 ): Promise<ApiResponse<void>> {
   try {
+    await requireAdmin();
     const { auth } = await import("@/auth");
     const session = await auth();
 
@@ -353,6 +358,7 @@ export async function createClient(
   input: unknown
 ): Promise<ApiResponse<Client>> {
   try {
+    await requireAdmin();
     // 0. Verificar autenticación
     const { auth } = await import("@/auth");
     const session = await auth();
@@ -420,6 +426,7 @@ export async function updateClient(
   input: unknown
 ): Promise<ApiResponse<Client>> {
   try {
+    await requireAdmin();
     // 0. Verificar autenticación
     const { auth } = await import("@/auth");
     const session = await auth();
@@ -548,6 +555,7 @@ export async function getClientProfitability(
   clientId: string
 ): Promise<ApiResponse<{ income: number; expenses: number; profitability: number }>> {
   try {
+    await requireAdmin();
     // Obtener ingresos pagados del cliente (facturas y transacciones)
     const paidInvoices = await db.invoice.findMany({
       where: {
@@ -623,6 +631,7 @@ export async function getClients(): Promise<ApiResponse<Array<
   }
 >>> {
   try {
+    const actor = await requireActor("clients.read");
     // 0. Verificar autenticación
     const { auth } = await import("@/auth");
     const session = await auth();
@@ -636,8 +645,10 @@ export async function getClients(): Promise<ApiResponse<Array<
     const currentMonthEnd = endOfMonth(now);
 
     const clients = await db.client.findMany({
+      where: clientScope(actor),
       include: {
         tasks: {
+          where: taskScope(actor),
           select: {
             type: true,
             status: true,
@@ -655,6 +666,7 @@ export async function getClients(): Promise<ApiResponse<Array<
             address: true,
           },
           where: {
+            ...shootScope(actor),
             status: "SCHEDULED",
             startTime: {
               gte: now,
@@ -760,7 +772,7 @@ export async function getClients(): Promise<ApiResponse<Array<
       const { tasks, shootings, ...clientWithoutRelations } = client;
 
       return {
-        ...clientWithoutRelations,
+        ...(actor.role === "ADMIN" ? { ...clientWithoutRelations, pageAccessToken: null } : operationalClient(clientWithoutRelations)),
         hasPendingFeedback,
         reelsCompleted,
         flyersCompleted,
@@ -801,18 +813,20 @@ export async function getClientById(
   id: string
 ): Promise<ApiResponse<ClientWithRelations & { hasPendingFeedback: boolean }>> {
   try {
-    const client = await db.client.findUnique({
-      where: { id },
+    const actor = await requireClientAccess(id);
+    const client = await db.client.findFirst({
+      where: { AND: [{ id }, clientScope(actor)] },
       include: {
         tasks: {
+          where: taskScope(actor),
           include: {
             metrics: true,
           },
           orderBy: { createdAt: "desc" },
         },
-        credentials: {
-          orderBy: { createdAt: "desc" },
-        },
+        credentials: actor.role === "ADMIN" ? {
+          orderBy: { createdAt: "desc" as const },
+        } : false,
         brandAssets: {
           orderBy: { createdAt: "desc" },
         },
@@ -860,7 +874,10 @@ export async function getClientById(
     return {
       success: true,
       data: {
-        ...client,
+        ...(actor.role === "ADMIN" ? { ...client, pageAccessToken: null } : {
+          ...operationalClient(client), tasks: client.tasks.map((task) => ({ ...task, reviewToken: null })), brandAssets: client.brandAssets,
+          editor: null, community: null,
+        }),
         hasPendingFeedback,
       } as ClientWithRelations & { hasPendingFeedback: boolean },
     };
@@ -922,19 +939,16 @@ export interface ClientReportData {
 export async function getClientReportData(
   clientId: string,
   month?: number,
-  year?: number
+  year?: number,
+  shareToken?: string
 ): Promise<ApiResponse<ClientReportData>> {
   try {
-    // Obtener cliente
-    const clientResult = await getClientById(clientId);
-    if (!clientResult.success || !clientResult.data) {
-      return {
-        success: false,
-        error: "Cliente no encontrado",
-      };
-    }
-
-    const client = clientResult.data;
+    await requireReportAccess(clientId, shareToken);
+    const client = await db.client.findUnique({
+      where: { id: clientId },
+      select: { id: true, name: true, monthlyReels: true, monthlyFlyers: true, monthlyRate: true },
+    });
+    if (!client) return { success: false, error: "Cliente no encontrado" };
 
     // Determinar mes y año (por defecto mes actual)
     const now = new Date();
@@ -1107,6 +1121,7 @@ export async function generateShareToken(
   clientId: string
 ): Promise<ApiResponse<{ shareToken: string; shareUrl: string }>> {
   try {
+    await requireAdmin();
     // Generar UUID único
     const shareToken = randomUUID();
 
@@ -1140,24 +1155,13 @@ export async function generateShareToken(
  */
 export async function getClientByShareToken(
   shareToken: string
-): Promise<ApiResponse<ClientWithRelations>> {
+): Promise<ApiResponse<Pick<Client, "id" | "name" | "logo" | "color">>> {
   try {
+    if (typeof shareToken !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shareToken)) {
+      return { success: false, error: "Enlace no válido" };
+    }
     const client = await db.client.findUnique({
-      where: { shareToken },
-      include: {
-        tasks: {
-          include: {
-            metrics: true,
-          },
-          orderBy: { createdAt: "desc" },
-        },
-        credentials: {
-          orderBy: { createdAt: "desc" },
-        },
-        brandAssets: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
+      where: { shareToken }, select: { id: true, name: true, logo: true, color: true },
     });
 
     if (!client) {
@@ -1167,7 +1171,7 @@ export async function getClientByShareToken(
       };
     }
 
-    return { success: true, data: client as ClientWithRelations };
+    return { success: true, data: client };
   } catch (error) {
     return {
       success: false,
@@ -1185,6 +1189,7 @@ export async function addCredential(
   input: unknown
 ): Promise<ApiResponse<Credential>> {
   try {
+    await requireAdmin();
     // 0. Verificar autenticación
     const { auth } = await import("@/auth");
     const session = await auth();
@@ -1229,6 +1234,7 @@ export async function saveCredentialGroup(
   input: unknown
 ): Promise<ApiResponse<Credential[]>> {
   try {
+    await requireAdmin();
     const { auth } = await import("@/auth");
     const session = await auth();
     if (!session?.user) {
@@ -1282,6 +1288,7 @@ export async function deleteCredentialGroup(
   input: unknown
 ): Promise<ApiResponse<void>> {
   try {
+    await requireAdmin();
     const { auth } = await import("@/auth");
     const session = await auth();
     if (!session?.user) {
@@ -1316,6 +1323,7 @@ export async function deleteCredential(
   id: string
 ): Promise<ApiResponse<void>> {
   try {
+    await requireAdmin();
     // Obtener la credencial para saber el clientId antes de borrarla
     const credential = await db.credential.findUnique({
       where: { id },
@@ -1362,6 +1370,7 @@ export async function addBrandAsset(
   }
 ): Promise<ApiResponse<BrandAsset>> {
   try {
+    await requireAdmin();
     const asset = await db.brandAsset.create({
       data: {
         name: input.name,
@@ -1393,6 +1402,7 @@ export async function getContractFulfillment(
   clientId: string
 ): Promise<ApiResponse<{ publishedReels: number; publishedFlyers: number }>> {
   try {
+    await requireClientAccess(clientId);
     const { countPublishedTasksByType } = await import("@/lib/finance-logic");
     
     const [publishedReels, publishedFlyers] = await Promise.all([
@@ -1423,6 +1433,7 @@ export async function deleteBrandAsset(
   id: string
 ): Promise<ApiResponse<void>> {
   try {
+    await requireAdmin();
     // Obtener el asset para saber el clientId y fileKey
     const asset = await db.brandAsset.findUnique({
       where: { id },
@@ -1473,6 +1484,7 @@ export async function updateClientMetricsConfig(
   enabledMetrics: string[]
 ): Promise<ApiResponse<Client>> {
   try {
+    await requireAdmin();
     // Validar que el cliente existe
     const existingClient = await db.client.findUnique({
       where: { id: clientId },
@@ -1516,6 +1528,7 @@ export async function deleteClient(
   clientId: string
 ): Promise<ApiResponse<void>> {
   try {
+    await requireAdmin();
     // 0. Verificar autenticación y permisos
     const { auth } = await import("@/auth");
     const session = await auth();

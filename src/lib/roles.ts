@@ -40,16 +40,13 @@ const EDITOR_CAPABILITIES: readonly ApiCapability[] = [
   API_CAPABILITIES.kernelEchoWrite,
   API_CAPABILITIES.dashboardRead,
   API_CAPABILITIES.clientsRead,
-  API_CAPABILITIES.clientsWrite,
   API_CAPABILITIES.contentRead,
   API_CAPABILITIES.contentWrite,
   API_CAPABILITIES.shootsRead,
-  API_CAPABILITIES.shootsWrite,
   API_CAPABILITIES.timeSelf,
   API_CAPABILITIES.notificationsSelf,
   API_CAPABILITIES.voiceSelf,
   API_CAPABILITIES.metaRead,
-  API_CAPABILITIES.metaWrite,
   API_CAPABILITIES.financePersonalRead,
   API_CAPABILITIES.aiGenerate,
 ];
@@ -83,6 +80,8 @@ export function resolveRoleCode(input: {
   role?: unknown;
 } | null | undefined): CanonicalRole | null {
   if (!input) return null;
+  // Un valor canónico explícito pero inválido no debe recuperar un rol legacy superior.
+  if (input.roleCode !== undefined && input.roleCode !== null) return normalizeCanonicalRole(input.roleCode);
   return normalizeCanonicalRole(input.roleCode)
     ?? normalizeCanonicalRole(input.roleLegacy)
     ?? normalizeCanonicalRole(input.role);

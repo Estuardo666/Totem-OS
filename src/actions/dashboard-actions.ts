@@ -1,5 +1,7 @@
 "use server";
 
+import { requireActor } from "@/lib/server-access";
+import { taskScope, clientScope, shootScope, operationalClient } from "@/lib/access-policy";
 import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
 import { startOfMonth, endOfMonth, addDays, isBefore } from "date-fns";
@@ -57,6 +59,7 @@ export interface DashboardData {
  */
 export async function getContentDashboardData(): Promise<ApiResponse<DashboardData>> {
   try {
+    const actor = await requireActor("content.read");
     const { auth } = await import("@/auth");
     const session = await auth();
 
@@ -83,6 +86,7 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
       // Radar: Conteo de tareas por estado
       db.contentTask.groupBy({
         by: ["status"],
+        where: taskScope(actor),
         _count: {
           id: true,
         },
@@ -91,6 +95,7 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
       // Clientes activos
       db.client.findMany({
         where: {
+          AND: [clientScope(actor)],
           status: "ACTIVE",
         },
         select: {
@@ -102,6 +107,7 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
       // Todas las tareas para calcular semáforo
       db.contentTask.findMany({
         where: {
+          AND: [taskScope(actor)],
           dueDate: {
             gte: currentMonthStart,
             lte: currentMonthEnd,
@@ -120,6 +126,7 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
       // Próximos 5 rodajes (ordenados por fecha ascendente)
       db.shoot.findMany({
         where: {
+          AND: [shootScope(actor)],
           status: "SCHEDULED",
           startTime: {
             gte: now,
@@ -144,6 +151,7 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
       // Conteo de rodajes del mes actual
       db.shoot.count({
         where: {
+          AND: [shootScope(actor)],
           startTime: {
             gte: currentMonthStart,
             lte: currentMonthEnd,
@@ -155,6 +163,7 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
       // Estado NO debe ser PUBLISHED o CLIENT_APPROVED (excepto para tareas sin métricas)
       db.contentTask.findMany({
         where: {
+          AND: [taskScope(actor)],
           OR: [
             // Tareas urgentes/atrasadas
             {
@@ -212,6 +221,7 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
       // Calendario: Rodajes del mes actual
       db.shoot.findMany({
         where: {
+          AND: [shootScope(actor)],
           startTime: {
             gte: currentMonthStart,
             lte: currentMonthEnd,
@@ -228,6 +238,7 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
       // Calendario: Tareas del mes actual con scheduledAt
       db.contentTask.findMany({
         where: {
+          AND: [taskScope(actor)],
           scheduledAt: {
             gte: currentMonthStart,
             lte: currentMonthEnd,
@@ -372,11 +383,12 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
       data: {
         radar,
         semaphore,
-        nextShoots: nextShootsData,
+        nextShoots: nextShootsData.map((shoot) => ({ ...shoot, client: operationalClient(shoot.client) })),
         warRoom,
         calendar: {
-          shoots: calendarShoots,
-          tasks: calendarTasks,
+          shoots: calendarShoots.map((shoot) => ({ ...shoot, client: operationalClient(shoot.client) })),
+          tasks: calendarTasks.map((task) => ({ ...task, reviewToken: actor.role === "ADMIN" ? task.reviewToken : null,
+            client: operationalClient(task.client) })),
         },
       },
     };

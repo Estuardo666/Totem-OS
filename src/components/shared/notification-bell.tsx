@@ -110,7 +110,7 @@ export function NotificationBell({ align = "start", side = "right" }: Notificati
     if (pusherRef.current) {
       if (channelRef.current) {
         channelRef.current.unbind_all();
-        pusherRef.current.unsubscribe(`user-${userId}`);
+        pusherRef.current.unsubscribe(`private-user-${userId}`);
       }
       pusherRef.current.disconnect();
       pusherRef.current = null;
@@ -127,11 +127,12 @@ export function NotificationBell({ align = "start", side = "right" }: Notificati
 
     const pusher = new Pusher(pusherKey, {
       cluster: pusherCluster,
+      channelAuthorization: { endpoint: "/api/pusher/auth", transport: "ajax" },
     });
     pusherRef.current = pusher;
 
     // Suscribirse al canal privado del usuario
-    const channel = pusher.subscribe(`user-${userId}`);
+    const channel = pusher.subscribe(`private-user-${userId}`);
     channelRef.current = channel;
 
     channel.bind("pusher:subscription_succeeded", () => {
@@ -262,7 +263,7 @@ export function NotificationBell({ align = "start", side = "right" }: Notificati
         channelRef.current.unbind_all();
       }
       if (pusherRef.current) {
-        pusherRef.current.unsubscribe(`user-${userId}`);
+        pusherRef.current.unsubscribe(`private-user-${userId}`);
         pusherRef.current.disconnect();
         pusherRef.current = null;
       }

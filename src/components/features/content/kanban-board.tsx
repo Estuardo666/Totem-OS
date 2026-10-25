@@ -1,5 +1,8 @@
 "use client";
 
+import { useSession } from "next-auth/react";
+import { resolveRoleCode } from "@/lib/roles";
+import { assertTaskChanges } from "@/lib/access-policy";
 import { useState, useEffect, useOptimistic, useRef, startTransition } from "react";
 import { useRouter } from "next/navigation";
 
@@ -39,6 +42,7 @@ const KANBAN_COLUMNS: {
   { status: "SCRIPT", label: "Guión" },
   { status: "RECORDED", label: "Grabado" },
   { status: "EDITING", label: "Editando" },
+  { status: "REVIEW_INTERNAL", label: "Revisión interna" },
   { status: "REVIEW_CLIENT", label: "Revisión Cliente" },
   { status: "CLIENT_APPROVED", label: "Aprobado por Cliente" },
   { status: "PUBLISHED", label: "Publicado" },
@@ -67,7 +71,13 @@ function applyOptimisticTaskStatusChange(
 }
 
 export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompactView = false, clientId }: KanbanBoardProps) {
+  const { data: session } = useSession();
+  const actor = { userId: session?.user?.id ?? "", role: resolveRoleCode(session?.user) ?? "USER" };
   const { toast } = useToast();
+  const canMove = (task: ContentTaskWithClient, status: ContentTaskStatus) => {
+    try { assertTaskChanges(actor, task, { status }); return true; }
+    catch { toast({ variant: "destructive", title: "Movimiento no permitido" }); return false; }
+  };
   const router = useRouter();
   const [tasks, setTasks] = useState<ContentTaskWithClient[]>(initialTasks);
   const [isMounted, setIsMounted] = useState(false);
@@ -288,6 +298,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     // Inicializar Pusher
     const pusher = new Pusher(pusherKey, {
       cluster: pusherCluster,
+      channelAuthorization: { endpoint: "/api/pusher/auth", transport: "ajax" },
     });
 
     // Logs de estado de conexión de Pusher
@@ -308,7 +319,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     });
 
     // Suscribirse al canal
-    const channel = pusher.subscribe("kanban-channel");
+    const channel = pusher.subscribe("private-content");
     
     // Verificar suscripción
     channel.bind("pusher:subscription_succeeded", () => {
@@ -349,10 +360,11 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
             // NO agregar tareas del servidor que no estén aquí: evita que tareas
             // de otros clientes/filtros aparezcan brevemente (flash de +N tareas).
             const newTasksMap = new Map(filteredData.map(t => [t.id, t]));
-            return prevTasks.map(task => {
-              const serverData = newTasksMap.get(task.id);
-              return serverData ? { ...task, ...serverData } : task;
-            });
+            const previousIds = new Set(prevTasks.map((task) => task.id));
+            return [
+              ...prevTasks.filter((task) => newTasksMap.has(task.id)).map((task) => newTasksMap.get(task.id)!),
+              ...filteredData.filter((task) => !previousIds.has(task.id)),
+            ];
           });
           
           // Mostrar toast de confirmación (solo si hubo cambios reales)
@@ -362,6 +374,8 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
             duration: 2000,
           });
         } else {
+          setTasks([]);
+          setSelectedTask(null);
           console.error("Error al obtener tareas:", result.error);
           toast({
             variant: "destructive",
@@ -384,7 +398,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     // Cleanup al desmontar
     return () => {
       console.log("Desconectando Pusher...");
-      pusher.unsubscribe("kanban-channel");
+      pusher.unsubscribe("private-content");
       pusher.disconnect();
     };
   }, [toast]);
@@ -524,6 +538,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     }
 
     const nextStatus = KANBAN_COLUMNS[currentIndex + 1].status;
+    if (!canMove(task, nextStatus)) return;
     const previousTasks = [...tasks];
 
     // 1. Optimismo: Actualizar localmente (envuelto en startTransition para React 19)
@@ -572,6 +587,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
   const handleOptimisticStatusChange = async (taskId: string, newStatus: ContentTaskStatus) => {
     const task = tasks.find((t) => t.id === taskId);
     if (!task || task.status === newStatus) return;
+    if (!canMove(task, newStatus)) return;
 
     const previousTasks = [...tasks];
 
@@ -667,6 +683,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     }
 
     const previousTasks = [...tasks];
+    if (!canMove(taskToMove, destinationStatus)) { setHoverColumn(null); return; }
     const optimistic = reorderTasks(sourceStatus, destinationStatus, source.index, destination.index);
     setTasks(optimistic);
 
@@ -733,7 +750,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     return (
       <div className="w-full h-full overflow-visible">
         {/* Mobile: scroll horizontal | Desktop: grid con columnas fijas */}
-        <div className="flex md:grid md:grid-cols-7 md:gap-4 w-full h-full items-start overflow-x-auto md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0">
+        <div className="flex md:grid md:grid-cols-8 md:gap-4 w-full h-full items-start overflow-x-auto md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0">
           {KANBAN_COLUMNS.map((column) => {
             const columnTasks = tasksByStatus[column.status] || [];
 
@@ -835,7 +852,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
         {/* Mobile: scroll horizontal 98vw | Desktop: grid con columnas fijas */}
         <div
           ref={scrollRef}
-          className="flex md:grid md:grid-cols-7 md:gap-4 w-screen md:w-full h-full items-start overflow-x-auto overflow-y-visible md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
+          className="flex md:grid md:grid-cols-8 md:gap-4 w-screen md:w-full h-full items-start overflow-x-auto overflow-y-visible md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
         >
           {KANBAN_COLUMNS.map((column) => {
             const columnTasks = tasksByStatus[column.status] || [];

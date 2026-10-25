@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/server-access";
+
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -228,6 +230,7 @@ export async function updateClientStrategy(
   input: unknown
 ): Promise<ApiResponse<{ success: boolean }>> {
   try {
+    await requireAdmin();
     // 1. Validar sesión
     const session = await auth();
     if (!session?.user) {

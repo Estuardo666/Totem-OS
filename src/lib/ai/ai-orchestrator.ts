@@ -1,4 +1,4 @@
-"use server";
+// Internal server service. Public mutations must go through authorized actions.
 
 import { getActiveProvider } from "./ai-provider-service";
 import { buildSystemPrompt, buildUserPrompt, buildRefineSystemPrompt, buildRefineUserPrompt } from "./prompts";

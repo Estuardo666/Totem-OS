@@ -1,5 +1,6 @@
 "use server";
 
+import { requireAdmin } from "@/lib/server-access";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
@@ -16,6 +17,7 @@ export type RoleWithUserCount = Role & {
  */
 export async function getRoles(): Promise<ApiResponse<RoleWithUserCount[]>> {
   try {
+    await requireAdmin();
     // Validar autenticación
     const session = await auth();
     if (!session?.user) {

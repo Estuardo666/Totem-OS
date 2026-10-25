@@ -1,5 +1,7 @@
 "use server";
 
+import { requireActor, requireAdmin } from "@/lib/server-access";
+import { directoryUser, withoutPassword } from "@/lib/access-policy";
 import { db } from "@/lib/db";
 import {
   clearPrismaConnectionBackoff,
@@ -58,6 +60,7 @@ export async function createUser(
   input: unknown
 ): Promise<ApiResponse<User>> {
   try {
+    await requireAdmin();
     // 1. Validar con Zod
     const validatedData = createUserSchema.parse(input);
 
@@ -66,13 +69,14 @@ export async function createUser(
     const user = await db.user.create({
       data: {
         ...validatedData,
+        password: validatedData.password ? await bcrypt.hash(validatedData.password, 10) : null,
         roleLegacy: roleCode,
         roleCode,
       },
     });
 
     // 3. Retornar éxito
-    return { success: true, data: user };
+    return { success: true, data: withoutPassword(user) as User };
   } catch (error) {
     // 4. Manejar errores
     return {
@@ -86,31 +90,8 @@ export async function createUser(
 /**
  * Ejemplo de Server Action para actualizar un usuario
  */
-export async function updateUser(
-  id: string,
-  input: unknown
-): Promise<ApiResponse<User>> {
-  try {
-    const validatedData = updateUserSchema.parse(input);
-
-    const requestedRole = validatedData.roleCode ?? validatedData.roleLegacy;
-    const roleCode = requestedRole === undefined ? undefined : normalizeCanonicalRole(requestedRole);
-    const user = await db.user.update({
-      where: { id },
-      data: {
-        ...validatedData,
-        ...(roleCode ? { roleLegacy: roleCode, roleCode } : {}),
-      },
-    });
-
-    return { success: true, data: user };
-  } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Error al actualizar usuario",
-    };
-  }
+export async function updateUser(id: string, input: unknown): Promise<ApiResponse<User>> {
+  return updateUserAdmin(id, input);
 }
 
 /**
@@ -122,6 +103,7 @@ export async function updateUserAdmin(
   input: unknown
 ): Promise<ApiResponse<User>> {
   try {
+    await requireAdmin();
     // 1. Verificar que el usuario actual sea ADMIN
     const { auth } = await import("@/auth");
     const session = await auth();
@@ -210,6 +192,7 @@ export async function updateUserRate(
   newRate: number
 ): Promise<ApiResponse<User>> {
   try {
+    await requireAdmin();
     // 1. Verificar autenticación y rol
     const { auth } = await import("@/auth");
     const session = await auth();
@@ -303,6 +286,7 @@ export type UserWithTaskCount = User & {
  */
 export async function getUsers(): Promise<ApiResponse<UserWithTaskCount[]>> {
   try {
+    const actor = await requireActor();
     // 0. Verificar autenticación
     const { auth } = await import("@/auth");
     const session = await auth();
@@ -322,7 +306,8 @@ export async function getUsers(): Promise<ApiResponse<UserWithTaskCount[]>> {
       orderBy: { createdAt: "desc" },
     });
 
-    return { success: true, data: users };
+    return { success: true, data: users.map((user) => actor.role === "ADMIN"
+      ? withoutPassword(user) as UserWithTaskCount : directoryUser(user)) };
   } catch (error) {
     return {
       success: false,
@@ -339,6 +324,7 @@ export async function registerUser(
   input: unknown
 ): Promise<ApiResponse<User>> {
   try {
+    await requireAdmin();
     // 0. Verificar autenticación
     const { auth } = await import("@/auth");
     const session = await auth();

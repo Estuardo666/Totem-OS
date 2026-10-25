@@ -9,7 +9,7 @@
 import { db } from "@/lib/db";
 import { GoogleCalendarService } from "@/lib/google-calendar";
 import { matchClientFromCalendarEvent } from "@/lib/client-matcher";
-import { notifyAdminsWithPush } from "@/actions/notification-actions";
+import { notifyAdminsWithPush } from "@/lib/system-notifications";
 
 type CalendarEvent = Awaited<
   ReturnType<typeof GoogleCalendarService.listEvents>
