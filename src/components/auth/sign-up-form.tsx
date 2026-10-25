@@ -223,7 +223,7 @@ export function SignUpForm({ callbackUrl = "/" }: SignUpFormProps) {
               placeholder="Juan"
               {...register("firstName")}
               disabled={isLoading}
-              className="macos-input w-full rounded-2xl h-11 px-4 text-white placeholder:text-gray-400"
+              className="macos-input w-full rounded-xl h-11 px-4 text-white placeholder:text-gray-400"
             />
             {errors.firstName && (
               <p className="text-sm text-red-400 animate-pulse">
@@ -242,7 +242,7 @@ export function SignUpForm({ callbackUrl = "/" }: SignUpFormProps) {
               placeholder="Pérez"
               {...register("lastName")}
               disabled={isLoading}
-              className="macos-input w-full rounded-2xl h-11 px-4 text-white placeholder:text-gray-400"
+              className="macos-input w-full rounded-xl h-11 px-4 text-white placeholder:text-gray-400"
             />
             {errors.lastName && (
               <p className="text-sm text-red-400 animate-pulse">
@@ -262,7 +262,7 @@ export function SignUpForm({ callbackUrl = "/" }: SignUpFormProps) {
             placeholder="tu@email.com"
             {...register("email")}
             disabled={isLoading}
-            className="macos-input w-full rounded-2xl h-11 px-4 text-white placeholder:text-gray-400"
+            className="macos-input w-full rounded-xl h-11 px-4 text-white placeholder:text-gray-400"
           />
           {errors.email && (
             <p className="text-sm text-red-400 animate-pulse">
@@ -282,7 +282,7 @@ export function SignUpForm({ callbackUrl = "/" }: SignUpFormProps) {
             disabled={isLoading}
             showStrengthMeter={true}
             value={passwordValue}
-            className="macos-input w-full rounded-2xl h-11 px-4 text-white placeholder:text-gray-400"
+            className="macos-input w-full rounded-xl h-11 px-4 text-white placeholder:text-gray-400"
           />
           {errors.password && (
             <p className="text-sm text-red-400 animate-pulse">

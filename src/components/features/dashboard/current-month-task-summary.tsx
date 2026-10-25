@@ -8,7 +8,7 @@ export async function CurrentMonthTaskSummary() {
     : { totalTasks: 0, publishedTasks: 0, reelsCount: 0, flyerCount: 0, publishedReelsCount: 0, publishedFlyerCount: 0, publishedStoryCount: 0 };
 
   return (
-    <div className="rounded-2xl border bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border bg-card p-5">
       <div className="mb-4 flex items-center gap-3">
         <ClipboardList className="h-5 w-5 text-foreground" />
         <div>

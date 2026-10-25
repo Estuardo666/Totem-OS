@@ -175,7 +175,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
   // Montar el componente solo en el cliente
   useEffect(() => {
     setIsMounted(true);
-    console.log("🔑 Cluster Pusher Frontend:", process.env.NEXT_PUBLIC_PUSHER_CLUSTER);
+    console.log("Cluster Pusher Frontend:", process.env.NEXT_PUBLIC_PUSHER_CLUSTER);
   }, []);
 
   // Auto-scroll horizontal en mobile mientras se arrastra
@@ -274,7 +274,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER as string | undefined;
 
     if (!pusherKey || !pusherCluster) {
-      console.warn("⚠️ Pusher no está configurado. Las actualizaciones en tiempo real no estarán disponibles.");
+      console.warn("Pusher no está configurado. Las actualizaciones en tiempo real no estarán disponibles.");
       toast({
         variant: "destructive",
         title: "Configuración faltante",
@@ -283,7 +283,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
       return;
     }
 
-    console.log("🔌 Inicializando conexión Pusher...");
+    console.log("Inicializando conexión Pusher...");
 
     // Inicializar Pusher
     const pusher = new Pusher(pusherKey, {
@@ -292,19 +292,19 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
 
     // Logs de estado de conexión de Pusher
     pusher.connection.bind("connected", () => {
-      console.log("✅ Pusher conectado exitosamente");
+      console.log("Pusher conectado exitosamente");
     });
 
     pusher.connection.bind("disconnected", () => {
-      console.log("⚠️ Pusher desconectado");
+      console.log("Pusher desconectado");
     });
 
     pusher.connection.bind("error", (error: unknown) => {
-      console.error("❌ Error de conexión Pusher:", error);
+      console.error("Error de conexión Pusher:", error);
     });
 
     pusher.connection.bind("state_change", (states: { previous: string; current: string }) => {
-      console.log(`🔄 Estado Pusher: ${states.previous} → ${states.current}`);
+      console.log(`Estado Pusher: ${states.previous} → ${states.current}`);
     });
 
     // Suscribirse al canal
@@ -312,28 +312,28 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     
     // Verificar suscripción
     channel.bind("pusher:subscription_succeeded", () => {
-      console.log("✅ Suscrito al canal kanban-channel");
-      console.log("👂 Esperando eventos 'update-event'...");
+      console.log("Suscrito al canal kanban-channel");
+      console.log("Esperando eventos 'update-event'...");
     });
 
     channel.bind("pusher:subscription_error", (error: unknown) => {
-      console.error("❌ Error al suscribirse al canal:", error);
+      console.error("Error al suscribirse al canal:", error);
     });
 
     // Debug: Escuchar TODOS los eventos para ver qué está pasando
     channel.bind_global((eventName: string, data: unknown) => {
-      console.log(`🔍 Evento global recibido en canal kanban-channel:`, eventName, data);
+      console.log(`Evento global recibido en canal kanban-channel:`, eventName, data);
     });
 
     // Escuchar el evento de actualización
     const handleUpdateEvent = async (data: unknown) => {
-      console.log("📨📨📨 Evento 'update-event' recibido de Pusher:", data);
-      console.log("📨 Tipo de datos:", typeof data);
-      console.log("📨 Datos completos:", JSON.stringify(data, null, 2));
+      console.log("Evento 'update-event' recibido de Pusher:", data);
+      console.log("Tipo de datos:", typeof data);
+      console.log("Datos completos:", JSON.stringify(data, null, 2));
       
       // Recargar tareas directamente desde el servidor y fusionar sin perder orden
       try {
-        console.log("🔄 Recargando tareas desde getTasks()...");
+        console.log("Recargando tareas desde getTasks()...");
         const result = await getTasks();
         if (result.success && result.data) {
           // Si hay clientId, filtrar solo las tareas de ese cliente
@@ -341,7 +341,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
           const filteredData = currentClientId 
             ? result.data.filter(t => t.client.id === currentClientId)
             : result.data;
-          console.log("✅ Tareas obtenidas del servidor:", filteredData.length, currentClientId ? `(filtradas para cliente ${currentClientId})` : "(todas)");
+          console.log("Tareas obtenidas del servidor:", filteredData.length, currentClientId ? `(filtradas para cliente ${currentClientId})` : "(todas)");
           
           // Fusionar: preservar el orden local, actualizar datos del servidor
           setTasks((prevTasks) => {
@@ -362,7 +362,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
             duration: 2000,
           });
         } else {
-          console.error("❌ Error al obtener tareas:", result.error);
+          console.error("Error al obtener tareas:", result.error);
           toast({
             variant: "destructive",
             title: "Error al sincronizar",
@@ -370,7 +370,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
           });
         }
       } catch (error) {
-        console.error("❌ Error en handleUpdateEvent:", error);
+        console.error("Error en handleUpdateEvent:", error);
         toast({
           variant: "destructive",
           title: "Error de sincronización",
@@ -383,7 +383,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
 
     // Cleanup al desmontar
     return () => {
-      console.log("🔌 Desconectando Pusher...");
+      console.log("Desconectando Pusher...");
       pusher.unsubscribe("kanban-channel");
       pusher.disconnect();
     };
@@ -482,7 +482,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
         });
       } else {
         // ÉXITO: Pusher notificará a otros usuarios
-        console.log("✅ Publicación optimista completada en background");
+        console.log("Publicación optimista completada en background");
       }
     } catch (error) {
       // REVERSIÓN: Si hay excepción
@@ -555,7 +555,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
           })
         );
         router.refresh();
-        console.log(`✅ Tarea promovida: ${task.status} → ${nextStatus}`);
+        console.log(`Tarea promovida: ${task.status} → ${nextStatus}`);
       }
     } catch (error) {
       // REVERSIÓN
@@ -747,7 +747,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
                     <h3 className="font-semibold text-xs md:text-sm truncate">
                       {column.label}
                     </h3>
-                    <Badge variant="secondary" className="ml-2 flex-shrink-0 text-[10px] md:text-xs">
+                    <Badge variant="secondary" className="ml-2 flex-shrink-0 text-xs md:text-xs">
                       {columnTasks.length}
                     </Badge>
                   </div>
@@ -757,7 +757,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
                         columnTasks.map((task) => (
                           <div key={task.id}>
                             {/* Versión simplificada sin Draggable para estado no montado */}
-                            <Card className="border-l-2 md:border-l-4 cursor-pointer hover:shadow-md transition-all max-w-full overflow-hidden"
+                            <Card className="border-l-2 md:border-l-4 cursor-pointer transition-all max-w-full overflow-hidden"
                               style={{
                                 borderLeftColor: `${task.client.color || "#000000"}80`,
                               }}
@@ -770,10 +770,10 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
                                 {task.status === "PUBLISHED" ? (
                                   <div className="flex items-center justify-between">
                                     <div className="space-y-0.5">
-                                      <h4 className="font-semibold text-[10px] md:text-xs leading-tight line-clamp-2">
+                                      <h4 className="font-semibold text-xs md:text-xs leading-tight line-clamp-2">
                                         {task.title}
                                       </h4>
-                                      <div className="text-[9px] md:text-[10px] text-muted-foreground truncate">
+                                      <div className="text-xs md:text-xs text-muted-foreground truncate">
                                         {task.client.name}
                                       </div>
                                     </div>
@@ -785,7 +785,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
                                       {task.title}
                                     </h4>
                                     <div className="flex items-center gap-1 flex-wrap mt-1">
-                                      <Badge variant="outline" className="text-[9px] md:text-[10px] px-1 py-0">
+                                      <Badge variant="outline" className="text-xs md:text-xs px-1 py-0">
                                         {task.client.name}
                                       </Badge>
                                     </div>
@@ -796,7 +796,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
                           </div>
                         ))
                       ) : (
-                        <div className="rounded-md border border-dashed p-3 text-center text-[9px] md:text-[10px] text-muted-foreground bg-muted/5">
+                        <div className="rounded-md border border-dashed p-3 text-center text-xs md:text-xs text-muted-foreground bg-muted/5">
                           Sin tareas
                         </div>
                       )}

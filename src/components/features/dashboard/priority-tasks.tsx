@@ -100,7 +100,7 @@ export async function PriorityTasks() {
     .slice(0, 5);
 
   return (
-    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+    <div className="rounded-2xl border bg-card overflow-hidden">
       <div className="p-5 border-b">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -136,7 +136,7 @@ export async function PriorityTasks() {
                 className={`flex items-start justify-between gap-3 p-4 transition-colors ${
                   isUrgent
                     ? "bg-[hsl(var(--theme-error)/0.10)]"
-                    : "hover:bg-muted/50"
+                    : "hover:bg-primary/[0.1]"
                 }`}
               >
                 <div 
@@ -184,14 +184,14 @@ export async function PriorityTasks() {
           })
         ) : (
           <div className="text-center py-10 px-4">
-            <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
+            <div className="h-12 w-12 rounded-lg bg-muted/50 flex items-center justify-center mx-auto mb-3">
               <ListTodo className="h-6 w-6 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground mb-1">
               No hay tareas prioritarias
             </p>
             <p className="text-xs text-muted-foreground">
-              ¡Todo al día! 🎉
+              ¡Todo al día! 
             </p>
           </div>
         )}

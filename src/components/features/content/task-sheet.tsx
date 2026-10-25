@@ -322,10 +322,10 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="flex min-h-0 max-h-[92vh] w-[95vw] max-w-3xl flex-col gap-3 overflow-hidden p-4 sm:w-[84vw] sm:p-5 md:w-[68vw] lg:w-[56vw] xl:w-[48vw]">
           <DialogHeader className="space-y-0.5 px-0 pb-2 pt-0 text-left sm:pb-3">
-            <DialogTitle className="text-xl font-semibold leading-tight sm:text-2xl md:text-[28px]">
+            <DialogTitle className="text-xl font-semibold leading-tight sm:text-2xl md:text-3xl">
               {isNewTask ? "Nueva Tarea" : "Editar Tarea"}
             </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground sm:text-[15px]">
+            <DialogDescription className="text-sm text-muted-foreground sm:text-base">
               {isNewTask ? "Crea una nueva tarea de contenido." : "Modifica los detalles de la tarea de contenido."}
             </DialogDescription>
           </DialogHeader>
@@ -334,9 +334,9 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
               <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid h-10 w-full grid-cols-2 items-center rounded-full bg-muted px-1.5 py-1 text-muted-foreground sm:h-11 sm:px-2">
-              <TabsTrigger value="details" className="rounded-full text-xs sm:text-sm">Detalles</TabsTrigger>
-              <TabsTrigger value="review" className="rounded-full text-xs sm:text-sm">Revisión</TabsTrigger>
+            <TabsList className="grid h-10 w-full grid-cols-2">
+              <TabsTrigger value="details" className="text-xs sm:text-sm">Detalles</TabsTrigger>
+              <TabsTrigger value="review" className="text-xs sm:text-sm">Revisión</TabsTrigger>
             </TabsList>
 
             {/* Tab Detalles */}
@@ -355,7 +355,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                           placeholder="Título de la tarea"
                           {...field}
                           disabled={isPending}
-                          className="text-xl md:text-2xl font-semibold border border-input rounded-xl px-4 py-3 md:py-4 bg-white dark:bg-background focus:border-primary transition-all"
+                          className="text-xl md:text-2xl font-semibold border border-input rounded-xl px-4 py-3 md:py-4 bg-card dark:bg-background focus:border-primary transition-all"
                         />
                       </FormControl>
                       <FormMessage />
@@ -577,7 +577,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                         <FormLabel className={task?.status === "CLIENT_APPROVED" ? "text-orange-600 font-semibold text-xs uppercase tracking-wider" : "text-xs font-semibold uppercase tracking-wider text-muted-foreground"}>
                           Fecha de Entrega Interna
                           {task?.status === "CLIENT_APPROVED" && (
-                            <span className="ml-2 text-xs text-orange-600 font-normal">⚠️ No olvides programarla</span>
+                            <span className="ml-2 text-xs text-orange-600 font-normal">No olvides programarla</span>
                           )}
                         </FormLabel>
                         <FormControl>
@@ -626,10 +626,10 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent className="rounded-xl">
-                            <SelectItem value="LOW" className="rounded-lg">🟢 Baja</SelectItem>
-                            <SelectItem value="MEDIUM" className="rounded-lg">🟡 Media</SelectItem>
-                            <SelectItem value="HIGH" className="rounded-lg">🟠 Alta</SelectItem>
-                            <SelectItem value="URGENT" className="rounded-lg">🔴 Urgente</SelectItem>
+                            <SelectItem value="LOW" className="rounded-lg">Baja</SelectItem>
+                            <SelectItem value="MEDIUM" className="rounded-lg">Media</SelectItem>
+                            <SelectItem value="HIGH" className="rounded-lg">Alta</SelectItem>
+                            <SelectItem value="URGENT" className="rounded-lg">Urgente</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -661,18 +661,18 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="rounded-xl">
-                          <SelectItem value="IDEA" className="rounded-lg">💡 Idea</SelectItem>
-                          <SelectItem value="SCRIPT" className="rounded-lg">📝 Guión</SelectItem>
-                          <SelectItem value="RECORDED" className="rounded-lg">🎥 Grabado</SelectItem>
-                          <SelectItem value="EDITING" className="rounded-lg">✏️ Editando</SelectItem>
-                          <SelectItem value="REVIEW_INTERNAL" className="rounded-lg">👀 Revisión Interna</SelectItem>
-                          <SelectItem value="REVIEW_CLIENT" className="rounded-lg">📋 Revisión Cliente</SelectItem>
-                          <SelectItem value="CLIENT_APPROVED" className="rounded-lg">✅ Aprobado Cliente</SelectItem>
-                          <SelectItem value="APPROVED" className="rounded-lg">✅ Aprobado</SelectItem>
-                          <SelectItem value="PAUSED" className="rounded-lg">⏸️ En pausa</SelectItem>
-                          <SelectItem value="CANCELLED" className="rounded-lg">🛑 Cancelado</SelectItem>
-                          <SelectItem value="REJECTED" className="rounded-lg">↩️ Rechazado</SelectItem>
-                          <SelectItem value="PUBLISHED" className="rounded-lg">🚀 Publicado</SelectItem>
+                          <SelectItem value="IDEA" className="rounded-lg">Idea</SelectItem>
+                          <SelectItem value="SCRIPT" className="rounded-lg">Guión</SelectItem>
+                          <SelectItem value="RECORDED" className="rounded-lg">Grabado</SelectItem>
+                          <SelectItem value="EDITING" className="rounded-lg">Editando</SelectItem>
+                          <SelectItem value="REVIEW_INTERNAL" className="rounded-lg">Revisión Interna</SelectItem>
+                          <SelectItem value="REVIEW_CLIENT" className="rounded-lg">Revisión Cliente</SelectItem>
+                          <SelectItem value="CLIENT_APPROVED" className="rounded-lg">Aprobado Cliente</SelectItem>
+                          <SelectItem value="APPROVED" className="rounded-lg">Aprobado</SelectItem>
+                          <SelectItem value="PAUSED" className="rounded-lg">En pausa</SelectItem>
+                          <SelectItem value="CANCELLED" className="rounded-lg">Cancelado</SelectItem>
+                          <SelectItem value="REJECTED" className="rounded-lg">Rechazado</SelectItem>
+                          <SelectItem value="PUBLISHED" className="rounded-lg">Publicado</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

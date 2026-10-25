@@ -124,7 +124,7 @@ function SplashScreen({ isFading }: SplashScreenProps) {
           />
           {/* Glow effect */}
           <div 
-            className="absolute inset-0 rounded-3xl blur-xl opacity-30"
+            className="absolute inset-0 rounded-lg blur-xl opacity-30"
             style={{ backgroundColor: "var(--primary-color, #5f40ff)" }}
           />
         </div>

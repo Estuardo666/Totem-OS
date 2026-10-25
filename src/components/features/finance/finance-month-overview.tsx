@@ -29,7 +29,7 @@ function Delta({ current, previous, inverse = false }: { current: number; previo
 
 function Kpi({ label, value, previous, inverse, sub, tone }: { label: string; value: number; previous?: number; inverse?: boolean; sub?: string; tone?: "positive" | "negative" }) {
   return (
-    <div className="rounded-xl border bg-card p-4">
+    <div className="rounded-2xl border bg-card p-4">
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className={cn("mt-1 text-2xl font-semibold tabular-nums tracking-tight", tone === "negative" && "text-rose-600", tone === "positive" && "text-emerald-600")}>
         {money(value)}
@@ -47,7 +47,7 @@ type Line = { label: string; value: number; previous?: number; kind?: "add" | "s
 function Ledger({ title, lines, href, hrefLabel }: { title: string; lines: Line[]; href?: string; hrefLabel?: string }) {
   const hasPrevious = lines.some((line) => line.previous !== undefined);
   return (
-    <div className="rounded-xl border bg-card p-4">
+    <div className="rounded-2xl border bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-semibold">{title}</h2>
         {href && (
@@ -102,7 +102,7 @@ function TrendChart({ trend }: { trend: FinanceDashboardPeriodSnapshot[] }) {
   }));
   const max = Math.max(...rows.flatMap((r) => [r.income, r.honorarios, r.expenses]), 1);
   return (
-    <div className="rounded-xl border bg-card p-4">
+    <div className="rounded-2xl border bg-card p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">Últimos meses</h2>
         <div className="flex gap-4 text-xs text-muted-foreground">
@@ -130,7 +130,7 @@ function TrendChart({ trend }: { trend: FinanceDashboardPeriodSnapshot[] }) {
           </div>
         ))}
       </div>
-      <p className="mt-1 text-center text-[11px] text-muted-foreground">Debajo de cada mes: utilidad</p>
+      <p className="mt-1 text-center text-xs text-muted-foreground">Debajo de cada mes: utilidad</p>
     </div>
   );
 }
@@ -214,7 +214,7 @@ export function FinanceMonthOverview({ current, previous, trend }: FinanceMonthO
       </div>
 
       {t.pendingCommitments > 0 && (
-        <p className="rounded-xl border bg-card px-4 py-3 text-sm text-muted-foreground">
+        <p className="rounded-2xl border bg-card px-4 py-3 text-sm text-muted-foreground">
           Pendiente de pagar: <strong className="text-foreground">{money(t.pendingCommitments)}</strong>
           {" "}(honorarios {money(t.pendingCompensation)} · gastos {money(t.pendingExpenseTransactions)} · reembolsos {money(t.pendingReimbursements)})
         </p>
@@ -222,7 +222,7 @@ export function FinanceMonthOverview({ current, previous, trend }: FinanceMonthO
 
       <TrendChart trend={trend} />
 
-      <div className="rounded-xl border bg-card p-4">
+      <div className="rounded-2xl border bg-card p-4">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-semibold">Por cliente</h2>
           <Link href="/finance/receivables" className="text-xs font-medium text-primary hover:underline">Cuentas por cobrar</Link>

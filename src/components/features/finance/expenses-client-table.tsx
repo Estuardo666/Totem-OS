@@ -171,7 +171,7 @@ export function ExpensesClientTable({ data, expenses }: ExpensesClientTableProps
             return (
               <Fragment key={row.key}>
                 <TableRow
-                  className="cursor-pointer hover:bg-muted/50"
+                  className="cursor-pointer hover:bg-primary/[0.1]"
                   onClick={() => handleRowClick(row.key)}
                 >
                   <TableCell className="w-8">

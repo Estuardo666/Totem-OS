@@ -37,14 +37,14 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 shadow-lg rounded-[2.5rem]",
+  "fixed z-50 gap-4 bg-popover text-popover-foreground p-6 rounded-3xl shadow-[0_24px_64px_-16px_rgba(16,16,20,0.3)]",
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b data-[state=open]:animate-slideInFromTop data-[state=closed]:animate-slideOutToTop data-[state=closed]:pointer-events-none",
-        bottom: "inset-x-0 bottom-0 border-t data-[state=open]:animate-slideInFromBottom data-[state=closed]:animate-slideOutToBottom data-[state=closed]:pointer-events-none",
-        left: "inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm data-[state=open]:animate-slideInFromLeft data-[state=closed]:animate-slideOutToLeft data-[state=closed]:pointer-events-none",
-        right: "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm data-[state=open]:animate-slideInFromRight data-[state=closed]:animate-slideOutToRight data-[state=closed]:pointer-events-none",
+        top: "inset-x-2 top-2 data-[state=open]:animate-slideInFromTop data-[state=closed]:animate-slideOutToTop data-[state=closed]:pointer-events-none",
+        bottom: "inset-x-2 bottom-2 data-[state=open]:animate-slideInFromBottom data-[state=closed]:animate-slideOutToBottom data-[state=closed]:pointer-events-none",
+        left: "inset-y-2 left-2 w-3/4 sm:max-w-sm data-[state=open]:animate-slideInFromLeft data-[state=closed]:animate-slideOutToLeft data-[state=closed]:pointer-events-none",
+        right: "inset-y-2 right-2 w-3/4 sm:max-w-sm data-[state=open]:animate-slideInFromRight data-[state=closed]:animate-slideOutToRight data-[state=closed]:pointer-events-none",
       },
     },
     defaultVariants: {
@@ -69,9 +69,9 @@ const SheetContent = React.forwardRef<
       {...props}
     >
       {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 h-10 w-10 rounded-[1.25rem] opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary flex items-center justify-center">
-        <X className="h-5 w-5" />
-        <span className="sr-only">Close</span>
+      <SheetPrimitive.Close data-pressable="" className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-primary/[0.08] text-muted-foreground hover:bg-primary/[0.14] hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Cerrar</span>
       </SheetPrimitive.Close>
     </SheetPrimitive.Content>
   </SheetPortal>
@@ -112,7 +112,7 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold text-foreground", className)}
+    className={cn("text-xl font-semibold leading-tight text-foreground", className)}
     {...props}
   />
 ));

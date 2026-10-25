@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Chrome, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useTotemIOSApp } from "@/hooks/use-totem-ios-app";
 
@@ -78,227 +78,83 @@ export function SignInForm({ callbackUrl = "/" }: SignInFormProps) {
 
   return (
     <div className="space-y-6">
-      <style>{`
-        @keyframes slideInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes shimmer {
-          0% {
-            background-position: -1000px 0;
-          }
-          100% {
-            background-position: 1000px 0;
-          }
-        }
-
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-5px);
-          }
-        }
-
-        .form-container {
-          animation: slideInUp 0.6s ease-out;
-        }
-
-        .input-field {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .input-field:focus-within {
-          transform: translateY(-2px);
-        }
-
-        .macos-input {
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-        }
-
-        .macos-input:focus {
-          background: rgba(255, 255, 255, 0.12);
-          border-color: rgba(100, 200, 255, 0.5);
-          box-shadow: 0 0 0 3px rgba(100, 200, 255, 0.1);
-        }
-
-        .macos-button {
-          position: relative;
-          overflow: hidden;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          font-weight: 600;
-          letter-spacing: -0.3px;
-        }
-
-        .macos-button:hover:not(:disabled) {
-          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
-        }
-
-        .macos-button:active:not(:disabled) {
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        .macos-button:disabled {
-          opacity: 0.6;
-        }
-
-        .primary-button {
-          background: #9fe842 !important;
-          color: #1a1a1a !important;
-          border: none !important;
-          font-weight: 700 !important;
-          letter-spacing: -0.4px;
-        }
-
-        .primary-button:hover:not(:disabled) {
-          background: #aff062 !important;
-        }
-
-        .secondary-button {
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          color: rgba(255, 255, 255, 0.9);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .secondary-button:hover:not(:disabled) {
-          background: rgba(255, 255, 255, 0.15);
-          border-color: rgba(255, 255, 255, 0.3);
-          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
-        }
-
-        .divider-container {
-          position: relative;
-          margin: 1.5rem 0;
-        }
-
-        .divider-line {
-          position: absolute;
-          left: 0;
-          right: 0;
-          top: 50%;
-          height: 1px;
-          background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
-        }
-
-        .divider-text {
-          position: relative;
-          display: flex;
-          justify-content: center;
-          background: rgb(17, 24, 39);
-          padding: 0 1rem;
-          width: fit-content;
-          margin: 0 auto;
-        }
-
-        .label-text {
-          transition: all 0.2s ease;
-          font-weight: 500;
-          font-size: 0.875rem;
-        }
-
-        .loading-pulse {
-          animation: shimmer 2s infinite;
-          background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
-          background-size: 1000px 100%;
-        }
-      `}</style>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="form-container space-y-4">
-        <div className="input-field space-y-2">
-          <Label htmlFor="email" className="label-text text-gray-200">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="email" className="text-sm font-medium">
             Correo electrónico
           </Label>
           <Input
             id="email"
             type="email"
+            autoComplete="email"
             placeholder="tu@email.com"
             {...register("email")}
             disabled={isLoading}
-            className="macos-input w-full rounded-2xl h-11 px-4 text-white placeholder:text-gray-400"
+            className="h-11"
           />
-          {errors.email && (
-            <p className="text-sm text-red-400 animate-pulse">
-              {errors.email.message}
-            </p>
-          )}
+          {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
         </div>
 
-        <div className="input-field space-y-2">
-          <Label htmlFor="password" className="label-text text-gray-200">
+        <div className="space-y-1.5">
+          <Label htmlFor="password" className="text-sm font-medium">
             Contraseña
           </Label>
           <PasswordInput
             id="password"
-            placeholder="••••••••"
+            autoComplete="current-password"
+            placeholder="Tu contraseña"
             {...register("password")}
             disabled={isLoading}
-            className="macos-input w-full rounded-2xl h-11 px-4 text-white placeholder:text-gray-400"
+            className="h-11"
           />
-          {errors.password && (
-            <p className="text-sm text-red-400 animate-pulse">
-              {errors.password.message}
-            </p>
-          )}
+          {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
         </div>
 
-        <Button
-          type="submit"
-          disabled={isLoading}
-          className="macos-button primary-button w-full rounded-full h-11 text-base"
-        >
+        <Button type="submit" disabled={isLoading} size="lg" className="w-full bg-foreground text-background hover:bg-foreground/85">
           {isSubmitting ? (
             <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              <span className={isSubmitting ? "loading-pulse" : ""}>
-                Iniciando sesión...
-              </span>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Iniciando sesión…
             </>
           ) : (
-            "Iniciar Sesión"
+            "Iniciar sesión"
           )}
         </Button>
       </form>
 
       {isTotemIOSApp ? (
-        <p className="text-center text-xs text-gray-400">
+        <p className="text-center text-xs text-muted-foreground">
           En la app iOS, inicia sesión con correo y contraseña.
         </p>
       ) : (
-        <>
-          <div className="divider-container">
-            <div className="divider-line" />
-            <div className="divider-text">
-              <span className="text-xs uppercase tracking-wider text-gray-400">
-                O continúa con
-              </span>
-            </div>
-          </div>
-
+        <div className="space-y-4">
+          {/* Separador por espacio y texto, sin líneas */}
+          <p className="text-center text-xs text-muted-foreground">o continúa con</p>
           <Button
             type="button"
+            variant="outline"
+            size="lg"
             disabled={isLoading}
             onClick={handleGoogleSignIn}
-            className="macos-button secondary-button w-full rounded-full h-11 text-base font-medium"
+            className="w-full"
           >
-            <Chrome className="mr-2 h-5 w-5" />
+            <GoogleLogo />
             Continuar con Google
           </Button>
-        </>
+        </div>
       )}
     </div>
+  );
+}
+
+/** Logo oficial de Google (marca a cuatro colores; no es un icono decorativo). */
+function GoogleLogo() {
+  return (
+    <svg data-brand-logo viewBox="0 0 24 24" aria-hidden className="h-[18px] w-[18px]">
+      <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47a5.53 5.53 0 0 1-2.4 3.63v3h3.88c2.27-2.09 3.57-5.17 3.57-8.82Z" />
+      <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.91l-3.88-3a7.2 7.2 0 0 1-10.73-3.78H1.33v3.1A12 12 0 0 0 12 24Z" />
+      <path fill="#FBBC05" d="M5.34 14.31a7.2 7.2 0 0 1 0-4.62v-3.1H1.33a12 12 0 0 0 0 10.82l4.01-3.1Z" />
+      <path fill="#EA4335" d="M12 4.75c1.76 0 3.35.6 4.6 1.8l3.44-3.45A11.96 11.96 0 0 0 12 0 12 12 0 0 0 1.33 6.59l4.01 3.1A7.15 7.15 0 0 1 12 4.75Z" />
+    </svg>
   );
 }

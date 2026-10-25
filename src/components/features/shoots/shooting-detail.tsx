@@ -122,7 +122,7 @@ export function ShootingDetail({
               </DialogTitle>
               <div className="mt-1 sm:mt-2">
                 <Badge
-                  className="px-2.5 py-1 text-[12px]"
+                  className="px-2.5 py-1 text-xs"
                   variant={
                     shooting.status === "COMPLETED"
                       ? "default"

@@ -131,7 +131,7 @@ export function AdsSection({ ads }: AdsSectionProps) {
                         style={{ width: `${Math.max(campaign.share, 1)}%` }}
                         aria-hidden
                       />
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {Math.round(campaign.share)}% de la inversión
                       </span>
                     </td>
@@ -170,12 +170,12 @@ function MoneyTile({
   hint: string;
 }) {
   return (
-    <div className="rounded-lg border bg-card p-3 print:break-inside-avoid">
+    <div className="rounded-2xl border bg-card p-3 print:break-inside-avoid">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
-      <p className="mt-1 text-[11px] leading-snug text-muted-foreground/80">{hint}</p>
+      <p className="mt-1 text-xs leading-snug text-muted-foreground/80">{hint}</p>
     </div>
   );
 }

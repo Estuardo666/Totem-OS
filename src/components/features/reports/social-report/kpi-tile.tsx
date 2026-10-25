@@ -47,7 +47,7 @@ export function KpiTile({
       : "text-red-700 dark:text-red-400";
 
   return (
-    <div className="rounded-xl border bg-card p-4 print:break-inside-avoid">
+    <div className="rounded-2xl border bg-card p-4 print:break-inside-avoid">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
@@ -66,7 +66,7 @@ export function KpiTile({
           : `${previousLabel}: ${previousFormatted}`}
       </p>
 
-      <p className="mt-2 text-[11px] leading-snug text-muted-foreground/80">{hint}</p>
+      <p className="mt-2 text-xs leading-snug text-muted-foreground/80">{hint}</p>
     </div>
   );
 }

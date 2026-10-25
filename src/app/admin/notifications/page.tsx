@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getUserNotifications, markAllAsRead } from "@/actions/notification-actions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Bell } from "lucide-react";
 import { NotificationsList } from "@/components/features/shared/notifications-list";
 import { MarkAllAsReadButton } from "@/components/features/shared/mark-all-as-read-button";
+import { AppPageHeader } from "@/components/shared/app-page-header";
 
 export default async function AdminNotificationsPage() {
   // Verificar autenticación
@@ -25,21 +25,7 @@ export default async function AdminNotificationsPage() {
   if (!notificationsResult.success || !notificationsResult.data) {
     return (
       <div className="min-h-screen bg-muted/30">
-        <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Bell className="h-6 w-6 text-foreground flex-shrink-0" />
-              <div className="hidden sm:block">
-                <h1 className="text-xl font-bold text-foreground dark:text-white line-clamp-1">
-                  Notificaciones
-                </h1>
-                <p className="text-xs text-muted-foreground line-clamp-1">
-                  Historial completo de tus notificaciones
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <AppPageHeader title="Notificaciones" description="Historial completo de tus notificaciones" />
         <div className="max-w-7xl mx-auto px-4 pt-6 pb-6">
           <Card>
             <CardContent className="py-12">
@@ -58,22 +44,7 @@ export default async function AdminNotificationsPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Bell className="h-6 w-6 text-foreground flex-shrink-0" />
-            <div className="hidden sm:block">
-              <h1 className="text-xl font-bold text-foreground dark:text-white line-clamp-1">
-                Notificaciones
-              </h1>
-              <p className="text-xs text-muted-foreground line-clamp-1">
-                Historial completo de tus notificaciones
-              </p>
-            </div>
-          </div>
-          {unreadCount > 0 && <MarkAllAsReadButton />}
-        </div>
-      </div>
+      <AppPageHeader title="Notificaciones" description="Historial completo de tus notificaciones" />
 
       <div className="max-w-7xl mx-auto px-4 pt-6 pb-6">
         <Card>

@@ -35,9 +35,10 @@ export function ThemeScript() {
       if (themeId === 'catppuccin') {
         var p = palettes[variant], h = function(key) { return hexToHsl(p[key]); }, primary = p[accent], isDark = variant === 'dark';
         var vars = {
-          '--background':isDark?h('base'):'0 0% 100%','--foreground':h('text'),'--card':isDark?h('mantle'):'0 0% 100%','--card-foreground':h('text'),'--popover':h(isDark?'crust':'base'),'--popover-foreground':h('text'),
-          '--primary':hexToHsl(primary),'--primary-color':primary,'--primary-foreground':h('base'),'--gradient-accent':hexToHsl(primary),'--secondary':isDark?h('mantle'):'0 0% 100%','--secondary-foreground':h('text'),
-          '--muted':isDark?h('mantle'):'0 0% 100%','--muted-foreground':h('subtext0'),'--accent':h('surface1'),'--accent-foreground':h('text'),'--destructive':h('red'),'--destructive-foreground':h('base'),
+          /* Igual que getThemeCssVariables (src/lib/theme.ts): página blanca/crust, contenedores base, elevado popover. */
+          '--background':isDark?h('crust'):'0 0% 100%','--foreground':isDark?h('text'):'234 24% 17%','--card':isDark?h('base'):'220 23% 96.5%','--card-foreground':isDark?h('text'):'234 24% 17%','--popover':isDark?h('surface0'):'0 0% 100%','--popover-foreground':isDark?h('text'):'234 24% 17%',
+          '--primary':hexToHsl(primary),'--primary-color':primary,'--primary-foreground':h('base'),'--gradient-accent':hexToHsl(primary),'--secondary':isDark?h('surface0'):'220 22% 94.5%','--secondary-foreground':h('text'),
+          '--muted':isDark?h('surface0'):'220 22% 94.5%','--muted-foreground':isDark?h('subtext0'):'233 13% 34%','--accent':h(isDark?'surface1':'surface0'),'--accent-foreground':h('text'),'--destructive':h('red'),'--destructive-foreground':h('base'),
           '--border':h('surface1'),'--input':h('surface1'),'--ring':hexToHsl(primary),'--chart-1':h('blue'),'--chart-2':h('green'),'--chart-3':h('peach'),'--chart-4':h('mauve'),'--chart-5':h('pink'),
           '--scroll-track':h('mantle'),'--scroll-thumb':h('surface2'),'--scroll-thumb-hover':h('overlay0'),'--scroll-corner':h('crust'),'--theme-success':h('green'),'--theme-success-foreground':h('base'),'--theme-warning':h('yellow'),'--theme-warning-foreground':h('crust'),'--theme-error':h('red'),'--theme-error-foreground':h('base'),'--theme-info':h('blue'),'--theme-info-foreground':h('base'),'--theme-peach':h('peach'),'--theme-rosewater':h('rosewater'),'--theme-pink':h('pink'),'--theme-mauve':h('mauve'),'--theme-green':h('green'),'--theme-teal':h('teal'),'--theme-sky':h('sky'),'--theme-sapphire':h('sapphire'),'--theme-blue':h('blue'),'--theme-lavender':h('lavender')
         };
@@ -48,7 +49,7 @@ export function ThemeScript() {
         set('--gradient-accent', hexToHsl(primaryHex.toLowerCase() === '#27221f' ? '#6366f1' : primaryHex));
         var rgb = [parseInt(primaryHex.slice(1,3),16),parseInt(primaryHex.slice(3,5),16),parseInt(primaryHex.slice(5,7),16)].map(function(c){c/=255;return c<=.03928?c/12.92:Math.pow((c+.055)/1.055,2.4);});
         set('--primary-foreground', (.2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2])>.58?'22 11% 14%':'0 0% 100%');
-        set('--accent', variant === 'dark' ? '23 1% 16%' : '220 20% 96%');
+        set('--accent', variant === 'dark' ? '23 1% 18%' : '240 5% 92.5%');
         set('--accent-foreground', variant === 'dark' ? '0 0% 98%' : '22 11% 14%');
       }
       var previous = root.style.transition; root.style.transition = 'background-color 0ms, color 0ms';

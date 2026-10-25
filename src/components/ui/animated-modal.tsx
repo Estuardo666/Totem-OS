@@ -83,7 +83,7 @@ export function AnimatedModal({ open, onOpenChange, children, title, description
         />
         <DialogPrimitive.Content
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-[93vw] sm:w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[2.5rem] border border-white/20 bg-white/10 dark:bg-black/10 text-black dark:text-white shadow-2xl backdrop-blur-[40px]",
+            "fixed left-1/2 top-1/2 z-50 w-[93vw] sm:w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl border border-white/20 bg-white/10 dark:bg-black/10 text-black dark:text-white shadow-2xl backdrop-blur-[40px]",
             // Use tailwindcss-animate utilities for entry/exit + fallback transitions
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "transition-transform transition-opacity duration-400 ease-modal",
@@ -101,7 +101,7 @@ export function AnimatedModal({ open, onOpenChange, children, title, description
           style={{ height: shouldAnimateHeight ? animatedHeight : "auto", minHeight: open ? fallbackOpenHeight : 0 }}
         >
           <div ref={measureRef} className="relative w-full">
-            <DialogPrimitive.Close className="absolute right-4 top-4 z-50 flex h-8 w-8 items-center justify-center rounded-[1.25rem] bg-red-500 p-1 text-white hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+            <DialogPrimitive.Close data-pressable="" className="absolute right-4 top-4 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-primary/[0.08] text-muted-foreground hover:bg-primary/[0.14] hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
               <X className="h-4 w-4" />
               <span className="sr-only">Cerrar</span>
             </DialogPrimitive.Close>

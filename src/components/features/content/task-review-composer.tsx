@@ -185,7 +185,7 @@ export function TaskReviewComposer({
         </Button>
         <TaskReviewMediaRecorder mode="video" compact disabled={disabled} onFileReady={async (file) => uploadFiles([file])} />
         <TaskReviewMediaRecorder mode="audio" compact disabled={disabled} onFileReady={async (file) => uploadFiles([file])} />
-        <div className="rounded-full border border-dashed border-border/60 px-2.5 py-1.5 text-[11px] text-muted-foreground">
+        <div className="rounded-full border border-dashed border-border/60 px-2.5 py-1.5 text-xs text-muted-foreground">
           Pegar imagen o archivo
         </div>
         <Button type="button" size="sm" className="ml-auto h-8 shrink-0 rounded-full px-4 text-xs" onClick={handleSubmit} disabled={isBusy}>
@@ -200,7 +200,7 @@ export function TaskReviewComposer({
               key={attachment.id}
               type="button"
               onClick={() => setAttachments((current) => current.filter((item) => item.id !== attachment.id))}
-              className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] hover:bg-muted"
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs hover:bg-primary/[0.1]"
             >
               {attachment.type === "image" ? <ImagePlus className="h-3 w-3" /> : attachment.type === "video" ? <Video className="h-3 w-3" /> : <Paperclip className="h-3 w-3" />}
               <span className="max-w-32 truncate sm:max-w-40">{attachment.label}</span>

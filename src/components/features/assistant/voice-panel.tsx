@@ -31,7 +31,7 @@ function VoiceDraftCard({
 }) {
   const error = typeof draft.state === "object" ? draft.state.error : null;
   return (
-    <div className="rounded-xl border bg-card p-3 text-sm shadow-sm">
+    <div className="rounded-2xl border bg-card p-3 text-sm">
       <p className="mb-2 font-medium">{DRAFT_TITLES[draft.action] ?? draft.action}</p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
         {Object.entries(draft.summary)
@@ -87,7 +87,7 @@ export function VoicePanel() {
             <div key={line.id} className={cn("flex", line.role === "user" && "justify-end")}>
               <p
                 className={cn(
-                  "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm",
+                  "max-w-[85%] rounded-lg px-3.5 py-2 text-sm",
                   line.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted/60"
                 )}
               >

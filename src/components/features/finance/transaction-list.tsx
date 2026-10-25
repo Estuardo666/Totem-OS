@@ -82,6 +82,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
+import { segmentedTrack, segmentedItemClass } from "@/components/ui/segmented";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -169,11 +171,11 @@ function getStatusBadgeVariant(status?: string): "default" | "secondary" | "dest
 function getStatusBadgeClasses(status?: string): string {
   switch (status) {
     case "PAID":
-      return "bg-green-500 text-[10.5px] text-white";
+      return "bg-green-500 text-xs text-white";
     case "PENDING":
-      return "bg-yellow-500 text-[10.5px] text-gray-950";
+      return "bg-yellow-500 text-xs text-gray-950";
     case "CANCELLED":
-      return "bg-red-500 text-[10.5px] text-white";
+      return "bg-red-500 text-xs text-white";
     default:
       return "";
   }
@@ -398,7 +400,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
   const handleEdit = async (transactionId: string, sourceType?: string) => {
     setProcessingId(transactionId);
     try {
-      console.log("🔍 Intentando editar transacción:", transactionId, "Tipo:", sourceType);
+      console.log("Intentando editar transacción:", transactionId, "Tipo:", sourceType);
       
       // Determinar el tipo de transacción
       const isExpense = sourceType === "EXPENSE";
@@ -411,7 +413,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
       if (isHonorario) {
         const transactionResult = await getTransactionById(transactionId);
         if (transactionResult.success && transactionResult.data) {
-          console.log("✅ Honorario cargado:", transactionResult.data);
+          console.log("Honorario cargado:", transactionResult.data);
           console.log("   - ID:", transactionResult.data.id, "Amount:", transactionResult.data.amount, "UserId:", transactionResult.data.userId);
           setEditingHonorarioId(transactionId);
           setEditingTransaction(transactionResult.data);
@@ -426,10 +428,10 @@ export function TransactionList({ transactions }: TransactionListProps) {
       } else if (isExpense) {
         // Intentar cargar como gasto
         const expenseResult = await getExpenseById(transactionId);
-        console.log("🔍 Resultado de getExpenseById:", expenseResult);
+        console.log("Resultado de getExpenseById:", expenseResult);
         
         if (expenseResult.success && expenseResult.data) {
-          console.log("✅ Gasto cargado:", expenseResult.data);
+          console.log("Gasto cargado:", expenseResult.data);
           setEditingExpenseId(transactionId);
         } else {
           // Si falla, intentar como transacción (puede ser una Transaction de tipo EXPENSE)
@@ -448,10 +450,10 @@ export function TransactionList({ transactions }: TransactionListProps) {
       } else if (isInvoice) {
         // Intentar cargar como factura
         const invoiceResult = await getInvoiceById(transactionId);
-        console.log("🔍 Resultado de getInvoiceById:", invoiceResult);
+        console.log("Resultado de getInvoiceById:", invoiceResult);
         
         if (invoiceResult.success && invoiceResult.data) {
-          console.log("✅ Factura cargada:", invoiceResult.data);
+          console.log("Factura cargada:", invoiceResult.data);
           setEditingInvoice(invoiceResult.data);
           setIsEditInvoiceDialogOpen(true);
         } else {
@@ -471,10 +473,10 @@ export function TransactionList({ transactions }: TransactionListProps) {
       } else {
         // Intentar cargar como transacción
         const transactionResult = await getTransactionById(transactionId);
-        console.log("🔍 Resultado de getTransactionById:", transactionResult);
+        console.log("Resultado de getTransactionById:", transactionResult);
         
         if (transactionResult.success && transactionResult.data) {
-          console.log("✅ Transacción cargada:", transactionResult.data);
+          console.log("Transacción cargada:", transactionResult.data);
           setEditingTransaction(transactionResult.data);
           setIsEditDialogOpen(true);
         } else {
@@ -493,7 +495,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
         }
       }
     } catch (error) {
-      console.error("❌ Excepción al editar:", error);
+      console.error("Excepción al editar:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -688,8 +690,8 @@ export function TransactionList({ transactions }: TransactionListProps) {
   return (
     <div className="space-y-4">
       {/* Filtro de tipo - Estilo iOS 26 Segmented Control */}
-      <div className="flex justify-center">
-        <div className="inline-flex items-center gap-1 p-1 bg-muted/60 dark:bg-muted/30 rounded-full backdrop-blur-sm">
+      <div className="flex justify-start sm:justify-center">
+        <div className={cn(segmentedTrack, "max-w-full overflow-x-auto [scrollbar-width:none]")} role="radiogroup" aria-label="Tipo de transacción">
           {[
             { value: "all", label: "Todos" },
             { value: "income", label: "Ingresos" },
@@ -700,13 +702,10 @@ export function TransactionList({ transactions }: TransactionListProps) {
             <button
               key={option.value}
               onClick={() => setTypeFilter(option.value)}
-              className={`
-                px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ease-out
-                ${typeFilter === option.value
-                  ? "bg-card text-card-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-card/70 hover:text-foreground"
-                }
-              `}
+              role="radio"
+              aria-checked={typeFilter === option.value}
+              data-pressable=""
+              className={segmentedItemClass(typeFilter === option.value)}
             >
               {option.label}
             </button>
@@ -840,7 +839,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
 
       {/* Tabla de transacciones */}
       <div className="rounded-md border">
-        <Table className="text-[0.761rem]">
+        <Table className="text-xs">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[50px]">
@@ -974,7 +973,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                       <div className="flex flex-col">
                         <span className="font-medium">{transaction.description}</span>
                         {transaction.category && (
-                          <Badge variant="outline" className="mt-1 w-fit text-[10.5px]">
+                          <Badge variant="outline" className="mt-1 w-fit text-xs">
                             {getCategoryLabel(transaction.category)}
                           </Badge>
                         )}
@@ -991,10 +990,10 @@ export function TransactionList({ transactions }: TransactionListProps) {
                         }
                         className={
                           transaction.type === "INCOME"
-                            ? "bg-green-500 text-[10.5px] font-medium text-white hover:bg-green-600"
+                            ? "bg-green-500 text-xs font-medium text-white hover:bg-green-600"
                             : transaction.type === "HONORARIOS"
-                            ? "bg-blue-500 text-[10.5px] font-medium text-white hover:bg-blue-600"
-                            : "bg-red-500 text-[10.5px] font-medium text-white hover:bg-red-600"
+                            ? "bg-blue-500 text-xs font-medium text-white hover:bg-blue-600"
+                            : "bg-red-500 text-xs font-medium text-white hover:bg-red-600"
                         }
                       >
                         {transaction.type === "INCOME" 
@@ -1036,7 +1035,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                       )}
                     </TableCell>
                     <TableCell
-                      className={`text-right text-[0.94rem] font-medium tabular-nums ${
+                      className={`text-right text-base font-medium tabular-nums ${
                         transaction.type === "INCOME"
                           ? "text-green-600"
                           : transaction.type === "HONORARIOS"

@@ -157,7 +157,7 @@ function SectionHeading({ icon: Icon, title, description, href, action }: {
           <Icon className="size-4" strokeWidth={1.8} />
         </span>
         <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-card-foreground">{title}</h2>
+          <h2 className="text-base font-semibold tracking-[-0.01em] text-card-foreground">{title}</h2>
           {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
         </div>
       </div>
@@ -189,16 +189,16 @@ function Metric({ label, value, animatedValue, valueKind = "number", delta, tone
     neutral: "text-foreground",
   }[tone];
   const content = (
-    <div className="group flex h-full min-w-0 flex-col rounded-2xl border border-border/70 bg-card p-4 shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] transition-[border-color,transform] duration-200 ease-out hover:border-border motion-safe:hover:-translate-y-0.5 sm:p-5">
+    <div className="group flex h-full min-w-0 flex-col rounded-2xl border border-border/70 bg-card p-4 transition-[border-color,transform] duration-200 ease-out hover:border-border sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted ${toneClass}`}>
           <Icon className="size-4" strokeWidth={1.8} />
         </span>
         {points && points.length > 1 && <Sparkline points={points} color={tone === "neutral" ? "hsl(var(--muted-foreground))" : `hsl(var(--theme-${tone}))`} />}
       </div>
-      <p className="mt-4 truncate text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
-      <p className={`mt-1 truncate text-[22px] font-semibold tabular-nums tracking-[-0.045em] ${toneClass}`}>{animatedValue !== undefined ? <AnimatedNumber value={animatedValue} kind={valueKind} /> : typeof value === "number" ? <AnimatedNumber value={value} kind={valueKind} /> : value}</p>
-      <p className="mt-1 truncate text-[11px] text-muted-foreground">{delta}</p>
+      <p className="mt-4 truncate text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <p className={`mt-1 truncate text-2xl font-semibold tabular-nums tracking-[-0.045em] ${toneClass}`}>{animatedValue !== undefined ? <AnimatedNumber value={animatedValue} kind={valueKind} /> : typeof value === "number" ? <AnimatedNumber value={value} kind={valueKind} /> : value}</p>
+      <p className="mt-1 truncate text-xs text-muted-foreground">{delta}</p>
     </div>
   );
   return href ? <Link href={href} className="totem-kpi block h-full last:col-span-2 xl:last:col-span-1">{content}</Link> : <div className="totem-kpi last:col-span-2 xl:last:col-span-1">{content}</div>;
@@ -292,13 +292,13 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
   const activeRoleLabel = specialty?.replace(/\b\w/g, (letter) => letter.toUpperCase()) || (userRole === "ADMIN" ? "Administrador" : "Equipo de contenido");
 
   return (
-    <main className="min-h-screen bg-muted/20 pb-10">
+    <main data-icons="on" className="min-h-screen pb-10">
       <HomeMotion>
-      <div className="mx-auto max-w-[1480px] px-4 pt-5 sm:px-6 sm:pt-7 lg:px-8">
-        <header className="relative z-10 mb-9 flex flex-wrap items-center justify-between gap-4 pb-1">
+      <div className="mx-auto max-w-[1480px] px-4 pt-5 sm:px-6 md:pt-6 lg:px-8">
+        <header className="relative z-10 mb-7 flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-baseline gap-3">
-              <h1 className="totem-home-title text-[25px] font-semibold tracking-[-0.045em] text-foreground sm:text-[29px]">{greeting(now)}, {firstName}</h1>
+              <h1 className="totem-home-title text-2xl font-semibold tracking-[-0.045em] text-foreground sm:text-3xl">{greeting(now)}, {firstName}</h1>
               <span className="totem-home-subtitle hidden text-sm text-muted-foreground sm:inline">{format(new Date(), "EEEE, d 'de' MMMM", { locale: es })}</span>
             </div>
             <p className="totem-home-subtitle mt-1 text-sm text-muted-foreground">{scheduledToday.length || priorityTasks.length ? `${plural(scheduledToday.length, "actividad", "actividades")} hoy · ${plural(priorityTasks.length, "tarea requiere", "tareas requieren")} atención` : "Todo al día. No hay pendientes urgentes."}</p>
@@ -333,12 +333,12 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                   </div>
                   <span className="relative mt-1.5 size-2 shrink-0 rounded-full bg-[hsl(var(--theme-info))] ring-4 ring-[hsl(var(--theme-info)/0.12)]" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-card-foreground">{task.title}</p>
+                    <p className="truncate text-sm font-medium text-card-foreground">{task.title}</p>
                     <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
                       <ClientMark name={task.client.name} logo={task.client.logo} color={task.client.color} /><span className="truncate">{task.client.name}</span><span aria-hidden="true">·</span><span>{task.type}</span>
                     </div>
                   </div>
-                  <span className="mt-0.5 shrink-0 text-[11px] text-muted-foreground">{STATUS_LABELS[task.status] || task.status}</span>
+                  <span className="mt-0.5 shrink-0 text-xs text-muted-foreground">{STATUS_LABELS[task.status] || task.status}</span>
                 </div>
               )) : <EmptyState icon={CalendarDays} title="Agenda despejada" description="No hay publicaciones ni entregas programadas para hoy." href="/content" action="Abrir contenido" />}
             </div>
@@ -353,9 +353,9 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                 const priority = task.priority === "URGENT" || task.priority === "HIGH";
                 const owner = getTaskOwnerRecord(task);
                 return (
-                  <Link href={`/content?task=${task.id}`} key={task.id} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-l-2 ${overdue ? "border-[hsl(var(--theme-error)/0.7)]" : "border-transparent"} px-5 py-3.5 transition-colors hover:bg-muted/25 sm:grid-cols-[minmax(0,1fr)_112px_88px_82px] sm:px-6`}>
+                  <Link href={`/content?task=${task.id}`} key={task.id} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-l-2 ${overdue ? "border-[hsl(var(--theme-error)/0.7)]" : "border-transparent"} px-5 py-3.5 transition-colors hover:bg-primary/[0.1] sm:grid-cols-[minmax(0,1fr)_112px_88px_82px] sm:px-6`}>
                     <div className="min-w-0">
-                      <p className="truncate text-[13px] font-medium text-card-foreground">{task.title}</p>
+                      <p className="truncate text-sm font-medium text-card-foreground">{task.title}</p>
                       <p className="mt-1 flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground"><ClientMark name={task.client.name} logo={task.client.logo} color={task.client.color} /><span className="truncate">{task.client.name}</span></p>
                     </div>
                     <span className="hidden min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground sm:flex"><UserMark name={owner?.name || "Sin asignar"} image={owner?.image} /><span className="truncate">{getTaskOwner(task)}</span></span>
@@ -388,9 +388,9 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                 </div>
               </div>
               <div className="mt-5 grid grid-cols-3 divide-x divide-border/70 rounded-xl bg-muted/45 py-3">
-                <div className="px-3 sm:px-4"><p className="text-[11px] text-muted-foreground">Piezas del mes</p><p className="mt-1 text-lg font-semibold tracking-[-0.03em]"><AnimatedNumber value={totalPipeline} /></p></div>
-                <div className="px-3 sm:px-4"><p className="flex items-center gap-1 text-[11px] text-muted-foreground">Bloqueadas <MetricHelper text="Piezas detenidas en revisión interna o revisión del cliente." /></p><p className={`mt-1 text-lg font-semibold tracking-[-0.03em] ${blockedCount ? "text-[hsl(var(--theme-warning))]" : "text-foreground"}`}><AnimatedNumber value={blockedCount} /></p></div>
-                <div className="px-3 sm:px-4"><p className="flex items-center gap-1 text-[11px] text-muted-foreground">Producción media <MetricHelper text="Días promedio entre la creación y la publicación de una pieza." /></p><p className="mt-1 text-lg font-semibold tracking-[-0.03em]">{avgCycle} <span className="text-xs font-normal text-muted-foreground">días</span></p></div>
+                <div className="px-3 sm:px-4"><p className="text-xs text-muted-foreground">Piezas del mes</p><p className="mt-1 text-lg font-semibold tracking-[-0.03em]"><AnimatedNumber value={totalPipeline} /></p></div>
+                <div className="px-3 sm:px-4"><p className="flex items-center gap-1 text-xs text-muted-foreground">Bloqueadas <MetricHelper text="Piezas detenidas en revisión interna o revisión del cliente." /></p><p className={`mt-1 text-lg font-semibold tracking-[-0.03em] ${blockedCount ? "text-[hsl(var(--theme-warning))]" : "text-foreground"}`}><AnimatedNumber value={blockedCount} /></p></div>
+                <div className="px-3 sm:px-4"><p className="flex items-center gap-1 text-xs text-muted-foreground">Producción media <MetricHelper text="Días promedio entre la creación y la publicación de una pieza." /></p><p className="mt-1 text-lg font-semibold tracking-[-0.03em]">{avgCycle} <span className="text-xs font-normal text-muted-foreground">días</span></p></div>
               </div>
             </div>
           </section>
@@ -406,11 +406,11 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                 return (
                   <div key={workload.userId} className="px-5 py-3.5 sm:px-6">
                     <div className="flex items-center gap-3">
-                      {workload.userImage ? <img src={workload.userImage} alt="" className="size-8 rounded-full object-cover" /> : <span className="flex size-8 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">{initials(workload.userName)}</span>}
+                      {workload.userImage ? <img src={workload.userImage} alt="" className="size-8 rounded-full object-cover" /> : <span className="flex size-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">{initials(workload.userName)}</span>}
                       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{workload.userName}</p><p className="truncate text-xs text-muted-foreground">{/community/i.test(workload.userSpecialty || "") ? "Community" : "Editor"} · {status}</p></div>
                       <span className="text-xs font-semibold" style={{ color }}>{rawPercentage}%</span>
                     </div>
-                    <div className="mt-2 flex items-center gap-2"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: color }} /></div><span className="text-[10px] tabular-nums text-muted-foreground">{workload.pendingTasksCount}/{workload.weeklyCapacity}</span></div>
+                    <div className="mt-2 flex items-center gap-2"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: color }} /></div><span className="text-xs tabular-nums text-muted-foreground">{workload.pendingTasksCount}/{workload.weeklyCapacity}</span></div>
                   </div>
                 );
               }) : <EmptyState icon={UsersRound} title="Equipo sin carga asignada" description="Las nuevas asignaciones aparecerán aquí." href="/content" action="Asignar tarea" />}
@@ -432,8 +432,8 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                 const updatedAt = isFeedback ? item.createdAt : approvalTask!.updatedAt;
                 const waitingHours = (Date.now() - new Date(updatedAt).getTime()) / 36e5;
                 const owner = approvalTask ? getTaskOwnerRecord(approvalTask) : null;
-                return <Link href={isFeedback ? `/clients/${item.clientId}` : `/content?task=${approvalTask!.id}`} key={`${isFeedback ? item.id : approvalTask!.id}-${index}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-3.5 transition-colors hover:bg-muted/25 sm:grid-cols-[minmax(0,1fr)_120px_95px] sm:px-6">
-                  <div className="min-w-0"><p className="truncate text-[13px] font-medium">{title}</p><p className="mt-1 flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground"><ClientMark name={clientName} logo={clientLogo} color={clientColor} /><span className="truncate">{clientName}</span><span aria-hidden="true">·</span>{owner ? <span className="flex min-w-0 items-center gap-1.5"><UserMark name={owner.name} image={owner.image} /><span className="truncate">{getTaskOwner(approvalTask!)}</span></span> : <span>Cliente</span>}</p></div>
+                return <Link href={isFeedback ? `/clients/${item.clientId}` : `/content?task=${approvalTask!.id}`} key={`${isFeedback ? item.id : approvalTask!.id}-${index}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-3.5 transition-colors hover:bg-primary/[0.1] sm:grid-cols-[minmax(0,1fr)_120px_95px] sm:px-6">
+                  <div className="min-w-0"><p className="truncate text-sm font-medium">{title}</p><p className="mt-1 flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground"><ClientMark name={clientName} logo={clientLogo} color={clientColor} /><span className="truncate">{clientName}</span><span aria-hidden="true">·</span>{owner ? <span className="flex min-w-0 items-center gap-1.5"><UserMark name={owner.name} image={owner.image} /><span className="truncate">{getTaskOwner(approvalTask!)}</span></span> : <span>Cliente</span>}</p></div>
                   <span className={`text-right text-xs ${waitingHours > 48 ? "font-semibold text-[hsl(var(--theme-warning))]" : "text-muted-foreground"}`}>{formatDistanceToNow(new Date(updatedAt), { locale: es, addSuffix: true })}</span>
                   <span className="hidden text-right text-xs text-muted-foreground sm:block">{waitingHours > 48 ? "Más de 48 h" : "En plazo"}</span>
                 </Link>;
@@ -452,10 +452,10 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                 <FinanceMetric label="Proyectado" value={projectedBalance} tone="positive" />
               </div>
               <div className="divide-y divide-border/60">
-                {finance.recentTransactions.slice(0, 3).map((transaction) => <Link href="/finance/transactions" key={transaction.id} className="flex items-center gap-3 py-3 transition-colors hover:bg-muted/25"><span className={`flex size-7 items-center justify-center rounded-lg ${transaction.type === "INCOME" ? "bg-[hsl(var(--theme-success)/0.12)] text-[hsl(var(--theme-success))]" : "bg-muted text-muted-foreground"}`}>{transaction.type === "INCOME" ? <ArrowDownLeft className="size-3.5" /> : <ArrowUpRight className="size-3.5" />}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{transaction.description}</span><span className="block text-[11px] text-muted-foreground">{format(new Date(transaction.date), "d MMM", { locale: es })}</span></span><span className={`text-xs font-semibold ${transaction.type === "INCOME" ? "text-[hsl(var(--theme-success))]" : "text-muted-foreground"}`}>{transaction.type === "INCOME" ? "+" : "−"}{formatCurrency(transaction.amount)}</span></Link>)}
+                {finance.recentTransactions.slice(0, 3).map((transaction) => <Link href="/finance/transactions" key={transaction.id} className="flex items-center gap-3 py-3 transition-colors hover:bg-primary/[0.1]"><span className={`flex size-7 items-center justify-center rounded-lg ${transaction.type === "INCOME" ? "bg-[hsl(var(--theme-success)/0.12)] text-[hsl(var(--theme-success))]" : "bg-muted text-muted-foreground"}`}>{transaction.type === "INCOME" ? <ArrowDownLeft className="size-3.5" /> : <ArrowUpRight className="size-3.5" />}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{transaction.description}</span><span className="block text-xs text-muted-foreground">{format(new Date(transaction.date), "d MMM", { locale: es })}</span></span><span className={`text-xs font-semibold ${transaction.type === "INCOME" ? "text-[hsl(var(--theme-success))]" : "text-muted-foreground"}`}>{transaction.type === "INCOME" ? "+" : "−"}{formatCurrency(transaction.amount)}</span></Link>)}
               </div>
             </div>
-          </section> : <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] xl:col-span-6"><SectionHeading icon={Clock3} title="Próximas entregas" description="Fechas que se acercan" href="/content" action="Ver calendario" /><div className="divide-y divide-border/60">{tasks.filter((task) => task.dueDate && task.status !== "PUBLISHED").sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()).slice(0, 3).map((task) => <Link href={`/content?task=${task.id}`} key={task.id} className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-muted/25 sm:px-6"><span className="flex size-7 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Clock3 className="size-3.5" /></span><span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-medium">{task.title}</span><span className="flex items-center gap-1.5 text-xs text-muted-foreground"><ClientMark name={task.client.name} logo={task.client.logo} color={task.client.color} /><span className="truncate">{task.client.name}</span></span></span><span className="text-xs text-muted-foreground">{relativeDate(new Date(task.dueDate!))}</span></Link>)}</div></section>}
+          </section> : <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] xl:col-span-6"><SectionHeading icon={Clock3} title="Próximas entregas" description="Fechas que se acercan" href="/content" action="Ver calendario" /><div className="divide-y divide-border/60">{tasks.filter((task) => task.dueDate && task.status !== "PUBLISHED").sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()).slice(0, 3).map((task) => <Link href={`/content?task=${task.id}`} key={task.id} className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-primary/[0.1] sm:px-6"><span className="flex size-7 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Clock3 className="size-3.5" /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{task.title}</span><span className="flex items-center gap-1.5 text-xs text-muted-foreground"><ClientMark name={task.client.name} logo={task.client.logo} color={task.client.color} /><span className="truncate">{task.client.name}</span></span></span><span className="text-xs text-muted-foreground">{relativeDate(new Date(task.dueDate!))}</span></Link>)}</div></section>}
 
           <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] xl:col-span-12">
             <SectionHeading icon={TrendUp} title="Rendimiento del mes" description="Comparado con el mismo punto del mes anterior" />
@@ -490,8 +490,8 @@ function PipelineDonut({ stages, total }: { stages: Array<{ key: string; label: 
         })}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="text-[30px] font-semibold leading-none tracking-[-0.06em]">{total}</span>
-        <span className="mt-1 text-[11px] text-muted-foreground">Total piezas</span>
+        <span className="text-4xl font-semibold leading-none tracking-[-0.06em]">{total}</span>
+        <span className="mt-1 text-xs text-muted-foreground">Total piezas</span>
       </div>
     </div>
   );
@@ -503,7 +503,7 @@ function MetricHelper({ text }: { text: string }) {
       <button type="button" aria-label={`Más información: ${text}`} className="inline-flex size-4 cursor-help items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
         <CircleHelp className="size-3" />
       </button>
-      <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-52 -translate-x-1/2 rounded-lg border border-border bg-popover px-2.5 py-2 text-left text-[11px] font-normal leading-snug text-popover-foreground opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+      <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-52 -translate-x-1/2 rounded-lg border border-border bg-popover px-2.5 py-2 text-left text-xs font-normal leading-snug text-popover-foreground opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
         {text}
       </span>
     </span>
@@ -511,11 +511,11 @@ function MetricHelper({ text }: { text: string }) {
 }
 
 function FinanceMetric({ label, value, tone }: { label: string; value: number; tone: "positive" | "pending" | "neutral" }) {
-  return <div><p className="text-[11px] text-muted-foreground">{label}</p><p className={`mt-1 truncate text-sm font-semibold tracking-[-0.02em] ${tone === "positive" ? "text-[hsl(var(--theme-success))]" : tone === "pending" ? "text-[hsl(var(--theme-warning))]" : "text-foreground"}`}>{formatCurrency(value)}</p></div>;
+  return <div><p className="text-xs text-muted-foreground">{label}</p><p className={`mt-1 truncate text-sm font-semibold tracking-[-0.02em] ${tone === "positive" ? "text-[hsl(var(--theme-success))]" : tone === "pending" ? "text-[hsl(var(--theme-warning))]" : "text-foreground"}`}>{formatCurrency(value)}</p></div>;
 }
 
 function PerformanceMetric({ label, value, delta, positive, points, color }: { label: string; value: string | number; delta: string; positive: boolean; points?: number[]; color: string }) {
-  return <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5"><div><p className="text-xs text-muted-foreground">{label}</p><div className="mt-1.5 flex items-baseline gap-2"><span className="text-2xl font-semibold tabular-nums tracking-[-0.04em]">{value}</span><span className={`text-xs font-medium ${positive ? "text-[hsl(var(--theme-success))]" : "text-[hsl(var(--theme-error))]"}`}>{delta}</span></div><p className="mt-1 text-[11px] text-muted-foreground">vs. mes anterior a la fecha</p></div>{points && points.length > 1 ? <Sparkline points={points} color={color} /> : <span className="size-2 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />}</div>;
+  return <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5"><div><p className="text-xs text-muted-foreground">{label}</p><div className="mt-1.5 flex items-baseline gap-2"><span className="text-2xl font-semibold tabular-nums tracking-[-0.04em]">{value}</span><span className={`text-xs font-medium ${positive ? "text-[hsl(var(--theme-success))]" : "text-[hsl(var(--theme-error))]"}`}>{delta}</span></div><p className="mt-1 text-xs text-muted-foreground">vs. mes anterior a la fecha</p></div>{points && points.length > 1 ? <Sparkline points={points} color={color} /> : <span className="size-2 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />}</div>;
 }
 
 function EmptyState({ icon: Icon, title, description, href, action }: { icon: typeof CalendarDays; title: string; description: string; href?: string; action?: string }) {

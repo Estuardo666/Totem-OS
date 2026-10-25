@@ -53,7 +53,7 @@ export function CardSkeleton() {
  */
 export function MetricSkeleton() {
   return (
-    <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
+    <div className="rounded-2xl border bg-card text-card-foreground shadow-sm p-4">
       <div className="flex flex-col space-y-2">
         <Skeleton className="h-3 w-20" />
         <Skeleton className="h-8 w-24" />
@@ -130,11 +130,11 @@ export function DashboardSkeleton() {
       
       {/* Fila de contenido */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-lg border bg-card p-4">
+        <div className="rounded-2xl border bg-card p-4">
           <Skeleton className="h-6 w-40 mb-4" />
           <Skeleton className="h-64 w-full" />
         </div>
-        <div className="rounded-lg border bg-card p-4">
+        <div className="rounded-2xl border bg-card p-4">
           <Skeleton className="h-6 w-40 mb-4" />
           <Skeleton className="h-64 w-full" />
         </div>

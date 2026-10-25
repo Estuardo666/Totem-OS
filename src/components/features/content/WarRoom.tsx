@@ -98,7 +98,7 @@ export function WarRoom({ warRoom }: WarRoomProps) {
   if (!Array.isArray(warRoom)) {
     console.error("WarRoom: warRoom no es un array", warRoom);
     return (
-      <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+      <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-card dark:bg-gray-900 p-6">
         <div className="flex items-center gap-2 mb-3">
           <AlertTriangle className="w-5 h-5 text-yellow-500" />
           <h2 className="text-lg font-bold">Sala de Guerra</h2>
@@ -116,13 +116,13 @@ export function WarRoom({ warRoom }: WarRoomProps) {
           <AlertTriangle className="w-5 h-5 text-emerald-500" />
           <h2 className="text-lg font-bold">Sala de Guerra</h2>
         </div>
-        <p className="text-sm text-muted-foreground">✨ Todo en orden. No hay urgencias.</p>
+        <p className="text-sm text-muted-foreground">Todo en orden. No hay urgencias.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-3xl border border-red-200 dark:border-red-800/50 bg-gradient-to-br from-red-50 via-white to-red-50/50 dark:from-red-950/30 dark:via-gray-900 dark:to-red-900/20 shadow-sm hover:shadow-md transition-shadow p-6 space-y-3">
+    <div className="rounded-3xl border border-red-200 dark:border-red-800/50 bg-gradient-to-br from-red-50 via-white to-red-50/50 dark:from-red-950/30 dark:via-gray-900 dark:to-red-900/20 shadow-sm transition-shadow p-6 space-y-3">
       <div className="flex items-center gap-2">
         <AlertTriangle className="w-5 h-5 text-destructive" />
         <h2 className="text-lg font-bold">Sala de Guerra</h2>
@@ -147,7 +147,7 @@ export function WarRoom({ warRoom }: WarRoomProps) {
               key={task.id}
               href={`/content?task=${task.id}`}
               className={cn(
-                "block p-3.5 rounded-2xl border hover:shadow-sm transition-all",
+                "block p-3.5 rounded-lg border transition-all",
                 isPublishedWithoutMetrics 
                   ? "border-purple-200 dark:border-purple-800/50 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/20 dark:to-purple-900/10 shadow-sm" 
                   : isHighPriorityOverdue 

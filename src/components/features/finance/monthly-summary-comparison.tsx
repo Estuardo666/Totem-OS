@@ -65,7 +65,7 @@ export function MonthlySummaryComparison({ summary }: MonthlySummaryComparisonPr
                   <p className="text-2xl font-semibold tracking-tight">{formatCurrency(metric.currentValue)}</p>
                   <p className="text-xs text-muted-foreground">Anterior: {formatCurrency(metric.previousValue)} en {summary.comparison.previousPeriodLabel}</p>
                 </div>
-                <div className={`rounded-2xl border px-3 py-2 ${getToneClasses(metric.tone)}`}>
+                <div className={`rounded-lg border px-3 py-2 ${getToneClasses(metric.tone)}`}>
                   <p className="text-sm font-semibold">{formatDelta(metric.deltaValue)}</p>
                   <p className="text-xs opacity-80">{formatDeltaPercent(metric.deltaPct)}</p>
                 </div>

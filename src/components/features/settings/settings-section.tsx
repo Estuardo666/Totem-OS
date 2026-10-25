@@ -62,7 +62,7 @@ export function SettingsRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 px-4 py-3 bg-card hover:bg-muted/30 transition-colors",
+        "flex items-center justify-between gap-4 px-4 py-3 bg-card hover:bg-primary/[0.1] transition-colors",
         className
       )}
     >

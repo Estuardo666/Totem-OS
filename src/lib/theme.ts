@@ -117,6 +117,9 @@ export interface ThemeSelection {
   catppuccinAccent: CatppuccinAccent;
 }
 
+const LATTE_STRONG_TEXT = "234 24% 17%";
+const LATTE_STRONG_SUBTEXT = "233 13% 34%";
+
 export function getThemeCssVariables(selection: ThemeSelection): Record<string, string> {
   if (selection.themeId === "default") {
     const primary = resolvePrimaryColor(selection.primaryColor);
@@ -125,7 +128,7 @@ export function getThemeCssVariables(selection: ThemeSelection): Record<string, 
       "--primary-color": primary.hex,
       "--primary-foreground": primary.foregroundHsl,
       "--gradient-accent": hexToHsl(primary.hex.toLowerCase() === LEGACY_INK_COLOR.toLowerCase() ? DEFAULT_GRADIENT_COLOR : primary.hex),
-      "--accent": selection.variant === "dark" ? "23 1% 16%" : "220 20% 96%",
+      "--accent": selection.variant === "dark" ? "23 1% 18%" : "240 5% 92.5%",
       "--accent-foreground": selection.variant === "dark" ? "0 0% 98%" : "22 11% 14%",
     };
   }
@@ -134,13 +137,17 @@ export function getThemeCssVariables(selection: ThemeSelection): Record<string, 
   const hsl = (key: keyof CatppuccinFlavor) => hexToHsl(p[key]);
   const isDark = selection.variant === "dark";
   return {
-    "--background": isDark ? hsl("base") : "0 0% 100%", "--foreground": hsl("text"),
-    "--card": isDark ? hsl("mantle") : "0 0% 100%", "--card-foreground": hsl("text"),
-    "--popover": hsl(isDark ? "crust" : "base"), "--popover-foreground": hsl("text"),
+    // Sin bordes, la jerarquía es de superficie: página blanca (Latte) o crust
+    // (Mocha), contenedores en base y lo elevado dentro de ellos en popover.
+    // Latte: el "text" oficial (#4c4f69) se lee gris; en claro se oscurece para contraste.
+    "--background": isDark ? hsl("crust") : "0 0% 100%", "--foreground": isDark ? hsl("text") : LATTE_STRONG_TEXT,
+    // Latte: contenedores un 30% más claros que "base" para que no pesen sobre el blanco.
+    "--card": isDark ? hsl("base") : "220 23% 96.5%", "--card-foreground": isDark ? hsl("text") : LATTE_STRONG_TEXT,
+    "--popover": isDark ? hsl("surface0") : "0 0% 100%", "--popover-foreground": isDark ? hsl("text") : LATTE_STRONG_TEXT,
     "--primary": hexToHsl(primaryHex), "--primary-color": primaryHex, "--primary-foreground": hsl("base"), "--gradient-accent": hexToHsl(primaryHex),
-    "--secondary": isDark ? hsl("mantle") : "0 0% 100%", "--secondary-foreground": hsl("text"),
-    "--muted": isDark ? hsl("mantle") : "0 0% 100%", "--muted-foreground": hsl("subtext0"),
-    "--accent": hsl("surface1"), "--accent-foreground": hsl("text"),
+    "--secondary": isDark ? hsl("surface0") : "220 22% 94.5%", "--secondary-foreground": hsl("text"),
+    "--muted": isDark ? hsl("surface0") : "220 22% 94.5%", "--muted-foreground": isDark ? hsl("subtext0") : LATTE_STRONG_SUBTEXT,
+    "--accent": hsl(isDark ? "surface1" : "surface0"), "--accent-foreground": hsl("text"),
     "--destructive": hsl("red"), "--destructive-foreground": hsl("base"),
     "--border": hsl("surface1"), "--input": hsl("surface1"), "--ring": hexToHsl(primaryHex),
     "--chart-1": hsl("blue"), "--chart-2": hsl("green"), "--chart-3": hsl("peach"),

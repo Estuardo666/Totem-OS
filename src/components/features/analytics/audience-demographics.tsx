@@ -24,7 +24,7 @@ export function AudienceDemographics({ audience }: AudienceDemographicsProps) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {audience.map((group) => (
-        <div key={group.dimension} className="rounded-xl border bg-card p-4">
+        <div key={group.dimension} className="rounded-2xl border bg-card p-4">
           <div className="flex items-baseline justify-between">
             <h3 className="text-sm font-semibold">{group.label}</h3>
             <span className="text-xs text-muted-foreground">

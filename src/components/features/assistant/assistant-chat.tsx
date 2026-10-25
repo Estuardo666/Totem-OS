@@ -90,7 +90,7 @@ export function Avatar({ src, name, className }: { src?: string | null; name: st
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-1 ring-border",
+        "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-muted-foreground ring-1 ring-border",
         className
       )}
     >
@@ -152,11 +152,11 @@ function DraftCard({ draft }: { draft: DraftOutput }) {
       initial={{ opacity: 0, transform: "translateY(6px) scale(0.98)" }}
       animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
       transition={{ duration: 0.24, ease: EASE_OUT }}
-      className="mt-3 overflow-hidden rounded-2xl border bg-card/80 shadow-sm backdrop-blur"
+      className="mt-3 overflow-hidden rounded-2xl border bg-card/80 backdrop-blur"
     >
       <div className="flex items-center justify-between border-b px-4 py-2.5">
         <p className="text-sm font-semibold">{DRAFT_TITLES[draft.action] ?? draft.action}</p>
-        <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+        <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
           Por confirmar
         </span>
       </div>
@@ -239,7 +239,7 @@ function AssistantBubble({ message }: { message: UIMessage }) {
     part.type.startsWith("tool-") ? postsFromOutput((part as unknown as ToolPart).output) : []
   );
   return (
-    <div className="min-w-0 flex-1 space-y-2.5 pt-0.5 text-[15px]">
+    <div className="min-w-0 flex-1 space-y-2.5 pt-0.5 text-base">
       {message.parts.map((part, i) => {
         if (part.type === "text") {
           return (
@@ -357,7 +357,7 @@ export function AssistantChat({
                       {...enter}
                       transition={{ duration: 0.25, ease: EASE_OUT, delay: 0.08 + i * 0.04 }}
                       onClick={() => send(s)}
-                      className="rounded-full border bg-card px-3.5 py-1.5 text-sm text-muted-foreground transition-[transform,color,background-color] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.97]"
+                      className="rounded-full border bg-card px-3.5 py-1.5 text-sm text-muted-foreground transition-[transform,color,background-color] duration-150 hover:bg-primary/[0.1] hover:text-foreground active:scale-[0.97]"
                     >
                       {s}
                     </motion.button>
@@ -375,12 +375,12 @@ export function AssistantChat({
                 className={cn("flex gap-3", m.role === "user" && "flex-row-reverse")}
               >
                 {m.role === "user" ? (
-                  <Avatar src={userImage} name={userName} className="mt-0.5 h-7 w-7 text-[11px]" />
+                  <Avatar src={userImage} name={userName} className="mt-0.5 h-7 w-7 text-xs" />
                 ) : (
                   <AssistantMark className="mt-0.5 h-7 w-7" />
                 )}
                 {m.role === "user" ? (
-                  <p className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-tr-md bg-primary px-4 py-2.5 text-[15px] leading-relaxed text-primary-foreground">
+                  <p className="max-w-[80%] whitespace-pre-wrap rounded-lg rounded-tr-md bg-primary px-4 py-2.5 text-base leading-relaxed text-primary-foreground">
                     {m.parts.map((p) => (p.type === "text" ? p.text : "")).join("")}
                   </p>
                 ) : (
@@ -424,7 +424,7 @@ export function AssistantChat({
 
         <div className="px-4 pb-4 pt-2">
           <form
-            className="mx-auto flex max-w-2xl items-end gap-2 rounded-2xl border bg-card px-3 py-2 shadow-sm transition-shadow duration-200 focus-within:shadow-md"
+            className="mx-auto flex max-w-2xl items-end gap-2 rounded-2xl border bg-card px-3 py-2 transition-shadow duration-200 focus-within:shadow-md"
             onSubmit={(e) => {
               e.preventDefault();
               send(input);
@@ -441,7 +441,7 @@ export function AssistantChat({
               }}
               rows={1}
               placeholder="Pregunta o pide algo…"
-              className="max-h-40 min-h-[36px] flex-1 resize-none bg-transparent py-1.5 text-[15px] outline-none placeholder:text-muted-foreground"
+              className="max-h-40 min-h-[36px] flex-1 resize-none bg-transparent py-1.5 text-base outline-none placeholder:text-muted-foreground"
             />
             {busy ? (
               <Button

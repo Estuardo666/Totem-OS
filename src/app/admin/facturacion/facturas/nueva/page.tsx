@@ -356,7 +356,7 @@ export default function NuevaFacturaPage() {
                     className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
                       isSelected
                         ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-muted hover:border-muted-foreground/30 hover:bg-muted/50"
+                        : "border-muted hover:border-muted-foreground/30 hover:bg-primary/[0.1]"
                     }`}
                     onClick={() => setClienteSeleccionado(c)}
                   >
@@ -516,7 +516,7 @@ export default function NuevaFacturaPage() {
                   {tareas.map((tarea) => (
                     <label
                       key={tarea.id}
-                      className="flex cursor-pointer items-start gap-3 rounded-lg border p-2 hover:bg-muted/50"
+                      className="flex cursor-pointer items-start gap-3 rounded-lg border p-2 hover:bg-primary/[0.1]"
                     >
                       <Checkbox
                         checked={tareasSeleccionadas.includes(tarea.id)}

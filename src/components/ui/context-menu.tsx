@@ -133,7 +133,7 @@ const ContextMenuCheckboxItem = React.forwardRef<
       "focus:bg-primary/15 focus:text-foreground",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       "transition-all duration-150 ease-out",
-      "context-menu-item-hover hover:bg-accent/40 hover:text-foreground",
+      "context-menu-item-hover hover:bg-primary/[0.1] hover:text-foreground",
       className
     )}
     checked={checked}
@@ -161,7 +161,7 @@ const ContextMenuRadioItem = React.forwardRef<
       "focus:bg-primary/15 focus:text-foreground",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       "transition-all duration-150 ease-out",
-      "context-menu-item-hover hover:bg-accent/40 hover:text-foreground",
+      "context-menu-item-hover hover:bg-primary/[0.1] hover:text-foreground",
       className
     )}
     {...props}
@@ -201,7 +201,7 @@ const ContextMenuSeparator = React.forwardRef<
   <ContextMenuPrimitive.Separator
     ref={ref}
     className={cn(
-      "my-1 h-px bg-gradient-to-r from-transparent via-border to-transparent",
+      "my-1 h-px bg-transparent",
       className
     )}
     {...props}

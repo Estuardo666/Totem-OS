@@ -64,7 +64,7 @@ export function KanbanStickyHeaders({
                     )}
                   >
                     <span className="truncate text-xs font-semibold md:text-sm">{column.label}</span>
-                    <Badge variant="secondary" className="ml-2 flex-shrink-0 text-[10px] md:text-xs">
+                    <Badge variant="secondary" className="ml-2 flex-shrink-0 text-xs md:text-xs">
                       {counts[column.status] ?? 0}
                     </Badge>
                   </div>

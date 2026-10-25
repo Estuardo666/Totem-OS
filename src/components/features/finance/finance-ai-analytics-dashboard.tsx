@@ -344,7 +344,7 @@ export function FinanceAiAnalyticsDashboard({ stats, clientPlans }: FinanceAiAna
 
   return (
     <div className="space-y-10 md:space-y-14">
-      <section className="rounded-[28px] border border-border/60 bg-card p-6 shadow-sm md:p-8">
+      <section className="rounded-2xl border border-border/60 bg-card p-6 md:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl space-y-4">
             <Badge variant="secondary" className="w-fit rounded-full px-3 py-1 text-xs">Analíticas IA</Badge>
@@ -355,7 +355,7 @@ export function FinanceAiAnalyticsDashboard({ stats, clientPlans }: FinanceAiAna
               </p>
             </div>
           </div>
-          <div className="flex flex-col items-start gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
+          <div className="flex flex-col items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-2 text-foreground"><CalendarRange className="h-4 w-4" /> Última lectura</div>
             <div>{lastUpdated.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</div>
             <Button variant="outline" size="sm" onClick={() => void loadPredictions()} className="rounded-full" disabled={isLoading}>
@@ -425,7 +425,7 @@ export function FinanceAiAnalyticsDashboard({ stats, clientPlans }: FinanceAiAna
           </CardHeader>
           <CardContent className="grid gap-3 p-4 pt-0 md:grid-cols-2 md:p-6 md:pt-0 xl:grid-cols-1">
             {model.current.clientFocus.map((client) => (
-              <div key={client.id} className="rounded-2xl border border-border/60 p-3.5">
+              <div key={client.id} className="rounded-lg border border-border/60 p-3.5">
                 <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3">
@@ -490,7 +490,7 @@ export function FinanceAiAnalyticsDashboard({ stats, clientPlans }: FinanceAiAna
           </CardHeader>
           <CardContent className="space-y-5 p-4 pt-0 md:p-6 md:pt-0">
             <div className="space-y-3">
-              <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
                 Si esta curva se mantiene o sube, significa que el negocio todavía tiene buen respaldo para los próximos meses. Si baja, conviene revisar desde ya ventas nuevas, renovaciones y cobros.
               </div>
               <div className="h-[180px] w-full md:h-[220px]">
@@ -507,7 +507,7 @@ export function FinanceAiAnalyticsDashboard({ stats, clientPlans }: FinanceAiAna
             </div>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {model.forecast.projections.map((prediction) => (
-                <div key={prediction.label} className="rounded-2xl border border-border/60 p-4">
+                <div key={prediction.label} className="rounded-lg border border-border/60 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium">{prediction.label}</p>
                     <span className="text-sm font-semibold">{formatCurrency(prediction.revenue)}</span>
@@ -550,11 +550,11 @@ export function FinanceAiAnalyticsDashboard({ stats, clientPlans }: FinanceAiAna
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">Lo que no tiene deuda, no aprieta al equipo y no pone en riesgo el mes.</p>
               </div>
               {error ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                   <div className="flex items-start gap-2"><CircleAlert className="mt-0.5 h-4 w-4" /><span>{error}. Se está mostrando una lectura local de respaldo.</span></div>
                 </div>
               ) : null}
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                 <div className="flex items-start gap-2"><Brain className="mt-0.5 h-4 w-4" /><span>{isLoading ? "Actualizando lectura con IA..." : "La IA ya dejó una propuesta de prioridades lista para revisar."}</span></div>
               </div>
             </CardContent>
@@ -566,7 +566,7 @@ export function FinanceAiAnalyticsDashboard({ stats, clientPlans }: FinanceAiAna
               <p className="text-sm leading-6 text-muted-foreground">Una lista corta y respirable. Nada de bloques apretados ni decisiones escondidas.</p>
             </CardHeader>
             <CardContent className="p-6 pt-0">
-              <div className="rounded-2xl border overflow-hidden">
+              <div className="rounded-lg border overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -611,7 +611,7 @@ function AnalyticsSection({ icon: Icon, title, description, helper, children }: 
     <section className="space-y-6 md:space-y-8">
       <div className="space-y-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Icon className="h-5 w-5" />
           </div>
           <div>
@@ -643,7 +643,7 @@ function HelperTooltip({ content }: { content: string }) {
 function MetricMiniCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-border/60 bg-background p-3">
-      <p className="text-[11px] leading-4 text-muted-foreground">{label}</p>
+      <p className="text-xs leading-4 text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-medium leading-5">{value}</p>
     </div>
   );

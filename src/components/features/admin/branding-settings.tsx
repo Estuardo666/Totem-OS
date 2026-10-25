@@ -119,14 +119,11 @@ export function BrandingSettings() {
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border bg-card overflow-hidden">
-          <div className="px-4 py-3 border-b bg-muted/30">
+      <div className="rounded-2xl bg-card overflow-hidden">
+          <div className="px-5 pt-5 pb-1">
             <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
-                <ImageIcon className="h-4 w-4 text-white" />
-              </div>
               <div>
-                <h3 className="text-sm font-medium">Identidad de Marca</h3>
+                <h3 className="text-base font-semibold">Logos</h3>
                 <p className="text-xs text-muted-foreground">Cargando configuración...</p>
               </div>
             </div>
@@ -139,22 +136,19 @@ export function BrandingSettings() {
   }
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
+    <div className="rounded-2xl bg-card overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b bg-muted/30">
+      <div className="px-5 pt-5 pb-1">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
-            <ImageIcon className="h-4 w-4 text-white" />
-          </div>
           <div className="flex-1">
-            <h3 className="text-sm font-medium">Identidad de Marca</h3>
+            <h3 className="text-base font-semibold">Logos</h3>
             <p className="text-xs text-muted-foreground">Logos, favicon y fondo de login</p>
           </div>
         </div>
       </div>
 
       {/* Content - Grid de logos */}
-      <div className="p-4">
+      <div className="p-5">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Logo Modo Claro */}
           <div className="space-y-2">
@@ -352,7 +346,7 @@ export function BrandingSettings() {
                 )}
               </div>
             )}
-            <p className="text-[10px] text-muted-foreground">32x32px recomendado</p>
+            <p className="text-xs text-muted-foreground">32x32px recomendado</p>
           </div>
 
           {/* Background Login */}
@@ -424,7 +418,7 @@ export function BrandingSettings() {
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t bg-muted/30">
+      <div className="px-5 pb-5 pt-3">
         <Button
           type="button"
           onClick={handleSave}

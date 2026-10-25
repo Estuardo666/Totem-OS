@@ -126,16 +126,13 @@ export function PushTestPanel() {
   };
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
+    <div className="rounded-2xl bg-card overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b bg-muted/30">
+      <div className="px-5 pt-5 pb-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
-              <Send className="h-4 w-4 text-white" />
-            </div>
             <div>
-              <h3 className="text-sm font-medium">Enviar Push de Prueba</h3>
+              <h3 className="text-base font-semibold">Push de prueba</h3>
               <p className="text-xs text-muted-foreground">Envía notificaciones push a usuarios</p>
             </div>
           </div>
@@ -145,7 +142,7 @@ export function PushTestPanel() {
         </div>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="p-5 space-y-4">
         {/* Message fields */}
         <div className="space-y-3">
           <div>
@@ -189,7 +186,7 @@ export function PushTestPanel() {
                 onChange={(e) => setImage(e.target.value)}
                 placeholder="https://..."
               />
-              <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
                 No se mostrará en iPhone/iPad, solo Android/escritorio
               </p>
@@ -269,7 +266,7 @@ export function PushTestPanel() {
                     <button
                       key={user.id}
                       type="button"
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors ${
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-primary/[0.1] transition-colors ${
                         selectedUsers.includes(user.id) ? "bg-primary/10" : ""
                       }`}
                       onClick={() => {
@@ -327,15 +324,15 @@ export function PushTestPanel() {
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
                   <div className="text-lg font-bold text-green-600">{result.sent}</div>
-                  <div className="text-[10px] text-muted-foreground">Enviados</div>
+                  <div className="text-xs text-muted-foreground">Enviados</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-red-500">{result.failed}</div>
-                  <div className="text-[10px] text-muted-foreground">Fallidos</div>
+                  <div className="text-xs text-muted-foreground">Fallidos</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-amber-500">{result.cleaned}</div>
-                  <div className="text-[10px] text-muted-foreground">Limpiados</div>
+                  <div className="text-xs text-muted-foreground">Limpiados</div>
                 </div>
               </div>
             </div>

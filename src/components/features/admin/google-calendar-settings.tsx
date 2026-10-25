@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Calendar, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -50,15 +50,12 @@ export function GoogleCalendarSettings() {
   };
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
+    <div className="rounded-2xl bg-card overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b bg-muted/30">
+      <div className="px-5 pt-5 pb-1">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600">
-            <Calendar className="h-4 w-4 text-white" />
-          </div>
           <div>
-            <h3 className="text-sm font-medium">Google Calendar</h3>
+            <h3 className="text-base font-semibold">Google Calendar</h3>
             <p className="text-xs text-muted-foreground">Sincroniza eventos automáticamente</p>
           </div>
         </div>
@@ -67,21 +64,12 @@ export function GoogleCalendarSettings() {
       {/* Content */}
       <div className="divide-y">
         {/* Connection Status Row */}
-        <div className="flex items-center justify-between gap-4 px-4 py-3">
+        <div className="flex items-center justify-between gap-4 px-5 py-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            {isConnected === null ? (
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : isConnected ? (
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-500/10">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              </div>
-            ) : (
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-500/10">
-                <XCircle className="h-4 w-4 text-yellow-600" />
-              </div>
-            )}
+            <span
+              aria-hidden
+              className={`size-2 shrink-0 rounded-full ${isConnected === null ? "bg-muted-foreground/40 motion-safe:animate-pulse" : isConnected ? "bg-[hsl(var(--theme-success))]" : "bg-[hsl(var(--theme-warning))]"}`}
+            />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">
                 {isConnected === null 

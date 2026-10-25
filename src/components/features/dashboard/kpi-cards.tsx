@@ -68,7 +68,7 @@ export async function KPICards() {
     cards.push({
       key: "income",
       content: (
-        <div className="h-full rounded-2xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow animate-fade-in">
+        <div className="h-full rounded-2xl border bg-card p-5 transition-shadow animate-fade-in">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium text-muted-foreground">
               Ingresos del Mes
@@ -92,7 +92,7 @@ export async function KPICards() {
     {
       key: "pending",
       content: (
-        <div className="h-full rounded-2xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow animate-fade-in">
+        <div className="h-full rounded-2xl border bg-card p-5 transition-shadow animate-fade-in">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium text-muted-foreground">
               Tareas Pendientes
@@ -122,7 +122,7 @@ export async function KPICards() {
     {
       key: "clients",
       content: (
-        <div className="h-full rounded-2xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow animate-fade-in">
+        <div className="h-full rounded-2xl border bg-card p-5 transition-shadow animate-fade-in">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium text-muted-foreground">
               Clientes Activos

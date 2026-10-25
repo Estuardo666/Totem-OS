@@ -58,7 +58,7 @@ interface TaskSheetProps {
 
 /**
  * Convierte una fecha UTC a formato YYYY-MM-DDTHH:mm para datetime-local input
- * ✨ Esto asegura que la fecha se muestre correctamente en la hora local del navegador
+ * Esto asegura que la fecha se muestre correctamente en la hora local del navegador
  */
 const formatToDatetimeLocal = (date: Date | string | undefined): string => {
   if (!date) return "";
@@ -393,7 +393,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                     <FormLabel className={task?.status === "CLIENT_APPROVED" ? "text-orange-600 font-semibold" : ""}>
                       Fecha de Entrega Interna
                       {task?.status === "CLIENT_APPROVED" && (
-                        <span className="ml-2 text-xs text-orange-600">⚠️ No olvides programarla</span>
+                        <span className="ml-2 text-xs text-orange-600">No olvides programarla</span>
                       )}
                     </FormLabel>
                     <FormControl>
@@ -484,7 +484,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                   return (
                     <div
                       key={asset.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-primary/[0.1] transition-colors"
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="flex-shrink-0">

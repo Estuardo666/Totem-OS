@@ -59,14 +59,14 @@ export function UsersTable({ users }: UsersTableProps) {
       if (taskCount > 10) {
         return (
           <Badge variant="destructive" className="gap-1 cursor-pointer">
-            🔥 {taskCount}
+            {taskCount}
           </Badge>
         );
       }
       if (taskCount > 5) {
         return (
           <Badge variant="secondary" className="gap-1 bg-yellow-500/90 text-yellow-900 hover:bg-yellow-500 dark:bg-yellow-900/80 dark:text-yellow-100 cursor-pointer">
-            ⚠️ {taskCount}
+            {taskCount}
           </Badge>
         );
       }

@@ -49,7 +49,7 @@ function StrategyChoice({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 px-3 py-3">
+    <div className="rounded-lg border border-border/60 px-3 py-3">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <span className="text-sm font-medium">{label}</span>
         <div className="flex gap-2">
@@ -180,7 +180,7 @@ export function ContentStrategyCard({
           onChange={handlePreparedChange}
         />
 
-        <div className="rounded-2xl border border-border/60 px-3 py-3">
+        <div className="rounded-lg border border-border/60 px-3 py-3">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <span className="text-sm font-medium">Fecha de envío al cliente</span>
             <div className="flex flex-col gap-2 md:w-auto md:flex-row">
@@ -231,7 +231,7 @@ export function ContentStrategyCard({
           onChange={handleApprovalChange}
         />
 
-        <div className="rounded-2xl border border-border/60 px-3 py-3">
+        <div className="rounded-lg border border-border/60 px-3 py-3">
           <p className="text-sm font-medium">{note}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {strategyRecord

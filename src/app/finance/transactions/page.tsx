@@ -5,6 +5,7 @@ import { TransactionsOfflineView } from "@/components/features/finance/transacti
 import { Button } from "@/components/ui/button";
 import { Plus, DollarSign, Receipt } from "lucide-react";
 import Link from "next/link";
+import { AppPageHeader } from "@/components/shared/app-page-header";
 
 export default async function TransactionsPage() {
   const session = await auth();
@@ -16,18 +17,10 @@ export default async function TransactionsPage() {
   if (!result.success || !result.data) {
     return (
       <div className="min-h-screen bg-muted/30">
-        <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="flex items-center justify-between py-4">
-              <div className="flex items-center gap-3">
-                <DollarSign className="h-6 w-6 text-foreground" />
-              </div>
-            </div>
-          </div>
-        </div>
+        <AppPageHeader title="Transacciones" />
 
         <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8 shadow-sm">
+          <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-card dark:bg-gray-900 p-8">
             <p className="text-destructive text-center font-medium">
               {result.error || "Error al cargar las transacciones"}
             </p>
@@ -40,23 +33,12 @@ export default async function TransactionsPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header iOS-26 sticky */}
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-3">
-              <DollarSign className="h-6 w-6 text-foreground" />
-              <div>
-                <h1 className="text-xl font-bold">Transacciones</h1>
-                <p className="text-xs text-muted-foreground">
-                  {isAdmin
-                    ? "Gestiona todas las transacciones financieras del sistema"
-                    : "Gestiona tus transacciones financieras"}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2 items-center">
-              <TransactionDialog isAdminOverride={isAdmin}>
+      <AppPageHeader
+        title="Transacciones"
+        description={<>{isAdmin ? "Gestiona todas las transacciones financieras del sistema" : "Gestiona tus transacciones financieras"}</>}
+        actions={
+          <>
+            <TransactionDialog isAdminOverride={isAdmin}>
                 <Button className="gap-2 rounded-full">
                   <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">Crear nueva transacción</span>
@@ -83,10 +65,9 @@ export default async function TransactionsPage() {
                   </Button>
                 </>
               )}
-            </div>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Transaction List */}
       <div className="max-w-7xl mx-auto px-4 py-6">

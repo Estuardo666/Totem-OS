@@ -40,21 +40,21 @@ export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPubl
       {/* Column Container con fondo y borde - Padding reducido en desktop */}
       <div
         className={cn(
-          "flex flex-col h-full rounded-xl border overflow-visible md:overflow-hidden transition-colors duration-200 ease-out",
+          "flex flex-col h-full rounded-lg overflow-visible md:overflow-hidden transition-colors duration-200 ease-out",
           toneClasses.container
         )}
       >
         {/* Header Sticky - Texto más compacto en desktop */}
         <div
           className={cn(
-            "sticky top-0 z-30 w-full py-2 px-2 md:py-2 md:px-2 border-b flex items-center justify-between rounded-t-xl transition-colors duration-200 ease-out",
+            "sticky top-0 z-30 w-full py-2 px-2 md:py-2 md:px-2 flex items-center justify-between rounded-t-2xl transition-colors duration-200 ease-out",
             toneClasses.header
           )}
         >
           <h3 className="font-semibold text-xs md:text-sm truncate">
             {label}
           </h3>
-          <Badge variant="secondary" className="ml-2 flex-shrink-0 text-[10px] md:text-xs">
+          <Badge variant="secondary" className="ml-2 flex-shrink-0 text-xs md:text-xs">
             {tasks.length}
           </Badge>
         </div>
@@ -67,7 +67,7 @@ export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPubl
               {...provided.droppableProps}
               data-droppable-id={status}
               className={cn(
-                "flex-1 overflow-visible md:overflow-y-auto pr-1 scrollbar-hide rounded-b-xl transition-colors duration-200 ease-out",
+                "flex-1 overflow-visible md:overflow-y-auto pr-1 scrollbar-hide rounded-b-2xl transition-colors duration-200 ease-out",
                 snapshot.isDraggingOver && "bg-primary/5 border-2 border-dashed border-primary rounded-md"
               )}
             >
@@ -99,7 +99,7 @@ export function KanbanColumn({ status, label, tasks, onCardClick, optimisticPubl
                 ) : (
                   <div
                     className={cn(
-                      "rounded-md border border-dashed p-3 text-center text-[9px] md:text-[10px] text-muted-foreground col-span-2 md:col-span-1 animate-fade-in transition-colors duration-200 ease-out",
+                      "rounded-md border border-dashed p-3 text-center text-xs md:text-xs text-muted-foreground col-span-2 md:col-span-1 animate-fade-in transition-colors duration-200 ease-out",
                       toneClasses.emptyState
                     )}
                   >

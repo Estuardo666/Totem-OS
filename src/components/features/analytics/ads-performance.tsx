@@ -114,7 +114,7 @@ export function AdsPerformance({ ads }: AdsPerformanceProps) {
             </table>
           </div>
 
-          <p className="border-t p-3 text-[11px] text-muted-foreground">
+          <p className="border-t p-3 text-xs text-muted-foreground">
             Ventana de atribución: {ads.attributionWindow}. Moneda: {block.currency}.
           </p>
         </div>
@@ -126,9 +126,9 @@ export function AdsPerformance({ ads }: AdsPerformanceProps) {
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 text-lg font-semibold tabular-nums leading-none">{value}</p>
-      {hint ? <p className="mt-1 text-[10px] text-muted-foreground/80">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-xs text-muted-foreground/80">{hint}</p> : null}
     </div>
   );
 }

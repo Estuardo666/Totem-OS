@@ -222,11 +222,11 @@ export function ClientBillingForm({ client, onSaved }: ClientBillingFormProps) {
         <div className="flex items-center gap-2 text-sm">
           {tieneDatosCompletos ? (
             <span className="text-green-600 font-medium">
-              ✓ Datos fiscales completos
+              Datos fiscales completos
             </span>
           ) : (
             <span className="text-amber-600 font-medium">
-              ⚠ Faltan datos para facturación electrónica
+              Faltan datos para facturación electrónica
             </span>
           )}
         </div>
