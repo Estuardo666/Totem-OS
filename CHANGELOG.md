@@ -1,5 +1,11 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.2.2] - 2026-10-25
+
+### Fixed
+
+- El modal de transacciones muestra un solo formulario al cambiar entre Ingreso, Gasto y Honorarios, sin contenido duplicado ni campos transparentes durante la transición.
+
 ## [0.2.1] - 2026-10-25
 
 ### Fixed

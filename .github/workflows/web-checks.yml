@@ -39,6 +39,12 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      - name: Install Chromium for modal regression
+        run: npx playwright install --with-deps chromium
+
+      - name: Test transaction modal in browser
+        run: node --test tests/browser/transaction-modal.test.mjs
+
       - name: Build standalone WhatsApp worker
         run: |
           npm run build:wa --prefix worker

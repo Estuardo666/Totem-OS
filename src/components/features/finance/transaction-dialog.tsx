@@ -625,7 +625,7 @@ export function TransactionDialog({
 
           {/* Tab de Ingreso - Solo visible para ADMIN */}
           {isAdmin && (
-          <TabsContent value="income" className={activeTab === "income" ? "fade-in" : "fade-out"}>
+          <TabsContent value="income">
             <Form {...incomeForm}>
               <form
                 onSubmit={incomeForm.handleSubmit(onIncomeSubmit)}
@@ -902,7 +902,7 @@ export function TransactionDialog({
           )}
 
           {/* Tab de Gasto */}
-          <TabsContent value="expense" className={activeTab === "expense" ? "fade-in" : "fade-out"}>
+          <TabsContent value="expense">
             <Form {...expenseForm}>
               <form
                 onSubmit={expenseForm.handleSubmit(onExpenseSubmit)}
@@ -1185,7 +1185,7 @@ export function TransactionDialog({
 
           {/* Tab de Honorarios (solo ADMIN) */}
           {isAdmin && (
-            <TabsContent value="honorarios" className={activeTab === "honorarios" ? "fade-in" : "fade-out"}>
+            <TabsContent value="honorarios">
               <Form {...honorariosForm}>
                 <form
                   onSubmit={honorariosForm.handleSubmit(onHonorariosSubmit)}
