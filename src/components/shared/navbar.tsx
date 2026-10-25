@@ -86,12 +86,12 @@ export function Navbar() {
           </SheetTrigger>
           <SheetContent 
             side="left" 
-            className="w-[75vw] max-w-[400px] bg-white/95 p-0 pt-[calc(var(--sat,0px)+0.5rem)] backdrop-blur-xl dark:bg-background/30 border-r-0 rounded-r-3xl [&>button]:top-[calc(var(--sat,0px)+1rem)]"
+            className="w-[85vw] max-w-[18rem] bg-background p-0 pt-[var(--sat,0px)] border-r [&>button]:top-[calc(var(--sat,0px)+1.25rem)]"
           >
             <SheetTitle className="sr-only">Menú de Navegación</SheetTitle>
-            <Sidebar 
+            <Sidebar
               data-mobile-sidebar
-              className="w-full h-full m-0 border-none shadow-none bg-transparent rounded-none"
+              className="w-full border-none"
               onNavigate={() => setOpen(false)}
             />
           </SheetContent>
