@@ -1,5 +1,11 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.2.3] - 2026-10-25
+
+### Fixed
+
+- El formulario de gastos muestra categoría y cliente en una fila en móvil, evita repetir la fecha y agrupa la instrucción de asignación de usuarios.
+
 ## [0.2.2] - 2026-10-25
 
 ### Fixed
