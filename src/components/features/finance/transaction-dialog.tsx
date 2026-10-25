@@ -995,21 +995,18 @@ export function TransactionDialog({
                           />
                         </FormControl>
                         <FormMessage />
-                        <div className="text-sm text-muted-foreground mt-1">
-                          {formatDateNatural(field.value as Date | string | undefined) || formatDateNatural(getCurrentDateInEcuador())}
-                        </div>
                       </FormItem>
                     )}
                   />
                 </div>
 
                 {/* Categoría y cliente en una sola fila (50/50) */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="flex w-full flex-row gap-3 sm:gap-4">
                 <FormField
                   control={expenseForm.control}
                   name="category"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="min-w-0 flex-1">
                       <FormLabel>Categoría</FormLabel>
                       <Select
                         onValueChange={field.onChange}
@@ -1017,7 +1014,7 @@ export function TransactionDialog({
                         disabled={isSubmitting}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="min-w-0 gap-2 px-3 sm:px-4">
                             <SelectValue placeholder="Selecciona la categoría" />
                           </SelectTrigger>
                         </FormControl>
@@ -1040,7 +1037,7 @@ export function TransactionDialog({
                   control={expenseForm.control}
                   name="clientId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="min-w-0 flex-1">
                       <FormLabel>Cliente (Opcional)</FormLabel>
                       <Select
                         onValueChange={(value) =>
@@ -1050,7 +1047,7 @@ export function TransactionDialog({
                         disabled={isSubmitting || loadingClients}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="min-w-0 gap-2 px-3 sm:px-4">
                             <SelectValue placeholder="Selecciona un cliente (opcional)" />
                           </SelectTrigger>
                         </FormControl>
@@ -1106,10 +1103,12 @@ export function TransactionDialog({
                   render={({ field }) => (
                     <FormItem>
                       <div className="space-y-3">
-                        <FormLabel>Asignar a Usuarios (Para Reembolso)</FormLabel>
-                        <p className="text-sm text-muted-foreground">
-                          Selecciona uno o más usuarios. Si seleccionas múltiples, el monto se dividirá equitativamente.
-                        </p>
+                        <div className="space-y-1">
+                          <FormLabel>Asignar a Usuarios (Para Reembolso)</FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Selecciona uno o más usuarios. Si seleccionas múltiples, el monto se dividirá equitativamente.
+                          </p>
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
                           {users.map((user) => {
                             const firstName = user.name?.split(' ')[0] || user.name;
