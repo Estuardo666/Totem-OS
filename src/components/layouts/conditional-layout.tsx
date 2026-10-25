@@ -43,14 +43,13 @@ export function ConditionalLayout({
   return (
     <div className="flex min-h-screen flex-col bg-transparent overflow-x-hidden">
       <div className="flex flex-1 overflow-x-hidden">
-        {/* Sidebar solo visible en desktop - Flotante con margin */}
+        {/* Sidebar anclado, solo desktop. Ancho expandido/icono vía --sidebar-w */}
         <div className="hidden md:block fixed left-0 top-0 h-full z-30">
-          <Sidebar />
+          <Sidebar collapsible />
         </div>
 
         {/* Contenido principal con margen para el sidebar */}
-        {/* Sidebar tiene w-56 (224px) + m-4 izquierdo (16px) = 240px total */}
-        <main className="flex-1 md:pl-[240px] w-full overflow-x-hidden pt-[calc(4rem+var(--sat,0px))] md:pt-0">
+        <main className="flex-1 md:pl-[var(--sidebar-w,15rem)] md:transition-[padding] md:duration-200 md:ease-out w-full overflow-x-hidden pt-[calc(4rem+var(--sat,0px))] md:pt-0">
           {/* Navbar móvil visible solo en móvil */}
           <div data-mobile-navbar data-totem-web-chrome className="md:hidden">
             <Navbar />
