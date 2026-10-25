@@ -46,16 +46,16 @@ interface ContentCardContextMenuProps {
 }
 
 const STATUS_OPTIONS: Array<{ value: ContentTaskStatus; label: string; emoji: string }> = [
-  { value: "IDEA", label: "Idea", emoji: "💡" },
-  { value: "SCRIPT", label: "Guión", emoji: "📝" },
-  { value: "RECORDED", label: "Grabado", emoji: "🎬" },
-  { value: "EDITING", label: "Editando", emoji: "✂️" },
-  { value: "REVIEW_CLIENT", label: "Revisión Cliente", emoji: "👀" },
-  { value: "CLIENT_APPROVED", label: "Aprobado por Cliente", emoji: "✅" },
-  { value: "PAUSED", label: "En pausa", emoji: "⏸️" },
-  { value: "CANCELLED", label: "Cancelado", emoji: "🛑" },
-  { value: "REJECTED", label: "Rechazado", emoji: "↩️" },
-  { value: "PUBLISHED", label: "Publicado", emoji: "🚀" },
+  { value: "IDEA", label: "Idea", emoji: "" },
+  { value: "SCRIPT", label: "Guión", emoji: "" },
+  { value: "RECORDED", label: "Grabado", emoji: "" },
+  { value: "EDITING", label: "Editando", emoji: "" },
+  { value: "REVIEW_CLIENT", label: "Revisión Cliente", emoji: "" },
+  { value: "CLIENT_APPROVED", label: "Aprobado por Cliente", emoji: "" },
+  { value: "PAUSED", label: "En pausa", emoji: "" },
+  { value: "CANCELLED", label: "Cancelado", emoji: "" },
+  { value: "REJECTED", label: "Rechazado", emoji: "" },
+  { value: "PUBLISHED", label: "Publicado", emoji: "" },
 ];
 
 const STATUS_HOVER_CLASSES: Partial<Record<ContentTaskStatus, string>> = {

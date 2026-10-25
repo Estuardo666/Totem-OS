@@ -16,7 +16,7 @@ export function buildRetencionXml(data: RetencionXmlData): string {
         .ele("ambiente").txt(infoTributaria.ambiente).up()
         .ele("tipoEmision").txt(infoTributaria.tipoEmision).up()
         .ele("razonSocial").txt(infoTributaria.razonSocial).up()
-        .ele("nombreComercial").txt(infoTributaria.nombreComercial ?? infoTributaria.razonSocial).up()
+        .ele("nombreComercial").txt(infoTributaria.nombreComercial?.trim() || infoTributaria.razonSocial.trim()).up()
         .ele("ruc").txt(infoTributaria.ruc).up()
         .ele("claveAcceso").txt(infoTributaria.claveAcceso).up()
         .ele("codDoc").txt(infoTributaria.codDoc).up()

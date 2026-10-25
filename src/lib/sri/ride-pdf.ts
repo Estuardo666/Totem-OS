@@ -94,10 +94,16 @@ export async function generarRidePdf(data: RideData): Promise<Buffer> {
       // ════════════════════════════════════════════
 
       // Título del comprobante
+      const titleY = data.ambiente === "1" ? 58 : 40;
+      if (data.ambiente === "1") {
+        doc.fontSize(10).font("Helvetica-Bold").fillColor("#9b1c1c")
+          .text("AMBIENTE DE PRUEBAS - SIN VALIDEZ TRIBUTARIA", 40, 40, { align: "center" });
+        doc.fillColor("#000000");
+      }
       doc
         .fontSize(14)
         .font("Helvetica-Bold")
-        .text(data.tipoComprobante.toUpperCase(), 40, 40, { align: "center" });
+        .text(data.tipoComprobante.toUpperCase(), 40, titleY, { align: "center" });
       doc.moveDown(0.3);
 
       // RUC y razón social del emisor

@@ -33,7 +33,7 @@ export function DashboardRefresh() {
     const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
     if (!pusherKey || !pusherCluster) {
-      console.warn("⚠️ Pusher no está configurado para actualización del dashboard");
+      console.warn("Pusher no está configurado para actualización del dashboard");
       return;
     }
 
@@ -45,7 +45,7 @@ export function DashboardRefresh() {
     const channel = pusher.subscribe(`user-${userId}`);
 
     channel.bind("pusher:subscription_succeeded", () => {
-      console.log(`✅ Suscrito al canal de actualización del dashboard: user-${userId}`);
+      console.log(`Suscrito al canal de actualización del dashboard: user-${userId}`);
     });
 
     // Escuchar eventos de actualización del dashboard
@@ -53,7 +53,7 @@ export function DashboardRefresh() {
       message?: string;
       timestamp?: string;
     }) => {
-      console.log("🔄 Evento de actualización del dashboard recibido:", data);
+      console.log("Evento de actualización del dashboard recibido:", data);
       
       triggerRefresh();
     });
@@ -92,7 +92,7 @@ export function DashboardRefresh() {
         onClick={triggerRefresh}
         aria-label="Actualizar dashboard"
         title="Actualizar dashboard"
-        className="inline-flex size-8 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground shadow-sm transition-[transform,background-color,color] duration-200 hover:bg-muted hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex size-8 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground shadow-sm transition-[transform,background-color,color] duration-200 hover:bg-primary/[0.1] hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <RefreshCw className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
       </button>

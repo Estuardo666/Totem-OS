@@ -169,7 +169,7 @@ export function TodayScheduledTasks({ tasks: initialTasks }: TodayScheduledTasks
                 return (
                   <div
                     key={task.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-[hsl(var(--theme-warning)/0.28)] bg-card p-3 text-card-foreground transition-colors hover:bg-[hsl(var(--theme-warning)/0.1)]"
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-[hsl(var(--theme-warning)/0.28)] bg-card p-3 text-card-foreground transition-colors hover:bg-[hsl(var(--theme-warning)/0.1)]"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <Checkbox

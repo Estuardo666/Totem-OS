@@ -1,12 +1,14 @@
 // Servicio de facturación electrónica
 // Creación de ElectronicInvoice + encolamiento de SriJob
 
-import { db as prisma } from "@/lib/db";
-import type { ElectronicInvoice, ElectronicInvoiceItem } from "@prisma/client";
-import { enqueueJob } from "./job-service";
+import { db as prisma } from "@/lib/sri/database";
+import type { ElectronicInvoice, ElectronicInvoiceItem, Prisma } from "@prisma/client";
 import { generarClaveAcceso, formatearSecuencial, formatearSerie, generarCodigoNumerico } from "@/lib/sri/clave-acceso";
 import { TIPOS_COMPROBANTE, CODIGOS_TIPO_IDENTIFICACION, FORMAS_PAGO } from "@/lib/sri/types";
 import { getOrCreateConfig } from "./configuracion-service";
+import { calcularLineaSri, sriMoney } from "@/lib/sri/tax-calculation";
+import { assertCreditNoteAllowed } from "@/lib/sri/credit-note-policy";
+import { triggerSriWorker } from "@/lib/sri/trigger-worker";
 
 interface ItemFactura {
   codigo: string;
@@ -48,6 +50,8 @@ export async function emitirFactura(
   }
 
   const tipoIdentificacion = client.tipoIdentificacion ?? determinarTipoIdentificacion(client.numeroIdentificacion);
+  if (!datos.items.length) throw new Error("Agregue al menos un item");
+  const itemsCalculados = datos.items.map((item) => calcularItem(item));
 
   // 2. Obtener y actualizar secuencial (atómico)
   const secuencialNumero = await obtenerSiguienteSecuencial(
@@ -60,11 +64,10 @@ export async function emitirFactura(
   const secuencialDisplay = `${config.establecimiento}-${config.puntoEmision}-${secuencialFormateado}`;
 
   // 3. Calcular montos
-  const itemsCalculados = datos.items.map((item) => calcularItem(item));
-  const subtotalSinImpuestos = itemsCalculados.reduce((s, i) => s + i.precioTotalSinImpuesto, 0);
+  const subtotalSinImpuestos = sriMoney(itemsCalculados.reduce((s, i) => s + i.precioTotalSinImpuesto, 0));
 
   const subtotal0 = itemsCalculados
-    .filter((i) => i.tipoIva === "0" || i.tipoIva === "6" || i.tipoIva === "7")
+    .filter((i) => i.tipoIva === "0")
     .reduce((s, i) => s + i.precioTotalSinImpuesto, 0);
   const subtotal2 = itemsCalculados
     .filter((i) => i.tipoIva === "2")
@@ -75,8 +78,8 @@ export async function emitirFactura(
   const subtotal15 = itemsCalculados
     .filter((i) => i.tipoIva === "4") // código "4" = 15% IVA
     .reduce((s, i) => s + i.precioTotalSinImpuesto, 0);
-  const valorIva = itemsCalculados.reduce((s, i) => s + i.valorImpuesto, 0);
-  const importeTotal = subtotalSinImpuestos + valorIva;
+  const valorIva = sriMoney(itemsCalculados.reduce((s, i) => s + i.valorImpuesto, 0));
+  const importeTotal = sriMoney(subtotalSinImpuestos + valorIva);
 
   // 4. Generar clave de acceso
   const fecha = new Date();
@@ -109,10 +112,11 @@ export async function emitirFactura(
         subtotalSinImpuestos,
         subtotal0,
         subtotal2,
+        subtotal12: subtotal2,
         subtotal4,
         subtotal15,
         valorIva,
-        totalDescuento: 0,
+        totalDescuento: sriMoney(itemsCalculados.reduce((sum, item) => sum + item.descuento, 0)),
         propina: 0,
         importeTotal,
         moneda: "DOLAR",
@@ -153,18 +157,11 @@ export async function emitirFactura(
       });
     }
 
+    await tx.sriJob.create({ data: { type: "EMITIR_FACTURA", facturaId: created.id, payload: JSON.stringify({ enviarEmail: datos.enviarEmail ?? false }), status: "PENDING" } });
     return created;
   });
 
-  // 6. Encolar job para el worker
-  await enqueueJob({
-    type: "EMITIR_FACTURA",
-    facturaId: factura.id,
-    payload: {
-      enviarEmail: datos.enviarEmail ?? false,
-    },
-  });
-
+  await triggerSriWorker();
   return factura;
 }
 
@@ -196,22 +193,25 @@ export async function anularFactura(
   motivo: string,
   tipoModificacion: string = "ANULACION"
 ): Promise<void> {
-  const factura = await prisma.electronicInvoice.findUniqueOrThrow({
+  await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "ElectronicInvoice" WHERE id = ${facturaId} FOR UPDATE`;
+  const factura = await tx.electronicInvoice.findUniqueOrThrow({
     where: { id: facturaId },
     include: { items: true },
   });
 
-  if (factura.estado !== "AUTORIZADA") {
-    throw new Error("Solo se pueden anular facturas autorizadas por el SRI.");
-  }
+  assertCreditNoteAllowed(factura);
+  if (!motivo.trim()) throw new Error("Indique el motivo de la nota de crédito.");
+  const pendingNote = await tx.creditNote.findFirst({ where: { facturaOriginalId: facturaId, estado: { in: ["PENDIENTE_FIRMA", "FIRMADA", "ENVIADA", "AUTORIZADA"] } }, select: { id: true } });
+  if (pendingNote) throw new Error("Esta factura ya tiene una nota de crédito en proceso o autorizada.");
 
-  const config = await getOrCreateConfig();
+  const config = await tx.companyConfig.findFirstOrThrow();
 
   // Obtener secuencial para NC
   const secuencialNumero = await obtenerSiguienteSecuencial(
     TIPOS_COMPROBANTE.NOTA_CREDITO,
     config.establecimiento,
-    config.puntoEmision
+    config.puntoEmision, tx
   );
 
   const secuencialFormateado = formatearSecuencial(secuencialNumero);
@@ -232,7 +232,7 @@ export async function anularFactura(
   });
 
   // Crear NC
-  const nc = await prisma.creditNote.create({
+  const nc = await tx.creditNote.create({
     data: {
       claveAcceso,
       secuencial: secuencialDisplay,
@@ -267,27 +267,26 @@ export async function anularFactura(
   });
 
   // Encolar NC para firma/envío
-  await enqueueJob({
+  await tx.sriJob.create({ data: {
     type: "NOTA_CREDITO",
-    notaCreditoId: nc.id,
+    notaCreditoId: nc.id, status: "PENDING",
+  } });
   });
+  await triggerSriWorker();
 }
 
 /**
  * Cancela una factura que aún no fue enviada al SRI (localmente).
  */
 export async function cancelarFacturaLocal(facturaId: string): Promise<void> {
-  const factura = await prisma.electronicInvoice.findUniqueOrThrow({
-    where: { id: facturaId },
-  });
-
-  if (!["PENDIENTE_FIRMA", "ERROR"].includes(factura.estado)) {
-    throw new Error("Solo se pueden cancelar facturas que no han sido enviadas al SRI.");
-  }
-
-  await prisma.electronicInvoice.update({
-    where: { id: facturaId },
-    data: { estado: "CANCELADA_LOCAL" },
+  await prisma.$transaction(async tx => {
+    const jobs = await tx.$queryRaw<Array<{ id: string; status: string }>>`
+      SELECT "id", "status" FROM "SriJob" WHERE "facturaId" = ${facturaId} FOR UPDATE
+    `;
+    if (jobs.some(job => job.status === "RUNNING")) throw new Error("El worker ya está procesando esta factura.");
+    const changed = await tx.electronicInvoice.updateMany({ where: { id: facturaId, estado: { in: ["PENDIENTE_FIRMA", "ERROR"] } }, data: { estado: "CANCELADA_LOCAL" } });
+    if (!changed.count) throw new Error("Solo se pueden cancelar facturas que no han sido enviadas al SRI.");
+    await tx.sriJob.updateMany({ where: { facturaId, status: "PENDING" }, data: { status: "FAILED", error: "CANCELADA_LOCAL", procesadoAt: new Date() } });
   });
 }
 
@@ -388,25 +387,7 @@ export async function getResumenFacturas() {
 // ── Helpers internos ──
 
 function calcularItem(item: ItemFactura) {
-  const precioTotalSinImpuesto = Number(
-    (item.cantidad * item.precioUnitario - (item.descuento ?? 0)).toFixed(2)
-  );
-
-  const porcentajeIva = getPorcentajeIva(item.tipoIva);
-  const valorImpuesto = Number((precioTotalSinImpuesto * porcentajeIva / 100).toFixed(2));
-
-  return {
-    ...item,
-    descuento: item.descuento ?? 0,
-    precioTotalSinImpuesto,
-    tarifa: porcentajeIva,
-    valorImpuesto,
-  };
-}
-
-function getPorcentajeIva(codigo: string): number {
-  const map: Record<string, number> = { "0": 0, "2": 2, "4": 15, "6": 0, "7": 0 };
-  return map[codigo] ?? 15;
+  return { ...item, ...calcularLineaSri(item) };
 }
 
 function determinarTipoIdentificacion(identificacion: string): string {
@@ -415,43 +396,13 @@ function determinarTipoIdentificacion(identificacion: string): string {
   return CODIGOS_TIPO_IDENTIFICACION.CONSUMIDOR_FINAL;
 }
 
-async function obtenerSiguienteSecuencial(
-  tipoComprobante: string,
-  establecimiento: string,
-  puntoEmision: string
-): Promise<number> {
-  return prisma.$transaction(async (tx) => {
-    // Buscar o crear secuencial
-    let secuencial = await tx.secuencialComprobante.findUnique({
-      where: {
-        tipoComprobante_establecimiento_puntoEmision: {
-          tipoComprobante,
-          establecimiento,
-          puntoEmision,
-        },
-      },
-    });
-
-    if (!secuencial) {
-      secuencial = await tx.secuencialComprobante.create({
-        data: {
-          tipoComprobante,
-          establecimiento,
-          puntoEmision,
-          ultimoSecuencial: 0,
-          siguiente: 1,
-        },
-      });
-    }
-
-    const siguiente = secuencial.siguiente;
-
-    // Actualizar atómicamente
-    await tx.secuencialComprobante.update({
-      where: { id: secuencial.id },
-      data: { siguiente: siguiente + 1 },
-    });
-
-    return siguiente;
+async function obtenerSiguienteSecuencial(tipoComprobante: string, establecimiento: string, puntoEmision: string, client: Prisma.TransactionClient = prisma): Promise<number> {
+  const counter = await client.secuencialComprobante.upsert({
+    where: { tipoComprobante_establecimiento_puntoEmision: { tipoComprobante, establecimiento, puntoEmision } },
+    create: { tipoComprobante, establecimiento, puntoEmision, ultimoSecuencial: 0, siguiente: 2 },
+    update: { siguiente: { increment: 1 } },
   });
+  const assigned = counter.siguiente - 1;
+  if (assigned < 1 || assigned > 999999999) throw new Error('Secuencial agotado');
+  return assigned;
 }

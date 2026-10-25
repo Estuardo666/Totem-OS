@@ -219,10 +219,10 @@ export function ContentFactoryWrapper({
 
       <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "kanban" | "calendar" | "accounts")}>
         <div className="flex items-center justify-between">
-          <TabsList className="grid w-full max-w-[520px] grid-cols-3 h-12 items-center rounded-full bg-muted px-3 py-1 text-muted-foreground">
-            <TabsTrigger value="kanban" className="rounded-full">Tablero</TabsTrigger>
-            <TabsTrigger value="calendar" className="rounded-full">Calendario</TabsTrigger>
-            <TabsTrigger value="accounts" className="rounded-full">Cuentas</TabsTrigger>
+          <TabsList className="grid w-full max-w-[520px] grid-cols-3">
+            <TabsTrigger value="kanban" >Tablero</TabsTrigger>
+            <TabsTrigger value="calendar" >Calendario</TabsTrigger>
+            <TabsTrigger value="accounts" >Cuentas</TabsTrigger>
           </TabsList>
           
           {viewMode === "kanban" && (

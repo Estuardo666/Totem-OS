@@ -67,7 +67,7 @@ export function LinkedExpensesSection({
               {expenses.map((expense) => (
                 <div
                   key={expense.id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-gray-50 hover:bg-gray-100 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-lg border bg-gray-50 hover:bg-primary/[0.1] transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <Badge variant="outline" className="text-xs">

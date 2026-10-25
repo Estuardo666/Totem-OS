@@ -1,7 +1,7 @@
 // Servicio de configuración del emisor (CompanyConfig)
 // Singleton: solo existe un registro de configuración
 
-import { db as prisma } from "@/lib/db";
+import { db as prisma } from "@/lib/sri/database";
 import type { CompanyConfig } from "@prisma/client";
 
 /**

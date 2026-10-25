@@ -26,11 +26,19 @@ export const CODIGOS_IVA = {
 
 export const PORCENTAJES_IVA: Record<string, number> = {
   "0": 0,
-  "2": 2,
-  "4": 4,
+  "2": 12,
+  "4": 15,
   "6": 0,
   "7": 0,
 };
+
+export const OPCIONES_IVA = [
+  { value: "0", label: "0%" },
+  { value: "2", label: "12% (código SRI 2)" },
+  { value: "4", label: "15% (código SRI 4)" },
+  { value: "6", label: "No objeto de impuesto" },
+  { value: "7", label: "Exento de IVA" },
+];
 
 export const CODIGOS_TIPO_IDENTIFICACION = {
   RUC: "04",

@@ -72,7 +72,7 @@ export function MetricsDebugger({ clientId }: MetricsDebuggerProps) {
   return (
     <Card className="border-2 border-dashed border-primary/20">
       <CardHeader>
-        <CardTitle className="text-sm font-semibold">🔧 Debug: Motor de Métricas</CardTitle>
+        <CardTitle className="text-sm font-semibold">Debug: Motor de Métricas</CardTitle>
         <CardDescription className="text-xs">
           Componente temporal para probar la sincronización de métricas de Facebook
         </CardDescription>

@@ -45,57 +45,49 @@ export function PageHeader({
   };
 
   return (
-    <div className={cn("mb-8 space-y-4", className)}>
-      {/* Top row: Back Button y Actions (en esquina opuesta) */}
-      <div className="flex items-center justify-between">
-        <div>
-          {/* Botón Ir atrás */}
-          {showBackButton && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBack}
-              className="text-muted-foreground hover:text-foreground -ml-2 h-8"
-            >
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Ir atrás
-            </Button>
-          )}
-        </div>
-        {/* Actions en la esquina superior derecha */}
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
-      </div>
+    <div className={cn("mb-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pb-2 pt-4 md:pt-6", className)}>
+      <div className="flex min-w-0 items-center gap-2">
+        {showBackButton && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleBack}
+            aria-label="Ir atrás"
+            className="-ml-2 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        )}
+        <div className="min-w-0">
+          {/* Breadcrumbs */}
+          <nav aria-label="Breadcrumb" className="flex items-center truncate text-xs text-muted-foreground">
+            {generatedBreadcrumbs.map((item, index) => (
+              <div key={index} className="flex items-center">
+                {index > 0 && <span className="mx-1.5 text-muted-foreground/60">/</span>}
+                {item.href && index < generatedBreadcrumbs.length - 1 ? (
+                  <Link
+                    href={item.href}
+                    className="hover:text-foreground transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <span className={index === generatedBreadcrumbs.length - 1 ? "text-foreground" : ""}>
+                    {item.label}
+                  </span>
+                )}
+              </div>
+            ))}
+          </nav>
 
-      {/* Breadcrumbs */}
-      <nav aria-label="Breadcrumb" className="flex items-center text-sm text-muted-foreground">
-        {generatedBreadcrumbs.map((item, index) => (
-          <div key={index} className="flex items-center">
-            {index > 0 && <span className="mx-2">/</span>}
-            {item.href && index < generatedBreadcrumbs.length - 1 ? (
-              <Link
-                href={item.href}
-                className="hover:text-foreground transition-colors"
-              >
-                {item.label}
-              </Link>
-            ) : (
-              <span className={index === generatedBreadcrumbs.length - 1 ? "text-foreground font-medium" : ""}>
-                {item.label}
-              </span>
-            )}
-          </div>
-        ))}
-      </nav>
-
-      {/* Título y descripción */}
-      {(title || description) && (
-        <div className="space-y-1">
-          {title && <h1 className="text-3xl font-bold tracking-tight">{title}</h1>}
+          {/* Título y descripción */}
+          {title && <h1 className="truncate text-2xl font-semibold">{title}</h1>}
           {description && (
-            <p className="text-muted-foreground">{description}</p>
+            <p className="text-sm text-muted-foreground">{description}</p>
           )}
         </div>
-      )}
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }

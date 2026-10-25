@@ -121,7 +121,7 @@ export function NotificationBell({ align = "start", side = "right" }: Notificati
     const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
     if (!pusherKey || !pusherCluster) {
-      console.warn("⚠️ Pusher no está configurado para notificaciones");
+      console.warn("Pusher no está configurado para notificaciones");
       return;
     }
 
@@ -135,7 +135,7 @@ export function NotificationBell({ align = "start", side = "right" }: Notificati
     channelRef.current = channel;
 
     channel.bind("pusher:subscription_succeeded", () => {
-      console.log(`✅ Suscrito al canal de notificaciones: user-${userId}`);
+      console.log(`Suscrito al canal de notificaciones: user-${userId}`);
     });
 
     // Debounce para prevenir duplicados rápidos
@@ -149,26 +149,26 @@ export function NotificationBell({ align = "start", side = "right" }: Notificati
       createdBy: string | null;
       createdAt: string;
     }) => {
-      console.log("🔔 Nueva notificación recibida:", data);
+      console.log("Nueva notificación recibida:", data);
 
       // Prevenir duplicados con verificación triple: ID, mensaje y timestamp
       const notificationKey = `${data.id}-${data.message}-${data.createdAt}`;
       
       // Verificar si ya se procesó
       if (processedNotificationIds.current.has(notificationKey)) {
-        console.log("⚠️ Notificación ya procesada, ignorando:", notificationKey);
+        console.log("Notificación ya procesada, ignorando:", notificationKey);
         return;
       }
 
       // Verificar si ya se está procesando
       if (isProcessingRef.current.has(notificationKey)) {
-        console.log("⚠️ Notificación ya en proceso, ignorando:", notificationKey);
+        console.log("Notificación ya en proceso, ignorando:", notificationKey);
         return;
       }
 
       // Verificar si ya se mostró un toast con este mensaje recientemente (últimos 3 segundos)
       if (toastShownRef.current.has(data.message)) {
-        console.log("⚠️ Toast ya mostrado para este mensaje, ignorando:", data.message);
+        console.log("Toast ya mostrado para este mensaje, ignorando:", data.message);
         return;
       }
 
@@ -362,7 +362,7 @@ export function NotificationBell({ align = "start", side = "right" }: Notificati
                       key={notification.id}
                       onClick={() => handleMarkAsRead(notification.id)}
                       className={cn(
-                        "w-full p-4 text-left hover:bg-accent/25 transition-colors",
+                        "w-full p-4 text-left hover:bg-primary/[0.1] transition-colors",
                         !notification.read && "bg-accent/30"
                       )}
                     >

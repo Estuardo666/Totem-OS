@@ -65,13 +65,13 @@ function DeliverableList({
           const previewLabel = task.coverImageUrl ? "Preview listo" : task.reviewToken ? "Preview interno" : "Sin preview";
 
           return (
-            <div key={task.id} className="rounded-2xl border border-border/60 p-3">
+            <div key={task.id} className="rounded-lg border border-border/60 p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{task.title}</p>
                   <p className="text-xs text-muted-foreground">{task.type} · {formatAccountDate(displayDate ? new Date(displayDate) : null)}</p>
                 </div>
-                <Badge variant="secondary" className="rounded-full text-[11px]">
+                <Badge variant="secondary" className="rounded-full text-xs">
                   {task.status}
                 </Badge>
               </div>
@@ -218,7 +218,7 @@ export function ContentAccountsView({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between rounded-2xl border border-border/60 px-3 py-3">
+                  <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-3">
                     <span className="text-sm font-medium">Semáforo</span>
                     <Badge
                       variant="secondary"
@@ -227,7 +227,7 @@ export function ContentAccountsView({
                       {summary.health.status === "GREEN" ? "En ritmo" : summary.health.status === "YELLOW" ? "Con leve rezago" : "Con rezago"}
                     </Badge>
                   </div>
-                  <div className="rounded-2xl border border-border/60 px-3 py-3">
+                  <div className="rounded-lg border border-border/60 px-3 py-3">
                     <p className="text-sm font-medium">{summary.health.detail}</p>
                     <p className="mt-1 text-xs text-muted-foreground">Avance contractual visible al corte del mes.</p>
                   </div>
@@ -242,18 +242,18 @@ export function ContentAccountsView({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
-                  <div className="rounded-2xl border border-border/60 px-3 py-3">
+                  <div className="rounded-lg border border-border/60 px-3 py-3">
                     <p className="font-medium">{summary.nextMilestoneLabel}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {summary.nextShoot ? `Rodaje ${formatAccountDate(new Date(summary.nextShoot.startTime))}` : summary.nextDelivery ? `Entrega ${formatAccountDate(summary.nextDelivery.scheduledAt ? new Date(summary.nextDelivery.scheduledAt) : summary.nextDelivery.dueDate ? new Date(summary.nextDelivery.dueDate) : null)}` : "Sin fechas cargadas todavía."}
                     </p>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-border/60 px-3 py-3">
+                    <div className="rounded-lg border border-border/60 px-3 py-3">
                       <p className="mb-1 flex items-center gap-2 font-medium"><Video className="h-4 w-4" /> Próximo rodaje</p>
                       <p className="text-xs text-muted-foreground">{summary.nextShoot ? `${summary.nextShoot.title} · ${formatAccountDate(new Date(summary.nextShoot.startTime))}` : "Sin rodajes programados"}</p>
                     </div>
-                    <div className="rounded-2xl border border-border/60 px-3 py-3">
+                    <div className="rounded-lg border border-border/60 px-3 py-3">
                       <p className="mb-1 flex items-center gap-2 font-medium"><CalendarClock className="h-4 w-4" /> Próxima entrega</p>
                       <p className="text-xs text-muted-foreground">{summary.nextDelivery ? `${summary.nextDelivery.title} · ${summary.nextDelivery.status}` : "Sin entregas pendientes"}</p>
                     </div>

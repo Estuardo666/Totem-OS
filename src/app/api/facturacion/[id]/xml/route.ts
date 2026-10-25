@@ -2,7 +2,7 @@
 // GET /api/facturacion/[id]/xml
 
 import { NextRequest, NextResponse } from "next/server";
-import { db as prisma } from "@/lib/db";
+import { db as prisma } from "@/lib/sri/database";
 
 import { auth } from "@/auth";
 export async function GET(

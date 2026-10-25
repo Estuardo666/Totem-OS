@@ -3,6 +3,8 @@
 
 import { createClientAsync } from "soap";
 import { SRI_URLS } from "./types";
+import { assertSriEnvironmentAllowed } from "./execution-policy";
+import { sriArray } from "./soap-shapes";
 
 export interface RespuestaRecepcion {
   estado: string; // "RECIBIDA", "DEVUELTA"
@@ -46,6 +48,7 @@ export interface RespuestaAutorizacion {
  * Obtiene las URLs del SRI según el ambiente configurado.
  */
 function getSriUrls(ambiente: string) {
+  assertSriEnvironmentAllowed(ambiente);
   const urls = SRI_URLS[ambiente as keyof typeof SRI_URLS];
   if (!urls) {
     throw new Error(`Ambiente SRI inválido: ${ambiente}. Use "1" (pruebas) o "2" (producción)`);
@@ -133,8 +136,9 @@ export async function consultarAutorizacion(
     const respuesta: RespuestaAutorizacion = {
       numeroComprobantes:
         result.RespuestaAutorizacionComprobante?.numeroComprobantes ?? "0",
-      autorizaciones:
-        result.RespuestaAutorizacionComprobante?.autorizaciones ?? { autorizacion: [] },
+      autorizaciones: {
+        autorizacion: sriArray(result.RespuestaAutorizacionComprobante?.autorizaciones?.autorizacion),
+      },
     };
 
     return respuesta;

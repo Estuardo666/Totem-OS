@@ -1,4 +1,5 @@
 "use client";
+import { OPCIONES_IVA, PORCENTAJES_IVA } from "@/lib/sri/types";
 
 // Wizard de nueva factura electrónica (3 pasos)
 // /admin/facturacion/facturas/nueva
@@ -52,13 +53,7 @@ interface Cliente {
   razonSocial: string | null;
 }
 
-const TIPOS_IVA = [
-  { value: "0", label: "0% (Exento)" },
-  { value: "2", label: "2% (Régimen simplificado)" },
-  { value: "4", label: "15% (IVA vigente)" },
-  { value: "6", label: "No objeto de impuesto" },
-  { value: "7", label: "Exento de IVA" },
-];
+const TIPOS_IVA = OPCIONES_IVA;
 
 export default function NuevaFacturaPage() {
   const router = useRouter();
@@ -163,7 +158,7 @@ export default function NuevaFacturaPage() {
   // Calcular totales
   const calcularItem = (item: ItemFactura) => {
     const subtotal = item.cantidad * item.precioUnitario - item.descuento;
-    const porcentaje = { "0": 0, "2": 2, "4": 15, "6": 0, "7": 0 }[item.tipoIva] ?? 15;
+    const porcentaje = PORCENTAJES_IVA[item.tipoIva] ?? 15;
     const iva = subtotal * porcentaje / 100;
     return { subtotal, iva, total: subtotal + iva };
   };
@@ -356,7 +351,7 @@ export default function NuevaFacturaPage() {
                     className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
                       isSelected
                         ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-muted hover:border-muted-foreground/30 hover:bg-muted/50"
+                        : "border-muted hover:border-muted-foreground/30 hover:bg-primary/[0.1]"
                     }`}
                     onClick={() => setClienteSeleccionado(c)}
                   >
@@ -516,7 +511,7 @@ export default function NuevaFacturaPage() {
                   {tareas.map((tarea) => (
                     <label
                       key={tarea.id}
-                      className="flex cursor-pointer items-start gap-3 rounded-lg border p-2 hover:bg-muted/50"
+                      className="flex cursor-pointer items-start gap-3 rounded-lg border p-2 hover:bg-primary/[0.1]"
                     >
                       <Checkbox
                         checked={tareasSeleccionadas.includes(tarea.id)}

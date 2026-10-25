@@ -115,7 +115,7 @@ export function AiContentAssistant({
           setOptions(result.data.options);
           setIsOpen(true);
           toast({
-            title: "✅ Contenido generado",
+            title: "Contenido generado",
             description: "Se han generado 3 opciones de copy con IA",
           });
         }
@@ -313,7 +313,7 @@ export function AiContentAssistant({
                   <Button
                     onClick={handleGenerate}
                     disabled={isPending || isDisabled}
-                    className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-[length:200%_auto] animate-gradient hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] transition-all duration-300 text-white border-0"
+                    className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-[length:200%_auto] animate-gradient transition-all duration-300 text-white border-0"
                   >
                     {isPending ? (
                       <>
@@ -403,7 +403,7 @@ export function AiContentAssistant({
                         <Button
                           onClick={() => handleRefine("script")}
                           disabled={isRefining || isDisabled || !currentScript || currentScript.trim().length === 0}
-                          className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-[length:200%_auto] animate-gradient hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] transition-all duration-300 text-white border-0"
+                          className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-[length:200%_auto] animate-gradient transition-all duration-300 text-white border-0"
                           size="sm"
                         >
                           {isRefining ? (
@@ -441,7 +441,7 @@ export function AiContentAssistant({
                         <Button
                           onClick={() => handleRefine("copy")}
                           disabled={isRefining || isDisabled || !currentCopy || currentCopy.trim().length === 0}
-                          className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-[length:200%_auto] animate-gradient hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] transition-all duration-300 text-white border-0"
+                          className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-[length:200%_auto] animate-gradient transition-all duration-300 text-white border-0"
                           size="sm"
                         >
                           {isRefining ? (

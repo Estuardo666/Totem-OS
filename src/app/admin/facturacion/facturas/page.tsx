@@ -138,7 +138,7 @@ export default function FacturasListPage() {
           ].map((item) => (
             <Card
               key={item.label}
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer transition-shadow"
               onClick={() => {
                 const map: Record<string, string> = {
                   Autorizadas: "AUTORIZADA",

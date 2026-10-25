@@ -6,20 +6,22 @@ import { auth } from "@/auth";
 import { getOrCreateConfig, updateConfig, guardarP12Local, eliminarP12Local, getWorkerStatus } from "@/services/facturacion/configuracion-service";
 import { obtenerHuellaCertificado } from "@/lib/sri/xml-signer";
 import { cifrarP12 } from "@/lib/sri/p12-cipher";
-import { db } from "@/lib/db";
+import { db } from "@/lib/sri/database";
 import { revalidatePath } from "next/cache";
+import { assertSriEnvironmentAllowed } from "@/lib/sri/execution-policy";
 
 /**
  * Obtiene la configuración actual del emisor.
  */
 export async function getConfiguracionAction() {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   const config = await getOrCreateConfig();
   const worker = await getWorkerStatus();
 
-  return { config, worker };
+  const { p12LocalCifrado, p12LocalIv, p12LocalAuthTag, ...safeConfig } = config;
+  return { config: safeConfig, worker };
 }
 
 /**
@@ -37,7 +39,7 @@ export async function actualizarEmisorAction(data: {
   contribuyenteRimpe: boolean;
 }) {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   await updateConfig(data);
   revalidatePath("/admin/facturacion/configuracion");
@@ -51,12 +53,13 @@ export async function actualizarEmisorAction(data: {
  */
 export async function cambiarAmbienteAction(ambiente: string) {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   if (!["1", "2"].includes(ambiente)) {
     throw new Error("Ambiente inválido. Use 1 (pruebas) o 2 (producción).");
   }
 
+  assertSriEnvironmentAllowed(ambiente);
   await updateConfig({ sriAmbiente: ambiente });
   revalidatePath("/admin/facturacion/configuracion");
 
@@ -68,7 +71,7 @@ export async function cambiarAmbienteAction(ambiente: string) {
  */
 export async function cambiarModoFirmaAction(modo: string) {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   if (!["NUBE", "LOCAL"].includes(modo)) {
     throw new Error("Modo inválido. Use NUBE o LOCAL.");
@@ -86,7 +89,7 @@ export async function cambiarModoFirmaAction(modo: string) {
  */
 export async function subirP12Action(formData: FormData) {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   const file = formData.get("p12") as File;
   const password = formData.get("password") as string;
@@ -140,7 +143,7 @@ export async function subirP12Action(formData: FormData) {
  */
 export async function eliminarP12Action() {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   const config = await getOrCreateConfig();
   await eliminarP12Local(config.id);
@@ -162,7 +165,7 @@ export async function actualizarEmailAction(data: {
   emailLogoUrl?: string;
 }) {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   await updateConfig(data);
   revalidatePath("/admin/facturacion/configuracion");
@@ -187,7 +190,7 @@ export async function actualizarDatosFiscalesCliente(
   }
 ) {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   await db.client.update({
     where: { id: clientId },
@@ -215,7 +218,7 @@ export async function actualizarDatosFiscalesCliente(
  */
 export async function getClientesConDatosFiscales() {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   const clientes = await db.client.findMany({
     where: { status: { not: "INACTIVE" } },

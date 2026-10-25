@@ -24,7 +24,7 @@ export function RemoteLogoutProvider({
     const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
     if (!pusherKey || !pusherCluster) {
-      console.warn("⚠️ Pusher no configurado para logout remoto");
+      console.warn("Pusher no configurado para logout remoto");
       return;
     }
 
@@ -36,7 +36,7 @@ export function RemoteLogoutProvider({
     const systemChannel = pusher.subscribe("system");
 
     systemChannel.bind("pusher:subscription_succeeded", () => {
-      console.log("✅ Suscrito al canal system para logout remoto");
+      console.log("Suscrito al canal system para logout remoto");
     });
 
     // Escuchar evento de logout forzado
@@ -45,11 +45,11 @@ export function RemoteLogoutProvider({
       targetUserId?: string | null; // null = todos, string = usuario específico
       timestamp?: string;
     }) => {
-      console.log("🔒 Evento force-logout recibido:", data);
+      console.log("Evento force-logout recibido:", data);
 
       // Si hay un userId objetivo, solo cerrar sesión si coincide
       if (data.targetUserId && session?.user?.id !== data.targetUserId) {
-        console.log("⏭️ Logout no aplica a este usuario");
+        console.log("Logout no aplica a este usuario");
         return;
       }
 

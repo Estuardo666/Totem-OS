@@ -1,6 +1,6 @@
 // Servicio de gestión de la cola de trabajos SRI (SriJob)
 
-import { db as prisma } from "@/lib/db";
+import { db as prisma } from "@/lib/sri/database";
 import type { SriJob } from "@prisma/client";
 
 /**
@@ -67,6 +67,7 @@ export async function completeJob(
     where: { id: jobId },
     data: {
       status: "DONE",
+      error: null,
       resultado: resultado ? JSON.stringify(resultado) : null,
       procesadoAt: new Date(),
     },

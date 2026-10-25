@@ -181,8 +181,8 @@ export default function DetalleFacturaPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          {factura.rideUrl && (
-            <Button variant="outline" size="sm" onClick={() => window.open(factura.rideUrl!, "_blank")}>
+          {["AUTORIZADA", "ANULADA"].includes(factura.estado) && (
+            <Button variant="outline" size="sm" onClick={() => window.open(`/api/facturacion/${id}/pdf`, "_blank")}>
               <Download className="mr-2 h-4 w-4" /> PDF
             </Button>
           )}
@@ -191,7 +191,7 @@ export default function DetalleFacturaPage() {
               <Download className="mr-2 h-4 w-4" /> XML
             </Button>
           )}
-          {factura.estado === "AUTORIZADA" && (
+          {factura.estado === "AUTORIZADA" && factura.tipoIdentificacion !== "07" && factura.numeroIdentificacion !== "9999999999999" && (
             <Button variant="destructive" size="sm" onClick={() => setShowAnular(true)}>
               <Ban className="mr-2 h-4 w-4" /> Anular
             </Button>

@@ -46,13 +46,13 @@ export function PostStrip({ posts, className }: { posts: PostCardData[]; classNa
           <>
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-muted">
               <Thumb src={p.miniatura} />
-              <span className="absolute left-1.5 top-1.5 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur">
+              <span className="absolute left-1.5 top-1.5 rounded-full bg-black/55 px-1.5 py-0.5 text-xs font-medium text-white backdrop-blur">
                 {p.formato}
               </span>
             </div>
             <div className="mt-1.5 space-y-0.5 px-0.5">
-              <p className="truncate text-[12px] font-semibold">{p.cliente}</p>
-              <p className="text-[11px] tabular-nums text-muted-foreground">
+              <p className="truncate text-xs font-semibold">{p.cliente}</p>
+              <p className="text-xs tabular-nums text-muted-foreground">
                 {p.alcance > 0 ? `${compact.format(p.alcance)} alcance` : `${compact.format(p.vistas)} vistas`}
                 {p.engagementPct !== null ? ` · ${p.engagementPct}% ER` : ""}
               </p>

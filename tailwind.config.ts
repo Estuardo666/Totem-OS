@@ -13,6 +13,21 @@ const config: Config = {
       fontFamily: {
         sans: ['"Google Sans"', 'sans-serif'],
       },
+      // Escala tipográfica única de la app (7 tamaños):
+      // display 32/28 (KPIs, saludo) · H1 22 (título de página) · H2 18 (sección)
+      // · H3 16 (tarjeta) · párrafo 14 · etiqueta/caption 12.
+      // Las clases text-* existentes se mapean a esta escala.
+      fontSize: {
+        xs: ["0.75rem", { lineHeight: "1rem" }],
+        sm: ["0.875rem", { lineHeight: "1.25rem" }],
+        base: ["1rem", { lineHeight: "1.5rem" }],
+        lg: ["1rem", { lineHeight: "1.5rem" }],
+        xl: ["1.125rem", { lineHeight: "1.5rem" }],
+        "2xl": ["1.375rem", { lineHeight: "1.75rem", letterSpacing: "-0.01em" }],
+        "3xl": ["1.75rem", { lineHeight: "2.125rem", letterSpacing: "-0.02em" }],
+        "4xl": ["2rem", { lineHeight: "2.375rem", letterSpacing: "-0.02em" }],
+        "5xl": ["2rem", { lineHeight: "2.375rem", letterSpacing: "-0.02em" }],
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
@@ -59,10 +74,21 @@ const config: Config = {
           800: "hsl(23, 1%, 11%)", // Dark input background — warm neutral
         },
       },
+      // Radios concéntricos (estilo macOS/iOS 26). Controles = píldora (rounded-full).
+      //   3xl 28 → modales y hojas
+      //   2xl 24 → contenedores: tarjetas, paneles, sidebar
+      //   xl 16  → secciones dentro de un contenedor
+      //   md/lg 12 → elementos dentro de una sección (filas, tarjetas kanban, baldosas)
+      //   sm 8   → chips y badges
+      // Regla: radio interior ≈ radio exterior − margen que los separa.
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        sm: "0.5rem",
+        DEFAULT: "0.5rem",
+        md: "0.75rem",
+        lg: "0.75rem",
+        xl: "1rem",
+        "2xl": "1.5rem",
+        "3xl": "1.75rem",
       },
       // Clases personalizadas para scrollbar (esencial para Trello Mobile)
       keyframes: {
@@ -93,7 +119,14 @@ const config: Config = {
         "fade-out-slide": "fade-out-slide 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         "pulse-slow": "pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
+      // Tiempos de movimiento con nombre (las clases arbitrarias no siempre se generan).
+      transitionDuration: {
+        "260": "260ms",
+        "380": "380ms",
+        "420": "420ms",
+      },
       transitionTimingFunction: {
+        soft: "ease",
         standard: "cubic-bezier(0.4, 0, 0.2, 1)",
         smooth: "cubic-bezier(0.32, 0.72, 0, 1)",
         gentle: "cubic-bezier(0.25, 0.1, 0.25, 1)",

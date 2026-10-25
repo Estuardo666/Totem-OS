@@ -136,14 +136,13 @@ export function ClientForm({ users }: ClientFormProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nombre del Cliente</FormLabel>
+              <FormLabel>Nombre del cliente</FormLabel>
               <FormControl>
                 <Input
                   placeholder="Ej: Empresa XYZ"
                   {...field}
                   disabled={isPending}
-                  className="text-2xl font-medium border-0 border-b-2 border-input rounded-none px-0 pb-2 bg-transparent focus:border-primary"
-                  style={{ fontSize: "1.5rem", fontWeight: 500 }}
+                  className="h-11 text-base font-medium"
                 />
               </FormControl>
               <FormMessage />
@@ -184,7 +183,7 @@ export function ClientForm({ users }: ClientFormProps) {
           name="color"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Color de Marca</FormLabel>
+              <FormLabel>Color de marca</FormLabel>
               <FormControl>
                 <ColorPicker
                   value={field.value || "#000000"}
@@ -199,7 +198,7 @@ export function ClientForm({ users }: ClientFormProps) {
 
         {/* Logo Upload */}
         <div>
-          <FormLabel>Logotipo del Cliente</FormLabel>
+          <FormLabel>Logotipo</FormLabel>
           <div className="mt-2">
             {logoUrl ? (
               <div className="flex items-center gap-4">
@@ -233,7 +232,7 @@ export function ClientForm({ users }: ClientFormProps) {
                       setLogoUrl(res[0].url);
                       setIsUploading(false);
                       toast({
-                        title: "✅ Logo subido",
+                        title: "Logo subido",
                         description: "El logo se ha subido correctamente.",
                       });
                     }
@@ -242,7 +241,7 @@ export function ClientForm({ users }: ClientFormProps) {
                     setIsUploading(false);
                     toast({
                       variant: "destructive",
-                      title: "❌ Error al subir logo",
+                      title: "Error al subir logo",
                       description: error.message,
                     });
                   }}
@@ -327,12 +326,14 @@ export function ClientForm({ users }: ClientFormProps) {
           )}
         />
 
+        {/* Tarifa y día de pago en una sola fila (50/50) */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField
           control={form.control}
           name="monthlyRate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tarifa Mensual ($)</FormLabel>
+              <FormLabel>Tarifa mensual ($)</FormLabel>
               <FormControl>
                 <Input
                   type="number"
@@ -346,9 +347,6 @@ export function ClientForm({ users }: ClientFormProps) {
                 />
               </FormControl>
               <FormMessage />
-              <p className="text-sm text-muted-foreground">
-                Monto que se cobrará automáticamente cuando se cumpla el plan mensual
-              </p>
             </FormItem>
           )}
         />
@@ -358,7 +356,7 @@ export function ClientForm({ users }: ClientFormProps) {
           name="paymentDay"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Fecha de pago (día del mes)</FormLabel>
+              <FormLabel>Día de pago (1–31)</FormLabel>
               <FormControl>
                 <Input
                   type="number"
@@ -374,12 +372,11 @@ export function ClientForm({ users }: ClientFormProps) {
                 />
               </FormControl>
               <FormMessage />
-              <p className="text-sm text-muted-foreground">
-                Día fijo en que se generará la transacción mensual (1-31).
-              </p>
             </FormItem>
           )}
         />
+        </div>
+        <p className="-mt-3 text-xs text-muted-foreground">El cobro mensual se genera ese día cuando se cumple el plan.</p>
 
         <FormField
           control={form.control}

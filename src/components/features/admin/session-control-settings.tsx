@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LogOut, AlertTriangle, Users, Shield } from "lucide-react";
+import { LogOut, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,15 +53,12 @@ export function SessionControlSettings() {
   };
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
+    <div className="rounded-2xl bg-card overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b bg-muted/30">
+      <div className="px-5 pt-5 pb-1">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-slate-600 to-slate-800">
-            <Shield className="h-4 w-4 text-white" />
-          </div>
           <div>
-            <h3 className="text-sm font-medium">Control de Sesiones</h3>
+            <h3 className="text-base font-semibold">Sesiones</h3>
             <p className="text-xs text-muted-foreground">Administra las sesiones activas</p>
           </div>
         </div>
@@ -70,10 +67,7 @@ export function SessionControlSettings() {
       {/* Content */}
       <div className="divide-y">
         {/* Info Row */}
-        <div className="flex items-center gap-3 px-4 py-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/10">
-            <Users className="h-4 w-4 text-blue-600" />
-          </div>
+        <div className="flex items-center gap-3 px-5 py-3">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">Sesiones activas</p>
             <p className="text-xs text-muted-foreground">Todos los usuarios conectados actualmente</p>
@@ -81,12 +75,9 @@ export function SessionControlSettings() {
         </div>
 
         {/* Danger Zone Row */}
-        <div className="px-4 py-3">
+        <div className="px-5 py-3">
           <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
             <div className="flex items-start gap-3">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-destructive/10 shrink-0">
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-destructive">Zona de peligro</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -99,7 +90,7 @@ export function SessionControlSettings() {
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t bg-muted/30">
+      <div className="px-5 pb-5 pt-3">
         <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <AlertDialogTrigger asChild>
             <Button 

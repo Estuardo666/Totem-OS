@@ -200,7 +200,7 @@ export function ContentCalendar({ tasks, users, clients }: ContentCalendarProps)
                   key={dayIdx}
                   className={`min-h-[100px] bg-background p-1 ${
                     !isCurrentMonth ? "opacity-40" : ""
-                  } ${isCurrentDay ? "bg-muted/30" : ""} cursor-pointer hover:bg-muted/50 transition-colors`}
+                  } ${isCurrentDay ? "bg-muted/30" : ""} cursor-pointer hover:bg-primary/[0.1] transition-colors`}
                   onClick={() => handleDayClick(day)}
                 >
                   <div

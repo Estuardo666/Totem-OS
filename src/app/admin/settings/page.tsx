@@ -11,8 +11,10 @@ import { GoogleCalendarSuccessToast } from "@/components/features/admin/google-c
 import { SettingsSkeleton } from "@/components/features/settings/settings-skeleton";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { Settings, Palette, Bell, Link2, Sparkles, Shield } from "lucide-react";
 import { PushTestPanel } from "@/components/features/admin/push-test-panel";
+import { SettingsShell, type SettingsPanel } from "@/components/features/settings/settings-shell";
+import { AppPageHeader } from "@/components/shared/app-page-header";
+import Link from "next/link";
 
 async function SettingsContent() {
   const session = await auth();
@@ -44,116 +46,86 @@ async function SettingsContent() {
     redirect("/");
   }
 
-  const isAdmin = user.roleLegacy === "ADMIN";
+  const panels: SettingsPanel[] = [
+    {
+      id: "appearance",
+      group: "Personal",
+      label: "Apariencia",
+      description: "Tema, modo claro u oscuro y color de acento. Se guardan al instante.",
+      content: (
+        <AppearanceForm
+          primaryColor={user.primaryColor || "#3b82f6"}
+          darkMode={user.darkMode ?? false}
+          themeId={user.themeId === "catppuccin" ? "catppuccin" : "default"}
+          catppuccinAccent={user.catppuccinAccent || "mauve"}
+        />
+      ),
+    },
+    {
+      id: "notifications",
+      group: "Personal",
+      label: "Notificaciones",
+      description: "Cómo te avisa Totem OS dentro de la app y en tus dispositivos.",
+      content: (
+        <>
+          <NotificationSettings soundNotifications={user.soundNotifications ?? true} />
+          <PushTestPanel />
+        </>
+      ),
+    },
+    {
+      id: "integrations",
+      group: "Organización",
+      label: "Integraciones",
+      description: "Servicios externos conectados a la agencia.",
+      content: (
+        <>
+          <GoogleCalendarSettings />
+          <Link
+            href="/admin/settings/integrations"
+            className="flex items-center justify-between rounded-2xl bg-card px-5 py-4 text-sm font-medium transition-colors hover:bg-card/70"
+          >
+            Ver todas las integraciones
+            <span className="text-muted-foreground" aria-hidden>›</span>
+          </Link>
+        </>
+      ),
+    },
+    {
+      id: "brand",
+      group: "Organización",
+      label: "Identidad de marca",
+      description: "Logos y nombre que ven el equipo y los clientes.",
+      content: <BrandingSettings />,
+    },
+    {
+      id: "assistant",
+      group: "Organización",
+      label: "Asistente",
+      description: "Voz, personalidad y comportamiento del asistente de IA.",
+      content: <AssistantSettingsForm />,
+    },
+    {
+      id: "ai",
+      group: "Organización",
+      label: "Modelos de IA",
+      description: "Proveedor activo y claves de API. Las claves se guardan cifradas en el servidor.",
+      content: <AiConfigForm />,
+    },
+    {
+      id: "security",
+      group: "Organización",
+      label: "Seguridad",
+      description: "Control de sesiones y acceso del equipo.",
+      content: <SessionControlSettings />,
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen">
       <GoogleCalendarSuccessToast />
-      
-      {/* Header iOS-style */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-xl border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
-              <Settings className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight">Configuración</h1>
-              <p className="text-xs text-muted-foreground">Personaliza tu experiencia</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
-        {/* SECCIÓN: Apariencia y Preferencias */}
-        <section className="space-y-3">
-          <div className="flex items-center gap-2 px-1">
-            <Palette className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Apariencia y Preferencias
-            </h2>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <AppearanceForm
-              primaryColor={user.primaryColor || "#3b82f6"}
-              darkMode={user.darkMode ?? false}
-              themeId={user.themeId === "catppuccin" ? "catppuccin" : "default"}
-              catppuccinAccent={user.catppuccinAccent || "mauve"}
-            />
-            <NotificationSettings
-              soundNotifications={user.soundNotifications ?? true}
-            />
-          </div>
-        </section>
-
-        {/* SECCIÓN: Integraciones */}
-        <section className="space-y-3">
-          <div className="flex items-center gap-2 px-1">
-            <Link2 className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Integraciones
-            </h2>
-          </div>
-          <GoogleCalendarSettings />
-        </section>
-
-        {/* SECCIÓN: Identidad de Marca (Solo Admin) */}
-        {isAdmin && (
-          <section className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              <Sparkles className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Identidad de Marca
-              </h2>
-            </div>
-            <BrandingSettings />
-          </section>
-        )}
-
-        {/* SECCIÓN: Inteligencia Artificial (Solo Admin) */}
-        {isAdmin && (
-          <section className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              <Sparkles className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Inteligencia Artificial
-              </h2>
-            </div>
-            <AssistantSettingsForm />
-            <AiConfigForm />
-          </section>
-        )}
-
-        {/* SECCIÓN: Notificaciones Push (Solo Admin) */}
-        {isAdmin && (
-          <section className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              <Bell className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Notificaciones Push
-              </h2>
-            </div>
-            <PushTestPanel />
-          </section>
-        )}
-
-        {/* SECCIÓN: Seguridad y Control (Solo Admin) */}
-        {isAdmin && (
-          <section className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              <Shield className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Seguridad y Control
-              </h2>
-            </div>
-            <SessionControlSettings />
-          </section>
-        )}
-
-        {/* Spacer para scroll */}
-        <div className="h-8" />
-      </div>
+      <AppPageHeader title="Configuración" description="Preferencias personales y de la agencia" maxWidth="max-w-6xl" />
+      <SettingsShell panels={panels} />
     </div>
   );
 }

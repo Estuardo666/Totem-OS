@@ -1,4 +1,5 @@
 "use client";
+import { OPCIONES_IVA } from "@/lib/sri/types";
 
 // CRUD Catálogo de Productos/Servicios para Facturación
 // /admin/facturacion/productos
@@ -24,13 +25,7 @@ interface Producto {
   activo: boolean;
 }
 
-const TIPOS_IVA = [
-  { value: "0", label: "0% (Exento)" },
-  { value: "2", label: "2% (Rég. simplificado)" },
-  { value: "4", label: "15% (IVA vigente)" },
-  { value: "6", label: "No objeto" },
-  { value: "7", label: "Exento de IVA" },
-];
+const TIPOS_IVA = OPCIONES_IVA;
 
 export default function ProductosFacturacionPage() {
   const [productos, setProductos] = useState<Producto[]>([]);

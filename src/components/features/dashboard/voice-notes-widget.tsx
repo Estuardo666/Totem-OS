@@ -122,7 +122,7 @@ export function VoiceNotesWidget() {
             voiceNotes.map((note) => (
               <div
                 key={note.id}
-                className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-accent/50 transition-colors"
+                className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-primary/[0.1] transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">

@@ -1,6 +1,7 @@
 // Generador de clave de acceso de 49 dígitos según ficha técnica SRI Ecuador
 
 import { calcularModulo11 } from "./modulo-11";
+import { sriDate } from "./ecuador-date";
 
 interface ClaveAccesoParams {
   fecha: Date;
@@ -40,9 +41,7 @@ export function generarClaveAcceso(params: ClaveAccesoParams): string {
   } = params;
 
   // Formatear fecha: ddmmaaaa
-  const dd = String(fecha.getDate()).padStart(2, "0");
-  const mm = String(fecha.getMonth() + 1).padStart(2, "0");
-  const yyyy = String(fecha.getFullYear());
+  const { day: dd, month: mm, year: yyyy } = sriDate(fecha);
   const fechaStr = `${dd}${mm}${yyyy}`;
 
   // Validaciones

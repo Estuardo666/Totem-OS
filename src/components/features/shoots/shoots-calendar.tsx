@@ -392,7 +392,7 @@ function MonthView({
               <ContextMenuTrigger>
                 <div
                   onClick={(e) => handleDayClick(day, e)}
-                  className={`min-h-[100px] border rounded-lg p-1 cursor-pointer transition-colors hover:bg-accent/50 ${
+                  className={`min-h-[100px] border rounded-lg p-1 cursor-pointer transition-colors hover:bg-primary/[0.1] ${
                     isCurrentMonth ? "bg-background" : "bg-muted/30"
                   }`}
                 >
@@ -673,7 +673,7 @@ function WeekView({
                     onMouseEnter={() => setHoveredCell({ day: dayKey, hour })}
                     onMouseLeave={() => setHoveredCell(null)}
                     className={`h-12 border-b cursor-pointer transition-colors ${
-                      isHovered ? "bg-accent/50" : "hover:bg-accent/30"
+                      isHovered ? "bg-accent/50" : "hover:bg-primary/[0.1]"
                     }`}
                   />
                 );
@@ -701,7 +701,7 @@ function WeekView({
                         <CalendarIcon className="inline h-3 w-3 ml-1 opacity-60" />
                       )}
                     </div>
-                    <div className="text-[10px] opacity-80 truncate">
+                    <div className="text-xs opacity-80 truncate">
                       {format(new Date(shooting.startTime), "HH:mm")} -{" "}
                       {format(new Date(shooting.endTime), "HH:mm")}
                     </div>
@@ -800,7 +800,7 @@ function DayView({
               onMouseEnter={() => setHoveredHour(hour)}
               onMouseLeave={() => setHoveredHour(null)}
               className={`h-12 border-b cursor-pointer transition-colors ${
-                hoveredHour === hour ? "bg-accent/50" : "hover:bg-accent/30"
+                hoveredHour === hour ? "bg-accent/50" : "hover:bg-primary/[0.1]"
               }`}
             />
           ))}

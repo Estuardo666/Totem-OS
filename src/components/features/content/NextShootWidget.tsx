@@ -1,12 +1,14 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Image from "next/image";
+import Link from "next/link";
+import { useRef, useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { MapPin, ExternalLink, FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
-import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface NextShootWidgetProps {
   shoots: Array<{
@@ -21,6 +23,8 @@ interface NextShootWidgetProps {
     client: {
       id: string;
       name: string;
+      logo?: string | null;
+      color?: string | null;
     };
     crew: Array<{
       id: string;
@@ -30,153 +34,198 @@ interface NextShootWidgetProps {
   }>;
 }
 
+const initials = (name: string) =>
+  name.split(" ").map((part) => part[0]).join("").toUpperCase().slice(0, 2);
+
+function hexToRgba(hex: string, alpha: number) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * Próximos rodajes como carrusel: un rodaje por diapositiva, flechas y puntos
+ * para navegar y deslizamiento en táctil. La pista se mueve con transform
+ * (interrumpible y en GPU) con la curva de cajón de iOS.
+ */
 export function NextShootWidget({ shoots }: NextShootWidgetProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [showNotes, setShowNotes] = useState(false);
+  const [index, setIndex] = useState(0);
+  const [openNotes, setOpenNotes] = useState<string | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
   if (shoots.length === 0) {
     return (
-      <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-        <h2 className="text-lg font-bold mb-3">Próximos Rodajes</h2>
-        <p className="text-sm text-muted-foreground">No hay rodajes programados</p>
-      </div>
+      <section className="rounded-2xl bg-card p-5">
+        <h2 className="text-xl font-semibold">Próximos rodajes</h2>
+        <p className="mt-1 text-sm text-muted-foreground">No hay rodajes programados.</p>
+      </section>
     );
   }
 
-  const shoot = shoots[currentIndex];
-  const hasMultipleShoots = shoots.length > 1;
-
-  const startTimeStr = format(new Date(shoot.startTime), "dd/MM/yyyy HH:mm", { locale: es });
-  const endTimeStr = format(new Date(shoot.endTime), "HH:mm", { locale: es });
-  const startTimeOnly = format(new Date(shoot.startTime), "HH:mm", { locale: es });
-
-  const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev === 0 ? shoots.length - 1 : prev - 1));
-    setShowNotes(false);
-  };
-
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev === shoots.length - 1 ? 0 : prev + 1));
-    setShowNotes(false);
+  const total = shoots.length;
+  const go = (next: number) => {
+    setIndex((next + total) % total);
+    setOpenNotes(null);
   };
 
   return (
-    <div className="rounded-3xl border border-blue-200 dark:border-border bg-gradient-to-br from-blue-50 via-white to-blue-50/50 dark:from-card dark:via-card dark:to-card shadow-sm hover:shadow-md transition-shadow p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {hasMultipleShoots && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handlePrevious}
-              className="h-8 w-8 rounded-full hover:bg-blue-100 dark:hover:bg-muted"
-            >
+    <section className="rounded-2xl bg-card p-5" aria-roledescription="carrusel" aria-label="Próximos rodajes">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="truncate text-base font-semibold">Próximos rodajes</h2>
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {index + 1} de {total}
+          </p>
+        </div>
+        {total > 1 && (
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => go(index - 1)} aria-label="Rodaje anterior">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-          )}
-          <h2 className="text-lg font-bold">Próximos Rodajes</h2>
-          {hasMultipleShoots && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNext}
-              className="h-8 w-8 rounded-full hover:bg-blue-100 dark:hover:bg-muted"
-            >
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => go(index + 1)} aria-label="Rodaje siguiente">
               <ChevronRight className="h-4 w-4" />
             </Button>
-          )}
-        </div>
-        {hasMultipleShoots && (
-          <span className="text-xs font-medium text-muted-foreground">
-            {currentIndex + 1} / {shoots.length}
-          </span>
+          </div>
         )}
       </div>
 
-      <div className="space-y-3">
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-800/50 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-          <h3 className="font-semibold text-base mb-2">{shoot.title}</h3>
-          <div className="flex items-center gap-3 text-sm font-medium text-blue-600 dark:text-blue-400">
-            <span>{startTimeOnly}</span>
-            <span className="text-muted-foreground">–</span>
-            <span>{endTimeStr}</span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">{format(new Date(shoot.startTime), "dd MMMM yyyy", { locale: es })}</p>
-        </div>
-
-        {shoot.address && (
-          <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-            <MapPin className="w-4 h-4 mt-0.5 text-blue-500 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">{shoot.address}</p>
-              {shoot.mapLink && (
-                <a
-                  href={shoot.mapLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1 mt-1.5"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  Abrir en Maps
-                </a>
-              )}
-            </div>
-          </div>
-        )}
-
-        {shoot.notes && (
-          <div className="space-y-2">
-            <button
-              onClick={() => setShowNotes(!showNotes)}
-              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {showNotes ? (
-                <ChevronUp className="w-4 h-4" />
-              ) : (
-                <ChevronDown className="w-4 h-4" />
-              )}
-              Notas
-            </button>
-            {showNotes && (
-              <div className="p-3 rounded-xl bg-muted/40 text-sm border border-border/50">{shoot.notes}</div>
-            )}
-          </div>
-        )}
-
-        {shoot.crew.length > 0 && (
-          <div className="space-y-2.5">
-            <p className="text-sm font-medium">Equipo:</p>
-            <div className="flex flex-wrap gap-2">
-              {shoot.crew.map((member) => (
-                <div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-full bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-700 border border-gray-200 dark:border-gray-600 shadow-sm">
-                  <Avatar className="w-6 h-6">
-                    <AvatarImage src={member.image || undefined} />
-                    <AvatarFallback className="text-xs">
-                      {member.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()
-                        .slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs font-medium">{member.name}</span>
+      <div
+        className="overflow-hidden rounded-lg"
+        onTouchStart={(event) => (touchStartX.current = event.touches[0].clientX)}
+        onTouchEnd={(event) => {
+          if (touchStartX.current === null) return;
+          const delta = event.changedTouches[0].clientX - touchStartX.current;
+          if (Math.abs(delta) > 40) go(delta < 0 ? index + 1 : index - 1);
+          touchStartX.current = null;
+        }}
+      >
+        <div
+          className="flex transition-transform duration-420 ease-smooth motion-reduce:transition-none"
+          style={{ transform: `translateX(-${index * 100}%)` }}
+        >
+          {shoots.map((shoot, slideIndex) => {
+            const accent = shoot.client.color || "#6366f1";
+            const start = new Date(shoot.startTime);
+            const end = new Date(shoot.endTime);
+            return (
+              <article
+                key={shoot.id}
+                aria-roledescription="diapositiva"
+                aria-label={`${slideIndex + 1} de ${total}`}
+                aria-hidden={slideIndex !== index}
+                className="w-full shrink-0 space-y-4 rounded-lg bg-popover p-4"
+              >
+                {/* Cliente */}
+                <div className="flex items-center gap-3">
+                  <div
+                    className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md text-sm font-semibold"
+                    style={{ backgroundColor: hexToRgba(accent, 0.14), color: accent }}
+                  >
+                    {shoot.client.logo ? (
+                      <Image src={shoot.client.logo} alt="" fill className="object-cover" sizes="44px" />
+                    ) : (
+                      initials(shoot.client.name)
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs text-muted-foreground">{shoot.client.name}</p>
+                    <h3 className="truncate text-base font-semibold">{shoot.title}</h3>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {shoot.scriptUrl && (
-          <Link href={shoot.scriptUrl} target="_blank" rel="noopener noreferrer">
-            <Button className="w-full rounded-full h-10 bg-blue-500 hover:bg-blue-600 text-white font-medium">
-              <FileText className="w-4 h-4 mr-2" />
-              Ver Guiones
-            </Button>
-          </Link>
-        )}
+                {/* Cuándo: fecha y franja como bloque de lectura rápida */}
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground first-letter:uppercase">
+                      {format(start, "EEEE d 'de' MMMM", { locale: es })}
+                    </p>
+                    <p className="whitespace-nowrap text-xl font-semibold tabular-nums">
+                      {format(start, "HH:mm")}
+                      <span className="mx-1.5 font-normal text-muted-foreground">–</span>
+                      {format(end, "HH:mm")}
+                    </p>
+                  </div>
+                  {shoot.crew.length > 0 && (
+                    <div className="flex -space-x-2" aria-label={`Equipo: ${shoot.crew.map((m) => m.name).join(", ")}`}>
+                      {shoot.crew.slice(0, 4).map((member) => (
+                        <Avatar key={member.id} className="h-8 w-8 ring-2 ring-popover" title={member.name}>
+                          <AvatarImage src={member.image || undefined} alt={member.name} />
+                          <AvatarFallback className="text-xs">{initials(member.name)}</AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {shoot.crew.length > 4 && (
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium ring-2 ring-popover">
+                          +{shoot.crew.length - 4}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {shoot.address && (
+                  <div className="rounded-md bg-card px-3 py-2.5">
+                    <p className="text-sm">{shoot.address}</p>
+                    {shoot.mapLink && (
+                      <a href={shoot.mapLink} target="_blank" rel="noopener noreferrer" className="mt-0.5 inline-block text-xs font-medium text-primary hover:underline">
+                        Abrir en Maps
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {shoot.notes && (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setOpenNotes(openNotes === shoot.id ? null : shoot.id)}
+                      aria-expanded={openNotes === shoot.id}
+                      className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                    >
+                      {openNotes === shoot.id ? "Ocultar notas" : "Ver notas"}
+                    </button>
+                    <div
+                      className={cn(
+                        "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
+                        openNotes === shoot.id ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                      )}
+                    >
+                      <p className="overflow-hidden whitespace-pre-wrap pt-2 text-sm text-muted-foreground">{shoot.notes}</p>
+                    </div>
+                  </div>
+                )}
+
+                {shoot.scriptUrl && (
+                  <Button asChild className="w-full" tabIndex={slideIndex === index ? undefined : -1}>
+                    <Link href={shoot.scriptUrl} target="_blank" rel="noopener noreferrer">
+                      Ver guiones
+                    </Link>
+                  </Button>
+                )}
+              </article>
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      {total > 1 && (
+        <div className="mt-4 flex justify-center gap-1.5" role="tablist" aria-label="Elegir rodaje">
+          {shoots.map((shoot, dotIndex) => (
+            <button
+              key={shoot.id}
+              type="button"
+              role="tab"
+              aria-selected={dotIndex === index}
+              aria-label={`Rodaje ${dotIndex + 1}`}
+              onClick={() => go(dotIndex)}
+              className={cn(
+                "h-1.5 rounded-full transition-[width,background-color] duration-300 ease-out",
+                dotIndex === index ? "w-5 bg-primary" : "w-1.5 bg-primary/25 hover:bg-primary/40"
+              )}
+            />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
-

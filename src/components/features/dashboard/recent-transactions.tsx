@@ -22,7 +22,7 @@ export async function RecentTransactions() {
   const recentTransactions = financialStats?.recentTransactions.slice(0, 3) || [];
 
   return (
-    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+    <div className="rounded-2xl border bg-card overflow-hidden">
       <div className="p-5 border-b">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -45,7 +45,7 @@ export async function RecentTransactions() {
           recentTransactions.map((transaction) => (
             <div
               key={transaction.id}
-              className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors"
+              className="flex items-center gap-3 p-4 hover:bg-primary/[0.1] transition-colors"
             >
               <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
                 transaction.type === "INCOME" 
@@ -80,7 +80,7 @@ export async function RecentTransactions() {
           ))
         ) : (
           <div className="text-center py-10 px-4">
-            <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
+            <div className="h-12 w-12 rounded-lg bg-muted/50 flex items-center justify-center mx-auto mb-3">
               <Wallet className="h-6 w-6 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground">

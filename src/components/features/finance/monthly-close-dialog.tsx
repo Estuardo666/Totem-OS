@@ -152,7 +152,7 @@ export function MonthlyCloseDialog({
                               field.onChange(option.value);
                               if (option.value === "FULL") form.setValue("accruedAmount", item.monthlyRate, { shouldValidate: true });
                             }}
-                            className={`rounded-xl border p-3 text-left transition-colors ${field.value === option.value ? "border-primary bg-primary/10" : "hover:bg-muted/50"}`}
+                            className={`rounded-xl border p-3 text-left transition-colors ${field.value === option.value ? "border-primary bg-primary/10" : "hover:bg-primary/[0.1]"}`}
                           >
                             <p className="text-sm font-semibold">{option.label}</p>
                             <p className="mt-0.5 text-xs text-muted-foreground">{option.hint}</p>

@@ -42,7 +42,7 @@ export function PlatformBreakdown({ platforms }: PlatformBreakdownProps) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {visible.map((platform) => (
-        <div key={platform.platform} className="rounded-xl border bg-card p-4">
+        <div key={platform.platform} className="rounded-2xl border bg-card p-4">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold">{platform.label}</h3>
             <Badge variant={platform.hasData ? "secondary" : "outline"}>

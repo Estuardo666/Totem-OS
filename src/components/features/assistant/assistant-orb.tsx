@@ -120,11 +120,11 @@ function DraftCard({
       initial={{ opacity: 0, transform: "translateY(6px) scale(0.98)" }}
       animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
       transition={{ type: "spring", duration: 0.35, bounce: 0.12 }}
-      className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm"
+      className="overflow-hidden rounded-2xl border border-border/60 bg-card/90"
     >
       <div className="px-3.5 pb-2.5 pt-3">
-        <p className="text-[13px] font-semibold tracking-tight">{DRAFT_TITLES[draft.action] ?? draft.action}</p>
-        <dl className="mt-1.5 space-y-0.5 text-[12.5px]">
+        <p className="text-sm font-semibold tracking-tight">{DRAFT_TITLES[draft.action] ?? draft.action}</p>
+        <dl className="mt-1.5 space-y-0.5 text-sm">
           {rows.map(([k, v]) => (
             <div key={k} className="flex justify-between gap-3">
               <dt className="shrink-0 text-muted-foreground">{k}</dt>
@@ -134,19 +134,19 @@ function DraftCard({
             </div>
           ))}
         </dl>
-        {error && <p className="mt-1.5 text-[11.5px] text-destructive">{error}</p>}
+        {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
       </div>
       <AnimatePresence mode="wait" initial={false}>
         {open ? (
           <motion.div
             key="actions"
             exit={{ opacity: 0, filter: "blur(2px)", transition: { duration: 0.12 } }}
-            className="grid grid-cols-2 border-t border-border/60 text-[14px]"
+            className="grid grid-cols-2 border-t border-border/60 text-sm"
           >
             <button
               type="button"
               onClick={onCancel}
-              className="py-2 text-muted-foreground transition-[background-color,transform] duration-150 hover:bg-muted/60 active:scale-[0.97]"
+              className="py-2 text-muted-foreground transition-[background-color,transform] duration-150 hover:bg-primary/[0.1] active:scale-[0.97]"
             >
               Cancelar
             </button>
@@ -164,7 +164,7 @@ function DraftCard({
             initial={{ opacity: 0, filter: "blur(2px)" }}
             animate={{ opacity: 1, filter: "blur(0px)" }}
             transition={{ duration: 0.18, ease: EASE_OUT }}
-            className="border-t border-border/60 py-2 text-center text-[12.5px]"
+            className="border-t border-border/60 py-2 text-center text-sm"
           >
             {draft.state === "saving" ? (
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
@@ -235,7 +235,7 @@ function VoiceView({
             animate={{ opacity: 1, filter: "blur(0px)" }}
             exit={{ opacity: 0, filter: "blur(3px)", transition: { duration: 0.1 } }}
             transition={{ duration: 0.2, ease: EASE_OUT }}
-            className="text-[13px] font-medium text-muted-foreground"
+            className="text-sm font-medium text-muted-foreground"
           >
             {paused && status === "idle" ? "Pausé la voz para no gastar. Toca el orbe para seguir." : STATUS_LABEL[status]}
           </motion.p>
@@ -245,7 +245,7 @@ function VoiceView({
       <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-4">
         <div className="space-y-2 pb-4">
           {transcript.length === 0 && !live && !paused && (
-            <p className="px-6 pt-2 text-center text-[13px] leading-relaxed text-muted-foreground">
+            <p className="px-6 pt-2 text-center text-sm leading-relaxed text-muted-foreground">
               Pregunta cómo va el mes, qué tareas vencen o dicta un gasto. Confirmas diciendo &ldquo;sí&rdquo; o con el botón.
             </p>
           )}
@@ -260,10 +260,10 @@ function VoiceView({
                 style={{ transformOrigin: line.role === "user" ? "bottom right" : "bottom left" }}
                 className={cn("flex items-end gap-2", line.role === "user" && "flex-row-reverse")}
               >
-                {line.role === "user" && <Avatar src={userImage} name={userName} className="h-6 w-6 shrink-0 text-[10px]" />}
+                {line.role === "user" && <Avatar src={userImage} name={userName} className="h-6 w-6 shrink-0 text-xs" />}
                 <p
                   className={cn(
-                    "max-w-[85%] rounded-[20px] px-3.5 py-2 text-[14px] leading-snug",
+                    "max-w-[85%] rounded-lg px-3.5 py-2 text-sm leading-snug",
                     line.role === "user"
                       ? "rounded-br-md bg-primary text-primary-foreground"
                       : "rounded-bl-md bg-muted/70 text-foreground"
@@ -284,7 +284,7 @@ function VoiceView({
             />
           ))}
           {error && (
-            <p className="rounded-2xl border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-[13px] text-destructive">
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-sm text-destructive">
               {error}
             </p>
           )}
@@ -426,11 +426,11 @@ export function AssistantOrb() {
             }}
             aria-label="Abrir asistente IA"
             title="Asistente IA"
-            className="group fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-[1.125rem] z-40 rounded-full touch-manipulation select-none md:bottom-[4.5rem] md:right-[1.625rem]"
+            className="group fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-40 rounded-full touch-manipulation select-none md:bottom-[4.75rem] md:right-6"
           >
             <span className="absolute inset-[-6px] rounded-full bg-violet-500/30 blur-lg transition-opacity duration-300 group-hover:opacity-100 md:opacity-70" />
             <span className="relative block transition-transform duration-150 ease-out group-hover:scale-105 group-active:scale-[0.94]">
-              <OrbSphere size={46} className="shadow-lg shadow-indigo-500/30 ring-1 ring-white/30" />
+              <OrbSphere size={52} className="shadow-lg shadow-indigo-500/25" />
             </span>
           </motion.button>
         )}
@@ -458,11 +458,11 @@ export function AssistantOrb() {
             {...panelMotion}
             transition={{ duration: 0.32, ease: EASE_DRAWER }}
             style={{ transformOrigin: "bottom right" }}
-            className="fixed inset-x-2 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] z-50 flex h-[min(720px,88dvh)] flex-col overflow-hidden rounded-[28px] border border-white/20 bg-background/85 shadow-2xl shadow-black/20 backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 md:inset-x-auto md:bottom-6 md:right-6 md:w-[400px]"
+            className="fixed inset-x-2 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] z-50 flex h-[min(720px,88dvh)] flex-col overflow-hidden rounded-3xl border border-white/20 bg-background/85 shadow-2xl shadow-black/20 backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 md:inset-x-auto md:bottom-6 md:right-6 md:w-[400px]"
           >
             <header className="flex items-center gap-2 px-3 pb-1 pt-3">
               <div className="flex flex-1 justify-center pl-9">
-                <div className="inline-flex rounded-full bg-muted/80 p-0.5 text-[13px] font-medium">
+                <div className="inline-flex rounded-full bg-muted/80 p-0.5 text-sm font-medium">
                   {(
                     [
                       { id: "voice", label: "Voz", icon: Mic },
@@ -496,7 +496,7 @@ export function AssistantOrb() {
                 type="button"
                 onClick={close}
                 aria-label="Cerrar"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/70 text-muted-foreground transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.94]"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/70 text-muted-foreground transition-[background-color,transform] duration-150 hover:bg-primary/[0.1] active:scale-[0.94]"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -520,7 +520,7 @@ export function AssistantOrb() {
                   onClick={live ? stop : startVoice}
                   disabled={status === "connecting"}
                   className={cn(
-                    "flex h-11 items-center gap-2 rounded-full px-5 text-[14px] font-medium transition-[background-color,transform] duration-150 active:scale-[0.97] disabled:opacity-60",
+                    "flex h-11 items-center gap-2 rounded-full px-5 text-sm font-medium transition-[background-color,transform] duration-150 active:scale-[0.97] disabled:opacity-60",
                     live ? "bg-red-500/10 text-red-600 hover:bg-red-500/15" : "bg-primary text-primary-foreground hover:bg-primary/90"
                   )}
                 >
@@ -531,7 +531,7 @@ export function AssistantOrb() {
                   type="button"
                   onClick={() => switchMode("chat")}
                   aria-label="Escribir en el chat"
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-muted/80 text-muted-foreground transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.95]"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-muted/80 text-muted-foreground transition-[background-color,transform] duration-150 hover:bg-primary/[0.1] active:scale-[0.95]"
                 >
                   <Keyboard className="h-4 w-4" />
                 </button>

@@ -200,7 +200,7 @@ export function HybridCalendar({ shoots, tasks }: HybridCalendarProps) {
   };
 
   return (
-    <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
+    <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-shadow h-full flex flex-col">
       <div className="pb-3 p-6 border-b border-gray-200 dark:border-gray-800">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
@@ -275,14 +275,14 @@ export function HybridCalendar({ shoots, tasks }: HybridCalendarProps) {
                         <Tooltip key={shoot.id}>
                           <TooltipTrigger asChild>
                             <div
-                              className="text-[11px] px-1.5 py-1 rounded-md bg-red-500/20 text-red-700 dark:text-red-400 truncate cursor-pointer hover:bg-red-500/30"
+                              className="text-xs px-1.5 py-1 rounded-md bg-red-500/20 text-red-700 dark:text-red-400 truncate cursor-pointer hover:bg-red-500/30"
                               onClick={() => setSelectedShoot(shoot)}
                             >
-                              🎥 {shoot.title}
+                              {shoot.title}
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>🎥 Rodaje {shoot.client.name} - {shootTime}</p>
+                            <p>Rodaje {shoot.client.name} - {shootTime}</p>
                           </TooltipContent>
                         </Tooltip>
                       );
@@ -291,10 +291,10 @@ export function HybridCalendar({ shoots, tasks }: HybridCalendarProps) {
                       <Tooltip key={task.id}>
                         <TooltipTrigger asChild>
                           <div
-                            className="text-[11px] px-1.5 py-1 rounded-md bg-blue-500/20 text-blue-700 dark:text-blue-400 truncate cursor-pointer hover:bg-blue-500/30"
+                            className="text-xs px-1.5 py-1 rounded-md bg-blue-500/20 text-blue-700 dark:text-blue-400 truncate cursor-pointer hover:bg-blue-500/30"
                             onClick={() => setSelectedTask(task)}
                           >
-                            📋 {task.title}
+                            {task.title}
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -328,7 +328,7 @@ export function HybridCalendar({ shoots, tasks }: HybridCalendarProps) {
         <DialogContent className="max-w-xl">
           <DialogHeader className="space-y-3">
             <DialogTitle className="text-2xl font-bold flex items-start gap-3">
-              <span className="mt-1 text-lg">🎥</span>
+
               <div className="space-y-1">
                 <span>{selectedShoot?.title}</span>
                 {selectedShoot && (
@@ -391,7 +391,7 @@ export function HybridCalendar({ shoots, tasks }: HybridCalendarProps) {
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 text-sm font-semibold text-primary underline"
                 >
-                  📄 Ver guion / brief
+                  Ver guion / brief
                 </a>
               )}
               {selectedShoot.crew && selectedShoot.crew.length > 0 && (
@@ -399,7 +399,7 @@ export function HybridCalendar({ shoots, tasks }: HybridCalendarProps) {
                   <span className="text-xs uppercase tracking-wide text-muted-foreground">Equipo</span>
                   <div className="flex flex-wrap gap-2">
                     {selectedShoot.crew.map((member) => (
-                      <div key={member.id} className="rounded-lg border border-border px-3 py-2 flex items-center gap-2 bg-card">
+                      <div key={member.id} className="rounded-xl px-3 py-2 flex items-center gap-2 bg-card">
                         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted overflow-hidden text-xs font-semibold">
                           {member.image ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -427,7 +427,7 @@ export function HybridCalendar({ shoots, tasks }: HybridCalendarProps) {
         <DialogContent className="max-w-xl">
           <DialogHeader className="space-y-3">
             <DialogTitle className="text-2xl font-bold flex items-start gap-3">
-              <span className="mt-1 text-lg">📋</span>
+
               <div className="space-y-1">
                 <span>{selectedTask?.title}</span>
                 {selectedTask && (

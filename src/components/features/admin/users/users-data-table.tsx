@@ -81,8 +81,8 @@ export function UsersDataTable({ users }: UsersDataTableProps) {
   const getWorkloadBadge = (user: AdminUserWithRelations) => {
     const count = getTaskCount(user);
     if (count === 0) return <Badge variant="outline">0</Badge>;
-    if (count > 10) return <Badge variant="destructive">🔥 {count}</Badge>;
-    if (count > 5) return <Badge className="bg-yellow-500 text-yellow-900">⚠️ {count}</Badge>;
+    if (count > 10) return <Badge variant="destructive">{count}</Badge>;
+    if (count > 5) return <Badge className="bg-yellow-500 text-yellow-900">{count}</Badge>;
     return <Badge variant="secondary">{count}</Badge>;
   };
 

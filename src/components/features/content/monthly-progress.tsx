@@ -79,7 +79,7 @@ export function MonthlyProgress({
       : 0;
 
   return (
-    <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+    <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-card dark:bg-gray-900 p-4">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold">Progreso del Mes - {selectedClient.name}</h3>

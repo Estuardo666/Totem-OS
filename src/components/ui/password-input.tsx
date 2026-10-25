@@ -63,7 +63,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
         <div className="relative">
           <Input
             type={isVisible ? "text" : "password"}
-            className={cn("pr-10", className)}
+            className={cn("pr-12", className)}
             ref={inputRef}
             {...inputProps}
           />

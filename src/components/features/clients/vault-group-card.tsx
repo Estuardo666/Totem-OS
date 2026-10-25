@@ -145,7 +145,7 @@ export function VaultGroupCard({
 
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="w-full justify-between rounded-2xl border border-dashed">
+            <Button variant="ghost" className="w-full justify-between rounded-lg border border-dashed">
               <span>Ver cuentas incluidas ({group.credentials.length})</span>
               <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
             </Button>
@@ -154,7 +154,7 @@ export function VaultGroupCard({
             {group.credentials.map((credential) => (
               <div
                 key={credential.id}
-                className="flex items-center justify-between rounded-2xl border px-3 py-3 text-sm"
+                className="flex items-center justify-between rounded-lg border px-3 py-3 text-sm"
               >
                 <div className="flex flex-col">
                   <span className="font-medium">{credential.service}</span>

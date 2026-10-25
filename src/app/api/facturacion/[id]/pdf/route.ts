@@ -2,9 +2,10 @@
 // GET /api/facturacion/[id]/pdf
 
 import { NextRequest, NextResponse } from "next/server";
-import { db as prisma } from "@/lib/db";
+import { db as prisma } from "@/lib/sri/database";
 
 import { auth } from "@/auth";
+import { generarRideFactura } from "@/lib/sri/invoice-ride";
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,10 +20,7 @@ export async function GET(
 
     const factura = await prisma.electronicInvoice.findUnique({
       where: { id },
-      select: {
-        rideUrl: true,
-        secuencial: true,
-      },
+      include: { items: true },
     });
 
     if (!factura) {
@@ -30,10 +28,15 @@ export async function GET(
     }
 
     if (!factura.rideUrl) {
-      return NextResponse.json(
-        { error: "RIDE no disponible. La factura aún no ha sido procesada." },
-        { status: 404 }
-      );
+      if (!["AUTORIZADA", "ANULADA"].includes(factura.estado)) return NextResponse.json({ error: "La factura todavía no está autorizada." }, { status: 409 });
+      const config = await prisma.companyConfig.findFirst();
+      if (!config) return NextResponse.json({ error: "Emisor no configurado" }, { status: 409 });
+      const pdf = await generarRideFactura(factura, config);
+      return new NextResponse(new Uint8Array(pdf), { headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${factura.secuencial}.pdf"`,
+        "Cache-Control": "private, no-store",
+      } });
     }
 
     // Redirigir a la URL del RIDE (UploadThing o storage)

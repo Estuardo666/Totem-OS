@@ -130,7 +130,7 @@ export function ContentFilters({
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [clientSearch, setClientSearch] = useState("");
-  const filterTriggerClassName = "h-9 w-full rounded-full px-3 text-[12px] sm:text-sm";
+  const filterTriggerClassName = "h-9 w-full rounded-full px-3 text-xs sm:text-sm";
 
   const sortedClients = [...clients].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
   const filteredClients = sortedClients.filter((client) => {
@@ -441,7 +441,7 @@ export function ContentFilters({
                 size="sm"
                 onClick={() => setViewMode("my-tasks")}
                 disabled={!userId}
-                className="w-full min-w-0 md:w-auto gap-1 rounded-full px-2 text-[12px] sm:text-sm"
+                className="w-full min-w-0 md:w-auto gap-1 rounded-full px-2 text-xs sm:text-sm"
               >
                 <Avatar className="hidden h-5 w-5 sm:flex">
                   <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || "Usuario"} />
@@ -455,7 +455,7 @@ export function ContentFilters({
                 variant={viewMode === "all" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode("all")}
-                className="w-full min-w-0 md:w-auto rounded-full px-2 text-[12px] sm:text-sm"
+                className="w-full min-w-0 md:w-auto rounded-full px-2 text-xs sm:text-sm"
               >
                 <span className="truncate">Ver todo el equipo</span>
               </Button>
@@ -465,7 +465,7 @@ export function ContentFilters({
           <Button
             variant="outline"
             size="sm"
-            className="w-full min-w-0 rounded-full px-2 text-[12px] sm:text-sm md:hidden"
+            className="w-full min-w-0 rounded-full px-2 text-xs sm:text-sm md:hidden"
             onClick={() => setFiltersOpen((prev) => !prev)}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />

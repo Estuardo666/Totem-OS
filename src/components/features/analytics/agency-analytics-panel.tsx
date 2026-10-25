@@ -77,18 +77,18 @@ function ClientAvatar({ name, logo }: { name: string; logo: string | null }) {
     // eslint-disable-next-line @next/next/no-img-element
     <img src={logo} alt="" className="size-8 shrink-0 rounded-lg object-cover ring-1 ring-border/60" />
   ) : (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-[10px] font-semibold text-muted-foreground">{initials(name)}</span>
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-semibold text-muted-foreground">{initials(name)}</span>
   );
 }
 
 function Delta({ pct, neutral }: { pct: number | null; neutral?: boolean }) {
-  if (pct === null) return <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">nuevo</span>;
+  if (pct === null) return <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">nuevo</span>;
   const up = pct >= 0;
   const tone = neutral ? "bg-muted text-muted-foreground" : up ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 text-red-600 dark:text-red-400";
   const Icon = up ? ArrowUpRight : ArrowDownRight;
   const value = Math.abs(pct) >= 1000 ? `${Math.round(pct / 100) / 10}k` : Math.round(pct);
   return (
-    <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${tone}`}>
+    <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums ${tone}`}>
       <Icon className="size-3" aria-hidden />
       {up ? "+" : "−"}
       {String(value).replace("-", "")}%
@@ -106,7 +106,7 @@ function Networks({ c }: { c: AgencyClientRow["connections"] }) {
   return (
     <span className="flex gap-1">
       {items.map((i) => (
-        <span key={i.k} className={`rounded px-1 py-px text-[9px] font-semibold leading-tight tracking-wide ${i.cls}`}>{i.k}</span>
+        <span key={i.k} className={`rounded px-1 py-px text-xs font-semibold leading-tight tracking-wide ${i.cls}`}>{i.k}</span>
       ))}
     </span>
   );
@@ -120,7 +120,7 @@ function HealthMeter({ score, label }: { score: number | null; label: string }) 
         <div className={`h-full rounded-full ${s.bar}`} style={{ width: `${Math.max(score ?? 0, 4)}%` }} />
       </div>
       <span className={`text-sm font-semibold tabular-nums ${s.text}`}>{score ?? "—"}</span>
-      <span className={`hidden rounded-full px-2 py-0.5 text-[10px] font-medium xl:inline ${s.bg} ${s.text}`}>{label || s.label}</span>
+      <span className={`hidden rounded-full px-2 py-0.5 text-xs font-medium xl:inline ${s.bg} ${s.text}`}>{label || s.label}</span>
     </div>
   );
 }
@@ -141,7 +141,7 @@ function Kpi({ icon: Icon, label, value, pct, previous, hint, neutral, index }: 
         </span>
         {pct !== undefined && <Delta pct={pct} neutral={neutral} />}
       </div>
-      <p className="mt-4 text-[30px] font-semibold leading-none tracking-[-0.04em] tabular-nums">{value}</p>
+      <p className="mt-4 text-4xl font-semibold leading-none tracking-[-0.04em] tabular-nums">{value}</p>
       <p className="mt-2 text-xs text-muted-foreground">{previous ? <>Antes: <span className="tabular-nums">{previous}</span></> : hint}</p>
     </motion.div>
   );
@@ -204,7 +204,7 @@ export function AgencyAnalyticsPanel({ initial }: AgencyAnalyticsPanelProps) {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Cartera</p>
-          <h1 className="mt-1 text-[28px] font-semibold tracking-[-0.035em]">Analítica de agencia</h1>
+          <h1 className="mt-1 text-3xl font-semibold tracking-[-0.035em]">Analítica de agencia</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {data.totals.clients} clientes activos · {data.totals.published} piezas publicadas · últimos {data.period.days} días
           </p>
@@ -299,7 +299,7 @@ export function AgencyAnalyticsPanel({ initial }: AgencyAnalyticsPanelProps) {
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/70 text-left text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
+                <tr className="border-b border-border/70 text-left text-xs uppercase tracking-[0.06em] text-muted-foreground">
                   <SortTh active={sortKey === "name"} onClick={() => setSortKey("name")} className="sticky left-0 z-10 bg-card pl-5">Cliente</SortTh>
                   {COLUMNS.map((c) => (
                     <SortTh key={c.key} active={sortKey === c.key} onClick={() => setSortKey(c.key)} title={c.title} align="right">{c.label}</SortTh>
@@ -311,8 +311,8 @@ export function AgencyAnalyticsPanel({ initial }: AgencyAnalyticsPanelProps) {
               </thead>
               <tbody className="divide-y divide-border/60">
                 {rows.map((client) => (
-                  <tr key={client.clientId} className="group transition-colors hover:bg-muted/30">
-                    <td className="sticky left-0 z-10 bg-card py-3 pl-5 pr-3 transition-colors group-hover:bg-muted/30">
+                  <tr key={client.clientId} className="group transition-colors hover:bg-primary/[0.1]">
+                    <td className="sticky left-0 z-10 bg-card py-3 pl-5 pr-3 transition-colors group-hover:bg-primary/[0.1]">
                       <Link href={`/clients/${client.clientId}`} className="flex min-w-[200px] items-center gap-3">
                         <ClientAvatar name={client.name} logo={client.logo} />
                         <span className="min-w-0">
@@ -362,7 +362,7 @@ export function AgencyAnalyticsPanel({ initial }: AgencyAnalyticsPanelProps) {
             ))}
           </ul>
 
-          <p className="border-t border-border/70 px-5 py-3 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="border-t border-border/70 px-5 py-3 text-xs leading-relaxed text-muted-foreground">
             El score de salud pondera engagement rate, crecimiento, consistencia de publicación y tendencia de visualizaciones. Sirve para comparar clientes entre sí y seguir su evolución, no como referencia de industria.
           </p>
         </section>
@@ -386,7 +386,7 @@ function Insight({ icon: Icon, tone, label, title, detail, href, onClick }: { ic
   const body = (
     <>
       <span className="flex items-center gap-2 text-xs text-muted-foreground"><span className={`flex size-7 items-center justify-center rounded-lg ${tone}`}><Icon className="size-3.5" /></span>{label}</span>
-      <p className="mt-3 truncate text-[15px] font-semibold tracking-[-0.01em]">{title}</p>
+      <p className="mt-3 truncate text-base font-semibold tracking-[-0.01em]">{title}</p>
       <p className="mt-0.5 truncate text-xs text-muted-foreground">{detail}</p>
     </>
   );

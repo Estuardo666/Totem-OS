@@ -89,7 +89,7 @@
 @keyframes dialogShow {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.96);
+    transform: translateY(6px) scale(0.97);
   }
   to {
     opacity: 1;
@@ -224,53 +224,53 @@
 @layer components {
   /* Overlay animations */
   .animate-overlayShow {
-    animation: overlayShow 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    animation: overlayShow 200ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
   }
   
   .animate-overlayHide {
-    animation: overlayHide 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    animation: overlayHide 160ms ease-out forwards;
   }
 
   /* Dialog animations */
   .animate-dialogShow {
-    animation: dialogShow 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    animation: dialogShow 240ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
   }
   
   .animate-dialogHide {
-    animation: dialogHide 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    animation: dialogHide 150ms ease-out forwards;
   }
 
   /* Sheet animations */
   .animate-slideInFromRight {
-    animation: slideInFromRight 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    animation: slideInFromRight 360ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
   }
   
   .animate-slideOutToRight {
-    animation: slideOutToRight 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    animation: slideOutToRight 220ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
   }
 
   .animate-slideInFromLeft {
-    animation: slideInFromLeft 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    animation: slideInFromLeft 360ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
   }
   
   .animate-slideOutToLeft {
-    animation: slideOutToLeft 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    animation: slideOutToLeft 220ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
   }
 
   .animate-slideInFromTop {
-    animation: slideInFromTop 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    animation: slideInFromTop 360ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
   }
   
   .animate-slideOutToTop {
-    animation: slideOutToTop 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    animation: slideOutToTop 220ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
   }
 
   .animate-slideInFromBottom {
-    animation: slideInFromBottom 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    animation: slideInFromBottom 360ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
   }
   
   .animate-slideOutToBottom {
-    animation: slideOutToBottom 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    animation: slideOutToBottom 220ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
   }
 
   /* Scale animations */
@@ -346,25 +346,26 @@ body[data-scroll-locked] {
 
 @layer base {
   :root {
+    /* Página blanca; los contenedores son gris muy claro (#f8f8fa) sin sombra ni borde. */
     --background: 0 0% 100%;
-    --foreground: 22 11% 14%;
-    --card: 0 0% 100%;
-    --card-foreground: 22 11% 14%;
+    --foreground: 240 6% 10%;
+    --card: 240 8% 97.5%;
+    --card-foreground: 240 6% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 22 11% 14%;
+    --popover-foreground: 240 6% 10%;
     --primary: 22 11% 14%;
     --primary-foreground: 0 0% 100%;
     --gradient-accent: 239 84% 67%;
-    --secondary: 210 40% 96.1%;
+    --secondary: 240 5% 94.5%;
     --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 220 20% 96%;
+    --muted: 240 5% 95%;
+    --muted-foreground: 240 4% 34%;
+    --accent: 240 5% 93.5%;
     --accent-foreground: 22 11% 14%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --input: 240 6% 86%;
     --ring: 22 11% 14%;
     --radius: 0.75rem;
     --chart-1: 12 76% 61%;
@@ -398,16 +399,16 @@ body[data-scroll-locked] {
     --popover-foreground: 0 0% 96%;
     --primary: 23 1% 7%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 23 1% 13%;
+    --secondary: 23 1% 16%;
     --secondary-foreground: 0 0% 96%;
-    --muted: 23 1% 10%;
-    --muted-foreground: 23 1% 56%;
-    --accent: 23 1% 16%;
+    --muted: 23 1% 14%;
+    --muted-foreground: 23 1% 64%;
+    --accent: 23 1% 18%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 23 1% 13%;
-    --input: 23 1% 13%;
+    --input: 23 1% 20%;
     --ring: 23 1% 50%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -484,7 +485,7 @@ html[data-theme="catppuccin"] [class~="bg-blue-600"] { background-color: hsl(var
 html[data-theme="catppuccin"] [class~="bg-blue-50"],
 html[data-theme="catppuccin"] [class~="bg-blue-100"] { background-color: hsl(var(--theme-info) / 0.14) !important; }
 
-/* Catppuccin card hierarchy: borderless in Mocha, softly outlined in Latte. */
+/* Catppuccin: sin contornos en ambos sabores; la separación es de superficie. */
 html[data-theme="catppuccin"][data-theme-variant="dark"] main
   :is(div, section, article)[class~="border"][class*="rounded"] {
   border-color: transparent !important;
@@ -492,7 +493,7 @@ html[data-theme="catppuccin"][data-theme-variant="dark"] main
 
 html[data-theme="catppuccin"][data-theme-variant="light"] main
   :is(div, section, article)[class~="border"][class*="rounded"] {
-  border-color: hsl(var(--border) / 0.5) !important;
+  border-color: transparent !important;
 }
 
 /* Legacy utility colors keep their meaning in every theme instead of reviving Totem lime. */
@@ -561,19 +562,20 @@ html.dark .finance-dashboard [class~="hover:bg-slate-50"]:hover {
 }
 
 @layer base {
+  /* Sin líneas divisorias: el borde por defecto es transparente. Solo los
+     campos de formulario (border-input) y los acentos de color dibujan borde. */
   * {
-    @apply border-border;
+    border-color: transparent;
   }
   
   html {
     overflow-y: scroll;
+    /* Fondo plano: sin degradados en las páginas. */
     background-color: hsl(var(--background));
-    background-image: radial-gradient(ellipse 85% 46% at 50% 0%, hsl(var(--gradient-accent) / 0.2), transparent 70%);
-    background-attachment: fixed;
   }
 
   html:not(.dark) {
-    background-color: #fff;
+    background-color: hsl(var(--background));
   }
   
   body {
@@ -665,17 +667,12 @@ html.dark .finance-dashboard [class~="hover:bg-slate-50"]:hover {
     background-clip: padding-box;
   }
 
-  /* Ajuste solicitado para la clase utilitaria p-2 */
-  .p-2 {
-    padding: 0.5rem 0 !important;
-  }
-
   /* Normalizar inputs de fecha/hora en mobile */
   input[type="date"],
   input[type="time"],
   input[type="datetime-local"],
   input[type="month"] {
-    @apply h-10 min-w-0 w-full rounded-md border border-input bg-background px-3 text-sm leading-tight;
+    @apply h-10 min-w-0 w-full rounded-full border border-transparent bg-foreground/[0.045] px-4 text-sm leading-tight;
     -webkit-appearance: none;
     appearance: none;
   }
@@ -1074,19 +1071,6 @@ html.dark .finance-dashboard [class~="hover:bg-slate-50"]:hover {
   transition: opacity 0.2s ease-in-out;
 }
 
-/* Forzar estilos personalizados */
-.mb-6 {
-  margin-bottom: -0.5rem !important;
-}
-
-.py-6 {
-  padding-bottom: 1rem !important;
-}
-
-.space-y-2 > :not([hidden]) ~ :not([hidden]) {
-  margin-top: 3px !important;
-}
-
 /* ====== iOS 26 LIQUID GLASS EFFECT ====== */
 
 /* Animaciones suaves para context menu */
@@ -1292,4 +1276,187 @@ html[data-totem-native-shell-ready="1"] [data-totem-web-chrome] {
   [data-totem-web-chrome] {
     display: none !important;
   }
+}
+
+
+/* ====== TOTEM DESIGN SYSTEM · superficies, jerarquía y foco ======
+   1. Nada de líneas para separar contenedores o ítems: la separación sale del
+      espacio (ley de proximidad) y del contraste de superficie (página blanca,
+      contenedor gris claro; lo elevado dentro de él usa bg-popover, blanco).
+   2. Escala tipográfica fija (ver tailwind.config.ts → fontSize).
+   3. Fuera del dashboard de Inicio no hay iconos decorativos: se ocultan en
+      títulos y en botones que ya tienen texto. Spinners y chevrons se quedan
+      porque comunican estado o affordance. */
+
+@layer base {
+  /* H1 título de página 22 · H2 sección 18 · H3 tarjeta 16 · H4 grupo 14 · H5/H6 etiqueta 12 */
+  :where(h1:not([class*="text-"])) { font-size: 1.375rem; line-height: 1.75rem; letter-spacing: -0.01em; font-weight: 600; }
+  :where(h2:not([class*="text-"])) { font-size: 1.125rem; line-height: 1.5rem; font-weight: 600; }
+  :where(h3:not([class*="text-"])) { font-size: 1rem; line-height: 1.5rem; font-weight: 600; }
+  :where(h4:not([class*="text-"])) { font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; }
+  :where(h5:not([class*="text-"])) { font-size: 0.75rem; line-height: 1rem; font-weight: 600; }
+  :where(h6:not([class*="text-"])) { font-size: 0.75rem; line-height: 1rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+}
+
+/* Bordes neutros explícitos (slate/gray/border-border…) → transparentes.
+   Los campos, botones y selects conservan su borde porque son controles. */
+:is([class*="border-border"], [class*="border-slate-"], [class*="border-gray-"], [class*="border-zinc-"],
+    [class*="border-neutral-"], [class*="border-stone-"], [class*="border-muted"], [class*="border-white/"],
+    [class*="border-black/"], [class*="border-foreground/"]):not(input, textarea, select, button, [role="combobox"], [class*="border-dashed"]) {
+  border-color: transparent !important;
+}
+
+/* divide-* (listas): los ítems se separan por espacio y hover, no por líneas. */
+[class*="divide-"] > * {
+  border-color: transparent !important;
+}
+
+/* Las zonas de carga y estados vacíos con borde punteado conservan un trazo suave. */
+[class*="border-dashed"] {
+  border-color: hsl(var(--input)) !important;
+}
+
+/* Líneas de 1px pintadas con fondo (divisores manuales). */
+:is([class~="h-px"], [class~="w-px"])[class*="bg-border"],
+:is([class~="h-px"], [class~="w-px"])[class*="bg-slate-"],
+:is([class~="h-px"], [class~="w-px"])[class*="bg-gray-"] {
+  background-color: transparent !important;
+}
+
+/* Iconos decorativos fuera del dashboard de Inicio. */
+main :is(h1, h2, h3, h4, h5, h6, legend) > svg.lucide:not(.animate-spin):not(:where([data-icons="on"] *)),
+main [data-has-label] > svg.lucide:not(.animate-spin):not([class*="lucide-chevron"]):not(:where([data-icons="on"] *)) {
+  display: none;
+}
+
+/* Pulsables: el color cambia con un fundido visible (260ms, ease) y la escala
+   al presionar responde rápido (160ms) para que se sienta inmediata. */
+[data-pressable] {
+  transition:
+    background-color 260ms ease,
+    color 260ms ease,
+    box-shadow 260ms ease,
+    opacity 260ms ease,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+[data-pressable]:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Configuración: el panel entra con un desplazamiento corto al cambiar de sección. */
+@keyframes settingsPanelIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.settings-panel:not([hidden]) {
+  animation: settingsPanelIn 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-panel:not([hidden]) { animation: none; }
+}
+
+/* Sidebar flotante estilo macOS 26: vidrio tintado con el color del usuario.
+   Sin bordes; la separación del contenido la dan el degradado y la sombra. */
+.totem-sidebar-surface {
+  background:
+    linear-gradient(165deg, hsl(var(--primary) / 0.16) 0%, hsl(var(--primary) / 0.07) 38%, hsl(var(--primary) / 0.03) 100%),
+    hsl(var(--card) / 0.72);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  backdrop-filter: blur(28px) saturate(170%);
+  box-shadow: 0 1px 2px rgba(16, 16, 20, 0.04), 0 18px 40px -24px hsl(var(--primary) / 0.45);
+}
+.dark .totem-sidebar-surface {
+  background:
+    linear-gradient(165deg, hsl(var(--primary) / 0.22) 0%, hsl(var(--primary) / 0.09) 40%, hsl(var(--primary) / 0.04) 100%),
+    hsl(var(--card) / 0.8);
+  box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.6);
+}
+
+/* Modales con movimiento reducido: solo fundido, sin desplazamiento ni escala. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-dialogShow, .animate-slideInFromRight, .animate-slideInFromLeft,
+  .animate-slideInFromTop, .animate-slideInFromBottom { animation: overlayShow 160ms ease-out forwards !important; }
+  .animate-dialogHide, .animate-slideOutToRight, .animate-slideOutToLeft,
+  .animate-slideOutToTop, .animate-slideOutToBottom { animation: overlayHide 120ms ease-out forwards !important; }
+}
+
+/* <button> nativos con borde (sin pasar por <Button>): también sin borde.
+   Casillas, radios y switches lo conservan porque es su forma. */
+button:is([class~="border"], [class~="border-2"]):not([role="checkbox"]):not([role="switch"]):not([role="radio"]) {
+  border-color: transparent !important;
+}
+
+/* Contornos de color pastel (tonos 50–300 en claro, 700–950 en oscuro) también
+   fuera: separan por relleno, no por línea. Las barras de acento (400–600, p. ej.
+   border-l-4 border-red-500) se conservan porque comunican estado. */
+:is([class*="border-red-50"], [class*="border-red-100"], [class*="border-red-200"], [class*="border-red-300"], [class*="border-red-700"], [class*="border-red-800"], [class*="border-red-900"], [class*="border-red-950"], [class*="border-orange-50"], [class*="border-orange-100"], [class*="border-orange-200"], [class*="border-orange-300"], [class*="border-orange-700"], [class*="border-orange-800"], [class*="border-orange-900"], [class*="border-orange-950"], [class*="border-amber-50"], [class*="border-amber-100"], [class*="border-amber-200"], [class*="border-amber-300"], [class*="border-amber-700"], [class*="border-amber-800"], [class*="border-amber-900"], [class*="border-amber-950"], [class*="border-yellow-50"], [class*="border-yellow-100"], [class*="border-yellow-200"], [class*="border-yellow-300"], [class*="border-yellow-700"], [class*="border-yellow-800"], [class*="border-yellow-900"], [class*="border-yellow-950"], [class*="border-lime-50"], [class*="border-lime-100"], [class*="border-lime-200"], [class*="border-lime-300"], [class*="border-lime-700"], [class*="border-lime-800"], [class*="border-lime-900"], [class*="border-lime-950"], [class*="border-green-50"], [class*="border-green-100"], [class*="border-green-200"], [class*="border-green-300"], [class*="border-green-700"], [class*="border-green-800"], [class*="border-green-900"], [class*="border-green-950"], [class*="border-emerald-50"], [class*="border-emerald-100"], [class*="border-emerald-200"], [class*="border-emerald-300"], [class*="border-emerald-700"], [class*="border-emerald-800"], [class*="border-emerald-900"], [class*="border-emerald-950"], [class*="border-teal-50"], [class*="border-teal-100"], [class*="border-teal-200"], [class*="border-teal-300"], [class*="border-teal-700"], [class*="border-teal-800"], [class*="border-teal-900"], [class*="border-teal-950"], [class*="border-cyan-50"], [class*="border-cyan-100"], [class*="border-cyan-200"], [class*="border-cyan-300"], [class*="border-cyan-700"], [class*="border-cyan-800"], [class*="border-cyan-900"], [class*="border-cyan-950"], [class*="border-sky-50"], [class*="border-sky-100"], [class*="border-sky-200"], [class*="border-sky-300"], [class*="border-sky-700"], [class*="border-sky-800"], [class*="border-sky-900"], [class*="border-sky-950"], [class*="border-blue-50"], [class*="border-blue-100"], [class*="border-blue-200"], [class*="border-blue-300"], [class*="border-blue-700"], [class*="border-blue-800"], [class*="border-blue-900"], [class*="border-blue-950"], [class*="border-indigo-50"], [class*="border-indigo-100"], [class*="border-indigo-200"], [class*="border-indigo-300"], [class*="border-indigo-700"], [class*="border-indigo-800"], [class*="border-indigo-900"], [class*="border-indigo-950"], [class*="border-violet-50"], [class*="border-violet-100"], [class*="border-violet-200"], [class*="border-violet-300"], [class*="border-violet-700"], [class*="border-violet-800"], [class*="border-violet-900"], [class*="border-violet-950"], [class*="border-purple-50"], [class*="border-purple-100"], [class*="border-purple-200"], [class*="border-purple-300"], [class*="border-purple-700"], [class*="border-purple-800"], [class*="border-purple-900"], [class*="border-purple-950"], [class*="border-fuchsia-50"], [class*="border-fuchsia-100"], [class*="border-fuchsia-200"], [class*="border-fuchsia-300"], [class*="border-fuchsia-700"], [class*="border-fuchsia-800"], [class*="border-fuchsia-900"], [class*="border-fuchsia-950"], [class*="border-pink-50"], [class*="border-pink-100"], [class*="border-pink-200"], [class*="border-pink-300"], [class*="border-pink-700"], [class*="border-pink-800"], [class*="border-pink-900"], [class*="border-pink-950"], [class*="border-rose-50"], [class*="border-rose-100"], [class*="border-rose-200"], [class*="border-rose-300"], [class*="border-rose-700"], [class*="border-rose-800"], [class*="border-rose-900"], [class*="border-rose-950"], [class*="border-primary/"]):not(input, textarea, select, [role="checkbox"], [role="switch"], [role="radio"], [class*="border-dashed"]) {
+  border-color: transparent !important;
+}
+
+/* Login: entrada corta, una sola vez (página de uso poco frecuente). */
+@keyframes authEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.auth-enter {
+  animation: authEnter 420ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-enter { animation: none; }
+}
+
+/* Cambios de estado suaves en todo lo pulsable que no declare su propia
+   transición (:where = especificidad cero, cualquier utilidad la sustituye). */
+:where(button, a, [role="button"], [role="tab"], [role="radio"], [role="menuitem"], [role="option"], summary) {
+  transition:
+    background-color 260ms ease,
+    color 260ms ease,
+    box-shadow 260ms ease,
+    opacity 260ms ease,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(button, a, [role="button"], [role="tab"], [role="radio"]) { transition-property: color, background-color, opacity; }
+}
+
+/* Vidrio líquido (macOS/iOS 26): translúcido, con desenfoque y saturación, un
+   brillo interior en el borde superior y sin sombra proyectada. */
+.totem-glass {
+  /* Tinte del color del usuario para que no se pierda sobre fondos claros. */
+  background:
+    linear-gradient(160deg, hsl(var(--primary) / 0.14), hsl(var(--primary) / 0.07)),
+    hsl(var(--popover) / 0.72);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.55), inset 0 0 0 1px hsl(var(--foreground) / 0.05);
+}
+.dark .totem-glass {
+  background:
+    linear-gradient(160deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.09)),
+    hsl(var(--popover) / 0.62);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.12), inset 0 0 0 1px hsl(0 0% 100% / 0.06);
+}
+
+/* Tooltip: crece desde su disparador con un ease-out fuerte. El primero tiene
+   un pequeño retraso; los siguientes (instant-open) aparecen sin animar. */
+@keyframes totemTooltipIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes totemTooltipOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.96); }
+}
+.totem-tooltip {
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+}
+.totem-tooltip[data-state="delayed-open"] {
+  animation: totemTooltipIn 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.totem-tooltip[data-state="closed"] {
+  animation: totemTooltipOut 110ms ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .totem-tooltip[data-state="delayed-open"], .totem-tooltip[data-state="closed"] { animation-name: overlayShow; }
+  .totem-tooltip[data-state="closed"] { animation-name: overlayHide; }
 }

@@ -107,7 +107,7 @@ export function SocialReportBody({ data }: SocialReportBodyProps) {
             return (
               <div
                 key={platform.platform}
-                className="rounded-xl border bg-card p-4 print:break-inside-avoid"
+                className="rounded-2xl border bg-card p-4 print:break-inside-avoid"
               >
                 <div className="flex items-center gap-2">
                   <span
@@ -159,7 +159,7 @@ export function SocialReportBody({ data }: SocialReportBodyProps) {
       <AdsSection ads={data.ads} />
 
       {/* 5. Contenido publicado */}
-      <section className="rounded-xl border bg-card p-4 print:break-inside-avoid">
+      <section className="rounded-2xl border bg-card p-4 print:break-inside-avoid">
         <h2 className="text-lg font-semibold">Contenido publicado</h2>
         <div className="mt-3 flex flex-wrap gap-6 text-sm">
           <div>
@@ -184,7 +184,7 @@ export function SocialReportBody({ data }: SocialReportBodyProps) {
       </section>
 
       {/* 5b. Métricas calculadas */}
-      <section className="rounded-xl border bg-card p-4 print:break-inside-avoid">
+      <section className="rounded-2xl border bg-card p-4 print:break-inside-avoid">
         <h2 className="text-lg font-semibold">Métricas calculadas</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           No las entrega Meta: se derivan de los datos del mes. Un guion significa que falta el
@@ -203,7 +203,7 @@ export function SocialReportBody({ data }: SocialReportBodyProps) {
                       : formatNumber(metric.value)}
               </p>
               <p className="mt-1 text-sm font-medium">{metric.label}</p>
-              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{metric.hint}</p>
+              <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{metric.hint}</p>
             </div>
           ))}
         </div>

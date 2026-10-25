@@ -1,9 +1,9 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { Brain } from "lucide-react";
 import { getFinancialStats, getStrategicClientAnalyticsPlans } from "@/actions/finance-actions";
 import { FinanceAiAnalyticsDashboard } from "@/components/features/finance/finance-ai-analytics-dashboard";
 import { Card, CardContent } from "@/components/ui/card";
+import { AppPageHeader } from "@/components/shared/app-page-header";
 
 export default async function FinanceAiAnalyticsPage() {
   const session = await auth();
@@ -24,11 +24,7 @@ export default async function FinanceAiAnalyticsPage() {
   if (!statsResult.success || !statsResult.data) {
     return (
       <div className="min-h-screen bg-muted/30">
-        <div className="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4">
-            <Brain className="h-6 w-6 text-foreground" />
-          </div>
-        </div>
+        <AppPageHeader title="Analíticas IA" />
         <div className="mx-auto max-w-7xl px-4 py-8">
           <Card className="rounded-3xl">
             <CardContent className="py-12">
@@ -44,15 +40,7 @@ export default async function FinanceAiAnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <div className="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4">
-          <Brain className="h-6 w-6 text-foreground" />
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Analíticas IA</h1>
-            <p className="text-xs text-muted-foreground">Qué está pasando, qué va a pasar y qué debería hacer Paty.</p>
-          </div>
-        </div>
-      </div>
+      <AppPageHeader title="Analíticas IA" description="Qué está pasando, qué va a pasar y qué debería hacer Paty." />
 
       <div className="mx-auto max-w-7xl px-4 py-8 md:py-10">
         <FinanceAiAnalyticsDashboard

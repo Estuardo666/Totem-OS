@@ -141,7 +141,7 @@ export default async function SignUpPage({
       </Suspense>
       
       {/* Card con formulario se renderiza INMEDIATAMENTE */}
-      <div className="macos-card w-full max-w-md rounded-3xl px-8 py-8">
+      <div className="macos-card w-full max-w-md rounded-2xl px-8 py-8">
         <div className="mb-8 text-center">
           <h1 className="macos-title text-2xl mb-2">Crear Cuenta</h1>
           <p className="text-gray-400 text-sm leading-relaxed">

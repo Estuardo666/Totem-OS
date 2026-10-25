@@ -87,3 +87,5 @@ next-env.d.ts
 !public/manifest.json
 !ios/TotemOS/TotemOS/Assets.xcassets/**/Contents.json
 ios/TotemOS/TotemOS/Info.plist
+
+!/worker/tsconfig.sri.json

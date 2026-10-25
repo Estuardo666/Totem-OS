@@ -11,9 +11,9 @@ import { QuickActions } from "@/components/features/content/QuickActions";
 import { DashboardRefresh } from "@/components/features/content/dashboard-refresh";
 import { CurrentMonthTaskSummary } from "@/components/features/dashboard/current-month-task-summary";
 import { CardSkeleton } from "@/components/ui/skeletons-composite";
-import { Video } from "lucide-react";
 import { Suspense } from "react";
 import { resolveRoleCode } from "@/lib/roles";
+import { AppPageHeader } from "@/components/shared/app-page-header";
 
 export default async function ContentDashboardPage() {
   const session = await auth();
@@ -32,7 +32,7 @@ export default async function ContentDashboardPage() {
     return (
       <div className="min-h-screen bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="rounded-xl border bg-card p-8">
+          <div className="rounded-2xl border bg-card p-8">
             <p className="text-destructive text-center font-medium">
               {dashboardResult.error || "Error al cargar los datos del dashboard"}
             </p>
@@ -48,25 +48,16 @@ export default async function ContentDashboardPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header iOS-style con sticky */}
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-3">
-              <Video className="h-6 w-6 text-foreground" />
-              <div>
-                <h1 className="text-xl font-bold">Content Factory</h1>
-                <p className="text-xs text-muted-foreground">
-                  Vista general de producción y estado
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <DashboardRefresh />
+      <AppPageHeader
+        title="Content Factory"
+        description="Vista general de producción y estado"
+        actions={
+          <>
+            <DashboardRefresh />
               <QuickActions clients={clients} />
-            </div>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Contenido principal */}
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">

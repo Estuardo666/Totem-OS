@@ -3,16 +3,21 @@
 // O con: pm2 start worker/dist/index.js --name sri-worker
 
 import { dequeueJob, completeJob, failJob } from "../src/services/facturacion/job-service";
-import { db as prisma } from "../src/lib/db";
+import { db as prisma } from "../src/lib/sri/database";
 import { buildFacturaXml } from "../src/lib/sri/xml/factura-builder";
 import { buildNotaCreditoXml } from "../src/lib/sri/xml/nota-credito-builder";
 import { firmarXml, obtenerHuellaCertificado } from "../src/lib/sri/xml-signer";
 import { enviarRecepcion, consultarAutorizacion, verificarConectividadSri, extraerMensajesError, esRechazoRecuperable } from "../src/lib/sri/sri-soap-client";
 import { descifrarP12 } from "../src/lib/sri/p12-cipher";
-import { generarRidePdf, nombreArchivoRide, nombreArchivoXml } from "../src/lib/sri/ride-pdf";
+import { generarRideFactura } from "../src/lib/sri/invoice-ride";
 import { enviarComprobanteEmail } from "../src/lib/sri/email-service";
 import { SRI_URLS } from "../src/lib/sri/types";
-import type { FacturaXmlData, NotaCreditoXmlData, TotalImpuesto } from "../src/lib/sri/types";
+import { assertSriDocumentEnvironment, assertSriWorkerDatabase, sriEmailAllowed } from "../src/lib/sri/execution-policy";
+import { registrarLatido } from "../src/services/facturacion/configuracion-service";
+import { agruparImpuestosSri } from "../src/lib/sri/tax-calculation";
+import { assertCreditNoteAllowed } from "../src/lib/sri/credit-note-policy";
+import { sriDisplayDate } from "../src/lib/sri/ecuador-date";
+import type { FacturaXmlData, NotaCreditoXmlData } from "../src/lib/sri/types";
 
 const POLL_INTERVAL = parseInt(process.env.SRI_POLL_INTERVAL ?? "5000");
 const WORKER_ID = process.env.SRI_WORKER_ID ?? `worker-${Date.now()}`;
@@ -25,6 +30,7 @@ let running = true;
 let lastHeartbeat = 0;
 
 export async function startSRIWorker() {
+  assertSriWorkerDatabase(AMBIENTE, process.env.DATABASE_URL);
   console.log(`[SRI Worker] Iniciando - ID: ${WORKER_ID}, Modo: ${MODO}, Ambiente: ${AMBIENTE}`);
   console.log(`[SRI Worker] Polling cada ${POLL_INTERVAL}ms`);
 
@@ -77,21 +83,29 @@ async function procesarJob(job: { id: string; type: string; facturaId?: string |
     }
   } catch (error) {
     const mensaje = error instanceof Error ? error.message : "Error desconocido";
+    if (mensaje === "SRI_AUTHORIZATION_PENDING") {
+      await prisma.sriJob.update({ where: { id: job.id }, data: { status: "PENDING", disponibleAt: new Date(Date.now() + 60_000), error: null } });
+      return;
+    }
     console.error(`[SRI Worker] Error procesando job ${job.id}:`, mensaje);
-    await failJob(job.id, mensaje);
+    const sriCodes = [...mensaje.matchAll(/\[(\d+)\]/g)].map(match => match[1]);
+    const permanent = sriCodes.length > 0 && sriCodes.every(code => !esRechazoRecuperable(code));
+    await failJob(job.id, mensaje, permanent ? 1 : 3);
   }
 }
 
-async function procesarFactura(job: { id: string; facturaId?: string | null; payload?: string | null }) {
+export async function procesarFactura(job: { id: string; facturaId?: string | null; payload?: string | null }, submit = true) {
   if (!job.facturaId) throw new Error("facturaId requerido");
 
   const factura = await prisma.electronicInvoice.findUniqueOrThrow({
     where: { id: job.facturaId },
     include: { items: true },
   });
+  if (factura.estado === "CANCELADA_LOCAL") throw new Error("Factura cancelada localmente; envío bloqueado");
 
   const config = await prisma.companyConfig.findFirst();
   if (!config) throw new Error("CompanyConfig no encontrada");
+  assertSriDocumentEnvironment(AMBIENTE, config.sriAmbiente, factura.claveAcceso);
 
   // 1. Construir XML
   console.log(`[SRI Worker] Construyendo XML para ${factura.secuencial}`);
@@ -119,7 +133,7 @@ async function procesarFactura(job: { id: string; facturaId?: string | null; pay
       direccionComprador: factura.direccionCliente ?? undefined,
       totalSinImpuestos: factura.subtotalSinImpuestos,
       totalDescuento: factura.totalDescuento,
-      totalConImpuestos: buildTotalImpuestos(factura),
+      totalConImpuestos: agruparImpuestosSri(factura.items),
       propina: factura.propina,
       importeTotal: factura.importeTotal,
       moneda: factura.moneda,
@@ -153,7 +167,9 @@ async function procesarFactura(job: { id: string; facturaId?: string | null; pay
   console.log(`[SRI Worker] Firmando XML con ${config.modoFirma}`);
   const p12Buffer = await obtenerP12(config);
   const xmlFirmado = firmarXml(xmlContent, p12Buffer, process.env.SRI_P12_PASSWORD ?? "");
+  if (!submit) return { xmlFirmado, xmlData };
 
+  if (factura.estado !== "ENVIADA") {
   // Actualizar estado
   await prisma.electronicInvoice.update({
     where: { id: factura.id },
@@ -162,16 +178,18 @@ async function procesarFactura(job: { id: string; facturaId?: string | null; pay
 
   // 3. Enviar al SRI
   console.log(`[SRI Worker] Enviando a SRI (${AMBIENTE === "1" ? "Pruebas" : "Producción"})`);
-  const respuestaRecepcion = await enviarRecepcion(xmlFirmado, AMBIENTE);
+  const respuestaRecepcion = await enviarRecepcion(xmlFirmado, AMBIENTE, 15_000);
 
   await prisma.electronicInvoice.update({
     where: { id: factura.id },
-    data: { estado: "ENVIADA" },
+    data: { estado: "ENVIADA", intentosSri: { increment: 1 } },
   });
 
   if (respuestaRecepcion.estado === "DEVUELTA") {
     const mensajes = extraerMensajesError(respuestaRecepcion.comprobantes?.comprobante?.mensajes);
+    await prisma.electronicInvoice.update({ where: { id: factura.id }, data: { estado: "RECHAZADA", ultimoErrorSri: mensajes.join("; ") } });
     throw new Error(`SRI devolvió la factura: ${mensajes.join("; ")}`);
+  }
   }
 
   // 4. Consultar autorización
@@ -180,11 +198,11 @@ async function procesarFactura(job: { id: string; facturaId?: string | null; pay
 
   let autorizado = false;
   let intentos = 0;
-  const maxIntentos = 5;
+  const maxIntentos = process.env.SRI_HTTP_MODE === "1" ? 1 : 5;
 
   while (!autorizado && intentos < maxIntentos) {
     intentos++;
-    const respuestaAuth = await consultarAutorizacion(factura.claveAcceso!, AMBIENTE);
+    const respuestaAuth = await consultarAutorizacion(factura.claveAcceso!, AMBIENTE, 10_000);
 
     if (respuestaAuth.autorizaciones.autorizacion.length > 0) {
       const auth = respuestaAuth.autorizaciones.autorizacion[0];
@@ -193,44 +211,7 @@ async function procesarFactura(job: { id: string; facturaId?: string | null; pay
         // 5. Autorizado - generar RIDE y subir
         console.log(`[SRI Worker] AUTORIZADO - Generando RIDE...`);
 
-        const pdfBuffer = await generarRidePdf({
-          razonSocialEmisor: config.razonSocial,
-          nombreComercialEmisor: config.nombreComercial ?? undefined,
-          rucEmisor: config.ruc,
-          dirMatriz: config.direccionMatriz,
-          obligadoContabilidad: config.obligadoContabilidad ? "SI" : "NO",
-          tipoComprobante: "FACTURA",
-          numeroComprobante: factura.secuencial,
-          claveAcceso: factura.claveAcceso!,
-          numeroAutorizacion: auth.numeroAutorizacion,
-          fechaAutorizacion: auth.fechaAutorizacion,
-          fechaEmision: formatDate(new Date(factura.fechaEmision)),
-          ambiente: config.sriAmbiente,
-          tipoIdentificacionComprador: factura.tipoIdentificacion,
-          razonSocialComprador: factura.razonSocial,
-          identificacionComprador: factura.numeroIdentificacion,
-          direccionComprador: factura.direccionCliente ?? undefined,
-          subtotalSinImpuestos: factura.subtotalSinImpuestos,
-          totalDescuento: factura.totalDescuento,
-          valorIva: factura.valorIva,
-          propina: factura.propina,
-          importeTotal: factura.importeTotal,
-          moneda: factura.moneda,
-          formaPago: factura.formaPagoCodigo,
-          formaPagoLabel: factura.formaPagoCodigo,
-          detalles: factura.items.map((item) => ({
-            codigo: item.codigoPrincipal,
-            descripcion: item.descripcion,
-            cantidad: item.cantidad,
-            precioUnitario: item.precioUnitario,
-            descuento: item.descuento,
-            total: item.precioTotalSinImpuesto + item.valorImpuesto,
-            iva: item.valorImpuesto,
-          })),
-          subtotal0: factura.subtotal0,
-          subtotal12: factura.subtotal12 ?? 0,
-          subtotal15: factura.subtotal15 ?? 0,
-        });
+        const pdfBuffer = await generarRideFactura(factura, config, auth);
 
         // Subir a UploadThing (si está configurado)
         let rideUrl: string | undefined;
@@ -244,6 +225,8 @@ async function procesarFactura(job: { id: string; facturaId?: string | null; pay
             numeroAutorizacion: auth.numeroAutorizacion,
             fechaAutorizacion: new Date(auth.fechaAutorizacion),
             xmlSriResponse: auth.comprobante,
+            ultimoErrorSri: null,
+            codigoErrorSri: null,
           },
         });
 
@@ -260,7 +243,7 @@ async function procesarFactura(job: { id: string; facturaId?: string | null; pay
 
         // Enviar email si se solicitó
         const payload = job.payload ? JSON.parse(job.payload) : {};
-        if (payload.enviarEmail && factura.emailCliente) {
+        if (sriEmailAllowed(AMBIENTE) && payload.enviarEmail && factura.emailCliente) {
           const emailConfig = await prisma.companyConfig.findFirst();
           if (emailConfig?.emailFrom) {
             await enviarComprobanteEmail({
@@ -291,6 +274,7 @@ async function procesarFactura(job: { id: string; facturaId?: string | null; pay
 
       } else if (auth.estado === "NO AUTORIZADO") {
         const mensajes = extraerMensajesError(auth.mensajes);
+        await prisma.electronicInvoice.update({ where: { id: factura.id }, data: { estado: "RECHAZADA", ultimoErrorSri: mensajes.join("; ") } });
         throw new Error(`SRI no autorizó: ${mensajes.join("; ")}`);
       }
     }
@@ -302,7 +286,7 @@ async function procesarFactura(job: { id: string; facturaId?: string | null; pay
   }
 
   if (!autorizado) {
-    throw new Error("SRI no autorizó después de múltiples intentos de consulta");
+    throw new Error("SRI_AUTHORIZATION_PENDING");
   }
 }
 
@@ -316,8 +300,10 @@ async function procesarNotaCredito(job: { id: string; notaCreditoId?: string | n
 
   const config = await prisma.companyConfig.findFirst();
   if (!config) throw new Error("CompanyConfig no encontrada");
+  assertCreditNoteAllowed(nc.facturaOriginal);
 
   // Construir XML de NC
+  assertSriDocumentEnvironment(AMBIENTE, config.sriAmbiente, nc.claveAcceso);
   const xmlData: NotaCreditoXmlData = {
     infoTributaria: {
       ambiente: config.sriAmbiente,
@@ -343,12 +329,7 @@ async function procesarNotaCredito(job: { id: string; notaCreditoId?: string | n
       totalSinImpuestos: nc.subtotalSinImpuestos,
       valorModificacion: nc.importeTotal,
       moneda: nc.moneda,
-      totalConImpuestos: [{
-        codigo: "2",
-        codigoPorcentaje: "4",
-        baseImponible: nc.subtotalSinImpuestos,
-        valor: nc.valorIva,
-      }],
+      totalConImpuestos: agruparImpuestosSri(nc.items),
       motivo: nc.motivo,
     },
     detalles: nc.items.map((item) => ({
@@ -372,15 +353,19 @@ async function procesarNotaCredito(job: { id: string; notaCreditoId?: string | n
   const p12Buffer = await obtenerP12(config);
   const xmlFirmado = firmarXml(xmlContent, p12Buffer, process.env.SRI_P12_PASSWORD ?? "");
 
-  const respuesta = await enviarRecepcion(xmlFirmado, AMBIENTE);
+  if (nc.estado !== "ENVIADA") {
+  const respuesta = await enviarRecepcion(xmlFirmado, AMBIENTE, 15_000);
 
   if (respuesta.estado === "DEVUELTA") {
     const mensajes = extraerMensajesError(respuesta.comprobantes?.comprobante?.mensajes);
+    await prisma.creditNote.update({ where: { id: nc.id }, data: { estado: "RECHAZADA", ultimoErrorSri: mensajes.join("; ") } });
     throw new Error(`SRI devolvió la NC: ${mensajes.join("; ")}`);
+  }
+  await prisma.creditNote.update({ where: { id: nc.id }, data: { estado: "ENVIADA", intentosSri: { increment: 1 } } });
   }
 
   await sleep(2000);
-  const authResp = await consultarAutorizacion(nc.claveAcceso!, AMBIENTE);
+  const authResp = await consultarAutorizacion(nc.claveAcceso!, AMBIENTE, 10_000);
 
   if (authResp.autorizaciones.autorizacion.length > 0) {
     const auth = authResp.autorizaciones.autorizacion[0];
@@ -392,6 +377,7 @@ async function procesarNotaCredito(job: { id: string; notaCreditoId?: string | n
           estado: "AUTORIZADA",
           numeroAutorizacion: auth.numeroAutorizacion,
           fechaAutorizacion: new Date(auth.fechaAutorizacion),
+          ultimoErrorSri: null,
         },
       });
 
@@ -401,11 +387,15 @@ async function procesarNotaCredito(job: { id: string; notaCreditoId?: string | n
         data: { estado: "ANULADA", fechaAnulacion: new Date() },
       });
 
-      await completeJob(job.id, { autorizado: true, numeroAutorizacion: auth.numeroAutorizacion });
+      await completeJob(job.id, { autorizado: true, numeroAutorizacion: auth.numeroAutorizacion, xmlAutorizado: auth.comprobante });
       console.log(`[SRI Worker] NC ${nc.secuencial} AUTORIZADA`);
     } else {
-      throw new Error("NC no autorizada por SRI");
+      const messages = extraerMensajesError(auth.mensajes);
+      await prisma.creditNote.update({ where: { id: nc.id }, data: { estado: "RECHAZADA", ultimoErrorSri: messages.join("; ") } });
+      throw new Error(`NC no autorizada por SRI: ${messages.join("; ")}`);
     }
+  } else {
+    throw new Error("SRI_AUTHORIZATION_PENDING");
   }
 }
 
@@ -417,6 +407,9 @@ async function procesarConsultaAutorizacion(job: { id: string; facturaId?: strin
   });
 
   if (!factura.claveAcceso) throw new Error("Factura sin clave de acceso");
+  const config = await prisma.companyConfig.findFirst();
+  if (!config) throw new Error("CompanyConfig no encontrada");
+  assertSriDocumentEnvironment(AMBIENTE, config.sriAmbiente, factura.claveAcceso);
 
   const respuesta = await consultarAutorizacion(factura.claveAcceso, AMBIENTE);
 
@@ -459,35 +452,16 @@ async function obtenerP12(config: { modoFirma: string; p12LocalCifrado: Buffer |
   return descifrarP12(config.p12LocalCifrado, config.p12LocalIv, config.p12LocalAuthTag, masterKey);
 }
 
-function buildTotalImpuestos(factura: { subtotal0: number; subtotal2?: number; subtotal4?: number; subtotal15?: number; valorIva: number }): TotalImpuesto[] {
-  const result: TotalImpuesto[] = [];
-
-  if (factura.subtotal0 > 0) {
-    result.push({ codigo: "2", codigoPorcentaje: "0", baseImponible: factura.subtotal0, valor: 0 });
-  }
-  if (factura.subtotal2 && factura.subtotal2 > 0) {
-    result.push({ codigo: "2", codigoPorcentaje: "2", baseImponible: factura.subtotal2, valor: factura.subtotal2 * 0.02 });
-  }
-  if (factura.subtotal15 && factura.subtotal15 > 0) {
-    result.push({ codigo: "2", codigoPorcentaje: "4", baseImponible: factura.subtotal15, valor: factura.subtotal15 * 0.15 });
-  }
-
-  if (result.length === 0) {
-    result.push({ codigo: "2", codigoPorcentaje: "4", baseImponible: factura.subtotal0, valor: factura.valorIva });
-  }
-
-  return result;
-}
-
 function formatDate(date: Date): string {
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = String(date.getFullYear());
-  return `${dd}/${mm}/${yyyy}`;
+  return sriDisplayDate(date);
 }
 
 async function heartbeat(sriAlcanzable: boolean) {
   try {
+    if (AMBIENTE === "1") {
+      await registrarLatido({ workerId: WORKER_ID, modo: MODO, hostname: process.env.HOSTNAME ?? require("os").hostname(), version: "0.1.0", sriAmbiente: AMBIENTE, sriAlcanzable });
+      return;
+    }
     if (!APP_API_URL || !WORKER_SECRET) {
       throw new Error("Faltan APP_API_URL o FACTURACION_WORKER_SECRET");
     }
@@ -516,6 +490,16 @@ async function heartbeat(sriAlcanzable: boolean) {
   }
 }
 
+export async function processSriOnce() {
+  assertSriWorkerDatabase(AMBIENTE, process.env.DATABASE_URL);
+  const job = await dequeueJob();
+  await heartbeat(true);
+  if (!job) return { processed: false };
+  await procesarJob(job);
+  const result = await prisma.sriJob.findUnique({ where: { id: job.id }, select: { status: true } });
+  return { processed: true, status: result?.status };
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -531,7 +515,7 @@ process.on("SIGTERM", () => {
   running = false;
 });
 
-if (require.main === module) {
+if (require.main === module && process.env.SRI_HTTP_MODE !== "1") {
   startSRIWorker().catch((error) => {
     console.error("[SRI Worker] Error fatal:", error);
     process.exit(1);

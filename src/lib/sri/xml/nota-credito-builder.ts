@@ -16,7 +16,7 @@ export function buildNotaCreditoXml(data: NotaCreditoXmlData): string {
         .ele("ambiente").txt(infoTributaria.ambiente).up()
         .ele("tipoEmision").txt(infoTributaria.tipoEmision).up()
         .ele("razonSocial").txt(infoTributaria.razonSocial).up()
-        .ele("nombreComercial").txt(infoTributaria.nombreComercial ?? infoTributaria.razonSocial).up()
+        .ele("nombreComercial").txt(infoTributaria.nombreComercial?.trim() || infoTributaria.razonSocial.trim()).up()
         .ele("ruc").txt(infoTributaria.ruc).up()
         .ele("claveAcceso").txt(infoTributaria.claveAcceso).up()
         .ele("codDoc").txt(infoTributaria.codDoc).up()
@@ -49,7 +49,7 @@ export function buildNotaCreditoXml(data: NotaCreditoXmlData): string {
       .up();
     }
 
-    doc.up()
+    const detallesNode = doc.up()
       .ele("motivo").txt(infoNotaCredito.motivo).up()
     .up()
 
@@ -57,8 +57,8 @@ export function buildNotaCreditoXml(data: NotaCreditoXmlData): string {
       .ele("detalles");
 
     for (const det of detalles) {
-      const detNode = doc.ele("detalle")
-        .ele("codigoPrincipal").txt(det.codigoPrincipal).up()
+      const detNode = detallesNode.ele("detalle")
+        .ele("codigoInterno").txt(det.codigoPrincipal).up()
         .ele("descripcion").txt(det.descripcion).up()
         .ele("cantidad").txt(formatDecimal(det.cantidad)).up()
         .ele("precioUnitario").txt(formatDecimal(det.precioUnitario)).up()

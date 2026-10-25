@@ -1,5 +1,14 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.2.0] - 2026-10-25
+
+### Fixed
+
+- Facturación permite emitir y consultar comprobantes autorizados en SRI de pruebas con firma remota en Hostinger, y descargar XML y PDF.
+- Las notas de crédito, importes de IVA y consultas de autorización conservan sus estados y evitan envíos duplicados.
+- Las pruebas usan una base aislada y no alteran clientes, cobros ni secuenciales reales.
+- Se conserva la interfaz existente y el rediseño en curso.
+
 ## [0.1.1] - 2026-10-20
 
 ### Fixed
