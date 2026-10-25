@@ -1,5 +1,14 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.2.1] - 2026-10-25
+
+### Fixed
+
+- El editor solo consulta clientes, tareas y rodajes asignados y modifica materiales dentro de las etapas permitidas; publicar, aprobar, reasignar y administrar requiere permisos de administrador.
+- Los directorios, reportes y avisos excluyen contraseñas, credenciales y finanzas ajenas. Los reportes compartidos requieren su enlace válido y las notificaciones usan canales privados.
+- Los cambios de rol y las cuentas eliminadas retiran el acceso al servidor; los servicios internos dejan de exponer acciones HTTP alternativas.
+- Se conserva la UI del modal ya integrada en main y se ajustan sus controles de edición a los permisos efectivos.
+
 ## [0.2.0] - 2026-10-25
 
 ### Fixed
