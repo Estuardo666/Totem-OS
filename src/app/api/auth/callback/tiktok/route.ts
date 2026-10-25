@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   try {
     // 1. Solo un administrador puede conectar cuentas de la agencia.
     const session = await auth();
-    if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
+    if (!session?.user || session.user.role !== "ADMIN") {
       return redirectWithError(request, "unauthorized");
     }
 

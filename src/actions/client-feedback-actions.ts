@@ -1,5 +1,6 @@
 "use server";
 
+import { requireAdmin, requireReportAccess } from "@/lib/server-access";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
@@ -7,12 +8,14 @@ import { z } from "zod";
 
 const approveReportSchema = z.object({
   clientId: z.string().cuid(),
+  shareToken: z.string().uuid().optional(),
   month: z.number().int().min(1).max(12),
   year: z.number().int().min(2000),
 });
 
 const submitFeedbackSchema = z.object({
   clientId: z.string().cuid(),
+  shareToken: z.string().uuid().optional(),
   month: z.number().int().min(1).max(12),
   year: z.number().int().min(2000),
   comment: z.string().min(1, "El comentario no puede estar vacío").max(1000),
@@ -22,9 +25,11 @@ const submitFeedbackSchema = z.object({
  * Server Action para marcar el reporte como visto
  */
 export async function markReportAsViewed(
-  clientId: string
+  clientId: string,
+  shareToken?: string
 ): Promise<ApiResponse<{ viewedAt: Date }>> {
   try {
+    await requireReportAccess(clientId, shareToken);
     const client = await db.client.update({
       where: { id: clientId },
       data: { reportLastViewed: new Date() },
@@ -51,6 +56,7 @@ export async function approveReport(
 ): Promise<ApiResponse<{ id: string }>> {
   try {
     const validatedData = approveReportSchema.parse(input);
+    await requireReportAccess(validatedData.clientId, validatedData.shareToken);
 
     // Buscar si ya existe un feedback para este mes/año
     const existingFeedback = await db.clientFeedback.findUnique({
@@ -110,6 +116,7 @@ export async function submitFeedback(
 ): Promise<ApiResponse<{ id: string }>> {
   try {
     const validatedData = submitFeedbackSchema.parse(input);
+    await requireReportAccess(validatedData.clientId, validatedData.shareToken);
 
     // Buscar si ya existe un feedback para este mes/año
     const existingFeedback = await db.clientFeedback.findUnique({
@@ -179,6 +186,7 @@ export async function getPendingFeedbacks(): Promise<
   >
 > {
   try {
+    await requireAdmin();
     const feedbacks = await db.clientFeedback.findMany({
       where: {
         viewed: false,
@@ -224,6 +232,7 @@ export async function markFeedbackAsViewed(
   feedbackId: string
 ): Promise<ApiResponse<{ id: string }>> {
   try {
+    await requireAdmin();
     const feedback = await db.clientFeedback.update({
       where: { id: feedbackId },
       data: { viewed: true },
@@ -249,7 +258,8 @@ export async function markFeedbackAsViewed(
  * Server Action para obtener feedbacks de un cliente
  */
 export async function getClientFeedbacks(
-  clientId: string
+  clientId: string,
+  shareToken?: string
 ): Promise<
   ApiResponse<
     Array<{
@@ -264,6 +274,7 @@ export async function getClientFeedbacks(
   >
 > {
   try {
+    await requireReportAccess(clientId, shareToken);
     const feedbacks = await db.clientFeedback.findMany({
       where: { clientId },
       orderBy: {

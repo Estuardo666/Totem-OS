@@ -127,7 +127,7 @@ export async function checkAndMarkOverdueInvoices(): Promise<CobranzaResult> {
             )
           : 0;
 
-        const { sendNotification } = await import("@/actions/notification-actions");
+        const { sendNotification } = await import("@/lib/system-notifications");
         const admins = await db.user.findMany({
           where: { roleCode: "ADMIN" },
           select: { id: true },
@@ -142,7 +142,7 @@ export async function checkAndMarkOverdueInvoices(): Promise<CobranzaResult> {
         }
 
         // Notificación PUSH
-        const { sendPushNotification } = await import("@/actions/push-actions");
+        const { sendPushNotification } = await import("@/lib/system-push");
         await sendPushNotification({
           title: "Factura Vencida",
           message: `${invoice.client.name} • $${invoice.amount} (${daysOverdue}d vencida)`,
@@ -211,8 +211,8 @@ export async function checkPaymentAlerts72Hours(): Promise<CobranzaResult> {
             )
           : 0;
 
-        const { sendNotification } = await import("@/actions/notification-actions");
-        const { sendPushNotification } = await import("@/actions/push-actions");
+        const { sendNotification } = await import("@/lib/system-notifications");
+        const { sendPushNotification } = await import("@/lib/system-push");
 
         const admins = await db.user.findMany({
           where: { roleCode: "ADMIN" },

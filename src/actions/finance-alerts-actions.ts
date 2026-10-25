@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { notifyAdmins } from "@/actions/notification-actions";
+import { notifyAdmins } from "@/lib/system-notifications";
 import {
   calculateProfitMargin,
   calculateRunwayDays,

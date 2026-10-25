@@ -95,13 +95,13 @@ export async function loadDashboard(actor: ApiActor): Promise<DashboardData> {
   const fourDaysFromNow = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000);
 
   const activeClientFilter: Prisma.ClientWhereInput = { status: { not: "INACTIVE" } };
-  const taskWhere: Prisma.ContentTaskWhereInput = actor.role === "EDITOR"
+  const taskWhere: Prisma.ContentTaskWhereInput = actor.role !== "ADMIN"
     ? {
         client: activeClientFilter,
         OR: [{ assignedEditorId: actor.userId }, { assignedCommunityId: actor.userId }],
       }
     : { client: activeClientFilter };
-  const clientWhere: Prisma.ClientWhereInput = actor.role === "EDITOR"
+  const clientWhere: Prisma.ClientWhereInput = actor.role !== "ADMIN"
     ? { ...activeClientFilter, OR: [{ editorId: actor.userId }, { communityId: actor.userId }] }
     : activeClientFilter;
 
@@ -133,7 +133,7 @@ export async function loadDashboard(actor: ApiActor): Promise<DashboardData> {
       orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
     }),
     db.clientFeedback.findMany({
-      where: { viewed: false, client: activeClientFilter },
+      where: { viewed: false, client: { AND: [activeClientFilter, clientWhere] } },
       select: { id: true, clientId: true, createdAt: true, client: { select: { name: true, logo: true } } },
       orderBy: { createdAt: "desc" },
     }),

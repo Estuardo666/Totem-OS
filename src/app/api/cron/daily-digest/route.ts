@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthorizedCron } from "@/lib/cron-auth";
-import { sendDailyTaskDigest } from "@/actions/notification-actions";
+import { sendDailyTaskDigest } from "@/lib/system-notifications";
 
 /**
  * API Route para ejecutar el digest diario de tareas

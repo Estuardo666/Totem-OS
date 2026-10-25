@@ -1,5 +1,8 @@
 "use client";
 
+import { useSession } from "next-auth/react";
+import { resolveRoleCode } from "@/lib/roles";
+import { canEditAssignedTask, editorNextStatuses } from "@/lib/access-policy";
 import { useState } from "react";
 import {
   ContextMenu,
@@ -50,6 +53,7 @@ const STATUS_OPTIONS: Array<{ value: ContentTaskStatus; label: string; emoji: st
   { value: "SCRIPT", label: "Guión", emoji: "" },
   { value: "RECORDED", label: "Grabado", emoji: "" },
   { value: "EDITING", label: "Editando", emoji: "" },
+  { value: "REVIEW_INTERNAL", label: "Revisión interna", emoji: "" },
   { value: "REVIEW_CLIENT", label: "Revisión Cliente", emoji: "" },
   { value: "CLIENT_APPROVED", label: "Aprobado por Cliente", emoji: "" },
   { value: "PAUSED", label: "En pausa", emoji: "" },
@@ -78,6 +82,11 @@ export function ContentCardContextMenu({
   onEdit,
   onOptimisticStatusChange,
 }: ContentCardContextMenuProps) {
+  const { data: session } = useSession();
+  const role = resolveRoleCode(session?.user) ?? "USER";
+  const isAdmin = role === "ADMIN";
+  const canEdit = canEditAssignedTask({ userId: session?.user?.id ?? "", role }, task);
+  const statuses = isAdmin ? STATUS_OPTIONS : STATUS_OPTIONS.filter((option) => canEdit && editorNextStatuses(task.status).includes(option.value));
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -223,21 +232,22 @@ export function ContentCardContextMenu({
           }
         >
           {/* Editar */}
-          <ContextMenuItem onClick={onEdit}>
+          <ContextMenuItem onClick={onEdit} disabled={!canEdit}>
             <Pencil className="mr-2 h-3.5 w-3.5" />
             Editar
             <ContextMenuShortcut>E</ContextMenuShortcut>
           </ContextMenuItem>
 
           {/* Duplicar */}
-          <ContextMenuItem onClick={handleDuplicate}>
+          {isAdmin && <ContextMenuItem onClick={handleDuplicate}>
             <Copy className="mr-2 h-3.5 w-3.5" />
             Duplicar
             <ContextMenuShortcut>⌘D</ContextMenuShortcut>
           </ContextMenuItem>
 
+          }
           {/* Mover a... */}
-          <ContextMenuItem onSelect={(e) => { e.preventDefault(); setMoveOpen(!moveOpen); }}>
+          <ContextMenuItem disabled={!canEdit || statuses.length === 0} onSelect={(e) => { e.preventDefault(); setMoveOpen(!moveOpen); }}>
             <ArrowRight className="mr-2 h-3.5 w-3.5" />
             Mover a...
             <ChevronDown
@@ -251,12 +261,12 @@ export function ContentCardContextMenu({
           <div
             style={{
               overflow: "hidden",
-              maxHeight: moveOpen ? `${STATUS_OPTIONS.length * 36}px` : "0px",
+              maxHeight: moveOpen ? `${statuses.length * 36}px` : "0px",
               transition: "max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           >
             <div className="border-l-2 border-muted ml-3 mr-1 pl-1">
-              {STATUS_OPTIONS.map((status) => (
+              {statuses.map((status) => (
                 <ContextMenuItem
                   key={status.value}
                   onClick={() => handleMove(status.value)}
@@ -272,14 +282,14 @@ export function ContentCardContextMenu({
           <ContextMenuSeparator />
 
           {/* Eliminar */}
-          <ContextMenuItem
+          {isAdmin && <ContextMenuItem
             onClick={() => setShowDeleteDialog(true)}
             variant="destructive"
           >
             <Trash2 className="mr-2 h-3.5 w-3.5" />
             Eliminar
             <ContextMenuShortcut>⌫</ContextMenuShortcut>
-          </ContextMenuItem>
+          </ContextMenuItem>}
         </ContextMenuContent>
       </ContextMenu>
 

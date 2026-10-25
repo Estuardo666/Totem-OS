@@ -39,10 +39,11 @@ export function DashboardRefresh() {
 
     const pusher = new Pusher(pusherKey, {
       cluster: pusherCluster,
+      channelAuthorization: { endpoint: "/api/pusher/auth", transport: "ajax" },
     });
 
     // Suscribirse al canal privado del usuario
-    const channel = pusher.subscribe(`user-${userId}`);
+    const channel = pusher.subscribe(`private-user-${userId}`);
 
     channel.bind("pusher:subscription_succeeded", () => {
       console.log(`Suscrito al canal de actualización del dashboard: user-${userId}`);
@@ -69,7 +70,7 @@ export function DashboardRefresh() {
 
     // Cleanup
     return () => {
-      pusher.unsubscribe(`user-${userId}`);
+      pusher.unsubscribe(`private-user-${userId}`);
       pusher.disconnect();
     };
   }, [userId, triggerRefresh]);

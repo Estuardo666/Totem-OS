@@ -13,7 +13,7 @@ export async function GET(
   try {
     // 1. Validar sesión
     const session = await auth();
-    if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
+    if (!session?.user || (session.user.role !== "ADMIN")) {
       return NextResponse.json(
         { error: "No autorizado" },
         { status: 401 }

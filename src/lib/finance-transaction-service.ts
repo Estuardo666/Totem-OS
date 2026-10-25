@@ -80,7 +80,7 @@ export async function createTransactionInDb(
     // Notificar a los admins sobre nuevos ingresos u honorarios
     if (transaction.type === "INCOME" || transaction.type === "HONORARIOS") {
       try {
-        const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
+        const { notifyAdminsWithPush } = await import("@/lib/system-notifications");
 
         const typeLabel = transaction.type === "INCOME" ? "Ingreso" : "Honorario";
         const description = transaction.description || "Sin descripción";
@@ -249,7 +249,7 @@ export async function markTransactionAsPaidInDb(
     // Notificar si es pago de honorarios
     if (result.success && transactionBefore.type === "HONORARIOS" && transactionBefore.userId) {
       try {
-        const { sendNotification } = await import("../actions/notification-actions.ts");
+        const { sendNotification } = await import("./system-notifications.ts");
         await sendNotification({
           userId: transactionBefore.userId,
           message: `Se ha procesado el pago de tus honorarios por $${transactionBefore.amount}.`,

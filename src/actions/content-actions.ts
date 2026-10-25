@@ -1,5 +1,8 @@
 "use server";
 
+import { publishContentRefresh } from "@/lib/content-events";
+import { requireActor, requireAdmin, requireClientAccess, requireTaskAccess } from "@/lib/server-access";
+import { taskScope } from "@/lib/access-policy";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { pusherServer } from "@/lib/pusher";
@@ -7,7 +10,7 @@ import { appendSystemReviewNote } from "@/lib/content-review";
 import { createContentTaskSchema, updateContentTaskSchema, updateTaskMetricsSchema, dynamicTaskMetricsSchema, batchCreateContentTasksSchema } from "@/schemas/content";
 import type { ApiResponse } from "@/types";
 import type { ContentTask, Prisma, TaskMetrics } from "@prisma/client";
-import { sendNotification } from "./notification-actions";
+import { sendNotification } from "@/lib/system-notifications";
 import { auth } from "@/auth";
 
 /**
@@ -21,7 +24,7 @@ async function triggerDashboardUpdate(userIds: string[]): Promise<void> {
 
     for (const userId of uniqueUserIds) {
       try {
-        await pusherServer.trigger(`user-${userId}`, "update-dashboard", {
+        await pusherServer.trigger(`private-user-${userId}`, "update-dashboard", {
           message: "Dashboard actualizado",
           timestamp: new Date().toISOString(),
         });
@@ -170,13 +173,8 @@ async function notifyAndRevalidate({
   revalidatePath("/");
 
   try {
-    await pusherServer.trigger("kanban-channel", "update-event", {
-      message: "refresh",
-      taskId: task.id,
-      action: "created",
-      timestamp: new Date().toISOString(),
-    });
-    console.log("✅ Evento Kanban enviado a Pusher correctamente");
+    await publishContentRefresh();
+    console.log("Evento Kanban enviado a Pusher correctamente");
   } catch (error) {
     console.error("❌ ERROR CRÍTICO AL ENVIAR A PUSHER (Kanban):", error);
   }
@@ -189,7 +187,7 @@ async function notifyAndRevalidate({
 
   // Notificar a los admins sobre la nueva tarea (Pusher + PUSH PWA)
   try {
-    const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
+    const { notifyAdminsWithPush } = await import("@/lib/system-notifications");
     const assignedTo = assignedEditorId || assignedCommunityId ? "asignada" : "sin asignar";
     const taskInfo = `${task.title}${clientName ? ` - ${clientName}` : ""}`;
     
@@ -214,6 +212,7 @@ export async function createTask(
   input: unknown
 ): Promise<ApiResponse<ContentTask>> {
   try {
+    await requireAdmin();
     const validatedData = createContentTaskSchema.parse(input);
     const { task, clientName, clientLogo, assignedEditorId, assignedCommunityId } = await persistTask(validatedData);
     await notifyAndRevalidate({
@@ -236,6 +235,7 @@ export async function createTasksBatch(
   input: unknown
 ): Promise<ApiResponse<{ created: ContentTask[]; errors: string[] }>> {
   try {
+    await requireAdmin();
     const { tasks } = batchCreateContentTasksSchema.parse(input);
     const created: ContentTask[] = [];
     const errors: string[] = [];
@@ -274,11 +274,8 @@ export async function createTasksBatch(
         revalidatePath("/content");
 
         // Disparar evento consolidado a Pusher
-        await pusherServer.trigger("content-kanban", "tasks-created-batch", {
-          count: created.length,
-          tasks: created,
-        });
-        console.log(`✅ Evento batch Kanban enviado: ${created.length} tareas creadas`);
+        await publishContentRefresh();
+        console.log(`Evento batch Kanban enviado: ${created.length} tareas creadas`);
 
         // Dashboard update para usuarios afectados
         if (affectedUserIds.size > 0) {
@@ -286,7 +283,7 @@ export async function createTasksBatch(
         }
 
         // Notificación consolidada a admins con logo del primer cliente
-        const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
+        const { notifyAdminsWithPush } = await import("@/lib/system-notifications");
         const clientSummary = Array.from(clientNames).join(", ");
         const taskSummary = created.length === 1 
           ? `1 tarea creada` 
@@ -331,40 +328,17 @@ export async function getTasks(
 ): Promise<ApiResponse<ContentTaskWithClient[]>> {
   const includeBrandAssets = options.includeBrandAssets ?? true;
   try {
-    // Obtener sesión para verificar rol
-    const { auth } = await import("@/auth");
-    const session = await auth();
-    const sessionUserId = session?.user?.id;
-    const userRole = session?.user?.role;
-
-    // Si es EDITOR, siempre filtrar solo sus tareas asignadas como editor
-    // Si es ADMIN y showOnlyMine es true, filtrar solo sus tareas
-    // Si es ADMIN y showOnlyMine es false o undefined, mostrar todas
-    const whereClause = 
-      (userRole === "EDITOR" && sessionUserId)
-        ? { 
-            client: {
-              status: { not: "INACTIVE" },
-            },
-            OR: [
-              { assignedEditorId: sessionUserId },
-              { assignedCommunityId: sessionUserId },
-            ]
-          }
-        : (userRole === "ADMIN" && showOnlyMine && sessionUserId)
-        ? {
-            client: { status: { not: "INACTIVE" } },
-            OR: [
-              { assignedEditorId: sessionUserId },
-              { assignedCommunityId: sessionUserId },
-              { status: "CLIENT_APPROVED" as const },
-            ],
-          }
-        : {
-            client: {
-              status: { not: "INACTIVE" },
-            },
-          };
+    const actor = await requireActor("content.read");
+    const whereClause = {
+      AND: [
+        { client: { status: { not: "INACTIVE" } } },
+        taskScope(actor),
+        ...(actor.role === "ADMIN" && showOnlyMine ? [{ OR: [
+          { assignedEditorId: actor.userId }, { assignedCommunityId: actor.userId },
+          { status: "CLIENT_APPROVED" },
+        ] }] : []),
+      ],
+    };
 
     const tasks = await db.contentTask.findMany({
       where: whereClause,
@@ -412,7 +386,7 @@ export async function getTasks(
       },
     }) as ContentTaskWithClient[];
 
-    return { success: true, data: tasks };
+    return { success: true, data: tasks.map((task) => actor.role === "ADMIN" ? task : { ...task, reviewToken: null }) };
   } catch (error) {
     return {
       success: false,
@@ -519,6 +493,7 @@ export async function updateTaskStatus(
   newStatus: string
 ): Promise<ApiResponse<ContentTask>> {
   try {
+    const accessActor = await requireTaskAccess(taskId, { status: newStatus });
     // Validar que el status sea válido
     const validStatuses = [
       "IDEA",
@@ -593,8 +568,8 @@ export async function updateTaskStatus(
         select: { id: true },
       });
       adminIdToNotify = adminUser?.id ?? null;
-      console.log(`✅ [CLIENT_APPROVED] Tarea "${currentTask.title}" aprobada. Admin notificado (${adminIdToNotify}). CM original conservado.`);
-    } else if (isChangingToEditing) {
+      console.log(`[CLIENT_APPROVED] Tarea "${currentTask.title}" aprobada. Admin notificado (${adminIdToNotify}). CM original conservado.`);
+    } else if (isChangingToEditing && accessActor.role === "ADMIN") {
       // Pase de estafeta: EDITING -> reasignar al editorId
       const client = await db.client.findUnique({
         where: { id: currentTask.clientId },
@@ -608,7 +583,7 @@ export async function updateTaskStatus(
 
     // Actualizar la tarea
     const task = await db.contentTask.update({
-      where: { id: taskId },
+      where: { id: taskId, AND: [taskScope(accessActor), { status: accessActor.taskStatus }] },
       data: {
         status: newStatus,
         // Si cambia a PUBLISHED, actualizar publishedAt
@@ -731,10 +706,8 @@ export async function updateTaskStatus(
     // --- BLOQUE PUSHER START ---
     // Disparar evento para el Kanban
     try {
-      await pusherServer.trigger('kanban-channel', 'update-event', {
-        message: `Tarea ${taskId} movida a ${newStatus}`
-      });
-      console.log("✅ [SERVER] Evento Kanban enviado a Pusher");
+      await publishContentRefresh();
+      console.log("[SERVER] Evento Kanban enviado a Pusher");
     } catch (error) {
       console.error("❌ [SERVER] Error disparando a Pusher (Kanban):", error);
     }
@@ -779,7 +752,7 @@ export async function updateTaskStatus(
     revalidatePath("/");
     revalidatePath("/finance");
 
-    return { success: true, data: task };
+    return { success: true, data: accessActor.role === "ADMIN" ? task : { ...task, reviewToken: null } };
   } catch (error) {
     return {
       success: false,
@@ -801,6 +774,8 @@ export async function updateTask(
   input: unknown
 ): Promise<ApiResponse<ContentTask>> {
   try {
+    const accessChanges = updateContentTaskSchema.parse(input);
+    const accessActor = await requireTaskAccess(id, accessChanges);
     // Validar con Zod
     const validatedData = updateContentTaskSchema.parse(input);
 
@@ -876,7 +851,7 @@ export async function updateTask(
 
     // Actualizar la tarea
     const task = await db.contentTask.update({
-      where: { id },
+      where: { id, AND: [taskScope(accessActor), { status: accessActor.taskStatus }] },
       data: {
         ...(validatedData.title && { title: validatedData.title }),
         ...(validatedData.type && { type: validatedData.type }),
@@ -917,6 +892,9 @@ export async function updateTask(
           : {}),
         ...(validatedData.postCopy !== undefined && {
           postCopy: validatedData.postCopy || null,
+        }),
+        ...(validatedData.scriptUrl !== undefined && {
+          scriptUrl: validatedData.scriptUrl || null,
         }),
         ...(validatedData.coverImageUrl !== undefined && {
           coverImageUrl: validatedData.coverImageUrl || null,
@@ -1046,13 +1024,8 @@ export async function updateTask(
     // Disparar eventos de Pusher para actualización en tiempo real
     // Disparar evento para el Kanban
     try {
-      await pusherServer.trigger("kanban-channel", "update-event", {
-        message: "refresh",
-        taskId: task.id,
-        action: "task_updated",
-        timestamp: new Date().toISOString(),
-      });
-      console.log("✅ Evento Kanban enviado correctamente");
+      await publishContentRefresh();
+      console.log("Evento Kanban enviado correctamente");
     } catch (pusherError) {
       console.error("❌ Error al enviar evento de Pusher (Kanban):", pusherError);
       // No fallar la operación si Pusher falla
@@ -1081,7 +1054,7 @@ export async function updateTask(
     
     await triggerDashboardUpdate(affectedUserIds);
 
-    return { success: true, data: task };
+    return { success: true, data: accessActor.role === "ADMIN" ? task : { ...task, reviewToken: null } };
   } catch (error) {
     return {
       success: false,
@@ -1098,6 +1071,7 @@ export async function updateTask(
  */
 export async function quickPublishTask(taskId: string): Promise<ApiResponse<ContentTask>> {
   try {
+    await requireAdmin();
     // 1. Verificar que la tarea existe y obtener información previa
     const task = await db.contentTask.findUnique({
       where: { id: taskId },
@@ -1201,13 +1175,8 @@ export async function quickPublishTask(taskId: string): Promise<ApiResponse<Cont
 
     // 8. Disparar evento de Pusher para actualización en tiempo real
     try {
-      await pusherServer.trigger("kanban-channel", "update-event", {
-        message: `Tarea "${task.title}" publicada rápidamente`,
-        taskId: taskId,
-        action: "quick_published",
-        timestamp: new Date().toISOString(),
-      });
-      console.log("✅ Evento Quick Publish enviado a Pusher");
+      await publishContentRefresh();
+      console.log("Evento Quick Publish enviado a Pusher");
     } catch (pusherError) {
       console.error("❌ Error al enviar evento Pusher:", pusherError);
     }
@@ -1228,6 +1197,7 @@ export async function quickPublishTask(taskId: string): Promise<ApiResponse<Cont
  */
 export async function deleteTask(id: string): Promise<ApiResponse<void>> {
   try {
+    await requireAdmin();
     // Validar autenticación y permisos
     const session = await auth();
     if (!session?.user) {
@@ -1247,14 +1217,9 @@ export async function deleteTask(id: string): Promise<ApiResponse<void>> {
 
     // Disparar evento de Pusher para actualización en tiempo real
     try {
-      console.log("🚀 Enviando evento Pusher: deleteTask");
-      await pusherServer.trigger("kanban-channel", "update-event", {
-        message: "refresh",
-        taskId: id,
-        action: "task_deleted",
-        timestamp: new Date().toISOString(),
-      });
-      console.log("✅ Evento Pusher enviado correctamente");
+      console.log("Enviando evento Pusher: deleteTask");
+      await publishContentRefresh();
+      console.log("Evento Pusher enviado correctamente");
     } catch (pusherError) {
       console.error("❌ Error al enviar evento de Pusher:", pusherError);
       // No fallar la operación si Pusher falla
@@ -1277,6 +1242,7 @@ export async function deleteTask(id: string): Promise<ApiResponse<void>> {
  */
 export async function getEnabledMetricsForClient(clientId: string): Promise<string[]> {
   try {
+    await requireClientAccess(clientId);
     const client = await db.client.findUnique({
       where: { id: clientId },
       select: { metricsConfig: true },
@@ -1311,6 +1277,7 @@ export async function getTaskMetrics(
   taskId: string
 ): Promise<ApiResponse<{ metrics: TaskMetrics | null; enabledMetrics: string[]; clientId: string } | null>> {
   try {
+    await requireTaskAccess(taskId);
     // Obtener la tarea para saber a qué cliente pertenece
     const task = await db.contentTask.findUnique({
       where: { id: taskId },
@@ -1355,6 +1322,7 @@ export async function updateTaskMetrics(
   input: unknown
 ): Promise<ApiResponse<TaskMetrics>> {
   try {
+    await requireAdmin();
     // 1. Obtener sesión y verificar permisos primero
     const { auth } = await import("@/auth");
     const session = await auth();
@@ -1380,6 +1348,8 @@ export async function updateTaskMetrics(
       // Si falla, intentar con el formato estático tradicional
       validatedData = updateTaskMetricsSchema.parse(input);
     }
+
+    await requireTaskAccess(validatedData.taskId, {});
 
     // 3. Verificar que la tarea existe y obtener información
     const task = await db.contentTask.findUnique({
@@ -1553,6 +1523,7 @@ export async function bulkUpdateTasks(
   input: unknown
 ): Promise<ApiResponse<{ updated: ContentTask[]; errors: string[] }>> {
   try {
+    await requireAdmin();
     // 1. Validar autenticación
     const session = await auth();
     if (!session?.user) {
@@ -1629,11 +1600,7 @@ export async function bulkUpdateTasks(
 
     // 6. Disparar evento a Pusher para actualizar Kanban
     try {
-      await pusherServer.trigger("content-kanban", "tasks-updated-bulk", {
-        count: updated.length,
-        status: status,
-        tasks: updated.map((t) => ({ id: t.id, status: t.status })),
-      });
+      await publishContentRefresh();
     } catch (pusherError) {
       console.error("❌ Error al dispara evento Pusher:", pusherError);
     }
@@ -1649,7 +1616,7 @@ export async function bulkUpdateTasks(
           await triggerDashboardUpdate(Array.from(affectedUserIds));
 
           // Notificar a admins sobre bulk update
-          const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
+          const { notifyAdminsWithPush } = await import("@/lib/system-notifications");
           const clientNames = [...new Set(tasks.map((t) => t.client?.name))].filter(Boolean);
           const clientSummary = clientNames.length <= 2 
             ? clientNames.join(", ") 
@@ -1688,6 +1655,7 @@ export async function bulkUpdateTasks(
  */
 export async function duplicateTask(id: string): Promise<ApiResponse<ContentTask>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autenticado" };
@@ -1726,12 +1694,7 @@ export async function duplicateTask(id: string): Promise<ApiResponse<ContentTask
 
     // Enviar evento Pusher
     try {
-      await pusherServer.trigger("kanban-channel", "update-event", {
-        message: "refresh",
-        taskId: duplicatedTask.id,
-        action: "task_duplicated",
-        timestamp: new Date().toISOString(),
-      });
+      await publishContentRefresh();
     } catch (pusherError) {
       console.error("❌ Error al enviar evento de Pusher:", pusherError);
     }
@@ -1753,6 +1716,7 @@ export async function updateTaskClient(
   clientId: string
 ): Promise<ApiResponse<ContentTask>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autenticado" };
@@ -1767,12 +1731,7 @@ export async function updateTaskClient(
     revalidatePath("/");
 
     try {
-      await pusherServer.trigger("kanban-channel", "update-event", {
-        message: "refresh",
-        taskId,
-        action: "task_client_updated",
-        timestamp: new Date().toISOString(),
-      });
+      await publishContentRefresh();
     } catch (pusherError) {
       console.error("❌ Error al enviar evento de Pusher:", pusherError);
     }
@@ -1796,6 +1755,7 @@ export async function updateTaskNotes(
   notes: string
 ): Promise<ApiResponse<void>> {
   try {
+    const accessActor = await requireTaskAccess(taskId, { postCopy: notes });
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autenticado" };
@@ -1817,7 +1777,7 @@ export async function updateTaskNotes(
       : `--- NOTAS ---\n${notes}`;
 
     await db.contentTask.update({
-      where: { id: taskId },
+      where: { id: taskId, AND: [taskScope(accessActor), { status: accessActor.taskStatus }] },
       data: { postCopy: updatedPostCopy },
     });
 

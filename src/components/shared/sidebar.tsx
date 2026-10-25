@@ -607,8 +607,8 @@ export function Sidebar({ className, onNavigate, collapsible = false, ...props }
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align={collapsed ? "end" : "start"} side={collapsed ? "right" : "top"} className="w-56">
                   <DropdownMenuLabel>{collapsed ? user.name || "Mi Cuenta" : "Mi Cuenta"}</DropdownMenuLabel><DropdownMenuSeparator />
-                  <DropdownMenuItem asChild><Link href="/admin/settings" className="cursor-pointer" onClick={() => onNavigate?.()}><Settings className="mr-2 h-4 w-4" /><span>Configuración</span></Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link href="/admin/settings/integrations" className="cursor-pointer" onClick={() => onNavigate?.()}><Plug className="mr-2 h-4 w-4" /><span>Integraciones</span></Link></DropdownMenuItem>
+                  {isAdmin && <DropdownMenuItem asChild><Link href="/admin/settings" className="cursor-pointer" onClick={() => onNavigate?.()}><Settings className="mr-2 h-4 w-4" /><span>Configuración</span></Link></DropdownMenuItem>}
+                  {isAdmin && <DropdownMenuItem asChild><Link href="/admin/settings/integrations" className="cursor-pointer" onClick={() => onNavigate?.()}><Plug className="mr-2 h-4 w-4" /><span>Integraciones</span></Link></DropdownMenuItem>}
                   <DropdownMenuSeparator /><DropdownMenuItem onClick={() => void signOutWithTotemIOSCleanup()} className="cursor-pointer"><LogOut className="mr-2 h-4 w-4" /><span>Cerrar Sesión</span></DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

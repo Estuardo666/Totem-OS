@@ -1,5 +1,7 @@
 "use server";
 
+import { requireActor, requireAdmin, requireClientAccess } from "@/lib/server-access";
+
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
@@ -129,6 +131,7 @@ function revalidateFinanceViews() {
 export async function getStrategicClientPlans():
   Promise<ApiResponse<StrategicClientPlan[]>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user?.id) {
       return { success: false, error: "No autenticado" };
@@ -176,6 +179,7 @@ export async function getStrategicClientPlans():
 export async function getStrategicClientAnalyticsPlans():
   Promise<ApiResponse<StrategicClientAnalyticsPlan[]>> {
   try {
+    await requireAdmin();
     const session = await auth();
     const userRole = resolveRoleCode(session?.user);
     if (!canReadStrategicClientAnalytics(session?.user?.id, userRole)) {
@@ -248,6 +252,7 @@ export async function getStrategicClientAnalyticsPlans():
 
 export async function createInvoice(input: unknown): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const validatedData = createInvoiceSchema.parse(input);
     const invoice = await createInvoiceInDb({
       amount: validatedData.amount,
@@ -272,6 +277,7 @@ export async function registerPayment(
   amount: number
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const invoice = await db.invoice.findUnique({ where: { id: invoiceId } });
     if (!invoice) {
       return { success: false, error: "Factura no encontrada" };
@@ -292,6 +298,7 @@ export async function markInvoiceAsPaid(
   paidAt?: string
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const invoice = await markInvoiceAsPaidInDb(invoiceId, parsePaidAt(paidAt));
     revalidateFinanceViews();
     return { success: true, data: invoice };
@@ -322,6 +329,7 @@ export async function markRecurringAsPaid(
   options: { paidAt?: string; settlesPeriod?: boolean } = {}
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     if (!Number.isFinite(amount) || amount <= 0) {
       return { success: false, error: "El monto debe ser mayor a 0" };
     }
@@ -387,6 +395,7 @@ export async function updateInvoice(
   input: unknown
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const validatedData = updateInvoiceSchema.parse(input);
     const invoice = await updateInvoiceInDb(id, validatedData as any)
     revalidateFinanceViews();
@@ -401,6 +410,7 @@ export async function updateInvoice(
 
 export async function getInvoiceById(invoiceId: string): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const invoice = await getInvoiceByIdFromDb(invoiceId);
     if (!invoice) {
       return { success: false, error: "Factura no encontrada" };
@@ -418,12 +428,21 @@ export async function getInvoiceById(invoiceId: string): Promise<ApiResponse<any
 
 export async function createExpense(input: unknown): Promise<ApiResponse<any>> {
   try {
+    await requireActor("finance.personal.read");
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autorizado" };
     }
 
     const validatedData = createExpenseSchema.parse(input);
+    if (resolveRoleCode(session.user) !== "ADMIN") {
+      if (validatedData.clientId) await requireClientAccess(validatedData.clientId);
+      validatedData.reimbursed = false;
+      validatedData.payrollId = undefined;
+      validatedData.paidByUserId = session.user.id;
+      validatedData.paidByUserIds = [session.user.id];
+      validatedData.allocations = undefined;
+    }
     const expense = await createExpenseInDb({
       ...validatedData,
       createdByUserId: session.user.id,
@@ -445,6 +464,7 @@ export async function updateExpense(
   input: unknown
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const validatedData = updateExpenseSchema.parse(input);
     const expense = await updateExpenseInDb(id, validatedData as any);
     revalidateFinanceViews();
@@ -462,6 +482,7 @@ export async function markExpenseAsReimbursed(
   expenseId: string
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const expense = await markExpenseAsReimbursedInDb(expenseId);
     revalidateFinanceViews();
     return { success: true, data: expense };
@@ -477,6 +498,7 @@ export async function liquidateReimbursements(
   userIds: string[]
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const result = await liquidateExpenseReimbursements(userIds);
     revalidateFinanceViews();
     return { success: true, data: result };
@@ -490,6 +512,7 @@ export async function liquidateReimbursements(
 
 export async function getExpenseById(expenseId: string): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const expense = await getExpenseByIdFromDb(expenseId);
     if (!expense) {
       return { success: false, error: "Gasto no encontrado" };
@@ -508,12 +531,22 @@ export async function getExpenseById(expenseId: string): Promise<ApiResponse<any
 
 export async function createTransaction(input: unknown): Promise<ApiResponse<any>> {
   try {
+    await requireActor("finance.personal.read");
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autorizado" };
     }
 
     const validatedData = createTransactionSchema.parse(input);
+    if (resolveRoleCode(session.user) !== "ADMIN") {
+      if (validatedData.type !== "EXPENSE") return { success: false, error: "Solo puedes registrar gastos propios" };
+      for (const clientId of [validatedData.clientId, validatedData.relatedClientId]) {
+        if (clientId) await requireClientAccess(clientId);
+      }
+      validatedData.status = "PENDING";
+      validatedData.assignedToId = session.user.id;
+      validatedData.userId = undefined;
+    }
     const transaction = await createTransactionInDb(validatedData, session.user.id, resolveRoleCode(session.user) ?? "USER");
     revalidateFinanceViews();
     return { success: true, data: transaction };
@@ -531,6 +564,7 @@ export async function updateTransaction(
   input: unknown
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const validatedData = updateTransactionSchema.parse(input);
     const transaction = await updateTransactionInDb(id, validatedData);
     revalidateFinanceViews();
@@ -548,6 +582,7 @@ export async function markTransactionAsPaid(
   transactionId: string
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const transaction = await markTransactionAsPaidInDb(transactionId);
     revalidateFinanceViews();
     return { success: true, data: transaction };
@@ -563,6 +598,7 @@ export async function cancelTransaction(
   transactionId: string
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const transaction = await cancelTransactionInDb(transactionId);
     revalidateFinanceViews();
     return { success: true, data: transaction };
@@ -582,6 +618,7 @@ export async function bulkDeleteTransactions(
   transactionIds: string[]
 ): Promise<ApiResponse<{ deleted: number }>> {
   try {
+    await requireAdmin();
     if (!transactionIds || transactionIds.length === 0) {
       return { success: false, error: "No se seleccionaron transacciones" };
     }
@@ -615,6 +652,7 @@ export async function bulkDeleteExpenses(
   expenseIds: string[]
 ): Promise<ApiResponse<{ deleted: number }>> {
   try {
+    await requireAdmin();
     if (!expenseIds || expenseIds.length === 0) {
       return { success: false, error: "No se seleccionaron gastos" };
     }
@@ -648,6 +686,7 @@ export async function bulkDeleteInvoices(
   invoiceIds: string[]
 ): Promise<ApiResponse<{ deleted: number }>> {
   try {
+    await requireAdmin();
     if (!invoiceIds || invoiceIds.length === 0) {
       return { success: false, error: "No se seleccionaron facturas" };
     }
@@ -681,6 +720,7 @@ export async function bulkUpdateTransactionStatus(
   newStatus: "PENDING" | "PAID" | "CANCELLED"
 ): Promise<ApiResponse<{ updated: number }>> {
   try {
+    await requireAdmin();
     if (!transactionIds || transactionIds.length === 0) {
       return { success: false, error: "No se seleccionaron transacciones" };
     }
@@ -718,6 +758,7 @@ export async function getTransactionById(
   transactionId: string
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const transaction = await getTransactionByIdFromDb(transactionId);
     return { success: true, data: transaction };
   } catch (error) {
@@ -748,6 +789,7 @@ export async function getReceivables(): Promise<
   }>
 > {
   try {
+    await requireAdmin();
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -770,6 +812,7 @@ export async function getClientAccountStatus(
   clientId: string
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -867,7 +910,12 @@ export async function getClientAccountStatus(
 export async function getFinancialStats(
   options: { recentLimit?: number } = {}
 ): Promise<ApiResponse<FinancialStatsData>> {
-  return getFinancialStatsFromDb(options);
+  try {
+    await requireActor("finance.personal.read");
+    return getFinancialStatsFromDb(options);
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "No autorizado" };
+  }
 }
 
 export async function getExpensesStats(filters?: {
@@ -876,13 +924,19 @@ export async function getExpensesStats(filters?: {
   clientId?: string;
   category?: string;
 }): Promise<ApiResponse<ExpensesStatsData>> {
-  return getExpensesStatsFromDb(filters);
+  try {
+    await requireActor("finance.personal.read");
+    return getExpensesStatsFromDb(filters);
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "No autorizado" };
+  }
 }
 
 export async function getAvailableExpenseMonths(): Promise<
   ApiResponse<{ value: string; label: string }[]>
 > {
   try {
+    await requireAdmin();
     const [oldestExpense, oldestTransaction] = await Promise.all([
       db.expense.findFirst({ orderBy: { date: "asc" }, select: { date: true } }),
       db.transaction.findFirst({
@@ -935,15 +989,30 @@ export async function getAvailableExpenseMonths(): Promise<
 }
 
 export async function getGlobalProfitabilityStats(): Promise<ApiResponse<any>> {
-  return getGlobalProfitabilityStatsFromDb();
+  try {
+    await requireAdmin();
+    return getGlobalProfitabilityStatsFromDb();
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "No autorizado" };
+  }
 }
 
 export async function getMonthlyFinancialSummary(monthValue?: string): Promise<ApiResponse<any>> {
-  return getMonthlyFinancialSummaryFromDb(monthValue);
+  try {
+    await requireAdmin();
+    return getMonthlyFinancialSummaryFromDb(monthValue);
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "No autorizado" };
+  }
 }
 
 export async function getFinanceDashboardPeriodSnapshots(monthValues: string[]) {
-  return getFinanceDashboardPeriodSnapshotsFromDb(monthValues);
+  try {
+    await requireAdmin();
+    return getFinanceDashboardPeriodSnapshotsFromDb(monthValues);
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "No autorizado" };
+  }
 }
 
 export async function getClientMonthlyClosures(
@@ -951,6 +1020,7 @@ export async function getClientMonthlyClosures(
   year: number
 ): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || session.user.role !== "ADMIN") {
       return { success: false, error: "No autorizado" };
@@ -967,6 +1037,7 @@ export async function getClientMonthlyClosures(
 
 export async function saveClientMonthlyClosure(input: unknown): Promise<ApiResponse<{ id: string }>> {
   try {
+    await requireAdmin();
     const session = await auth();
     const userId = session?.user?.id;
     const userRole = session?.user?.role;
@@ -1003,6 +1074,7 @@ export async function closeMonthRecommended(
   ApiResponse<{ cerrados: number; omitidosParciales: number; yaCerrados: number }>
 > {
   try {
+    await requireAdmin();
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId || session?.user?.role !== "ADMIN") {
@@ -1061,6 +1133,7 @@ export async function updateUserSalaryConfig(
   input: unknown
 ): Promise<ApiResponse<User>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || session.user.role !== "ADMIN") {
       return {
@@ -1136,6 +1209,7 @@ export async function getCajaDelMes(
   year: number
 ): Promise<ApiResponse<{ ingresos: number; gastos: number; honorarios: number; aUtilidades: number; caja: number }>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || session.user.role !== "ADMIN") {
       return { success: false, error: "No autorizado" };
@@ -1188,6 +1262,7 @@ export async function getSettlementReport(
   year: number
 ): Promise<ApiResponse<any[]>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autorizado" };
@@ -1362,6 +1437,7 @@ export async function processSalaryPayment(
   input: unknown
 ): Promise<ApiResponse<Transaction>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || session.user.role !== "ADMIN") {
       return {
@@ -1428,6 +1504,7 @@ export async function runCobranzaChecks(): Promise<
   }>
 > {
   try {
+    await requireAdmin();
     // Verificar autenticación y rol ADMIN
     const session = await auth();
     if (!session?.user) {
@@ -1477,6 +1554,7 @@ export async function runCobranzaChecks(): Promise<
  */
 export async function getCobranzaSummary(): Promise<ApiResponse<any>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autenticado" };

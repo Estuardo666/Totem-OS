@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireActor, requireAdmin } from "@/lib/server-access";
+import { clientScope } from "@/lib/access-policy";
 import { db } from "@/lib/db";
 import { upsertClientMonthlyStrategySchema } from "@/schemas/content-strategy";
 import type { ApiResponse } from "@/types";
@@ -32,7 +34,9 @@ function serializeStrategy(strategy: {
 
 export async function getContentMonthlyStrategies(): Promise<ApiResponse<ContentMonthlyStrategyRecord[]>> {
   try {
+    const actor = await requireActor("content.read");
     const strategies = await db.clientMonthlyStrategy.findMany({
+      where: { client: clientScope(actor) },
       select: {
         id: true,
         clientId: true,
@@ -63,6 +67,7 @@ export async function upsertContentMonthlyStrategy(
   input: unknown
 ): Promise<ApiResponse<ContentMonthlyStrategyRecord>> {
   try {
+    await requireAdmin();
     const validatedData = upsertClientMonthlyStrategySchema.parse(input);
 
     const strategy = await db.clientMonthlyStrategy.upsert({

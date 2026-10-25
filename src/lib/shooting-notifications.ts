@@ -11,10 +11,10 @@ import { db } from "@/lib/db";
 import { enqueueWhatsApp, normalizePhone } from "@/lib/whatsapp/enqueue";
 import { shootReminderText } from "@/lib/whatsapp/templates";
 
-type SendNotificationInput = Parameters<typeof import("@/actions/notification-actions").sendNotification>[0];
+type SendNotificationInput = Parameters<typeof import("@/lib/system-notifications").sendNotification>[0];
 
 async function sendNotification(input: SendNotificationInput) {
-  const { sendNotification: action } = await import("@/actions/notification-actions");
+  const { sendNotification: action } = await import("@/lib/system-notifications");
   return action(input);
 }
 
@@ -69,7 +69,7 @@ export async function notifyAdminsNewShooting(params: {
   const { shootingTitle, clientName, startTime, createdBy } = params;
   
   try {
-    const { notifyAdminsWithPush } = await import("@/actions/notification-actions");
+    const { notifyAdminsWithPush } = await import("@/lib/system-notifications");
     const startTimeStr = format(startTime, "dd/MM/yyyy HH:mm", { locale: es });
 
     await notifyAdminsWithPush(

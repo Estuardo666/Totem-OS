@@ -1,5 +1,8 @@
 "use client";
 
+import { useSession } from "next-auth/react";
+import { resolveRoleCode } from "@/lib/roles";
+import { canEditAssignedTask, editorNextStatuses } from "@/lib/access-policy";
 import { useState, useEffect, useTransition } from "react";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
@@ -153,6 +156,10 @@ interface TaskSheetProps {
 }
 
 export function TaskSheet({ task, open, onOpenChange, users, clients = [], initialScheduledAt, initialDefaults }: TaskSheetProps) {
+  const { data: session } = useSession();
+  const role = resolveRoleCode(session?.user) ?? "USER";
+  const isAdmin = role === "ADMIN";
+  const canEdit = isAdmin || Boolean(task && canEditAssignedTask({ userId: session?.user?.id ?? "", role }, task));
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -230,7 +237,10 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
         } else {
           // Actualizar tarea existente
           if (!task) return;
-          result = await updateTask(task.id, taskData as UpdateContentTaskInput);
+          result = await updateTask(task.id, isAdmin ? taskData as UpdateContentTaskInput : {
+            status: parsedData.status, postCopy: parsedData.postCopy, scriptUrl: parsedData.scriptUrl,
+            coverImageUrl: parsedData.coverImageUrl, audioBriefUrl: parsedData.audioBriefUrl,
+          });
           if (result.success) {
             toast({
               title: "Tarea actualizada",
@@ -319,7 +329,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
   return (
     <TooltipProvider>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open && (Boolean(task) || isAdmin)} onOpenChange={onOpenChange}>
         <DialogContent className="flex min-h-0 max-h-[92vh] w-[95vw] max-w-3xl flex-col gap-3 overflow-hidden p-4 sm:w-[84vw] sm:p-5 md:w-[68vw] lg:w-[56vw] xl:w-[48vw]">
           <DialogHeader className="space-y-0.5 px-0 pb-2 pt-0 text-left sm:pb-3">
             <DialogTitle className="text-xl font-semibold leading-tight sm:text-2xl md:text-3xl">
@@ -341,6 +351,22 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
 
             {/* Tab Detalles */}
             <TabsContent value="details" className="mt-3 space-y-5 sm:mt-4 sm:space-y-6">
+              {!isAdmin && task && <fieldset disabled={!canEdit || isPending} className="space-y-4">
+                <p className="text-sm text-muted-foreground">{task.title} · {task.client.name}</p>
+                <label className="block space-y-2"><span>Texto de la pieza</span>
+                  <textarea {...form.register("postCopy")} className="min-h-28 w-full rounded-lg border bg-background p-3" />
+                </label>
+                {(["scriptUrl", "coverImageUrl", "audioBriefUrl"] as const).map((name) => <label key={name} className="block space-y-2">
+                  <span>{name === "scriptUrl" ? "Guion" : name === "coverImageUrl" ? "Portada" : "Audio de referencia"}</span>
+                  <Input {...form.register(name)} />
+                </label>)}
+                <label className="block space-y-2"><span>Estado</span>
+                  <select {...form.register("status")} className="w-full rounded-lg border bg-background p-2">
+                    {[task.status, ...editorNextStatuses(task.status)].map((status) => <option key={status} value={status}>{status === "EDITING" ? "Editando" : status === "REVIEW_INTERNAL" ? "Revisión interna" : status}</option>)}
+                  </select>
+                </label>
+              </fieldset>}
+              <fieldset disabled={!isAdmin} className={isAdmin ? "contents" : "hidden"}>
               {/* SECCIÓN: Título y Cliente */}
               <div className="space-y-4">
                 {/* Título */}
@@ -680,12 +706,13 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                   )}
                 />
               </div>
+              </fieldset>
             </TabsContent>
 
             <TabsContent value="review" className="mt-3 sm:mt-4">
               <TaskReviewTab
                 task={task}
-                disabled={isPending}
+                disabled={isPending || !isAdmin}
                 feedbackValue={feedbackValue || undefined}
                 onFeedbackChange={(value) => form.setValue("clientFeedback", value, { shouldDirty: true, shouldTouch: true })}
               />
@@ -696,7 +723,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
               <div className="mt-5 flex flex-col gap-2 border-t pt-4 sm:mt-6 sm:gap-3 sm:pt-5">
                 <Button
                   type="submit"
-                  disabled={isPending}
+                  disabled={isPending || !canEdit}
                   className="h-10 w-full rounded-full sm:h-11"
                 >
                   {isPending ? (
@@ -709,7 +736,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                   )}
                 </Button>
 
-                {!isNewTask && (
+                {isAdmin && !isNewTask && (
                   <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                     <DialogTrigger asChild>
                       <Button

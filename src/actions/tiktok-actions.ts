@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/server-access";
+
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import type { Session } from "next-auth";
@@ -33,6 +35,7 @@ function guard(session: Session | null): string | null {
 /** URL de autorización de TikTok, con su cookie de state. */
 export async function getTikTokAuthUrl(): Promise<ApiResponse<{ url: string }>> {
   try {
+    await requireAdmin();
     const error = guard(await auth());
     if (error) return { success: false, error };
 
@@ -76,6 +79,7 @@ export async function getTikTokConnection(): Promise<
   }>
 > {
   try {
+    await requireAdmin();
     const error = guard(await auth());
     if (error) return { success: false, error };
 
@@ -113,6 +117,7 @@ export async function linkTikTokToClient(
   clientId: string
 ): Promise<ApiResponse<{ username: string }>> {
   try {
+    await requireAdmin();
     const error = guard(await auth());
     if (error) return { success: false, error };
 
@@ -155,6 +160,7 @@ export async function unlinkTikTokFromClient(
   clientId: string
 ): Promise<ApiResponse<{ success: boolean }>> {
   try {
+    await requireAdmin();
     const error = guard(await auth());
     if (error) return { success: false, error };
 
@@ -176,6 +182,7 @@ export async function unlinkTikTokFromClient(
 /** Elimina la conexión de TikTok de la agencia. */
 export async function disconnectTikTokAccount(): Promise<ApiResponse<{ success: boolean }>> {
   try {
+    await requireAdmin();
     const error = guard(await auth());
     if (error) return { success: false, error };
 
@@ -199,6 +206,7 @@ export async function testTikTokConnection(): Promise<
   ApiResponse<{ displayName: string; followers: number; videos: number; likes: number }>
 > {
   try {
+    await requireAdmin();
     const error = guard(await auth());
     if (error) return { success: false, error };
 

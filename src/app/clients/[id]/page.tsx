@@ -79,7 +79,7 @@ export default async function ClientDetailPage({
   const session = await auth();
   const userRole = resolveRoleCode(session?.user);
   const isAdmin = userRole === "ADMIN";
-  const canEditClient = isAdmin || (userRole === "EDITOR" && session?.user?.specialty === "COMMUNITY");
+  const canEditClient = isAdmin;
 
   // Check if user is authenticated
   if (!session?.user?.id) {
@@ -186,6 +186,17 @@ export default async function ClientDetailPage({
     } catch (error) {
       console.error("Error al parsear brandDNA:", error);
     }
+  }
+
+  if (!isAdmin) {
+    return <div className="mx-auto max-w-7xl space-y-6 p-4">
+      <h1 className="text-2xl font-semibold">{client.name}</h1>
+      <KanbanBoard tasks={tasksForKanban} users={users} clients={[client]} />
+      <section className="space-y-2">
+        <h2 className="text-lg font-medium">Materiales de marca</h2>
+        {client.brandAssets.map((asset) => <p key={asset.id}><a className="underline" href={asset.url} target="_blank" rel="noreferrer">{asset.name}</a></p>)}
+      </section>
+    </div>;
   }
 
   return (

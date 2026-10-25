@@ -1,5 +1,6 @@
 "use server";
 
+import { requireAdmin } from "@/lib/server-access";
 import { db } from "@/lib/db";
 import { updateTaskMetricsSchema } from "@/schemas/content";
 import type { ApiResponse } from "@/types";
@@ -138,6 +139,7 @@ export async function updateTaskMetrics(
   input: unknown
 ): Promise<ApiResponse<TaskMetrics>> {
   try {
+    await requireAdmin();
     // 1. Validar con Zod
     const validatedData = updateTaskMetricsSchema.parse(input);
 
@@ -301,6 +303,7 @@ export async function getClientGlobalMetrics(
   };
 }>> {
   try {
+    await requireAdmin();
     const tasks = await db.contentTask.findMany({
       where: {
         clientId,
@@ -518,6 +521,7 @@ export async function getClientRecentTasksWithMetrics(
   } | null;
 }>>> {
   try {
+    await requireAdmin();
     const tasks = await db.contentTask.findMany({
       where: {
         clientId,
@@ -604,6 +608,7 @@ export async function getClientAnnualMetrics(
   } | null;
 }>>> {
   try {
+    await requireAdmin();
     const yearStart = new Date(year, 0, 1);
     const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
 
@@ -672,6 +677,7 @@ export async function generateClientPerformanceOverview(
   clientId: string
 ): Promise<ApiResponse<{ overview: string; generatedAt: Date }>> {
   try {
+    await requireAdmin();
     // 1. Validar sesión y permisos
     const session = await auth();
     if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
@@ -850,6 +856,9 @@ export async function getClientFacebookMetrics(
   }>;
 }>> {
   try {
+    await requireAdmin();
+    await requireAdmin();
+    await requireAdmin();
     // 1. Validar sesión
     const session = await auth();
     if (!session?.user) {
@@ -945,6 +954,7 @@ export async function getClientAnalytics(
   days: number = 28
 ): Promise<ApiResponse<ClientAnalytics>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "No autorizado" };
@@ -973,6 +983,7 @@ export async function getAgencyAnalytics(
   days: number = 28
 ): Promise<ApiResponse<AgencyAnalytics>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || session.user.role !== "ADMIN") {
       return { success: false, error: "No autorizado. Solo ADMIN puede ver el panel global." };

@@ -90,7 +90,7 @@ async function findClient(clientId: string) {
 }
 
 export function buildAssistantTools(user: AssistantUser) {
-  return {
+  const tools = {
     ...buildAnalysisTools(user),
     ...buildMetaTools(user),
 
@@ -721,6 +721,11 @@ export function buildAssistantTools(user: AssistantUser) {
       },
     }),
   };
+  if (user.role === "ADMIN") return tools;
+  const allowed = new Set(["listarTareas", "listarGastos"]);
+  return Object.fromEntries(Object.entries(tools).map(([name, definition]) => [name,
+    allowed.has(name) ? definition : { ...definition, execute: async () => ({ error: "No autorizado" }) },
+  ])) as typeof tools;
 }
 
 export type AssistantTools = ReturnType<typeof buildAssistantTools>;

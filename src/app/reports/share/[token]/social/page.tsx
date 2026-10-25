@@ -27,7 +27,7 @@ export default async function SharedSocialReportPage({
   if (!clientResult.success || !clientResult.data) notFound();
 
   const client = clientResult.data;
-  await markReportAsViewed(client.id);
+  await markReportAsViewed(client.id, token);
 
   const now = new Date();
   const monthNum = month ? parseInt(month, 10) : now.getMonth() + 1;

@@ -1,5 +1,9 @@
 "use client";
 
+import { useSession } from "next-auth/react";
+import { resolveRoleCode } from "@/lib/roles";
+import { canEditAssignedTask } from "@/lib/access-policy";
+
 import { format, isBefore, isToday, startOfDay } from "date-fns";
 import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2, AlertCircle, CalendarDays } from "lucide-react";
 import {
@@ -78,7 +82,8 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
   );
 
   // Para TODAS las tareas: Envolver en Draggable
-  const isDragDisabled = false;
+  const { data: session } = useSession();
+  const isDragDisabled = !canEditAssignedTask({ userId: session?.user?.id ?? "", role: resolveRoleCode(session?.user) ?? "USER" }, task);
 
   return (
     <Draggable draggableId={task.id} index={index} isDragDisabled={isDragDisabled}>

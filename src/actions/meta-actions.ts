@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/server-access";
+
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { getManagedPages, getInstagramBusinessAccount, getMetaAuthorizationUrl, getAdAccounts, checkPermissions } from "@/lib/meta/auth-service";
@@ -16,6 +18,7 @@ import { revalidatePath } from "next/cache";
  */
 export async function getMetaAuthUrl(): Promise<ApiResponse<{ url: string }>> {
   try {
+    await requireAdmin();
     // Solo ADMIN: la conexión reemplaza el token de toda la agencia, y
     // desconectarla ya exigía ADMIN.
     const session = await auth();
@@ -61,6 +64,7 @@ export async function getConnectedMetaAccount(): Promise<
   } | null>
 > {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
       return {
@@ -120,6 +124,7 @@ export async function getAvailableAdAccounts(): Promise<
   >
 > {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
       return {
@@ -168,6 +173,7 @@ export async function getManagedMetaPages(): Promise<
   >
 > {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
       return {
@@ -230,6 +236,7 @@ export async function linkPageToClient(
   adAccountId?: string | null
 ): Promise<ApiResponse<{ success: boolean }>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
       return {
@@ -329,6 +336,7 @@ export async function linkPageToClient(
  */
 export async function unlinkPageFromClient(clientId: string): Promise<ApiResponse<{ success: boolean }>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
       return {
@@ -368,6 +376,7 @@ export async function unlinkPageFromClient(clientId: string): Promise<ApiRespons
  */
 export async function disconnectMetaAccount(): Promise<ApiResponse<{ success: boolean }>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || session.user.role !== "ADMIN") {
       return {
@@ -415,6 +424,7 @@ export async function getClientAdAccounts(
   clientId: string
 ): Promise<ApiResponse<Array<{ id: string; adAccountId: string; name: string; currency: string; isActive: boolean }>>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
       return { success: false, error: "No autorizado" };
@@ -456,6 +466,7 @@ export async function linkAdAccountToClient(
   currency: string = "USD"
 ): Promise<ApiResponse<{ id: string }>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
       return { success: false, error: "No autorizado" };
@@ -516,6 +527,7 @@ export async function unlinkAdAccountFromClient(
   adAccountId: string
 ): Promise<ApiResponse<{ success: boolean }>> {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "EDITOR")) {
       return { success: false, error: "No autorizado" };
@@ -553,6 +565,7 @@ export async function resyncPageTokens(): Promise<
   ApiResponse<{ updated: number; unmatched: string[] }>
 > {
   try {
+    await requireAdmin();
     const session = await auth();
     if (!session?.user || session.user.role !== "ADMIN") {
       return {

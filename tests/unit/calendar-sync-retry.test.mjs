@@ -30,7 +30,7 @@ function loadSync(failImport) {
       }], nextSyncToken: "next" }),
     } },
     "@/lib/client-matcher": { matchClientFromCalendarEvent: async () => ({ clientId: "client" }) },
-    "@/actions/notification-actions": { notifyAdminsWithPush: async () => {} },
+    "@/lib/system-notifications": { notifyAdminsWithPush: async () => {} },
   };
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
   vm.runInNewContext(compiled, {

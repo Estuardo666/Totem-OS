@@ -151,6 +151,7 @@ export async function getFinancialStatsFromDb(
     const userId = session?.user?.id;
     const userRole = session?.user?.role;
     const isAdmin = userRole === "ADMIN";
+    if (!userId) return { success: false, error: "No autenticado" };
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -887,7 +888,7 @@ export async function getExpensesStatsFromDb(filters?: {
       },
     };
 
-    if (filters?.userId && filters.userId !== "all") {
+    if (isAdmin && filters?.userId && filters.userId !== "all") {
       expenseWhere.paidByUserId = filters.userId;
     } else if (!isAdmin) {
       expenseWhere.paidByUserId = userId;
@@ -927,7 +928,7 @@ export async function getExpensesStatsFromDb(filters?: {
     const prevMonthWhere: any = {
       date: { gte: prevMonthStart, lte: prevMonthEnd },
     };
-    if (filters?.userId && filters.userId !== "all") {
+    if (isAdmin && filters?.userId && filters.userId !== "all") {
       prevMonthWhere.paidByUserId = filters.userId;
     } else if (!isAdmin) {
       prevMonthWhere.paidByUserId = userId;

@@ -36,10 +36,10 @@ export default async function SharedReportPage({
   const client = clientResult.data;
 
   // Marcar reporte como visto (solo la primera vez o si no se ha visto recientemente)
-  await markReportAsViewed(client.id);
+  await markReportAsViewed(client.id, token);
 
   // Obtener datos del reporte
-  const reportResult = await getClientReportData(client.id, monthNum, yearNum);
+  const reportResult = await getClientReportData(client.id, monthNum, yearNum, token);
 
   if (!reportResult.success || !reportResult.data) {
     notFound();
@@ -48,7 +48,7 @@ export default async function SharedReportPage({
   const reportData = reportResult.data;
 
   // Obtener feedback existente para este mes/año
-  const feedbacksResult = await getClientFeedbacks(client.id);
+  const feedbacksResult = await getClientFeedbacks(client.id, token);
   const currentFeedback = feedbacksResult.success && feedbacksResult.data
     ? feedbacksResult.data.find(
         (f) => Number(f.month) === Number(reportData.month) && Number(f.year) === Number(reportData.year)
@@ -131,6 +131,7 @@ export default async function SharedReportPage({
         {/* Sección de Aprobación y Comentarios */}
         <ReportApprovalSection
           clientId={client.id}
+          shareToken={token}
           month={Number(reportData.month)}
           year={reportData.year}
           monthName={monthName}

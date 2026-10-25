@@ -271,5 +271,24 @@ export const { handlers, signIn, signOut } = nextAuth;
 
 // El callback jwt consulta la BD en cada llamada; cache() deduplica las
 // llamadas a auth() dentro de un mismo request (página + server actions).
-export const auth = cache(() => nextAuth.auth());
+export const auth = cache(async () => {
+  const session = await nextAuth.auth();
+  if (!session?.user?.id) return null;
+  // El JWT no es una fuente de autorización vigente: una cuenta eliminada,
+  // un cambio de rol o una BD no disponible deben revocar el acceso al servidor.
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { roleCode: true, roleLegacy: true },
+    });
+    const role = user && resolveRoleCode(user);
+    if (!role) return null;
+    session.user.roleCode = role;
+    session.user.roleLegacy = role;
+    session.user.role = role;
+    return session;
+  } catch {
+    return null;
+  }
+});
 
