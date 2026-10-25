@@ -2,6 +2,15 @@
 
 Objetivo autorizado: flujo funcional en ambiente 1 de pruebas, sin comprobantes tributarios reales.
 
+## Integración en la aplicación principal — versión 0.2.0
+
+- PR16 integra la certificación en main y conserva íntegro el rediseño ya desplegado de feat/ui-redesign (fd32056). Componentes compartidos, estilos globales, layout y tokens coinciden con esa rama. El trabajo local de rediseño no se resetea ni se sustituye.
+- La autenticación y el resto de la app conservan DATABASE_URL. Solo las rutas, servicios y acciones de facturación usan SRI_DATABASE_URL, apuntando a la base aislada. No hay migraciones ni copia de datos reales a certificación.
+- SRI_PROCESS_SECRET autentica el disparo hacia Hostinger sin reemplazar el secreto previo del endpoint de latidos. PIN permanece solo en Hostinger; clave de cifrado privada en el servidor de la web.
+- El acceso desde un cobro real a emitirDesdeInvoiceAction se bloquea con explicación en certificación. Crear una factura manual permite seleccionar receptores de prueba sin modificar cobros reales.
+- Rollback: revertir el merge del PR o recuperar el despliegue previo dpl_6RegfrGKtCupAoGsM71LHor5JC3T. No restaurar una copia sobre la base viva. Snapshot local de287 archivos WIP en reports/pre-main-ui-preservation-20261025 del checkout original y backup privado f6a3b3d.
+- Pruebas de integración:253 unitarias, tipos raíz/SRI/WhatsApp y builds de ambos workers pasan; lint sin errores y15 advertencias previas. Revisión independiente limpia después de corregir el datasource del worker.
+
 ## Estado vigente — verificado 25-oct-2026
 
 Funcional en ambiente 1: interfaz https://invoice-certification.vercel.app/admin/facturacion y worker independiente https://orangered-wildcat-493803.hostingersite.com. No requiere computadora encendida. Ambiente 2 permanece bloqueado.
