@@ -50,7 +50,7 @@ La especialidad editor/community no debe convertirse implícitamente en permiso 
 - El middleware restringe /admin a ADMIN, pero no sustituye la autorización de cada acción y excluye las API de su matcher.
 - deleteTask exige ADMIN.
 - getTasks filtra tareas asignadas para sesiones EDITOR válidas.
-- getStrategicClientAnalyticsPlans exige ADMIN. getStrategicClientPlans filtra clientes del editor, aunque todavía devuelve tarifas comerciales.
+- getStrategicClientAnalyticsPlans y getStrategicClientPlans exigen ADMIN.
 - Algunas rutas v1, como dashboard, usan withApiProtection con requiredCapability. Esta protección no se aplica automáticamente a las Server Actions revisadas.
 
 ## Orden de implementación
