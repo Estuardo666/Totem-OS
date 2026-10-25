@@ -50,7 +50,7 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
   };
 
   return (
-    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+    <div className="rounded-2xl border bg-card overflow-hidden">
       <div className="p-5 border-b">
         <div className="flex items-center gap-3">
           <Users className="h-5 w-5 text-foreground" />
@@ -60,7 +60,7 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
       <div className="divide-y">
         {workloads.length === 0 ? (
           <div className="text-center py-10 px-4">
-            <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
+            <div className="h-12 w-12 rounded-lg bg-muted/50 flex items-center justify-center mx-auto mb-3">
               <Users className="h-6 w-6 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground">
@@ -78,7 +78,7 @@ export function WorkloadPanel({ workloads }: WorkloadPanelProps) {
             const isSaturated = !isOverCapacity && workload.pendingTasksCount >= saturationThreshold;
 
             return (
-              <div key={workload.userId} className="p-4 hover:bg-muted/50 transition-colors">
+              <div key={workload.userId} className="p-4 hover:bg-primary/[0.1] transition-colors">
                 <div className="flex items-center gap-3 mb-3">
                   <Avatar className="h-10 w-10 ring-2 ring-border/30">
                     <AvatarImage src={workload.userImage || undefined} alt={workload.userName} />

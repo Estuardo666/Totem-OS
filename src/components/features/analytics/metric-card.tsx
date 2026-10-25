@@ -22,7 +22,7 @@ export function MetricCard({ label, value, hint, footnote, className }: MetricCa
   const isEmpty = value === "—";
 
   return (
-    <div className={cn("rounded-xl border bg-card p-4", className)}>
+    <div className={cn("rounded-2xl border bg-card p-4", className)}>
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <p
         className={cn(
@@ -33,7 +33,7 @@ export function MetricCard({ label, value, hint, footnote, className }: MetricCa
         {value}
       </p>
       {footnote ? <p className="mt-1 text-xs text-muted-foreground">{footnote}</p> : null}
-      <p className="mt-2 text-[11px] leading-snug text-muted-foreground/80">{hint}</p>
+      <p className="mt-2 text-xs leading-snug text-muted-foreground/80">{hint}</p>
     </div>
   );
 }

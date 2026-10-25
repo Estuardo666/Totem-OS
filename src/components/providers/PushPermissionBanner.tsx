@@ -88,7 +88,7 @@ export function PushPermissionBanner({ onEnable }: PushPermissionBannerProps) {
     <div style={wrapperStyle}>
       <div style={cardStyle}>
         <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "hsl(var(--primary) / 0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "18px" }}>
-          🔔
+          
         </div>
         <p style={{ flex: 1, fontSize: "14px", color: "hsl(var(--foreground))", lineHeight: 1.4 }}>
           Activa las notificaciones para recibir avisos de tareas y contenido.
@@ -105,7 +105,7 @@ export function PushPermissionBanner({ onEnable }: PushPermissionBannerProps) {
             onClick={handleDismiss}
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", padding: "4px 6px", color: "hsl(var(--muted-foreground))", touchAction: "auto" }}
           >
-            ✕
+            ×
           </button>
         </div>
       </div>

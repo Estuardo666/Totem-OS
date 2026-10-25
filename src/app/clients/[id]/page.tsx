@@ -33,7 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { TaskMetrics } from "@prisma/client";
 import { calculateMonthlyEngagement, calculateMonthlyEfficiency, formatCurrency } from "@/lib/metrics-calculations";
-import { TrendingUp, Brain, BarChart3, ArrowLeft, Receipt, FileText } from "lucide-react";
+import { TrendingUp, Brain, BarChart3, Receipt, FileText } from "lucide-react";
 import { ClientBillingForm } from "@/components/features/facturacion/ClientBillingForm";
 
 interface TaskWithMetrics {
@@ -150,7 +150,7 @@ export default async function ClientDetailPage({
       color: client.color,
       editorId: client.editorId,
       communityId: client.communityId,
-      brandDNA: client.brandDNA, // ✅ Campo crítico para IA - agregado
+      brandDNA: client.brandDNA, // Campo crítico para IA - agregado
       brandKit: client.brandKit,
       vault: client.vault,
       planConfig: client.planConfig,
@@ -191,16 +191,15 @@ export default async function ClientDetailPage({
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header iOS-style con navegación */}
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b">
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl backdrop-saturate-150">
         <div className="max-w-6xl mx-auto px-4">
           {/* Breadcrumb simple */}
-          <div className="flex items-center gap-2 py-2 text-sm">
+          <div className="flex items-center gap-2 pb-4 pt-4 text-sm md:pt-6">
             <Link 
               href="/clients" 
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Clientes</span>
+              Clientes
             </Link>
             <span className="text-muted-foreground/50">/</span>
             <span className="font-medium truncate">{client.name}</span>
@@ -219,57 +218,48 @@ export default async function ClientDetailPage({
 
         {/* Tabs Navigation iOS-style */}
         <Tabs defaultValue="summary" className="w-full">
-          <div className="sticky top-[52px] z-30 -mx-4 px-4 bg-muted/30 backdrop-blur-sm py-2">
-            <TabsList className="inline-flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide h-11 rounded-xl bg-card border p-1">
+          <div className="sticky top-[3.75rem] z-30 -mx-4 px-4 bg-background/80 backdrop-blur-xl py-2">
+            <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide">
               <TabsTrigger 
-                value="summary" 
-                className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                value="summary"
+                className="shrink-0"
               >
                 Resumen
               </TabsTrigger>
               <TabsTrigger 
-                value="brand-kit" 
-                className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                value="brand-kit"
+                className="shrink-0"
               >
                 Brand Kit
               </TabsTrigger>
               <TabsTrigger 
-                value="vault" 
-                className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                value="vault"
+                className="shrink-0"
               >
                 Bóveda
               </TabsTrigger>
               <TabsTrigger 
-                value="strategy" 
-                className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                value="strategy"
+                className="shrink-0"
               >
                 Estrategia de Marca
               </TabsTrigger>
               {isAdmin && (
                 <>
+                  {/* Performance oculto por ahora: su contenido sigue montado abajo. */}
                   <TabsTrigger 
-                    value="performance" 
-                    className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
-                  >
-                    Performance
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="metrics" 
-                    className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                    value="metrics" className="shrink-0"
                   >
                     Métricas & Rendimiento
                   </TabsTrigger>
                   <TabsTrigger 
-                    value="account" 
-                    className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                    value="account" className="shrink-0"
                   >
                     Estado de Cuenta
                   </TabsTrigger>
                   <TabsTrigger 
-                    value="billing" 
-                    className="flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                    value="billing" className="shrink-0"
                   >
-                    <Receipt className="h-3.5 w-3.5 mr-1.5" />
                     Facturación
                   </TabsTrigger>
                 </>

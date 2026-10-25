@@ -68,7 +68,7 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((p) => 
 const selectCls = "h-10 w-full appearance-none rounded-lg border bg-background pl-3 pr-8 text-sm transition-colors hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function StatusPill({ status }: { status: string }) {
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${statusTone(status)}`}>{statusLabels[status] ?? status}</span>;
+  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${statusTone(status)}`}>{statusLabels[status] ?? status}</span>;
 }
 
 function Select({ value, onChange, children, label }: { value: string; onChange: (v: string) => void; children: React.ReactNode; label?: string }) {
@@ -76,7 +76,7 @@ function Select({ value, onChange, children, label }: { value: string; onChange:
 }
 
 function Field({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
-  return <label className="grid content-start gap-1.5"><span className="text-xs font-medium text-muted-foreground">{label}</span>{children}{hint && <span className="text-[11px] leading-snug text-muted-foreground">{hint}</span>}</label>;
+  return <label className="grid content-start gap-1.5"><span className="text-xs font-medium text-muted-foreground">{label}</span>{children}{hint && <span className="text-xs leading-snug text-muted-foreground">{hint}</span>}</label>;
 }
 
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
@@ -88,16 +88,16 @@ function ToggleRow({ checked, onChange, label, hint }: { checked: boolean; onCha
 }
 
 function Empty({ icon: Icon, title, hint }: { icon: typeof Inbox; title: string; hint?: string }) {
-  return <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/80 px-6 py-14 text-center"><span className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground"><Icon className="size-5" /></span><p className="mt-4 text-sm font-medium">{title}</p>{hint && <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">{hint}</p>}</div>;
+  return <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 px-6 py-14 text-center"><span className="flex size-12 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Icon className="size-5" /></span><p className="mt-4 text-sm font-medium">{title}</p>{hint && <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">{hint}</p>}</div>;
 }
 
 function Panel({ title, description, action, children }: { title: string; description?: string; action?: React.ReactNode; children: React.ReactNode }) {
-  return <section className="rounded-2xl border border-border/70 bg-card"><header className="flex flex-wrap items-start justify-between gap-3 border-b border-border/70 px-5 py-4 sm:px-6"><div><h2 className="text-[15px] font-semibold tracking-[-0.01em]">{title}</h2>{description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}</div>{action}</header><div className="p-5 sm:p-6">{children}</div></section>;
+  return <section className="rounded-2xl border border-border/70 bg-card"><header className="flex flex-wrap items-start justify-between gap-3 border-b border-border/70 px-5 py-4 sm:px-6"><div><h2 className="text-base font-semibold tracking-[-0.01em]">{title}</h2>{description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}</div>{action}</header><div className="p-5 sm:p-6">{children}</div></section>;
 }
 
 /** Burbuja estilo WhatsApp para mostrar mensajes salientes. */
 function Bubble({ children, meta }: { children: React.ReactNode; meta?: React.ReactNode }) {
-  return <div className="relative max-w-full rounded-2xl rounded-tr-md bg-emerald-500/[0.09] px-3.5 py-2.5 ring-1 ring-inset ring-emerald-500/15"><div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{children}</div>{meta && <div className="mt-1 flex items-center justify-end gap-1.5 text-[10px] text-muted-foreground">{meta}</div>}</div>;
+  return <div className="relative max-w-full rounded-lg rounded-tr-md bg-emerald-500/[0.09] px-3.5 py-2.5 ring-1 ring-inset ring-emerald-500/15"><div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{children}</div>{meta && <div className="mt-1 flex items-center justify-end gap-1.5 text-xs text-muted-foreground">{meta}</div>}</div>;
 }
 
 function GeneralSettings({ config, busy, onSave }: { config: Props["config"]; busy: boolean; onSave: (value: { ownerPhone: string; approvalReminderHours: number; maxApprovalReminders: number; skipWeekends: boolean; teamDailyHour: string; amountsInGroups: boolean }) => void }) {
@@ -187,7 +187,7 @@ export default function WhatsAppAdmin(props: Props) {
         <div className="relative flex flex-col gap-6 p-6 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/12 text-emerald-500 ring-1 ring-inset ring-emerald-500/20"><MessageCircle className="size-7" /></div>
+              <div className="flex size-14 items-center justify-center rounded-lg bg-emerald-500/12 text-emerald-500 ring-1 ring-inset ring-emerald-500/20"><MessageCircle className="size-7" /></div>
               <span className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-card">
                 {live && <span className="absolute inline-flex size-3 animate-ping rounded-full bg-emerald-500 opacity-50 motion-reduce:hidden" />}
                 <span className={`relative inline-flex size-2.5 rounded-full ${live ? "bg-emerald-500" : props.config.paused ? "bg-amber-500" : "bg-muted-foreground/60"}`} />
@@ -225,11 +225,11 @@ export default function WhatsAppAdmin(props: Props) {
               const active = activeTab === item.key;
               const Icon = item.icon;
               return <li key={item.key}>
-                <button type="button" onClick={() => setActiveTab(item.key)} aria-current={active ? "page" : undefined} className={`relative flex w-full items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2 text-sm transition-colors duration-150 ${active ? "text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}>
+                <button type="button" onClick={() => setActiveTab(item.key)} aria-current={active ? "page" : undefined} className={`relative flex w-full items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2 text-sm transition-colors duration-150 ${active ? "text-foreground" : "text-muted-foreground hover:bg-primary/[0.1] hover:text-foreground"}`}>
                   {active && <motion.span layoutId="wa-nav" className="absolute inset-0 rounded-xl bg-muted" transition={reduce ? { duration: 0 } : { type: "spring", duration: 0.35, bounce: 0.15 }} />}
                   <Icon className="relative size-4" />
                   <span className="relative flex-1 text-left font-medium">{item.label}</span>
-                  {!!item.count && <span className={`relative inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums ${item.tone === "danger" ? "bg-red-500/15 text-red-500" : item.tone === "muted" ? "bg-foreground/[0.07] text-muted-foreground" : "bg-emerald-500/15 text-emerald-500"}`}>{item.count}</span>}
+                  {!!item.count && <span className={`relative inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums ${item.tone === "danger" ? "bg-red-500/15 text-red-500" : item.tone === "muted" ? "bg-foreground/[0.07] text-muted-foreground" : "bg-emerald-500/15 text-emerald-500"}`}>{item.count}</span>}
                 </button>
               </li>;
             })}
@@ -249,8 +249,8 @@ export default function WhatsAppAdmin(props: Props) {
                     return <article key={prompt.id} className="rounded-2xl border border-border/70 bg-background/40 p-4 sm:p-5">
                       <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><span className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500"><Bot className="size-3.5" /></span><span className="text-sm font-semibold">{promptTypeLabels[prompt.type] ?? prompt.type}</span><span className="text-xs text-muted-foreground">#{prompt.id.slice(-6)}</span></div><span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="size-3" />Vence {fmt(prompt.expiresAt, { dateStyle: "short", timeStyle: "short" })}</span></div>
                       <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{String(summary)}</p>
-                      {referenceText && <div className="mt-3"><p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">Texto de referencia</p><Bubble>{referenceText}</Bubble></div>}
-                      {payload.proposedText !== undefined && <div className="mt-3"><p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">Respuesta propuesta</p><Bubble>{String(payload.proposedText)}</Bubble></div>}
+                      {referenceText && <div className="mt-3"><p className="mb-1.5 text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">Texto de referencia</p><Bubble>{referenceText}</Bubble></div>}
+                      {payload.proposedText !== undefined && <div className="mt-3"><p className="mb-1.5 text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">Respuesta propuesta</p><Bubble>{String(payload.proposedText)}</Bubble></div>}
                       <div className="mt-4 flex flex-wrap gap-2">{choices.map((choice, index) => { const label = typeof choice === "string" ? choice : choice.label ?? choice.text ?? choice.title ?? `Opción ${index + 1}`; return <Button key={index} size="sm" className="rounded-lg" variant={index === 0 ? "default" : "outline"} disabled={busy} onClick={() => { if (prompt.type === "APPROVAL_DRAFT" && index === 2) { setActiveTab("approvals"); return; } run(() => decideOwnerPromptAction(prompt.id, String(index + 1)), "Decisión registrada."); }}>{label}</Button>; })}</div>
                     </article>;
                   })}
@@ -310,9 +310,9 @@ export default function WhatsAppAdmin(props: Props) {
 }
 
 function HeroStat({ label, value, onClick, warn, danger }: { label: string; value: number; onClick: () => void; warn?: boolean; danger?: boolean }) {
-  return <button type="button" onClick={onClick} className="rounded-xl px-3 py-2 text-left transition-[background-color,transform] duration-150 hover:bg-muted/50 active:scale-[0.97] sm:px-6 sm:text-center">
+  return <button type="button" onClick={onClick} className="rounded-xl px-3 py-2 text-left transition-[background-color,transform] duration-150 hover:bg-primary/[0.1] active:scale-[0.97] sm:px-6 sm:text-center">
     <p className={`text-2xl font-semibold tabular-nums tracking-[-0.03em] ${danger ? "text-red-500" : warn ? "text-amber-500" : ""}`}>{value}</p>
-    <p className="text-[11px] text-muted-foreground">{label}</p>
+    <p className="text-xs text-muted-foreground">{label}</p>
   </button>;
 }
 
@@ -322,7 +322,7 @@ function DraftEditor({ draft, busy, onSave, onApprove, onDiscard }: { draft: Pro
   return <div className="rounded-2xl border border-border/70 bg-background/40 p-4">
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span className="flex items-center gap-2"><Send className="size-3.5" /><span className="font-medium text-foreground">{draft.kind}</span> → {draft.to}</span><span>{fmt(draft.createdAt, { dateStyle: "short", timeStyle: "short" })}</span></div>
     <Textarea value={body} onChange={(event) => setBody(event.target.value)} rows={4} maxLength={4096} className="resize-y rounded-xl border-emerald-500/20 bg-emerald-500/[0.05] text-sm leading-relaxed" />
-    <div className="mt-1 text-right text-[10px] tabular-nums text-muted-foreground">{body.length}/4096</div>
+    <div className="mt-1 text-right text-xs tabular-nums text-muted-foreground">{body.length}/4096</div>
     <div className="mt-2 flex flex-wrap justify-end gap-2"><Button size="sm" variant="ghost" className="rounded-lg text-muted-foreground hover:text-red-500" disabled={busy} onClick={onDiscard}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Descartar</Button><Button size="sm" variant="outline" className="rounded-lg" disabled={busy || !changed} onClick={() => onSave(body)}>Guardar edición</Button><Button size="sm" className="rounded-lg" disabled={busy} onClick={() => onApprove(body)}><Check className="mr-1.5 h-3.5 w-3.5" />Aprobar y encolar</Button></div>
   </div>;
 }
@@ -343,7 +343,7 @@ function GroupEditor({ group, clients, busy, onSave }: { group: Props["groups"][
       <Field label="Respuestas IA"><Select label="Respuestas IA" value={aiMode} onChange={setAiMode}><option value="OFF">{modeLabels.OFF}</option><option value="DRAFT">{modeLabels.DRAFT}</option><option value="AUTO" disabled>Automático (requiere aprobación)</option></Select></Field>
       <Field label="Aprobaciones"><Select label="Aprobaciones" value={approvalMode} onChange={setApprovalMode}><option value="OFF">{modeLabels.OFF}</option><option value="DRAFT">{modeLabels.DRAFT}</option><option value="AUTO" disabled>Automático (requiere aprobación)</option></Select></Field>
     </div>
-    <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-3"><span className="truncate font-mono text-[10px] text-muted-foreground">{group.jid}</span><Button size="sm" className="rounded-lg" variant={dirty ? "default" : "outline"} disabled={busy || !dirty} onClick={() => onSave({ clientId: clientId || null, purposes, aiMode, approvalMode, enabled })}>Guardar</Button></div>
+    <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-3"><span className="truncate font-mono text-xs text-muted-foreground">{group.jid}</span><Button size="sm" className="rounded-lg" variant={dirty ? "default" : "outline"} disabled={busy || !dirty} onClick={() => onSave({ clientId: clientId || null, purposes, aiMode, approvalMode, enabled })}>Guardar</Button></div>
   </article>;
 }
 
@@ -369,7 +369,7 @@ function ClientEditor({ client, reminderHours, busy, onSave }: { client: Props["
   const [phone, setPhone] = useState(client.whatsappPhone ?? ""); const [target, setTarget] = useState(client.paymentReminderTarget); const [hours, setHours] = useState(String(reminderHours));
   const dirty = phone !== (client.whatsappPhone ?? "") || target !== client.paymentReminderTarget || hours !== String(reminderHours);
   return <div className="grid gap-3 py-4 first:pt-0 last:pb-0 md:grid-cols-[minmax(0,1fr)_180px_150px_120px_auto] md:items-end">
-    <div className="flex min-w-0 items-center gap-3 md:pb-2"><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-[11px] font-semibold text-muted-foreground">{initials(client.name)}</span><p className="truncate text-sm font-medium">{client.name}</p></div>
+    <div className="flex min-w-0 items-center gap-3 md:pb-2"><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-xs font-semibold text-muted-foreground">{initials(client.name)}</span><p className="truncate text-sm font-medium">{client.name}</p></div>
     <Field label="Teléfono WhatsApp"><Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="5939…" inputMode="tel" /></Field>
     <Field label="Destino de cobros"><Select label="Destino de cobros" value={target} onChange={setTarget}><option value="GROUP">Grupo</option><option value="PERSONAL">Personal</option></Select></Field>
     <Field label="Recordar (h)"><Input type="number" min={1} max={168} value={hours} onChange={(e) => setHours(e.target.value)} inputMode="numeric" /></Field>

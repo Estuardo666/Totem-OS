@@ -41,10 +41,10 @@ export function MonthlySummaryHeroFocus({ summary }: MonthlySummaryHeroFocusProp
   const Icon = styles.icon;
 
   return (
-    <div className={`rounded-3xl border p-4 ${styles.wrapper}`}>
+    <div className={`rounded-lg border p-4 ${styles.wrapper}`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] ${styles.badge}`}>
+          <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] ${styles.badge}`}>
             <Icon className="h-3.5 w-3.5" />
             Foco del período
           </div>
@@ -54,7 +54,7 @@ export function MonthlySummaryHeroFocus({ summary }: MonthlySummaryHeroFocusProp
           </div>
         </div>
 
-        <div className="min-w-[220px] rounded-2xl border border-white/10 bg-black/15 p-4">
+        <div className="min-w-[220px] rounded-lg border border-white/10 bg-black/15 p-4">
           <p className="text-xs uppercase tracking-[0.18em] text-white/60">{summary.heroFocus.metricLabel}</p>
           <p className="mt-2 text-2xl font-semibold text-white">{formatFocusValue(summary)}</p>
           <p className="mt-1 text-xs text-white/70">{summary.heroFocus.context}</p>

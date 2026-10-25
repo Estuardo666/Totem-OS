@@ -129,17 +129,17 @@ export function MonthlySummaryBreakdown({ summary }: MonthlySummaryBreakdownProp
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-4">
               <p className="text-sm font-medium text-emerald-900">Caja cobrada</p>
               <p className="mt-2 text-3xl font-semibold text-emerald-950">{formatCurrency(summary.treasury.collectedCash)}</p>
               <p className="mt-2 text-xs text-emerald-800">Eficiencia de cobranza: {formatPercent(summary.quality.collectionEfficiencyPct)}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-medium text-slate-900">Disponible por asignar</p>
               <p className="mt-2 text-3xl font-semibold text-slate-950">{formatCurrency(summary.treasury.availableToAllocate)}</p>
               <p className="mt-2 text-xs text-slate-700">Cobros menos salidas efectivamente pagadas.</p>
             </div>
-            <div className="space-y-3 rounded-2xl border border-border/60 p-4 md:col-span-2">
+            <div className="space-y-3 rounded-lg border border-border/60 p-4 md:col-span-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Salidas directas</span>
                 <span className="font-semibold">{formatCurrency(summary.treasury.directCashOut)}</span>
@@ -203,11 +203,11 @@ export function MonthlySummaryBreakdown({ summary }: MonthlySummaryBreakdownProp
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
                 <p className="text-sm text-muted-foreground">Cartera al cierre</p>
                 <p className="mt-2 text-2xl font-semibold">{formatCurrency(summary.receivables.total)}</p>
               </div>
-              <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
                 <p className="text-sm text-muted-foreground">Cliente principal</p>
                 <p className="mt-2 text-2xl font-semibold">{formatPercent(summary.quality.topClientConcentrationPct)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Participación del cliente más grande en el ingreso del mes.</p>
@@ -250,7 +250,7 @@ export function MonthlySummaryBreakdown({ summary }: MonthlySummaryBreakdownProp
           </CardHeader>
           <CardContent className="space-y-3">
             {summary.alerts.map((alert) => (
-              <div key={alert.title} className={`rounded-2xl border p-4 ${getAlertClasses(alert.tone)}`}>
+              <div key={alert.title} className={`rounded-lg border p-4 ${getAlertClasses(alert.tone)}`}>
                 <div className="flex items-start gap-3">
                   {alert.tone === "healthy" ? <CheckCircle2 className="mt-0.5 h-5 w-5" /> : <AlertTriangle className="mt-0.5 h-5 w-5" />}
                   <div>

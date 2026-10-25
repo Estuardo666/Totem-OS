@@ -351,7 +351,7 @@ export function BulkTaskCreator({ clients, variant = "card", showHeader = true, 
               variant="outline"
               onClick={handleParse}
               disabled={isPending}
-              className="w-full border-2 border-border rounded-full h-11 font-medium hover:bg-muted/50 hover:border-border/60"
+              className="w-full border-2 border-border rounded-full h-11 font-medium hover:bg-primary/[0.1] hover:border-border/60"
             >
               Analizar texto
             </Button>
@@ -359,7 +359,7 @@ export function BulkTaskCreator({ clients, variant = "card", showHeader = true, 
               type="button" 
               onClick={handleCreate} 
               disabled={!hasRows || isPending} 
-              className="w-full rounded-full h-11 font-medium bg-primary text-primary-foreground hover:bg-primary/85 shadow-md hover:shadow-lg transition-all"
+              className="w-full rounded-full h-11 font-medium bg-primary text-primary-foreground hover:bg-primary/85 shadow-md transition-all"
             >
               {isPending ? "Creando..." : `Crear ${validRows.length}`}
             </Button>
@@ -367,7 +367,7 @@ export function BulkTaskCreator({ clients, variant = "card", showHeader = true, 
           {hasRows && (
             <div className="px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-muted border border-blue-200 dark:border-border">
               <p className="text-sm font-medium text-blue-700 dark:text-muted-foreground">
-                ✓ {validRows.length} válidas / {parsedRows.length} totales
+                {validRows.length} válidas / {parsedRows.length} totales
               </p>
             </div>
           )}
@@ -375,7 +375,7 @@ export function BulkTaskCreator({ clients, variant = "card", showHeader = true, 
       </div>
 
       {hasRows && (
-        <div className="rounded-2xl border border-border bg-gradient-to-br from-background to-background/50 overflow-hidden">
+        <div className="rounded-lg border border-border bg-gradient-to-br from-background to-background/50 overflow-hidden">
           <div className="max-h-[300px] overflow-y-auto custom-scroll">
             {currentClient && (
               <div className="flex flex-col items-center gap-2 px-6 py-4 text-center border-b border-border/50">
@@ -396,7 +396,7 @@ export function BulkTaskCreator({ clients, variant = "card", showHeader = true, 
               {parsedRows.map((row, index) => (
                 <div
                   key={`${row.rawLine}-${index}`}
-                  className={`px-6 py-3 flex items-start gap-3 hover:bg-muted/50 transition-colors ${
+                  className={`px-6 py-3 flex items-start gap-3 hover:bg-primary/[0.1] transition-colors ${
                     row.error ? "bg-destructive/5 hover:bg-destructive/10" : ""
                   }`}
                 >
@@ -435,7 +435,7 @@ export function BulkTaskCreator({ clients, variant = "card", showHeader = true, 
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-gradient-to-br from-background to-background/50 p-6 space-y-4">
+    <div className="rounded-lg border border-border bg-gradient-to-br from-background to-background/50 p-6 space-y-4">
       {shouldShowHeader && (
         <div className="space-y-1.5">
           <h3 className="text-2xl font-bold">Crear tareas en lote</h3>

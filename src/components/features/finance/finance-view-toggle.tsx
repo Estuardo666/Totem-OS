@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { segmentedTrack, segmentedItemClass } from "@/components/ui/segmented";
 
 export function FinanceViewToggle({ basePath, advanced, month }: { basePath: string; advanced: boolean; month?: string }) {
   const query = (view?: string) => {
@@ -9,11 +9,10 @@ export function FinanceViewToggle({ basePath, advanced, month }: { basePath: str
     const qs = params.toString();
     return qs ? `${basePath}?${qs}` : basePath;
   };
-  const item = (active: boolean) =>
-    cn("rounded-md px-3 py-1.5 text-sm font-medium transition-colors", active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground");
+  const item = (active: boolean) => segmentedItemClass(active);
 
   return (
-    <div className="inline-flex rounded-lg bg-muted p-1">
+    <div className={segmentedTrack}>
       <Link href={query()} className={item(!advanced)}>Simple</Link>
       <Link href={query("advanced")} className={item(advanced)}>Avanzada</Link>
     </div>

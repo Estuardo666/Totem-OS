@@ -82,12 +82,12 @@ function showInAppNotification(title: string, body: string) {
         @keyframes wpSlideUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-100%); opacity: 0; } }
       </style>
       <div style="display: flex; align-items: flex-start; gap: 12px;">
-        <div style="width:40px;height:40px;background:rgba(255,255,255,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">🔔</div>
+        <div style="width:40px;height:40px;background:rgba(255,255,255,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
         <div style="flex:1;min-width:0;">
           <div style="font-weight:600;font-size:15px;margin-bottom:4px;">${title}</div>
           <div style="font-size:14px;opacity:0.9;line-height:1.4;">${body}</div>
         </div>
-        <button style="background:rgba(255,255,255,0.2);border:none;color:white;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" onclick="this.closest('#webpush-inapp-notification').remove()">✕</button>
+        <button style="background:rgba(255,255,255,0.2);border:none;color:white;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" onclick="this.closest('#webpush-inapp-notification').remove()" aria-label="Cerrar">×</button>
       </div>
     </div>
   `;
@@ -374,7 +374,7 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
                   WebkitBackdropFilter: "blur(8px)",
                 }}
               >
-                <span style={{ fontSize: "24px" }}>📲</span>
+                <span style={{ fontSize: "24px" }}></span>
                 <p style={{ flex: 1, fontSize: "14px", color: "hsl(var(--foreground))" }}>
                   Para recibir notificaciones, añade esta app a tu pantalla de inicio:{" "}
                   <strong>Compartir → Añadir a pantalla de inicio</strong>.
@@ -393,7 +393,7 @@ export function WebPushProvider({ children }: { children: React.ReactNode }) {
                     color: "hsl(var(--muted-foreground))",
                   }}
                 >
-                  ✕
+                  ×
                 </button>
               </div>
             </div>

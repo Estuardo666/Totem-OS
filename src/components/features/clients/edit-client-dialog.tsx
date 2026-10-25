@@ -181,37 +181,50 @@ export function EditClientDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-hidden flex flex-col min-h-0">
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col min-h-0">
         {isUploading && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-50 rounded-lg">
+          <div className="absolute inset-0 bg-popover/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-50 rounded-3xl">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <p className="text-lg font-medium">Subiendo logo...</p>
           </div>
         )}
-        <DialogHeader>
-          <DialogTitle>Editar Cliente</DialogTitle>
-          <DialogDescription>
-            Modifica los detalles del cliente y su plan mensual.
-          </DialogDescription>
+        {/* Encabezado con identidad del cliente: se separa del formulario por
+            superficie y espacio, no por línea */}
+        <DialogHeader className="flex-row items-center gap-3 space-y-0">
+          <span
+            className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl text-base font-semibold"
+            style={{ backgroundColor: `${form.watch("color") || "#6366f1"}24`, color: form.watch("color") || "#6366f1" }}
+            aria-hidden
+          >
+            {form.watch("logo") || client.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={(form.watch("logo") || client.logo) as string} alt="" className="h-full w-full object-cover" />
+            ) : (
+              (form.watch("name") || client.name).charAt(0).toUpperCase()
+            )}
+          </span>
+          <div className="min-w-0">
+            <DialogTitle className="truncate">Editar cliente</DialogTitle>
+            <DialogDescription className="truncate">{form.watch("name") || client.name} · datos y plan mensual</DialogDescription>
+          </div>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
-            <div className="overflow-y-auto overflow-x-hidden pr-2 flex-1 min-h-0 custom-scroll">
+            <div className="-mx-1 overflow-y-auto overflow-x-hidden px-1 pr-2 pt-2 flex-1 min-h-0 custom-scroll [mask-image:linear-gradient(to_bottom,transparent,black_16px,black_calc(100%-16px),transparent)]">
               <div className="space-y-6 pb-4">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nombre del Cliente</FormLabel>
+                      <FormLabel>Nombre del cliente</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Ej: Empresa XYZ"
                           {...field}
                           disabled={isPending}
-                          className="text-2xl font-medium border-0 border-b-2 border-input rounded-none px-0 pb-2 bg-transparent focus:border-primary"
-                          style={{ fontSize: "1.5rem", fontWeight: 500 }}
+                          className="h-11 text-base font-medium"
                         />
                       </FormControl>
                       <FormMessage />
@@ -252,7 +265,7 @@ export function EditClientDialog({
                   name="color"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Color de Marca</FormLabel>
+                      <FormLabel>Color de marca</FormLabel>
                       <FormControl>
                         <ColorPicker
                           value={field.value || "#000000"}
@@ -266,7 +279,7 @@ export function EditClientDialog({
                 />
 
                 <div>
-                  <FormLabel>Logotipo del Cliente</FormLabel>
+                  <FormLabel>Logotipo</FormLabel>
                   <div className="mt-2">
                     {logoUrl ? (
                       <div className="flex items-center gap-4">
@@ -310,7 +323,7 @@ export function EditClientDialog({
                               setLogoUrl(res[0].url);
                               setIsUploading(false);
                               toast({
-                                title: "✅ Logo subido",
+                                title: "Logo subido",
                                 description: "El logo se ha subido correctamente.",
                               });
                             }
@@ -319,7 +332,7 @@ export function EditClientDialog({
                             setIsUploading(false);
                             toast({
                               variant: "destructive",
-                              title: "❌ Error al subir logo",
+                              title: "Error al subir logo",
                               description: error.message,
                             });
                           }}
@@ -404,12 +417,14 @@ export function EditClientDialog({
                   )}
                 />
 
+                {/* Tarifa y día de pago en una sola fila (50/50) */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="monthlyRate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tarifa Mensual ($)</FormLabel>
+                      <FormLabel>Tarifa mensual ($)</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -423,9 +438,6 @@ export function EditClientDialog({
                         />
                       </FormControl>
                       <FormMessage />
-                      <p className="text-sm text-muted-foreground">
-                        Monto que se cobrará automáticamente cuando se cumpla el plan mensual
-                      </p>
                     </FormItem>
                   )}
                 />
@@ -435,7 +447,7 @@ export function EditClientDialog({
                   name="paymentDay"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Fecha de pago (día del mes)</FormLabel>
+                      <FormLabel>Día de pago (1–31)</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -451,12 +463,11 @@ export function EditClientDialog({
                         />
                       </FormControl>
                       <FormMessage />
-                      <p className="text-sm text-muted-foreground">
-                        Día fijo en que se generará la transacción mensual (1-31).
-                      </p>
                     </FormItem>
                   )}
                 />
+                </div>
+                <p className="-mt-3 text-xs text-muted-foreground">El cobro mensual se genera ese día cuando se cumple el plan.</p>
 
                 <FormField
                   control={form.control}

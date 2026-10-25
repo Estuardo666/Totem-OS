@@ -1,57 +1,35 @@
 import { Suspense } from "react";
-import { SignInForm } from "@/components/auth/sign-in-form";
 import Link from "next/link";
+import { SignInForm } from "@/components/auth/sign-in-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPublicBrandSettings, getLoginBackground } from "@/actions/admin-actions";
 
-/**
- * Componente asíncrono para el branding
- * Se ejecuta en Suspense, no bloquea el renderizado de la página
- */
-async function BrandingHeader() {
-  const brandSettings = await getPublicBrandSettings();
+const FALLBACK_LOGO = "https://utfs.io/f/NqZ6bO92fiLrsUO8ug8BUQnS2JwateHKzPxm4v83ydCfrjGT";
+const FALLBACK_BACKGROUND =
+  "https://totem-os.vercel.app/_next/image?url=https%3A%2F%2Futfs.io%2Ff%2FNqZ6bO92fiLrrxbgrqcxRmvHV7qsT39DXCwJcELoFK1k2MQi&w=1920&q=90";
 
+/** Logo de marca configurado en Ajustes (versión clara), con el logo histórico de respaldo. */
+async function BrandLogo() {
+  const brand = await getPublicBrandSettings();
+  const logo = (brand.success && brand.data?.logoLight) || FALLBACK_LOGO;
   return (
-    <div className="mb-12 text-center">
-      <Link href="/" className="inline-block">
-        <div className="flex flex-col items-center gap-3">
-          {/* Logo Totem Mass Media */}
-          <img
-            src="https://utfs.io/f/NqZ6bO92fiLrsUO8ug8BUQnS2JwateHKzPxm4v83ydCfrjGT"
-            alt="Totem Mass Media"
-            className="h-auto w-48"
-            loading="lazy"
-          />
-          <p className="text-gray-300 mt-1 text-sm font-medium opacity-80">
-            Sistema Operativo Interno
-          </p>
-        </div>
-      </Link>
-    </div>
+    <Link href="/" aria-label="Totem OS" className="inline-block">
+      <img src={logo} alt="Totem Mass Media" className="h-10 w-auto object-contain" />
+    </Link>
   );
 }
 
-/**
- * Componente para el background dinámico
- */
-async function DynamicBackground() {
-  const backgroundSettings = await getLoginBackground();
-  
-  if (backgroundSettings.success && backgroundSettings.data?.backgroundUrl) {
-    return (
-      <div 
-        className="fixed inset-0 -z-10"
-        style={{
-          backgroundImage: `url(${backgroundSettings.data.backgroundUrl})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-      />
-    );
-  }
-  
-  return null;
+/** Panel visual: fondo configurable del login o la imagen de marca por defecto. */
+async function VisualPanel() {
+  const background = await getLoginBackground();
+  const url = (background.success && background.data?.backgroundUrl) || FALLBACK_BACKGROUND;
+  return (
+    <div
+      className="absolute inset-0 bg-cover bg-center"
+      style={{ backgroundImage: `url(${url})` }}
+      aria-hidden
+    />
+  );
 }
 
 export default async function SignInPage({
@@ -63,95 +41,43 @@ export default async function SignInPage({
   const callbackUrl = params?.callbackUrl || "/";
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 w-full relative dark overflow-hidden">
-      <style>{`
-        @keyframes gradientShift {
-          0%, 100% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-        }
+    <main className="grid min-h-dvh w-full self-stretch bg-background lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      {/* Formulario */}
+      <section className="flex flex-col px-6 py-8 sm:px-10 lg:px-16">
+        <Suspense fallback={<Skeleton className="h-10 w-36 rounded-full" />}>
+          <BrandLogo />
+        </Suspense>
 
-        .macos-card {
-          background: rgba(17, 24, 39, 0.7);
-          backdrop-filter: blur(30px);
-          -webkit-backdrop-filter: blur(30px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-          animation: slideInUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        @keyframes slideInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .macos-title {
-          background: linear-gradient(135deg, #ffffff 0%, #b0b0b0 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          font-weight: 700;
-          letter-spacing: -0.5px;
-        }
-
-        .gradient-bg {
-          background: linear-gradient(-45deg, #1f2937, #111827, #0f172a, #111827);
-          background-size: 400% 400%;
-          animation: gradientShift 15s ease infinite;
-        }
-
-        .signup-link {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          color: #64c2ff;
-        }
-
-        .signup-link:hover {
-          color: #7ecfff;
-          text-decoration-thickness: 2px;
-        }
-      `}</style>
-
-      {/* Background dinámico */}
-      <Suspense fallback={null}>
-        <DynamicBackground />
-      </Suspense>
-
-      {/* Gradient overlay */}
-      <div className="fixed inset-0 -z-5 bg-cover bg-center" 
-        style={{
-          backgroundImage: 'url(https://totem-os.vercel.app/_next/image?url=https%3A%2F%2Futfs.io%2Ff%2FNqZ6bO92fiLrrxbgrqcxRmvHV7qsT39DXCwJcELoFK1k2MQi&w=1920&q=90)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        }}
-      />
-      
-      {/* Suspense para el branding - página renderiza inmediatamente */}
-      <Suspense fallback={<Skeleton className="h-20 w-48 mb-8 rounded-lg" />}>
-        <BrandingHeader />
-      </Suspense>
-      
-      {/* Card con formulario se renderiza INMEDIATAMENTE */}
-      <div className="macos-card w-full max-w-md rounded-3xl px-8 py-8">
-        <div className="mb-8 text-center">
-          <h1 className="macos-title text-2xl mb-2">Iniciar Sesión</h1>
-          <p className="text-gray-400 text-sm leading-relaxed">
-            Accede a tu cuenta para continuar
-          </p>
+        <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12">
+          <div className="auth-enter mb-8 space-y-2">
+            <h1 className="text-3xl font-semibold">Iniciar sesión</h1>
+            <p className="text-sm text-muted-foreground">Accede al sistema operativo interno de Totem.</p>
+          </div>
+          <div className="auth-enter [animation-delay:60ms]">
+            <SignInForm callbackUrl={callbackUrl} />
+          </div>
         </div>
 
-        <SignInForm callbackUrl={callbackUrl} />
-      </div>
-    </div>
+        <p className="text-xs text-muted-foreground">
+          <Link href="/privacy" className="hover:text-foreground">Privacidad</Link>
+          <span className="mx-2" aria-hidden>·</span>
+          <Link href="/terms" className="hover:text-foreground">Términos</Link>
+        </p>
+      </section>
+
+      {/* Visual: contenedor flotante con radio concéntrico respecto a la ventana */}
+      <aside className="relative hidden p-3 lg:block">
+        <div className="relative h-full overflow-hidden rounded-3xl bg-card">
+          <Suspense fallback={null}>
+            <VisualPanel />
+          </Suspense>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" aria-hidden />
+          <div className="absolute inset-x-0 bottom-0 p-10 text-white">
+            <p className="max-w-md text-2xl font-semibold leading-snug">Co-creamos contigo.</p>
+            <p className="mt-2 max-w-md text-sm text-white/80">Clientes, contenido y finanzas de la agencia en un solo lugar.</p>
+          </div>
+        </div>
+      </aside>
+    </main>
   );
 }
-

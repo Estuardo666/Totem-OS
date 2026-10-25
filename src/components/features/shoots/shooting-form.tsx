@@ -366,8 +366,8 @@ export function ShootingForm({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[93vw] sm:w-[62vw] md:w-[56vw] lg:w-[48vw] xl:w-[42vw] max-w-3xl max-h-[90vh] gap-4 overflow-hidden p-6">
-        <DialogHeader className="pl-12 pr-4 pt-12 pb-3 space-y-1 text-left md:text-center md:px-10 md:pt-10">
-          <DialogTitle className="text-2xl md:text-3xl font-semibold leading-tight">
+        <DialogHeader>
+          <DialogTitle>
             {shooting ? "Editar Rodaje" : "Nuevo Rodaje"}
           </DialogTitle>
           <DialogDescription className="text-base text-muted-foreground">
@@ -504,7 +504,7 @@ export function ShootingForm({
               <Button
                 type="button"
                 variant="ghost"
-                className="w-full justify-between font-bold bg-muted hover:bg-muted/80"
+                className="w-full justify-between font-bold bg-muted hover:bg-primary/[0.1]"
               >
                 <span>Más opciones</span>
                 {moreOptionsOpen ? (
@@ -603,7 +603,7 @@ export function ShootingForm({
                         {users.map((user) => (
                           <div
                             key={user.id}
-                            className="flex items-center gap-3 p-2 rounded hover:bg-accent/25 cursor-pointer"
+                            className="flex items-center gap-3 p-2 rounded hover:bg-primary/[0.1] cursor-pointer"
                             onClick={() => toggleCrew(user.id)}
                           >
                             <Checkbox
@@ -646,7 +646,7 @@ export function ShootingForm({
                         {availableTasks.map((task) => (
                           <div
                             key={task.id}
-                            className="flex items-center gap-3 p-2 rounded hover:bg-accent/25 cursor-pointer"
+                            className="flex items-center gap-3 p-2 rounded hover:bg-primary/[0.1] cursor-pointer"
                             onClick={() => toggleTask(task.id)}
                           >
                             <Checkbox

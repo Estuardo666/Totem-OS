@@ -131,9 +131,9 @@ export function TaskReviewTab({
           <MessageSquare className="h-4 w-4 shrink-0" />
           <span>Comentarios</span>
         </div>
-        <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground sm:hidden">Imagen, video, voz y respuestas.</span>
+        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground sm:hidden">Imagen, video, voz y respuestas.</span>
         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground max-sm:hidden">Comentarios con imagen, video, voz y respuesta en el mismo hilo.</span>
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
           <span className="rounded-full border border-border/60 bg-background px-2.5 py-1">{totalItems} item(s)</span>
           <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-orange-700">{pendingComments} pendiente(s)</span>
           <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700">

@@ -120,14 +120,11 @@ export function AssistantSettingsForm() {
     });
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
-      <div className="px-4 py-3 border-b bg-muted/30">
+    <div className="rounded-2xl bg-card overflow-hidden">
+      <div className="px-5 pt-5 pb-1">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600">
-            <Bot className="h-4 w-4 text-white" />
-          </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium">Asistente IA</h3>
+            <h3 className="text-base font-semibold">Modelo del asistente</h3>
             <p className="text-xs text-muted-foreground">
               Modelo que piensa, consulta datos y ejecuta acciones
             </p>

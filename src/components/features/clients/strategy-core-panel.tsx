@@ -46,18 +46,18 @@ export function StrategyCorePanel({
       const ttInteractions = tiktokMetrics.totalInteractions;
 
       if (metaER > ttER && metaInteractions > ttInteractions) {
-        return "📊 Meta (Instagram/Facebook) está generando mejor rendimiento. El contenido resuena más con la audiencia de Meta, con mayor engagement rate y más interacciones. Considera aumentar la inversión en esta plataforma.";
+        return "Meta (Instagram/Facebook) está generando mejor rendimiento. El contenido resuena más con la audiencia de Meta, con mayor engagement rate y más interacciones. Considera aumentar la inversión en esta plataforma.";
       } else if (ttER > metaER && ttInteractions > metaInteractions) {
-        return "🎵 TikTok está superando a Meta en rendimiento. El formato de video corto está funcionando mejor en TikTok. Considera adaptar el contenido de Meta al estilo de TikTok o aumentar la presencia en esta plataforma.";
+        return "TikTok está superando a Meta en rendimiento. El formato de video corto está funcionando mejor en TikTok. Considera adaptar el contenido de Meta al estilo de TikTok o aumentar la presencia en esta plataforma.";
       } else if (metaER > ttER) {
-        return "📈 Meta tiene mejor engagement rate, pero TikTok genera más interacciones totales. Estrategia recomendada: Optimizar contenido de Meta para aumentar volumen, y mejorar calidad en TikTok para aumentar engagement.";
+        return "Meta tiene mejor engagement rate, pero TikTok genera más interacciones totales. Estrategia recomendada: Optimizar contenido de Meta para aumentar volumen, y mejorar calidad en TikTok para aumentar engagement.";
       } else {
-        return "🚀 TikTok tiene mejor engagement rate, pero Meta genera más interacciones. Estrategia recomendada: Aplicar técnicas de TikTok a Meta para mejorar engagement, y escalar el formato exitoso de TikTok.";
+        return "TikTok tiene mejor engagement rate, pero Meta genera más interacciones. Estrategia recomendada: Aplicar técnicas de TikTok a Meta para mejorar engagement, y escalar el formato exitoso de TikTok.";
       }
     } else if (hasMeta) {
-      return "📱 Solo tienes datos de Meta. El engagement rate es " + metaMetrics.averageER.toFixed(2) + "%. Considera expandir a TikTok para diversificar tu audiencia y comparar rendimiento entre plataformas.";
+      return "Solo tienes datos de Meta. El engagement rate es " + metaMetrics.averageER.toFixed(2) + "%. Considera expandir a TikTok para diversificar tu audiencia y comparar rendimiento entre plataformas.";
     } else {
-      return "🎬 Solo tienes datos de TikTok. El engagement rate es " + tiktokMetrics.averageER.toFixed(2) + "%. Considera expandir a Meta (Instagram/Facebook) para alcanzar una audiencia diferente y maximizar tu presencia social.";
+      return "Solo tienes datos de TikTok. El engagement rate es " + tiktokMetrics.averageER.toFixed(2) + "%. Considera expandir a Meta (Instagram/Facebook) para alcanzar una audiencia diferente y maximizar tu presencia social.";
     }
   };
 

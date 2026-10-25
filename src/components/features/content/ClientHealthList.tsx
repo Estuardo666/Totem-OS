@@ -17,7 +17,7 @@ interface ClientHealthListProps {
 export function ClientHealthList({ semaphore }: ClientHealthListProps) {
   if (semaphore.length === 0) {
     return (
-      <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+      <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-card dark:bg-gray-900 p-6">
         <h2 className="text-lg font-bold mb-3">Salud de Clientes</h2>
         <p className="text-sm text-muted-foreground">No hay clientes activos</p>
       </div>
@@ -50,7 +50,7 @@ export function ClientHealthList({ semaphore }: ClientHealthListProps) {
   };
 
   return (
-    <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow p-6 space-y-4">
+    <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-card dark:bg-gray-900 transition-shadow p-6 space-y-4">
       <h2 className="text-lg font-bold">Salud de Clientes</h2>
       <div className="space-y-3">
         {semaphore.map((item) => {

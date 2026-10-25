@@ -1,7 +1,7 @@
 "use client";
 
 import { format, isBefore, isToday, startOfDay } from "date-fns";
-import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2, AlertCircle } from "lucide-react";
+import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2, AlertCircle, CalendarDays } from "lucide-react";
 import {
   Draggable,
   DraggableProvided,
@@ -111,10 +111,10 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
               onOptimisticStatusChange={onOptimisticStatusChange}
             >
               <Card
-                className={`relative max-w-full overflow-hidden border transition-all duration-200 ${
+                className={`relative max-w-full overflow-hidden rounded-lg bg-popover shadow-[0_1px_2px_rgba(16,16,20,0.06)] transition-[box-shadow,transform] duration-200 ${
                   snapshot.isDragging
                     ? "cursor-grabbing shadow-lg ring-2 ring-primary z-50 scale-[1.02] opacity-95"
-                    : "cursor-grab hover:shadow-md"
+                    : "cursor-grab"
                 } ${
                   task.status === "REVIEW_CLIENT" || task.status === "APPROVED" || task.status === "CLIENT_APPROVED"
                     ? "bg-emerald-50/50 dark:bg-emerald-950/20 ring-1 ring-emerald-200 dark:ring-emerald-800"
@@ -124,9 +124,6 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
                     ? "bg-emerald-50/50 dark:bg-emerald-950/20" 
                     : ""
                 }`}
-                style={{
-                  borderColor: `${task.client.color || "#000000"}80`,
-                }}
                 onClick={(e) => {
                   // Si está siendo arrastrada, no abrir el sheet
                   if (snapshot.isDragging) {
@@ -165,10 +162,10 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
                 {task.status === "PUBLISHED" ? (
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <h4 className="font-semibold text-[10px] md:text-xs leading-tight line-clamp-2">
+                      <h4 className="font-semibold text-sm leading-snug line-clamp-2">
                         {task.title}
                       </h4>
-                      <div className="text-[9px] md:text-[10px] text-muted-foreground truncate">
+                      <div className="text-xs md:text-xs text-muted-foreground truncate">
                         {task.client.name}
                       </div>
                     </div>
@@ -178,19 +175,20 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
                   // Para tareas NO publicadas: Vista completa
                   <>
                     {/* Título con padding para evitar superposición con checkbox */}
-                    <h4 className="font-semibold text-xs md:text-xs leading-tight line-clamp-2 pr-8">
+                    <h4 className="font-semibold text-sm leading-snug line-clamp-2 pr-8">
                       {task.title}
                     </h4>
 
                     {/* Cliente */}
                     <div className="flex items-center gap-1 flex-wrap mt-1">
-                      <Badge variant="outline" className="text-[9px] md:text-[10px] px-1 py-0">
-                        {task.client.name}
-                      </Badge>
+                      <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-normal text-muted-foreground">
+                        <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: task.client.color || "hsl(var(--muted-foreground))" }} aria-hidden />
+                        <span className="truncate">{task.client.name}</span>
+                      </span>
                       {(task.status === "REVIEW_CLIENT" || task.status === "APPROVED" || task.status === "CLIENT_APPROVED") && (
                         <Badge
                           variant="default"
-                          className="text-[9px] md:text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 px-1 py-0"
+                          className="flex items-center gap-1 rounded-sm bg-emerald-600 px-1.5 py-0 text-xs font-medium text-white hover:bg-emerald-600"
                         >
                           {task.status === "CLIENT_APPROVED" && (
                             <CheckCircle2 className="h-2 w-2 md:h-2.5 md:w-2.5" />
@@ -214,7 +212,7 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
 
                     {/* Tipo e Icono - Oculto en vista compacta */}
                     {!isCompactView && (
-                      <div className="flex items-center gap-1 text-[9px] md:text-[10px] text-muted-foreground mt-1">
+                      <div className="flex items-center gap-1 text-xs md:text-xs text-muted-foreground mt-1">
                         {getTypeIcon(task.type)}
                         <span className="truncate">{getTypeLabel(task.type)}</span>
                       </div>
@@ -222,28 +220,28 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
 
                     {/* Fecha de entrega interna - Oculta en vista compacta y en IDEA */}
                     {showDateRow && (
-                      <div className={`text-[9px] md:text-[10px] flex items-center gap-1 mt-1 ${
+                      <div className={`text-xs md:text-xs flex items-center gap-1 mt-1 ${
                         displayDate && (isOverdue || isToday(new Date(displayDate)))
-                          ? "text-orange-600 font-semibold"
+                          ? "text-[hsl(var(--theme-warning))] font-medium"
                           : "text-muted-foreground"
                       }`}>
-                        <span>📅</span>
+                        <CalendarDays className="h-3 w-3 shrink-0" aria-hidden />
                         {displayDate ? (
                           <span className="truncate">
                             {format(new Date(displayDate), "dd MMM")}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0 text-[7px] font-semibold text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             Sin fecha
                           </span>
                         )}
                         {displayDate && isOverdue && (
                           <span
-                            className="inline-flex items-center gap-0.5 rounded-full bg-orange-100/90 px-1 py-0 text-[7px] font-semibold text-orange-700"
-                            title="Actualizar fecha"
+                            className="inline-flex items-center gap-0.5 text-xs font-medium text-[hsl(var(--theme-warning))]"
+                            title="La fecha ya pasó: actualízala"
                           >
-                            <AlertCircle className="h-2 w-2" />
-                            <span className="hidden truncate sm:inline">Actualizar fecha</span>
+                            <AlertCircle className="h-3 w-3" aria-hidden />
+                            <span className="hidden truncate sm:inline">Actualizar</span>
                           </span>
                         )}
                       </div>

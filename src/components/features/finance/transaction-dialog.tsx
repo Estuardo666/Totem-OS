@@ -617,10 +617,10 @@ export function TransactionDialog({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid w-full h-12 items-center rounded-full bg-muted px-3 py-1 text-muted-foreground ${isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
-            {isAdmin && <TabsTrigger value="income" className="rounded-full">Ingreso</TabsTrigger>}
-            <TabsTrigger value="expense" className="rounded-full">Gasto</TabsTrigger>
-            {isAdmin && <TabsTrigger value="honorarios" className="rounded-full">Honorarios</TabsTrigger>}
+          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
+            {isAdmin && <TabsTrigger value="income" >Ingreso</TabsTrigger>}
+            <TabsTrigger value="expense" >Gasto</TabsTrigger>
+            {isAdmin && <TabsTrigger value="honorarios" >Honorarios</TabsTrigger>}
           </TabsList>
 
           {/* Tab de Ingreso - Solo visible para ADMIN */}
@@ -1003,6 +1003,8 @@ export function TransactionDialog({
                   />
                 </div>
 
+                {/* Categoría y cliente en una sola fila (50/50) */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={expenseForm.control}
                   name="category"
@@ -1090,12 +1092,13 @@ export function TransactionDialog({
                         </SelectContent>
                       </Select>
                       <FormMessage />
-                      <p className="text-sm text-muted-foreground">
-                        Vincula este gasto a un proyecto específico para análisis de rentabilidad
-                      </p>
                     </FormItem>
                   )}
                 />
+                </div>
+                <p className="-mt-2 text-xs text-muted-foreground">
+                  Vincular un cliente permite medir la rentabilidad de su proyecto.
+                </p>
 
                 <FormField
                   control={expenseForm.control}

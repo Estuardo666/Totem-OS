@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Eye, EyeOff, Sparkles, Zap, Brain, CheckCircle2, XCircle, Key } from "lucide-react";
+import { Loader2, Save, Eye, EyeOff, Zap, CheckCircle2, XCircle, Key } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { updateGlobalAiConfig, getGlobalAiConfig, testAIConnection } from "@/actions/admin-actions";
 import {
@@ -234,14 +234,11 @@ export function AiConfigForm() {
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border bg-card overflow-hidden">
-          <div className="px-4 py-3 border-b bg-muted/30">
+      <div className="rounded-2xl bg-card overflow-hidden">
+          <div className="px-5 pt-5 pb-1">
             <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
               <div>
-                <h3 className="text-sm font-medium">Inteligencia Artificial</h3>
+                <h3 className="text-base font-semibold">Proveedor y claves</h3>
                 <p className="text-xs text-muted-foreground">Cargando configuración...</p>
               </div>
             </div>
@@ -254,15 +251,12 @@ export function AiConfigForm() {
   }
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
+    <div className="rounded-2xl bg-card overflow-hidden">
         {/* Header */}
-        <div className="px-4 py-3 border-b bg-muted/30">
+        <div className="px-5 pt-5 pb-1">
           <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600">
-              <Sparkles className="h-4 w-4 text-white" />
-            </div>
             <div className="flex-1">
-              <h3 className="text-sm font-medium">Inteligencia Artificial</h3>
+              <h3 className="text-base font-semibold">Proveedor y claves</h3>
               <p className="text-xs text-muted-foreground">Configura proveedores y API Keys</p>
             </div>
           </div>
@@ -273,16 +267,13 @@ export function AiConfigForm() {
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="divide-y">
             {/* Provider Selection Row */}
-            <div className="px-4 py-3">
+            <div className="px-5 py-3">
               <FormField
                 control={form.control}
                 name="activeProvider"
                 render={({ field }) => (
                   <FormItem className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
-                        <Zap className="h-4 w-4 text-white" />
-                      </div>
                       <div>
                         <FormLabel className="text-sm font-medium">Proveedor activo</FormLabel>
                         <p className="text-xs text-muted-foreground">Selecciona el servicio de IA a utilizar</p>
@@ -311,11 +302,8 @@ export function AiConfigForm() {
             </div>
 
             {/* API Keys Section */}
-            <div className="px-4 py-3 space-y-4">
+            <div className="px-5 py-3 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
-                  <Key className="h-4 w-4 text-white" />
-                </div>
                 <div>
                   <p className="text-sm font-medium">API Keys</p>
                   <p className="text-xs text-muted-foreground">Las claves se almacenan de forma segura en el servidor</p>
@@ -375,7 +363,7 @@ export function AiConfigForm() {
                         disabled={isSaving}
                       />
                     </FormControl>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Compatible con OpenRouter, Together AI, etc.
                     </p>
                     <FormMessage />
@@ -567,7 +555,7 @@ export function AiConfigForm() {
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-3 border-t bg-muted/30">
+          <div className="px-5 pb-5 pt-3">
             <Button 
               type="submit" 
               disabled={isSaving || (isTesting === false && testResult === null)} 

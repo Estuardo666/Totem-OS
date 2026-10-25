@@ -90,7 +90,7 @@ export function VaultGroupForm({
   }, [defaultValues, form]);
 
   return (
-    <div className="rounded-3xl border bg-card p-4 md:p-5">
+    <div className="rounded-2xl border bg-card p-4 md:p-5">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
@@ -113,7 +113,7 @@ export function VaultGroupForm({
                           type="button"
                           title={service}
                           className={cn(
-                            "relative flex min-w-[60px] flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2 transition-all",
+                            "relative flex min-w-[60px] flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 transition-all",
                             checked
                               ? "border-primary bg-primary/10 shadow-sm"
                               : "border-border hover:border-primary/40"
@@ -128,7 +128,7 @@ export function VaultGroupForm({
                           aria-pressed={checked}
                         >
                           <Icon className={cn("h-5 w-5", serviceColors[service])} />
-                          <span className="text-[10px] font-medium leading-none text-muted-foreground">
+                          <span className="text-xs font-medium leading-none text-muted-foreground">
                             {service}
                           </span>
                           {checked ? (

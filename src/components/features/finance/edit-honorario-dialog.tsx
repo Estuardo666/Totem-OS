@@ -97,7 +97,7 @@ export function EditHonorarioDialog({
   // Resetear formulario cuando cambia la transacción
   useEffect(() => {
     if (transaction && open) {
-      console.log("📝 Precargando datos del honorario:", transaction);
+      console.log("Precargando datos del honorario:", transaction);
       console.log("   - ID:", transaction.id);
       console.log("   - Amount:", transaction.amount, "Type:", typeof transaction.amount);
       console.log("   - UserId:", transaction.userId, "Type:", typeof transaction.userId);
@@ -123,7 +123,7 @@ export function EditHonorarioDialog({
       setAmountInput(amount.toString());
       setSelectedUserId(transaction.userId || null);
       
-      console.log("✅ Datos cargados - Monto:", amount, "Usuario:", transaction.userId, "Estado:", status);
+      console.log("Datos cargados - Monto:", amount, "Usuario:", transaction.userId, "Estado:", status);
     }
   }, [transaction, open, form]);
 

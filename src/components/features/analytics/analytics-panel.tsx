@@ -243,7 +243,7 @@ export function AnalyticsPanel({ clientId, initial, actions }: AnalyticsPanelPro
         </Section>
 
         <Section title="Tendencia" description="Visualizaciones diarias por red.">
-          <div className="rounded-xl border bg-card p-4">
+          <div className="rounded-2xl border bg-card p-4">
             <ReachTrendChart data={data.trend} activePlatforms={activePlatforms} />
           </div>
         </Section>

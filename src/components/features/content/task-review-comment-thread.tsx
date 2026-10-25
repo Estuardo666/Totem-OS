@@ -87,7 +87,7 @@ function AttachmentList({ attachments }: { attachments: TaskReviewAttachment[] }
         }
 
         return (
-          <Link key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer" className="inline-flex rounded-full border border-border px-2.5 py-1 text-[11px] hover:bg-muted">
+          <Link key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer" className="inline-flex rounded-full border border-border px-2.5 py-1 text-xs hover:bg-primary/[0.1]">
             {attachment.label}
           </Link>
         );
@@ -128,7 +128,7 @@ export function TaskReviewCommentThread({ comments, disabled = false, onToggleRe
         return (
           <div
             key={comment.id}
-            className="space-y-2.5 rounded-xl border border-border/70 bg-card p-2.5 sm:p-3"
+            className="space-y-2.5 rounded-2xl border border-border/70 bg-card p-2.5 sm:p-3"
             style={{
               borderColor: commentBorderColor,
               borderLeftColor: commentBorderColor,
@@ -139,8 +139,8 @@ export function TaskReviewCommentThread({ comments, disabled = false, onToggleRe
               <div className="min-w-0">
                 <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap text-sm">
                   <p className="text-sm font-medium">{comment.authorName}</p>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">{comment.authorRole}</span>
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${comment.resolved ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"}`}>{comment.resolved ? "Solucionado" : "Pendiente"}</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs uppercase tracking-wide text-muted-foreground">{comment.authorRole}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${comment.resolved ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"}`}>{comment.resolved ? "Solucionado" : "Pendiente"}</span>
                   <span className="text-xs text-muted-foreground">{formatTimestamp(comment.createdAt)}</span>
                 </div>
               </div>
@@ -163,14 +163,14 @@ export function TaskReviewCommentThread({ comments, disabled = false, onToggleRe
                 >
                   <span className="absolute -left-[11px] top-3 h-1.5 w-1.5 rounded-full bg-primary/70" />
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap text-[11px] text-muted-foreground sm:text-xs">
+                    <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs text-muted-foreground sm:text-xs">
                       <CornerDownRight className="h-3.5 w-3.5" />
                       <span className="font-medium text-foreground">{reply.authorName}</span>
                       <span>{reply.authorRole}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${reply.resolved ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"}`}>{reply.resolved ? "Solucionado" : "Pendiente"}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${reply.resolved ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"}`}>{reply.resolved ? "Solucionado" : "Pendiente"}</span>
                       <span>{formatTimestamp(reply.createdAt)}</span>
                     </div>
-                    <Button type="button" variant="ghost" size="sm" className="h-7 self-start rounded-full px-2.5 text-[11px] sm:self-auto sm:text-xs" onClick={() => onToggleReplyResolved(comment.id, reply.id)} disabled={disabled}>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 self-start rounded-full px-2.5 text-xs sm:self-auto sm:text-xs" onClick={() => onToggleReplyResolved(comment.id, reply.id)} disabled={disabled}>
                       <CheckCircle2 className={`mr-1.5 h-3.5 w-3.5 ${reply.resolved ? "text-emerald-600" : "text-muted-foreground"}`} />
                       {reply.resolved ? "Reabrir" : "Listo"}
                     </Button>

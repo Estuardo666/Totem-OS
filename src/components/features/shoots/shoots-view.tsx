@@ -63,11 +63,12 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "No se pudo sincronizar Google Calendar.");
       setSyncMessage(`Sincronización completada: ${data.created} nuevos, ${data.updated} actualizados, ${data.cancelled} cancelados.`);
-      router.refresh();
+      // Refrescar solo si cambió algo: un refresh innecesario corta las server
+      // actions que estén en curso (el "Failed to fetch" de fetchServerAction).
+      if (data.created || data.updated || data.cancelled) router.refresh();
     } catch (error) {
       setSyncError(true);
       setSyncMessage(error instanceof Error ? error.message : "No se pudo sincronizar Google Calendar.");
-      router.refresh();
     } finally {
       setIsSyncing(false);
     }

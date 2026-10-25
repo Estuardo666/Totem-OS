@@ -78,3 +78,14 @@ export function checkPasswordStrength(password: string): PasswordStrength {
 
 
 
+
+/**
+ * Quita de un className las clases de forma (rounded-*) y de borde (border*),
+ * para que los controles del sistema conserven su píldora y su relleno.
+ */
+export function withoutShape(className?: string) {
+  return className
+    ?.split(/\s+/)
+    .filter((token) => !/^(?:[\w-]+:)*!?(?:rounded|border)(?:-|$)/.test(token))
+    .join(" ");
+}

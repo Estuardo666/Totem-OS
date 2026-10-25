@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { Switch } from "@/components/ui/switch";
 import { updateUserSettings } from "@/actions/user.actions";
 import { useToast } from "@/components/ui/use-toast";
-import { Bell, Volume2 } from "lucide-react";
 
 interface NotificationSettingsProps {
   soundNotifications: boolean;
@@ -40,16 +39,13 @@ export function NotificationSettings({ soundNotifications: initialValue }: Notif
   };
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
+    <div className="rounded-2xl bg-card overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b bg-muted/30">
+      <div className="px-5 pt-5 pb-1">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-pink-600">
-            <Bell className="h-4 w-4 text-white" />
-          </div>
           <div>
-            <h3 className="text-sm font-medium">Notificaciones</h3>
-            <p className="text-xs text-muted-foreground">Controla cómo recibes alertas</p>
+            <h3 className="text-base font-semibold">Sonido</h3>
+            <p className="text-xs text-muted-foreground">Alertas dentro de la app</p>
           </div>
         </div>
       </div>
@@ -57,11 +53,8 @@ export function NotificationSettings({ soundNotifications: initialValue }: Notif
       {/* Content */}
       <div className="divide-y">
         {/* Sound Notifications Row */}
-        <div className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/30 transition-colors">
+        <div className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-primary/[0.1] transition-colors">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600">
-              <Volume2 className="h-4 w-4 text-white" />
-            </div>
             <div>
               <p className="text-sm font-medium">Sonidos</p>
               <p className="text-xs text-muted-foreground">Reproduce sonido con cada notificación</p>

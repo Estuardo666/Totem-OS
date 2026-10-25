@@ -109,10 +109,10 @@ export function TopContentTable({ media }: TopContentTableProps) {
                         {item.caption?.trim() || "Sin texto"}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="outline" className="text-xs">
                           {item.platform === "INSTAGRAM" ? "Instagram" : "Facebook"}
                         </Badge>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {format(item.publishedAt, "d MMM", { locale: es })}
                         </span>
                         {item.permalink ? (
@@ -120,7 +120,7 @@ export function TopContentTable({ media }: TopContentTableProps) {
                             href={item.permalink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-0.5 text-[10px] text-primary hover:underline"
+                            className="inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
                           >
                             Ver <ExternalLink className="h-2.5 w-2.5" aria-hidden />
                           </a>
@@ -145,7 +145,7 @@ export function TopContentTable({ media }: TopContentTableProps) {
         </table>
       </div>
 
-      <p className="border-t p-3 text-[11px] text-muted-foreground">
+      <p className="border-t p-3 text-xs text-muted-foreground">
         En Facebook, Meta retiró el alcance por publicación: ahí el ER se calcula sobre
         visualizaciones.
       </p>

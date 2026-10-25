@@ -133,7 +133,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
       await navigator.clipboard.writeText(copyText);
       setCopied(true);
       toast({
-        title: "Copiado 📋",
+        title: "Copiado ",
         description: "El texto se ha copiado al portapapeles",
         duration: 2000,
       });
@@ -617,7 +617,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                               shouldValidate: true
                             });
                             toast({
-                              title: "✅ Imagen subida",
+                              title: "Imagen subida",
                               description: "La imagen se ha subido correctamente",
                             });
                           }
@@ -625,7 +625,7 @@ export function TaskForm({ clients, users }: TaskFormProps) {
                         onUploadError={(error: Error) => {
                           setIsUploadingImage(false);
                           toast({
-                            title: "❌ Error al subir",
+                            title: "Error al subir",
                             description: error.message,
                             variant: "destructive"
                           });
