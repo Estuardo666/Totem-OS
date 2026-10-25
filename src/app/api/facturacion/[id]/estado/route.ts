@@ -2,7 +2,7 @@
 // GET /api/facturacion/[id]/estado
 
 import { NextRequest, NextResponse } from "next/server";
-import { db as prisma } from "@/lib/db";
+import { db as prisma } from "@/lib/sri/database";
 
 import { auth } from "@/auth";
 export async function GET(
@@ -19,19 +19,10 @@ export async function GET(
 
     const factura = await prisma.electronicInvoice.findUnique({
       where: { id },
-      select: {
-        id: true,
-        estado: true,
-        secuencial: true,
-        claveAcceso: true,
-        numeroAutorizacion: true,
-        fechaAutorizacion: true,
-        ultimoErrorSri: true,
-        codigoErrorSri: true,
-        intentosSri: true,
-        rideUrl: true,
-        xmlUrl: true,
-        updatedAt: true,
+      include: {
+        items: true,
+        client: { select: { name: true } },
+        notasCredito: { select: { id: true, secuencial: true, estado: true, motivo: true }, orderBy: { createdAt: "desc" }, take: 1 },
       },
     });
 
@@ -39,7 +30,8 @@ export async function GET(
       return NextResponse.json({ error: "Factura no encontrada" }, { status: 404 });
     }
 
-    return NextResponse.json(factura);
+    const { notasCredito, ...detail } = factura;
+    return NextResponse.json({ ...detail, creditNote: notasCredito[0] ?? null }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Error desconocido" },

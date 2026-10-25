@@ -27,7 +27,7 @@ export async function emitirFacturaAction(data: {
   infoAdicional?: Array<{ nombre: string; valor: string }>;
 }) {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   if (!data.clientId) throw new Error("Seleccione un cliente");
   if (!data.items || data.items.length === 0) throw new Error("Agregue al menos un item");
@@ -52,10 +52,13 @@ export async function emitirFacturaAction(data: {
  */
 export async function emitirDesdeInvoiceAction(invoiceId: string, enviarEmail = true) {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   // Obtener datos del Invoice
-  const { db: prisma } = await import("@/lib/db");
+  const { db: prisma } = await import("@/lib/sri/database");
+  if (process.env.SRI_DATABASE_URL && process.env.SRI_AMBIENTE === "1") {
+    throw new Error("En pruebas use Nueva factura con un receptor de prueba; los cobros reales permanecen separados.");
+  }
   const invoice = await prisma.invoice.findUniqueOrThrow({
     where: { id: invoiceId },
     include: { client: true },
@@ -110,7 +113,7 @@ export async function anularFacturaAction(
   tipoModificacion = "ANULACION"
 ) {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   if (!motivo || motivo.trim().length < 5) {
     throw new Error("El motivo de anulación debe tener al menos 5 caracteres.");
@@ -130,7 +133,7 @@ export async function anularFacturaAction(
  */
 export async function cancelarFacturaLocalAction(facturaId: string) {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   await cancelarFacturaLocal(facturaId);
 
@@ -152,7 +155,7 @@ export async function getFacturasAction(filtros: {
   page?: number;
 }) {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   return getFacturas({
     ...filtros,
@@ -166,7 +169,7 @@ export async function getFacturasAction(filtros: {
  */
 export async function getResumenFacturasAction() {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
   return getResumenFacturas();
 }

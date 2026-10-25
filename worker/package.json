@@ -10,7 +10,9 @@
     "start": "node --env-file=../.env --env-file=.env dist/worker/index.js",
     "start:wa": "node dist/whatsapp/index.js",
     "dev": "tsx --env-file=../.env --env-file=.env index.ts",
-    "dev:wa": "node --env-file-if-exists=../.env --env-file-if-exists=.env --import tsx whatsapp/index.ts"
+    "dev:wa": "node --env-file-if-exists=../.env --env-file-if-exists=.env --import tsx whatsapp/index.ts",
+    "build:sri:hostinger": "npm install --include=dev --no-audit --no-fund && node build-sri.mjs && npm prune --omit=dev --no-audit --no-fund",
+    "typecheck:sri": "tsc --project tsconfig.sri.json --pretty false"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.81",

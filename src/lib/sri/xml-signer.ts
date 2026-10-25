@@ -243,6 +243,10 @@ export function firmarXml(
   p12Buffer: Buffer,
   password: string
 ): string {
+  const unsignedDocument = parseXmlForSigning(xmlContent);
+  if (unsignedDocument.documentElement.getAttribute("id") !== "comprobante") {
+    throw new Error("El nodo raíz debe identificarse como comprobante para el SRI");
+  }
   const p12Data = leerP12(p12Buffer, password);
   const { privateKey, certificate, certificatePem, issuerName, serialNumber } = p12Data;
 
@@ -394,7 +398,7 @@ function buildSignedInfo(
       .ele("ds:CanonicalizationMethod", { Algorithm: "http://www.w3.org/2001/10/xml-exc-c14n#" }).up()
       .ele("ds:SignatureMethod", { Algorithm: "http://www.w3.org/2000/09/xmldsig#rsa-sha1" }).up()
       // Reference al documento
-      .ele("ds:Reference", { Id: "Reference-ID-1234567890", URI: "" })
+      .ele("ds:Reference", { Id: "Reference-ID-1234567890", URI: "#comprobante" })
         .ele("ds:Transforms")
           .ele("ds:Transform", { Algorithm: "http://www.w3.org/2000/09/xmldsig#enveloped-signature" }).up()
           .ele("ds:Transform", { Algorithm: "http://www.w3.org/2001/10/xml-exc-c14n#" }).up()

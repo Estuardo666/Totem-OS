@@ -7,6 +7,8 @@ const isVercel = Boolean(process.env.VERCEL);
 
 const nextConfig: NextConfig = {
   output: isVercel ? undefined : "standalone",
+  serverExternalPackages: ["pdfkit"],
+  outputFileTracingIncludes: {"/api/facturacion/*/pdf": ["./node_modules/pdfkit/js/data/**/*"]},
   eslint: { ignoreDuringBuilds: isVercel },
   typescript: { ignoreBuildErrors: isVercel },
   async headers() {

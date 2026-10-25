@@ -2,7 +2,7 @@
 // GET /api/facturacion/tareas?clientId=...&desde=...&hasta=...
 
 import { NextResponse, type NextRequest } from "next/server";
-import { db as prisma } from "@/lib/db";
+import { db as prisma } from "@/lib/sri/database";
 import { auth } from "@/auth";
 
 export async function GET(request: NextRequest) {

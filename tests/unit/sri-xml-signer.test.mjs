@@ -80,6 +80,9 @@ test("firma un XML sintético y verifica SignedInfo, el digest de factura y la r
   assert.ok(signature);
   assert.ok(signedInfo);
   assert.ok(signedProperties);
+  const invoiceReference = Array.from(document.getElementsByTagNameNS("http://www.w3.org/2000/09/xmldsig#", "Reference"))
+    .find(reference => reference.getAttribute("Id") === "Reference-ID-1234567890");
+  assert.equal(invoiceReference?.getAttribute("URI"), "#comprobante");
   assert.equal(signedPropertiesReference?.getAttribute("Type"), "http://uri.etsi.org/01903#SignedProperties");
   assert.equal(signedProperties.getAttribute("xmlns"), "urn:sri:factura");
   assert.equal(signedProperties.getAttribute("xmlns:unused"), "urn:unused");
@@ -133,7 +136,7 @@ test("serial hexadecimal grande se expresa como entero decimal sin perder precis
   const p12 = createSyntheticP12("20000000000001");
   const parsed = leerP12(p12, password);
   const expected = BigInt(`0x${parsed.certificate.serialNumber}`).toString(10);
-  const signedXml = firmarXml("<factura></factura>", p12, password);
+  const signedXml = firmarXml('<factura id="comprobante"></factura>', p12, password);
   const document = new DOMParser().parseFromString(signedXml, "application/xml");
   const serial = document.getElementsByTagNameNS(
     "http://www.w3.org/2000/09/xmldsig#",
