@@ -7,6 +7,7 @@ import { getOrCreateConfig, updateConfig, guardarP12Local, eliminarP12Local, get
 import { obtenerHuellaCertificado } from "@/lib/sri/xml-signer";
 import { cifrarP12 } from "@/lib/sri/p12-cipher";
 import { db } from "@/lib/sri/database";
+import { db as applicationDb } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { assertSriEnvironmentAllowed } from "@/lib/sri/execution-policy";
 
@@ -192,7 +193,7 @@ export async function actualizarDatosFiscalesCliente(
   const session = await auth();
   if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
-  await db.client.update({
+  await applicationDb.client.update({
     where: { id: clientId },
     data: {
       tipoIdentificacion: data.tipoIdentificacion,
@@ -220,7 +221,7 @@ export async function getClientesConDatosFiscales() {
   const session = await auth();
   if (!session?.user?.id || session.user.roleCode !== "ADMIN") throw new Error("No autorizado");
 
-  const clientes = await db.client.findMany({
+  const clientes = await applicationDb.client.findMany({
     where: { status: { not: "INACTIVE" } },
     select: {
       id: true,
