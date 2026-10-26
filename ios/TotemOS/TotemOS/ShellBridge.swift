@@ -146,13 +146,24 @@ final class AppCoordinator: ObservableObject {
         guard let webView, let payload = command.payload else { return }
         applyOptimistic(command)
         Task {
-            _ = try? await webView.callAsyncJavaScript(
+            let accepted = try? await webView.callAsyncJavaScript(
                 """
                 if (typeof window.\(ShellContract.dispatchFunction) !== "function") { return false; }
                 return await window.\(ShellContract.dispatchFunction)(command);
                 """,
                 arguments: ["command": payload], in: nil, contentWorld: .page
             )
+            // Older web deployments do not yet include WhatsApp in their
+            // command allow-list. Open the same-origin page after checking
+            // the native capability; server-side authorization still applies.
+            if accepted as? Bool != true,
+               case .navigate(let path) = command,
+               path == "/admin/whatsapp",
+               state.capabilities.contains(.adminSettings),
+               let url = URL(string: path, relativeTo: AppEnvironment.baseURL)?.absoluteURL {
+                webView.load(URLRequest(url: url))
+                return
+            }
             await refresh()
         }
     }
