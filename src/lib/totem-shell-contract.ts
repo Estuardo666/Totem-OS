@@ -167,6 +167,7 @@ const SHELL_NAV_DEFINITIONS: ShellNavDefinition[] = [
   },
   { id: "admin-users", route: "/admin/users", label: "Gestión de Usuarios", icon: "person.3", adminOnly: true },
   { id: "admin-files", route: "/admin/files", label: "Gestión de Archivos", icon: "folder", adminOnly: true },
+  { id: "admin-whatsapp", route: "/admin/whatsapp", label: "WhatsApp", icon: "message", adminOnly: true },
 ];
 
 /** Barra inferior: Inicio, Tareas, acción central, Finanzas, Clientes. */

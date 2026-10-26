@@ -283,6 +283,7 @@ public enum NativeShellCatalog {
         }
         if capabilities.contains(.adminUsers) { items.append(item("admin-users", .users, "Gestión de Usuarios", "person.3")) }
         if capabilities.contains(.adminSettings) { items.append(item("admin-files", .files, "Gestión de Archivos", "folder")) }
+        if capabilities.contains(.adminSettings) { items.append(item("admin-whatsapp", .legacy("/admin/whatsapp"), "WhatsApp", "message")) }
         return items
     }
 

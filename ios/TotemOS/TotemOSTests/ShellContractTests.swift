@@ -194,6 +194,15 @@ final class ShellContractTests: XCTestCase {
         let editor = ShellRole.editor.capabilities
         let admin = ShellRole.admin.capabilities
 
+        XCTAssertTrue(NativeShellCatalog.navigation(capabilities: admin).contains {
+            $0.route == "/admin/whatsapp" && $0.label == "WhatsApp"
+        })
+        for role in [ShellRole.editor, ShellRole.user] {
+            XCTAssertFalse(NativeShellCatalog.navigation(capabilities: role.capabilities).contains {
+                $0.route == "/admin/whatsapp"
+            })
+        }
+
         XCTAssertFalse(NativeShellCatalog.navigation(capabilities: editor).contains {
             $0.route == AppRoute.users.path
         })

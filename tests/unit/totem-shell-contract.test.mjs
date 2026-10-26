@@ -67,6 +67,16 @@ test("la navegación se filtra por permisos antes de publicarse", () => {
   const userRoutes = userNav.map((item) => item.route);
 
   assert.ok(adminRoutes.includes("/admin/users"));
+  assert.ok(adminRoutes.includes("/admin/whatsapp"));
+  const adminSnapshot = buildShellSnapshot(baseInput);
+  assert.deepEqual(parseShellCommand({ type: "navigate", route: "/admin/whatsapp" }, adminSnapshot), {
+    type: "navigate", route: "/admin/whatsapp",
+  });
+  assert.ok(!userRoutes.includes("/admin/whatsapp"));
+  assert.ok(!filterShellNavigation("EDITOR").some((item) => item.route === "/admin/whatsapp"));
+  assert.equal(parseShellCommand({ type: "navigate", route: "/admin/whatsapp" }, buildShellSnapshot({
+    ...baseInput, user: { name: "Usuario", role: "USER" },
+  })), null);
   assert.ok(!userRoutes.includes("/admin/users"));
   assert.ok(!userRoutes.includes("/admin/files"));
 
