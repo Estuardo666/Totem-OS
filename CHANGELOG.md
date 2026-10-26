@@ -1,5 +1,11 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.2.5] - 2026-10-26
+
+### Fixed
+
+- Se recuperan los ajustes del modal de transacciones en producción y se conserva el selector de clientes reales de facturación, con el registro SRI de pruebas aislado.
+
 ## [0.2.4] - 2026-10-26
 
 ### Fixed

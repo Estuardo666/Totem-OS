@@ -9,6 +9,7 @@ import { getOrCreateConfig } from "./configuracion-service";
 import { calcularLineaSri, sriMoney } from "@/lib/sri/tax-calculation";
 import { assertCreditNoteAllowed } from "@/lib/sri/credit-note-policy";
 import { triggerSriWorker } from "@/lib/sri/trigger-worker";
+import { db as applicationDb } from "@/lib/db";
 
 interface ItemFactura {
   codigo: string;
@@ -39,7 +40,7 @@ export async function emitirFactura(
   const config = await getOrCreateConfig();
 
   // 1. Obtener datos del cliente
-  const client = await prisma.client.findUniqueOrThrow({
+  const client = await applicationDb.client.findUniqueOrThrow({
     where: { id: datos.clientId },
   });
 
@@ -51,6 +52,14 @@ export async function emitirFactura(
 
   const tipoIdentificacion = client.tipoIdentificacion ?? determinarTipoIdentificacion(client.numeroIdentificacion);
   if (!datos.items.length) throw new Error("Agregue al menos un item");
+  // Copy only the selected recipient's billing fields into the isolated ledger.
+  // Never move invoices, balances, credentials or production sequences.
+  if (prisma !== applicationDb) {
+    const billing = { name: client.name, razonSocial: client.razonSocial,
+      numeroIdentificacion: client.numeroIdentificacion, tipoIdentificacion: client.tipoIdentificacion,
+      direccionFiscal: client.direccionFiscal, emailFacturacion: client.emailFacturacion, email: client.email };
+    await prisma.client.upsert({ where: { id: client.id }, create: { id: client.id, ...billing }, update: billing });
+  }
   const itemsCalculados = datos.items.map((item) => calcularItem(item));
 
   // 2. Obtener y actualizar secuencial (atómico)
