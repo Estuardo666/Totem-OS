@@ -47,9 +47,7 @@ struct NativeShellOverlay: View {
         // Let only the background layer reach the physical top. The header's
         // explicit safe-area padding above keeps its controls below the island.
         .ignoresSafeArea(edges: .top)
-        // La barra inferior se mide desde el borde físico; el header conserva
-        // su margen seguro debajo de la isla del dispositivo.
-        .ignoresSafeArea(edges: .bottom)
+        // Preserve the bottom safe area so controls clear the home indicator.
         .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: shell.isVisible)
         .preferredColorScheme(shell.snapshot.theme == .dark ? .dark : .light)
         .sheet(isPresented: $shell.isNotificationListOpen) {

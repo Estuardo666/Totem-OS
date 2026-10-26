@@ -302,8 +302,17 @@ function VoiceView({
 export function AssistantOrb() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const hidden = !session?.user || pathname?.startsWith("/sign-in")
+    || pathname?.startsWith("/sign-up") || pathname?.startsWith("/admin/assistant");
   const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const scope = window as unknown as {
+      webkit?: { messageHandlers?: { assistantPresentation?: { postMessage: (open: boolean) => void } } };
+    };
+    scope.webkit?.messageHandlers?.assistantPresentation?.postMessage(open && !hidden);
+    return () => { scope.webkit?.messageHandlers?.assistantPresentation?.postMessage(false); };
+  }, [open, hidden]);
   const [mode, setMode] = useState<Mode>("voice");
   const [paused, setPaused] = useState(false);
   const [chatMounted, setChatMounted] = useState(false);
@@ -386,11 +395,6 @@ export function AssistantOrb() {
     }
   };
 
-  const hidden =
-    !session?.user ||
-    pathname?.startsWith("/sign-in") ||
-    pathname?.startsWith("/sign-up") ||
-    pathname?.startsWith("/admin/assistant");
   if (hidden) return null;
 
   const userName = session.user.name ?? "Usuario";
@@ -412,7 +416,7 @@ export function AssistantOrb() {
           <motion.button
             key="orb-launcher"
             type="button"
-            data-totem-web-chrome
+            data-totem-assistant-launcher
             initial={{ opacity: 0, transform: "scale(0.9)" }}
             animate={{ opacity: 1, transform: "scale(1)" }}
             exit={{ opacity: 0, transform: "scale(0.9)", transition: { duration: 0.12 } }}

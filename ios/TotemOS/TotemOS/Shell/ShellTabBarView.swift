@@ -9,7 +9,6 @@ struct ShellTabBarView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @Namespace private var selectionNamespace
     @State private var previewTabID: String?
     @State private var dragOriginIndex: Int?
     @State private var hoveredTabID: String?
@@ -34,8 +33,8 @@ struct ShellTabBarView: View {
                 .contentShape(Capsule())
                 .simultaneousGesture(selectionDrag(tabs: tabs, width: proxy.size.width))
             }
-            // El platter es una capa pasiva independiente. El contenedor
-            // Liquid Glass solo coordina la lente activa que se desplaza.
+            // Only the outer platter uses glass; labels and selected backgrounds
+            // stay in ordinary SwiftUI layers for predictable contrast.
             .background {
                 Color.clear
                     .totemShellGlass(
@@ -44,7 +43,7 @@ struct ShellTabBarView: View {
                     )
             }
         }
-        .frame(height: 64)
+        .frame(height: 72)
         .padding(.horizontal, 16)
         .onChange(of: snapshot.route) { _, _ in
             guard let previewTabID,
@@ -58,7 +57,6 @@ struct ShellTabBarView: View {
 
     private func tabButton(_ tab: ShellTabItem) -> some View {
         let isActive = selectedTabID == tab.id
-        let isHovered = hoveredTabID == tab.id
         // There is exactly one lens in the bar. A pointer hover temporarily
         // owns it; when the pointer leaves, it returns to the selected item.
         // This prevents a second selected-looking item from appearing below
@@ -70,7 +68,8 @@ struct ShellTabBarView: View {
         } label: {
             VStack(spacing: 3) {
                 Image(systemName: tab.icon)
-                    .font(.system(size: 17, weight: isActive ? .semibold : .regular))
+                    .font(.system(size: 20, weight: isActive ? .semibold : .regular))
+                    .frame(height: 24)
                     .overlay(alignment: .topTrailing) {
                         if tab.route == "/content" {
                             ShellBadge(count: snapshot.taskCount, tint: .orange)
@@ -78,19 +77,12 @@ struct ShellTabBarView: View {
                         }
                     }
                 Text(tab.label)
-                    .font(.caption2)
+                    .font(.system(size: 11, weight: isActive ? .semibold : .medium))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            // Apply the contrast at the label itself as well as in the style.
-            // This prevents a platform Button tint from replacing the WCAG
-            // foreground while Liquid Glass is resolving its material.
-            .foregroundStyle(
-                ownsLens
-                    ? Color.contrastForeground(on: snapshot.accentColor)
-                    : Color.primary.opacity(0.85)
-            )
-            .frame(maxWidth: .infinity, minHeight: shellMinimumTapTarget)
+            .foregroundStyle(Color.primary)
+            .frame(maxWidth: .infinity, minHeight: 54)
             .padding(.horizontal, 4)
             .contentShape(Rectangle())
         }
@@ -98,12 +90,8 @@ struct ShellTabBarView: View {
             ShellTabButtonStyle(
                 isSelected: isActive,
                 isLensOwner: ownsLens,
-                isHighlighted: isHovered,
-                accentColor: snapshot.accentColor,
                 tint: snapshot.accent,
-                reduceTransparency: reduceTransparency,
-                reduceMotion: reduceMotion,
-                selectionNamespace: selectionNamespace
+                reduceMotion: reduceMotion
             )
         )
         .onHover { hovering in
@@ -121,69 +109,27 @@ struct ShellTabBarView: View {
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
     }
 
-    /// The active item owns the single lens. Its glassEffectID lets Apple morph
-    /// that lens between selected and hovered destinations in the shared
-    /// GlassEffectContainer, avoiding a second copy during the transition.
+    /// Keep selected backgrounds outside the Liquid Glass compositor. Text and
+    /// SF Symbols are always normal foreground content, including on iOS 26.
     private struct ShellTabButtonStyle: ButtonStyle {
         let isSelected: Bool
         let isLensOwner: Bool
-        let isHighlighted: Bool
-        let accentColor: String?
         let tint: Color
-        let reduceTransparency: Bool
         let reduceMotion: Bool
-        let selectionNamespace: Namespace.ID
 
         func makeBody(configuration: Configuration) -> some View {
-            // Touch feedback expands the selected lens; pointer hover moves
-            // the single lens to the hovered item.
-            let isInteracting = isHighlighted || (configuration.isPressed && isSelected)
-
-            ZStack {
-                if isLensOwner {
-                    selectionLens(isInteracting: isInteracting)
+            configuration.label
+                .background {
+                    Capsule()
+                        .fill(tint.opacity(isLensOwner ? 0.20 : 0))
+                        .overlay {
+                            Capsule().strokeBorder(tint.opacity(isSelected ? 0.45 : 0), lineWidth: 1)
+                        }
                         .allowsHitTesting(false)
-                        .zIndex(0)
                 }
-
-                // Liquid Glass se compone en una capa visual independiente.
-                // Mantener el label como hermano superior evita que el tinte
-                // de la lente se pinte encima del icono o del texto.
-                configuration.label
-                    .foregroundStyle(
-                        isLensOwner
-                            ? Color.contrastForeground(on: accentColor)
-                            : Color.primary.opacity(0.85)
-                    )
-                    .zIndex(1)
-            }
-                .zIndex(isInteracting ? 2 : (isLensOwner ? 1 : 0))
-                .animation(
-                    reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 1),
-                    value: isInteracting
-                )
-        }
-
-        @ViewBuilder
-        private func selectionLens(isInteracting: Bool) -> some View {
-            // `Capsule()` como vista es una forma rellena con el color de
-            // primer plano heredado: pintaba un blob opaco bajo el glifo.
-            // La lente sólo debe aportar el material y el acento.
-            let lens = Color.clear
-                .totemInteractiveShellGlass(
-                    in: Capsule(),
-                    tint: tint,
-                    reduceTransparency: reduceTransparency
-                )
-                .scaleEffect(isInteracting ? 1.12 : 1)
-
-            if #available(iOS 26.0, *) {
-                lens
-                    .glassEffectID(isLensOwner ? "shell-tab-selection" : nil, in: selectionNamespace)
-                    .glassEffectTransition(.matchedGeometry)
-            } else {
-                lens
-            }
+                .opacity(configuration.isPressed ? 0.7 : 1)
+                .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: configuration.isPressed)
         }
     }
 
@@ -207,22 +153,18 @@ struct ShellTabBarView: View {
                 }
             }
         } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 22, weight: .semibold))
-                // The action button uses the same contrast rule as the
-                // selected tab: pale Catppuccin accents get dark glyphs,
-                // saturated accents get white glyphs.
-                .foregroundStyle(Color.contrastForeground(on: snapshot.accentColor))
-                .frame(width: 52, height: 52)
-                .background {
-                    Color.clear
-                        .totemInteractiveShellGlass(
-                            in: Circle(),
-                            tint: snapshot.accent,
-                            reduceTransparency: reduceTransparency
-                        )
-                }
-                .shadow(color: snapshot.accent.opacity(0.36), radius: 10, y: 4)
+            VStack(spacing: 3) {
+                Image(systemName: "plus")
+                    .font(.system(size: 19, weight: .bold))
+                    .foregroundStyle(Color.contrastForeground(on: snapshot.accentColor))
+                    .frame(width: 34, height: 34)
+                    .background(snapshot.accent, in: Circle())
+                Text("Nuevo")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.primary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 54)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .menuOrder(.fixed)
@@ -249,8 +191,8 @@ struct ShellTabBarView: View {
                 let origin = dragOriginIndex ?? activeIndex(in: tabs)
                 if dragOriginIndex == nil { dragOriginIndex = origin }
 
-                let physicalSlots = [0, 1, 3, 4]
-                let slotWidth = max(width / 5, 1)
+                let physicalSlots = tabs.indices.map { $0 < min(2, tabs.count) ? $0 : $0 + 1 }
+                let slotWidth = max(width / CGFloat(tabs.count + 1), 1)
                 let originSlot = physicalSlots[min(origin, physicalSlots.count - 1)]
                 let projectedSlot = CGFloat(originSlot) + value.translation.width / slotWidth
                 let target = physicalSlots.enumerated().min {

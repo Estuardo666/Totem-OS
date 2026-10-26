@@ -45,6 +45,7 @@ targets:
       path: TotemOS/Info.plist
       properties:
         CFBundleDisplayName: Totem OS
+        NSMicrophoneUsageDescription: Totem OS usa el micrófono para conversar con el asistente de inteligencia artificial.
         LSApplicationCategoryType: public.app-category.business
         TOTEM_BASE_URL: https://totem-os.vercel.app
         UIApplicationSupportsIndirectInputEvents: true

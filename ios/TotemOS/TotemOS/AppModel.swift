@@ -31,6 +31,7 @@ final class AppModel: ObservableObject {
     }
 
     func presentNativeLogin() {
+        LocalReminderScheduler.shared.cancelAll()
         isAuthenticated = false
         isOffline = false
         NativeAuthService.clearURLSessionAuthCookies()
@@ -80,10 +81,6 @@ final class AppModel: ObservableObject {
     }
 
     private func requestNotificationAuthorizationIfNeeded() {
-#if TOTEM_NO_PUSH
-        // Sin entitlement de APNs no se puede registrar el dispositivo.
-        return
-#else
         guard !requestedNotificationAuthorization else { return }
         requestedNotificationAuthorization = true
 
@@ -92,13 +89,14 @@ final class AppModel: ObservableObject {
                 let granted = try await UNUserNotificationCenter.current()
                     .requestAuthorization(options: [.alert, .badge, .sound])
                 if granted {
+#if !TOTEM_NO_PUSH
                     UIApplication.shared.registerForRemoteNotifications()
+#endif
                 }
             } catch {
                 receivePushRegistration(error: error)
             }
         }
-#endif
     }
 
     private func registerDeviceIfPossible() {

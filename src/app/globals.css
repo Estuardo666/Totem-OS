@@ -1293,3 +1293,8 @@ html[data-totem-native-shell-ready="1"] [data-totem-web-chrome] {
     display: none !important;
   }
 }
+
+/* The assistant remains above the native tab bar; Swift has no replacement. */
+html[data-totem-native-shell-ready="1"] [data-totem-assistant-launcher] {
+  bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+}

@@ -5,6 +5,7 @@ struct ContentView: View {
     @EnvironmentObject private var appModel: AppModel
     @EnvironmentObject private var appCoordinator: AppCoordinator
     @State private var isLaunching = true
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -88,6 +89,11 @@ struct ContentView: View {
             }
         }
         .statusBarHidden(true)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active && appCoordinator.hasLoadedState && !appModel.showsNativeLogin {
+                Task { await appCoordinator.refresh() }
+            }
+        }
         .persistentSystemOverlays(.hidden)
     }
 }

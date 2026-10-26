@@ -19,6 +19,7 @@ struct LegacyWebRouteView: UIViewRepresentable {
 
         let controller = WKUserContentController()
         controller.addUserScript(ShellUserScript.marker())
+        controller.add(context.coordinator, name: "assistantPresentation")
         configuration.userContentController = controller
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
@@ -51,7 +52,11 @@ struct LegacyWebRouteView: UIViewRepresentable {
         webView.isHidden = !isVisible
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+    static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "assistantPresentation")
+    }
+
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         private let appModel: AppModel
         private let appCoordinator: AppCoordinator
         private let onContentReady: () -> Void
@@ -77,6 +82,19 @@ struct LegacyWebRouteView: UIViewRepresentable {
             appModel.webViewDidFinish(url: webView.url)
             appCoordinator.webViewDidFinish(url: webView.url)
             onContentReady()
+        }
+
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard message.name == "assistantPresentation",
+                  message.frameInfo.isMainFrame,
+                  message.frameInfo.securityOrigin.protocol == AppEnvironment.baseURL.scheme,
+                  message.frameInfo.securityOrigin.host == AppEnvironment.baseURL.host,
+                  let open = message.body as? Bool else { return }
+            appCoordinator.isAssistantPresented = open
+        }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            appCoordinator.isAssistantPresented = false
         }
 
         func webView(

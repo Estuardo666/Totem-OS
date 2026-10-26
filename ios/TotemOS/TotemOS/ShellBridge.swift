@@ -12,6 +12,7 @@ final class AppCoordinator: ObservableObject {
     @Published private(set) var dashboardState: DashboardLoadState = .idle
     @Published private(set) var dashboardData: DashboardData?
     @Published var isNotificationListOpen = false
+    @Published var isAssistantPresented = false
 
     private weak var webView: WKWebView?
     private var refreshTask: Task<Void, Never>?
@@ -26,7 +27,7 @@ final class AppCoordinator: ObservableObject {
     private let nativeScreenMigrationsEnabled = false
 
     var snapshot: ShellSnapshot { state.snapshot }
-    var isVisible: Bool { hasLoadedState && state.user != nil && !state.overlayHidden }
+    var isVisible: Bool { hasLoadedState && state.user != nil && !state.overlayHidden && !isAssistantPresented }
 
     func mode(for route: AppRoute) -> AppRouteMode {
         if localLegacyRollbackRoutes.contains(route.path) { return .web }
@@ -47,6 +48,8 @@ final class AppCoordinator: ObservableObject {
     }
 
     func reset() {
+        isAssistantPresented = false
+        LocalReminderScheduler.shared.cancelAll()
         refreshTask?.cancel()
         refreshTask = nil
         transactionMonitorTask?.cancel()
@@ -94,6 +97,7 @@ final class AppCoordinator: ObservableObject {
             state = nextState
             hasLoadedState = true
             setWebChromeReplacementActive(true)
+            await LocalReminderScheduler.shared.synchronize(using: webView)
         } catch TotemAPIError.http(let status, _) where status == 401 {
             reset()
             AppModel.shared.presentNativeLogin()

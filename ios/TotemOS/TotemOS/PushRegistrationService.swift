@@ -92,7 +92,7 @@ final class PushRegistrationService {
         )
     }
 
-    private func request(
+    func request(
         path: String,
         method: String,
         body: Data?,
