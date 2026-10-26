@@ -53,7 +53,6 @@ const STATUS_OPTIONS: Array<{ value: ContentTaskStatus; label: string; emoji: st
   { value: "SCRIPT", label: "Guión", emoji: "" },
   { value: "RECORDED", label: "Grabado", emoji: "" },
   { value: "EDITING", label: "Editando", emoji: "" },
-  { value: "REVIEW_INTERNAL", label: "Revisión interna", emoji: "" },
   { value: "REVIEW_CLIENT", label: "Revisión Cliente", emoji: "" },
   { value: "CLIENT_APPROVED", label: "Aprobado por Cliente", emoji: "" },
   { value: "PAUSED", label: "En pausa", emoji: "" },

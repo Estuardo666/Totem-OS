@@ -59,7 +59,6 @@ const CONTENT_TASK_STATUSES: readonly ContentTaskStatus[] = [
   "SCRIPT",
   "RECORDED",
   "EDITING",
-  "REVIEW_INTERNAL",
   "REVIEW_CLIENT",
   "CLIENT_APPROVED",
   "APPROVED",
@@ -85,7 +84,7 @@ const ensureTaskType = (value?: string | null): ContentTaskType =>
   isContentTaskType(value) ? value : "REEL";
 
 const ensureTaskStatus = (value?: string | null): ContentTaskStatus =>
-  isContentTaskStatus(value) ? value : "IDEA";
+  value === "REVIEW_INTERNAL" ? "REVIEW_CLIENT" : isContentTaskStatus(value) ? value : "IDEA";
 
 const ensureTaskPriority = (value?: string | null): TaskPriority =>
   isTaskPriority(value) ? (value as TaskPriority) : "MEDIUM";
@@ -362,7 +361,7 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                 </label>)}
                 <label className="block space-y-2"><span>Estado</span>
                   <select {...form.register("status")} className="w-full rounded-lg border bg-background p-2">
-                    {[task.status, ...editorNextStatuses(task.status)].map((status) => <option key={status} value={status}>{status === "EDITING" ? "Editando" : status === "REVIEW_INTERNAL" ? "Revisión interna" : status}</option>)}
+                    {[task.status === "REVIEW_INTERNAL" ? "REVIEW_CLIENT" : task.status, ...editorNextStatuses(task.status)].map((status) => <option key={status} value={status}>{status === "EDITING" ? "Editando" : status === "REVIEW_CLIENT" ? "Revisión cliente" : status}</option>)}
                   </select>
                 </label>
               </fieldset>}
@@ -691,7 +690,6 @@ export function TaskSheet({ task, open, onOpenChange, users, clients = [], initi
                           <SelectItem value="SCRIPT" className="rounded-lg">Guión</SelectItem>
                           <SelectItem value="RECORDED" className="rounded-lg">Grabado</SelectItem>
                           <SelectItem value="EDITING" className="rounded-lg">Editando</SelectItem>
-                          <SelectItem value="REVIEW_INTERNAL" className="rounded-lg">Revisión Interna</SelectItem>
                           <SelectItem value="REVIEW_CLIENT" className="rounded-lg">Revisión Cliente</SelectItem>
                           <SelectItem value="CLIENT_APPROVED" className="rounded-lg">Aprobado Cliente</SelectItem>
                           <SelectItem value="APPROVED" className="rounded-lg">Aprobado</SelectItem>

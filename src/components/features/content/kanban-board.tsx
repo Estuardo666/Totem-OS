@@ -42,7 +42,6 @@ const KANBAN_COLUMNS: {
   { status: "SCRIPT", label: "Guión" },
   { status: "RECORDED", label: "Grabado" },
   { status: "EDITING", label: "Editando" },
-  { status: "REVIEW_INTERNAL", label: "Revisión interna" },
   { status: "REVIEW_CLIENT", label: "Revisión Cliente" },
   { status: "CLIENT_APPROVED", label: "Aprobado por Cliente" },
   { status: "PUBLISHED", label: "Publicado" },
@@ -676,7 +675,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     const sourceStatus = source.droppableId as ContentTaskStatus;
     const destinationStatus = destination.droppableId as ContentTaskStatus;
 
-    const taskToMove = tasks.find((task) => task.id === result.draggableId && task.status === sourceStatus);
+    const taskToMove = tasks.find((task) => task.id === result.draggableId && (task.status === sourceStatus || (task.status === "REVIEW_INTERNAL" && sourceStatus === "REVIEW_CLIENT")));
     if (!taskToMove) {
       setHoverColumn(null);
       return;
@@ -730,7 +729,8 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
   // Filtrar tareas por estado (usando optimisticTasks si existe)
   const tasksByStatus = KANBAN_COLUMNS.reduce(
     (acc, column) => {
-      acc[column.status] = optimisticTasks.filter((task) => task.status === column.status);
+      acc[column.status] = optimisticTasks.filter((task) => task.status === column.status ||
+        (column.status === "REVIEW_CLIENT" && task.status === "REVIEW_INTERNAL"));
       return acc;
     },
     {} as Record<ContentTaskStatus, ContentTaskWithClient[]>
@@ -750,7 +750,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
     return (
       <div className="w-full h-full overflow-visible">
         {/* Mobile: scroll horizontal | Desktop: grid con columnas fijas */}
-        <div className="flex md:grid md:grid-cols-8 md:gap-4 w-full h-full items-start overflow-x-auto md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0">
+        <div className="flex md:grid md:grid-cols-7 md:gap-4 w-full h-full items-start overflow-x-auto md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0">
           {KANBAN_COLUMNS.map((column) => {
             const columnTasks = tasksByStatus[column.status] || [];
 
@@ -852,7 +852,7 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
         {/* Mobile: scroll horizontal 98vw | Desktop: grid con columnas fijas */}
         <div
           ref={scrollRef}
-          className="flex md:grid md:grid-cols-8 md:gap-4 w-screen md:w-full h-full items-start overflow-x-auto overflow-y-visible md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
+          className="flex md:grid md:grid-cols-7 md:gap-4 w-screen md:w-full h-full items-start overflow-x-auto overflow-y-visible md:overflow-x-auto md:overflow-y-hidden pb-6 md:pb-0"
         >
           {KANBAN_COLUMNS.map((column) => {
             const columnTasks = tasksByStatus[column.status] || [];
