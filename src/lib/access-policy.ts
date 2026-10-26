@@ -31,8 +31,8 @@ export function shootScope(actor: AccessActor): Prisma.ShootWhereInput {
 const EDITOR_FIELDS = new Set(["status", "postCopy", "scriptUrl", "coverImageUrl", "audioBriefUrl"]);
 const EDITOR_TRANSITIONS: Record<string, readonly string[]> = {
   RECORDED: ["EDITING"],
-  EDITING: ["REVIEW_INTERNAL"],
-  REVIEW_INTERNAL: ["EDITING"],
+  EDITING: ["REVIEW_CLIENT"],
+  REVIEW_INTERNAL: ["EDITING", "REVIEW_CLIENT"],
   REVIEW_CLIENT: ["EDITING"],
   REJECTED: ["EDITING"],
 };

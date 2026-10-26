@@ -49,7 +49,7 @@ export function KanbanStickyHeaders({
       <div className="border-b border-slate-200/70 bg-background/90 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80 dark:border-border/80">
         <div className="overflow-hidden">
           <div
-            className="flex w-max items-stretch md:grid md:w-full md:grid-cols-8 md:gap-4"
+            className="flex w-max items-stretch md:grid md:w-full md:grid-cols-7 md:gap-4"
             style={{ transform: `translateX(-${scrollLeft}px)` }}
           >
             {columns.map((column) => {

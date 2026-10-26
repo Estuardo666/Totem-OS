@@ -96,12 +96,13 @@ function harness(role = "EDITOR") {
 test("editor solo cambia materiales y transiciones de trabajo en tareas asignadas", () => {
   const actor = { userId: "e", role: "EDITOR" };
   const task = { status: "EDITING", assignedEditorId: "e", assignedCommunityId: null };
-  assert.doesNotThrow(() => assertTaskChanges(actor, task, { postCopy: "ok", status: "REVIEW_INTERNAL" }));
-  for (const changes of [{ status: "PUBLISHED" }, { status: "CLIENT_APPROVED" }, { assignedEditorId: "other" }, { clientId: "other" }, { reviewToken: "fake" }, { clientFeedback: "fake approval" }, { dueDate: new Date() }]) {
+  assert.doesNotThrow(() => assertTaskChanges(actor, task, { postCopy: "ok", status: "REVIEW_CLIENT" }));
+  for (const changes of [{ status: "REVIEW_INTERNAL" }, { status: "PUBLISHED" }, { status: "CLIENT_APPROVED" }, { assignedEditorId: "other" }, { clientId: "other" }, { reviewToken: "fake" }, { clientFeedback: "fake approval" }, { dueDate: new Date() }]) {
     assert.throws(() => assertTaskChanges(actor, task, changes));
   }
   assert.throws(() => assertTaskChanges(actor, { ...task, assignedEditorId: "other" }, { postCopy: "no" }));
   assert.throws(() => assertTaskChanges({ ...actor, role: "USER" }, task, {}));
+  assert.doesNotThrow(() => assertTaskChanges(actor, { ...task, status: "REVIEW_INTERNAL" }, { status: "REVIEW_CLIENT" }));
   assert.throws(() => assertTaskChanges(actor, { ...task, status: "PUBLISHED" }, { postCopy: "no" }));
 });
 

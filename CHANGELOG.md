@@ -1,5 +1,11 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.2.4] - 2026-10-26
+
+### Fixed
+
+- El tablero vuelve a sus siete columnas: se retira Revisión interna y el editor envía directamente de Editando a Revisión cliente. Las tareas antiguas en revisión interna permanecen visibles en Revisión cliente.
+
 ## [0.2.3] - 2026-10-25
 
 ### Fixed
