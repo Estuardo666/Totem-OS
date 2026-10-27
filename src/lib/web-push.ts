@@ -7,6 +7,7 @@
 
 import webPush from "web-push";
 import { db } from "@/lib/db";
+import { classifyWebPushFailure } from "./web-push-errors";
 
 // ---------------------------------------------------------------------------
 // VAPID config — keys are base64url strings stored in .env.
@@ -140,22 +141,23 @@ export async function sendPush(
           data: { lastSeenAt: new Date() },
         }).catch(() => {}); // non-critical
       } else {
-        const err = result.reason;
-        const statusCode = err?.statusCode ?? err?.status ?? 0;
+        const { status: statusCode, host, reason, retire } = classifyWebPushFailure(result.reason, sub.endpoint);
 
-        if (statusCode === 404 || statusCode === 410) {
+        if (retire) {
           // Subscription expired or unsubscribed — mark for cleanup
           expiredIds.push(sub.id);
           cleaned++;
-          console.log(`[WebPush] Subscription expired (${statusCode}): ${sub.endpoint.slice(0, 60)}...`);
+          if (statusCode !== 404 && statusCode !== 410) {
+            errors.push(`${host}: HTTP ${statusCode}${reason ? ` (${reason})` : ""}. Registro retirado; abre la app web o pulsa «Renovar notificaciones» en Configuración.`);
+          }
+          console.log(`[WebPush] Retired invalid subscription (${host}, HTTP ${statusCode}).`);
         } else {
           failed++;
-          const host = new URL(sub.endpoint).hostname;
           // Do not expose endpoints, auth keys or raw provider response bodies.
           const hint = statusCode === 401 || statusCode === 403
             ? "Suscripción rechazada: abre la app web para renovar el registro y sus permisos."
             : "El proveedor rechazó el envío; vuelve a intentarlo.";
-          const msg = `${host}: HTTP ${statusCode || "sin respuesta"}. ${hint}`;
+          const msg = `${host}: HTTP ${statusCode || "sin respuesta"}${reason ? ` (${reason})` : ""}. ${hint}`;
           errors.push(msg);
           console.error(`[WebPush] ${msg}`);
         }

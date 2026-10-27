@@ -84,14 +84,16 @@ function showInAppNotification(title: string, body: string) {
       <div style="display: flex; align-items: flex-start; gap: 12px;">
         <div style="width:40px;height:40px;background:rgba(255,255,255,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;font-size:15px;margin-bottom:4px;">${title}</div>
-          <div style="font-size:14px;opacity:0.9;line-height:1.4;">${body}</div>
+          <div data-notification-title style="font-weight:600;font-size:15px;margin-bottom:4px;"></div>
+          <div data-notification-body style="font-size:14px;opacity:0.9;line-height:1.4;"></div>
         </div>
         <button style="background:rgba(255,255,255,0.2);border:none;color:white;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" onclick="this.closest('#webpush-inapp-notification').remove()" aria-label="Cerrar">×</button>
       </div>
     </div>
   `;
 
+  el.querySelector("[data-notification-title]")!.textContent = title;
+  el.querySelector("[data-notification-body]")!.textContent = body;
   document.body.appendChild(el);
 
   setTimeout(() => {
@@ -141,14 +143,22 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
 // ---------------------------------------------------------------------------
 
 let subscriptionInFlight: Promise<boolean> | null = null;
-function subscribeAndRegister(): Promise<boolean> {
+function subscribeAndRegister(forceRenew = false): Promise<boolean> {
   if (!subscriptionInFlight) {
-    subscriptionInFlight = performSubscription().finally(() => { subscriptionInFlight = null; });
+    subscriptionInFlight = performSubscription(forceRenew).finally(() => { subscriptionInFlight = null; });
   }
   return subscriptionInFlight;
 }
 
-async function performSubscription(): Promise<boolean> {
+export async function repairWebPushNotifications(): Promise<boolean> {
+  if (typeof Notification === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  // Called directly by the settings button, preserving Safari's user gesture.
+  if (await Notification.requestPermission() !== "granted") return false;
+  await subscriptionInFlight;
+  return subscribeAndRegister(true);
+}
+
+async function performSubscription(forceRenew = false, mayRetry = true): Promise<boolean> {
   if (!VAPID_PUBLIC_KEY) {
     console.warn("[WebPush] NEXT_PUBLIC_VAPID_PUBLIC_KEY not set");
     return false;
@@ -160,20 +170,22 @@ async function performSubscription(): Promise<boolean> {
 
     // Check existing subscription first (re-subscribe scenario)
     let subscription = await registration.pushManager.getSubscription();
+    let existingSubscription = Boolean(subscription);
     // An existing OneSignal subscription may use another VAPID key. Reusing
     // it with Totem's private key is rejected by the push service (401/403).
     if (subscription) {
       const expected = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
       const previous = subscription.options.applicationServerKey;
       const bytes = previous ? new Uint8Array(previous) : null;
-      if (!bytes || bytes.length !== expected.length || !expected.every((byte, index) => byte === bytes[index])) {
+      if (forceRenew || !bytes || bytes.length !== expected.length || !expected.every((byte, index) => byte === bytes[index])) {
         const oldEndpoint = subscription.endpoint;
-        await subscription.unsubscribe();
+        if (!await subscription.unsubscribe()) return false;
         await fetch("/api/push/subscribe", {
           method: "DELETE", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ endpoint: oldEndpoint }),
         });
         subscription = null;
+        existingSubscription = false;
       }
     }
 
@@ -218,9 +230,13 @@ async function performSubscription(): Promise<boolean> {
       body: JSON.stringify({
         endpoint: subscription.endpoint,
         keys: { p256dh, auth },
+        existingSubscription,
       }),
     });
 
+    if (response.status === 409 && mayRetry) {
+      return performSubscription(true, false);
+    }
     if (!response.ok) {
       console.error("[WebPush] Subscribe API failed:", response.status);
       return false;

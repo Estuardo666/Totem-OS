@@ -6,12 +6,20 @@ self.addEventListener("push", (event) => {
   const title = typeof payload.title === "string" ? payload.title : "Totem OS";
   const body = typeof payload.body === "string" ? payload.body : "Tienes una nueva notificación.";
   const url = notificationURL(payload.url);
-  event.waitUntil(self.registration.showNotification(title, {
+  event.waitUntil((async () => {
+    await self.registration.showNotification(title, {
     body,
     icon: "/icons/icon-v2-192x192.png",
     tag: typeof payload.tag === "string" ? payload.tag : undefined,
     data: { url },
-  }));
+    });
+    // OS delivery and the in-app banner are separate surfaces. Keep the
+    // required system notification even when a page is currently focused.
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows) {
+      if (client.visibilityState === "visible") client.postMessage({ type: "PUSH_NOTIFICATION", title, body });
+    }
+  })());
 });
 
 function notificationURL(value) {
@@ -61,7 +69,7 @@ self.addEventListener("message", (event) => {
   }
 });
 
-const CACHE_NAME = "totem-os-v8";
+const CACHE_NAME = "totem-os-v9";
 const STATIC_ASSETS = [
   // Mantenemos solo manifest para instalación PWA; evitamos precache de rutas HTML
   "/manifest.json",
