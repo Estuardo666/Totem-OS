@@ -14,7 +14,6 @@ import {
 import { ShootingForm } from "./shooting-form";
 import { ShootingDetail } from "./shooting-detail";
 import { ShootsCalendar } from "./shoots-calendar";
-import { Pagination } from "@/components/ui/pagination-simple";
 import { 
   cancelShooting, 
   deleteShooting, 
@@ -41,7 +40,6 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingShooting, setEditingShooting] = useState<ShootWithRelations | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   
   // Prefilled values for new shooting from calendar click
   const [prefilledDate, setPrefilledDate] = useState<Date | undefined>();
@@ -86,9 +84,6 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
     return () => controller.abort();
   }, [syncCalendar]);
 
-  // Paginación: 25 rodajes por página
-  const ITEMS_PER_PAGE = 25;
-
   useEffect(() => {
     if (searchParams?.get("new") === "1") {
       setEditingShooting(null);
@@ -126,19 +121,6 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
       return true;
     });
   }, [initialShootings, selectedClientId, selectedStatus]);
-
-  // Calcular paginación
-  const totalPages = Math.ceil(filteredShootings.length / ITEMS_PER_PAGE);
-  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIdx = startIdx + ITEMS_PER_PAGE;
-  const paginatedShootings = useMemo(() => {
-    return filteredShootings.slice(startIdx, endIdx);
-  }, [filteredShootings, startIdx, endIdx]);
-
-  // Resetear página cuando cambian filtros
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedClientId, selectedStatus]);
 
   const handleShootingClick = (shooting: ShootWithRelations) => {
     setSelectedShooting(shooting);
@@ -306,17 +288,10 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
         </div>
       )}
 
-      {/* Información de paginación */}
-      {filteredShootings.length > 0 && (
-        <div className="text-sm text-muted-foreground px-2">
-          Mostrando {startIdx + 1} a {Math.min(endIdx, filteredShootings.length)} de {filteredShootings.length} rodajes
-        </div>
-      )}
-
       {/* Calendario estilo Google Calendar */}
-      {paginatedShootings.length > 0 ? (
+      {filteredShootings.length > 0 ? (
         <ShootsCalendar
-          shootings={paginatedShootings}
+          shootings={filteredShootings}
           onShootingClick={handleShootingClick}
           onCreateClick={handleCreateFromCalendar}
           onEditShooting={(shooting) => {
@@ -336,15 +311,6 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
         </div>
       )}
 
-      {/* Paginación */}
-      {totalPages > 1 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          className="justify-center"
-        />
-      )}
 
       {/* Dialog de detalle */}
       <ShootingDetail
