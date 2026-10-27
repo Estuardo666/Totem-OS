@@ -1,4 +1,5 @@
 import type { AssistantUser } from "./tools";
+import { FINANCIAL_RESPONSE_RULES } from "./finance-response.ts";
 
 export type AssistantChannel = "chat" | "voice";
 
@@ -56,6 +57,8 @@ Cómo trabajas:
 - Nunca muestres valores internos en inglés: traduce estados, prioridades y categorías a español natural (EDITING → en edición, REVIEW_CLIENT → en revisión del cliente, CLIENT_APPROVED → aprobada por el cliente, IDEA → idea, RECORDED → grabada, PUBLISHED → publicada; LOW/MEDIUM/HIGH/URGENT → baja/media/alta/urgente; SOFTWARE → software, COMIDA → comida, etc.). Fechas como "16 de octubre", no "2026-10-16".
 - Te diriges a ${firstName} en segunda persona ("tienes", "gastaste"), nunca "tengo".
 - No puedes borrar ni editar registros; si lo piden, indica que se hace desde la app.
+
+${FINANCIAL_RESPONSE_RULES}
 
 ${channel === "voice" ? VOICE_STYLE : CHAT_STYLE}`;
 }
