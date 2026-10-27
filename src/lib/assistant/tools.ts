@@ -16,6 +16,7 @@ import type { CanonicalRole } from "@/lib/roles";
 import { createExpenseSchema, createTransactionSchema } from "@/schemas/finance";
 import { createContentTaskSchema } from "@/schemas/content";
 import { getMonthlyFinancialSummaryFromDb } from "@/lib/finance-monthly-summary-service";
+import { financialResponseData } from "./finance-response";
 import { createDraftToken, type DraftAction } from "./drafts";
 import { buildAnalysisTools } from "./analysis-tools";
 import { buildMetaTools } from "./meta-tools";
@@ -302,7 +303,7 @@ export function buildAssistantTools(user: AssistantUser) {
 
     resumenMetricas: tool({
       description:
-        "Resumen financiero del mes: ingresos reconocidos, cobrado, costos, honorarios, utilidad, por cobrar y alertas. Solo admin.",
+        "Fuente para ingresos reales del mes (ingresosCobradosReales), ingresos comprometidos por separado, costos, utilidad, caja disponible y reembolsos pendientes acumulados. Consultar de nuevo en cada pregunta financiera, también ante correcciones. Solo admin.",
       inputSchema: z.object({ mes: monthSchema }),
       execute: async ({ mes }) => {
         const denied = adminOnly(user);
@@ -312,6 +313,7 @@ export function buildAssistantTools(user: AssistantUser) {
         const s = result.data;
         return {
           periodo: s.periodLabel,
+          ...financialResponseData(s),
           esMesEnCurso: s.period.isCurrentMonth,
           ejecutivo: s.executive,
           cierresPendientes: {

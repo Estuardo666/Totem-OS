@@ -1,5 +1,11 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.2.6] - 2026-10-27
+
+### Fixed
+
+- El asistente distingue los ingresos cobrados de los comprometidos y recibe instrucciones compartidas de voz y chat para consultar datos nuevos ante cada pregunta financiera o corrección. El resumen expone por separado caja disponible y reembolsos pendientes.
+
 ## [0.2.5] - 2026-10-26
 
 ### Fixed
