@@ -19,6 +19,7 @@ const subscribeSchema = z.object({
     p256dh: z.string().trim().min(1).max(512),
     auth: z.string().trim().min(1).max(512),
   }),
+  existingSubscription: z.boolean().optional(),
 });
 
 const unsubscribeSchema = z.object({ endpoint: endpointSchema });
@@ -56,6 +57,12 @@ export async function POST(request: Request) {
     const session = await auth();
     const userId = session?.user?.id ?? null;
     const role = resolveRoleCode(session?.user);
+
+    // If the server retired an invalid endpoint, a browser must create a new
+    // channel instead of silently saving the same rejected endpoint again.
+    if (parsed.data.existingSubscription && !await db.pushSubscription.findUnique({ where: { endpoint }, select: { id: true } })) {
+      return NextResponse.json({ code: "SUBSCRIPTION_RENEW_REQUIRED" }, { status: 409 });
+    }
 
     // Upsert: same endpoint → update keys/lastSeenAt
     const result = await db.pushSubscription.upsert({

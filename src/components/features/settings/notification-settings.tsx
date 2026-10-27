@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
+import { repairWebPushNotifications } from "@/components/providers/web-push-provider";
+import { isTotemIOSAppUserAgent } from "@/lib/totem-ios-client";
 import { Switch } from "@/components/ui/switch";
 import { updateUserSettings } from "@/actions/user.actions";
 import { useToast } from "@/components/ui/use-toast";
@@ -13,6 +16,31 @@ export function NotificationSettings({ soundNotifications: initialValue }: Notif
   const [soundNotifications, setSoundNotifications] = useState(initialValue);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const [canRepair, setCanRepair] = useState(false);
+  const [repairing, setRepairing] = useState(false);
+  const [pushStatus, setPushStatus] = useState("");
+  useEffect(() => {
+    if (isTotemIOSAppUserAgent()) return;
+    if (typeof Notification === "undefined" || !("PushManager" in window)) {
+      setPushStatus("Este navegador no admite Web Push. En iPhone abre la versión web desde su icono en la pantalla de inicio.");
+      return;
+    }
+    setCanRepair(true);
+    setPushStatus(Notification.permission === "granted" ? "Notificaciones permitidas en este navegador."
+      : Notification.permission === "denied" ? "Permiso bloqueado. Actívalo en los ajustes de este sitio antes de renovar."
+        : "Activa las notificaciones para este navegador.");
+  }, []);
+
+  const handleRepair = async () => {
+    setRepairing(true);
+    try {
+      const success = await repairWebPushNotifications();
+      setPushStatus(success ? "Registro renovado. Ya puedes enviar una prueba a tu usuario."
+        : "No se pudo renovar. Comprueba el permiso del sitio y las notificaciones del navegador en el sistema.");
+    } catch {
+      setPushStatus("No se pudo renovar. Revisa la conexión y vuelve a intentarlo.");
+    } finally { setRepairing(false); }
+  };
 
   const handleToggle = (checked: boolean) => {
     setSoundNotifications(checked);
@@ -52,6 +80,13 @@ export function NotificationSettings({ soundNotifications: initialValue }: Notif
 
       {/* Content */}
       <div className="divide-y">
+        {pushStatus && <div className="px-5 py-3 space-y-2">
+          <p className="text-sm font-medium">Notificaciones de este dispositivo</p>
+          <p role="status" className="text-xs text-muted-foreground">{pushStatus}</p>
+          {canRepair && <Button variant="outline" size="sm" disabled={repairing} onClick={handleRepair}>
+            {repairing ? "Renovando…" : "Renovar notificaciones"}
+          </Button>}
+        </div>}
         {/* Sound Notifications Row */}
         <div className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-primary/[0.1] transition-colors">
           <div className="flex items-center gap-3">
