@@ -12,7 +12,7 @@ import { z } from "zod";
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { sendPush, getPushStats, type PushPayload, type SendTargetOptions } from "@/lib/web-push";
+import { sendPush, getPushStats, type PushPayload } from "@/lib/web-push";
 import { resolveRoleCode } from "@/lib/roles";
 
 /**
@@ -167,7 +167,7 @@ export async function sendCustomPush(params: {
   };
 }): Promise<{
   success: boolean;
-  data?: { sent: number; failed: number; cleaned: number };
+  data?: { sent: number; failed: number; cleaned: number; localQueued: number; errors: string[] };
   error?: string;
 }> {
   const session = await auth();
@@ -175,58 +175,42 @@ export async function sendCustomPush(params: {
     return { success: false, error: "No autorizado" };
   }
 
-  const payload: PushPayload = {
-    title: params.title,
-    body: params.body,
-    url: params.url,
-    image: params.image,
-    tag: "totem-manual-test",
-  };
-
-  let target: SendTargetOptions;
-
-  switch (params.targets.type) {
-    case "all":
-      target = { all: true };
-      break;
-    case "role":
-      // Send to each role separately and aggregate
-      if (params.targets.roles && params.targets.roles.length > 0) {
-        let totalSent = 0;
-        let totalFailed = 0;
-        let totalCleaned = 0;
-        const allErrors: string[] = [];
-
-        for (const role of params.targets.roles) {
-          const result = await sendPush(payload, { role });
-          totalSent += result.sent;
-          totalFailed += result.failed;
-          totalCleaned += result.cleaned;
-          allErrors.push(...result.errors);
-        }
-
-        return {
-          success: totalSent > 0 || totalFailed === 0,
-          data: { sent: totalSent, failed: totalFailed, cleaned: totalCleaned },
-        };
-      }
-      target = { all: true };
-      break;
-    case "users":
-      if (!params.targets.userIds || params.targets.userIds.length === 0) {
-        return { success: false, error: "No se seleccionaron usuarios" };
-      }
-      target = { userIds: params.targets.userIds };
-      break;
-    default:
-      return { success: false, error: "Tipo de destino inválido" };
+  const parsed = z.object({
+    title: z.string().trim().min(1).max(100),
+    body: z.string().trim().min(1).max(300),
+    url: z.string().max(2048).optional(),
+    image: z.string().max(2048).optional(),
+    targets: z.discriminatedUnion("type", [
+      z.object({ type: z.literal("all") }),
+      z.object({ type: z.literal("role"), roles: z.array(z.enum(["ADMIN", "EDITOR", "USER"])).min(1).max(3) }),
+      z.object({ type: z.literal("users"), userIds: z.array(z.string().min(1).max(128)).min(1).max(100) }),
+    ]),
+  }).safeParse(params);
+  if (!parsed.success) return { success: false, error: "Revisa el mensaje y los destinatarios seleccionados." };
+  const input = parsed.data;
+  const recipients = await db.user.findMany({
+    where: input.targets.type === "users" ? { id: { in: input.targets.userIds } }
+      : input.targets.type === "role" ? { roleCode: { in: input.targets.roles } } : {},
+    select: { id: true },
+  });
+  // The native sideloaded app has no Web Push registration. Its authenticated
+  // local-reminder sync reads these messages and presents them on the device.
+  const queued = recipients.length ? await db.notification.createMany({
+    data: recipients.map(({ id }) => ({ userId: id, type: "PUSH_MESSAGE", message: `${input.title}\n${input.body}`, createdBy: session.user.id })),
+  }) : { count: 0 };
+  const payload: PushPayload = { title: input.title, body: input.body, url: input.url, image: input.image };
+  try {
+    const result = await sendPush(payload, input.targets.type === "all"
+      ? { all: true } : { userIds: recipients.map(({ id }) => id) });
+    return {
+      success: result.success || queued.count > 0,
+      data: { sent: result.sent, failed: result.failed, cleaned: result.cleaned,
+        localQueued: queued.count, errors: [...new Set(result.errors)].slice(0, 5) },
+    };
+  } catch {
+    return { success: queued.count > 0, data: { sent: 0, failed: 0, cleaned: 0, localQueued: queued.count,
+      errors: ["Web Push no está disponible. Los avisos para iOS se entregarán al sincronizar."] } };
   }
-
-  const result = await sendPush(payload, target);
-  return {
-    success: result.success,
-    data: { sent: result.sent, failed: result.failed, cleaned: result.cleaned },
-  };
 }
 
 // ---------------------------------------------------------------------------

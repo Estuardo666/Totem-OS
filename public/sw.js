@@ -1,7 +1,36 @@
-// Import OneSignal SDK FIRST — must be at initial evaluation before any
-// addEventListener calls to avoid the "must be added on initial evaluation"
-// warning from OneSignal's internal SW message handler.
-importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+// Totem owns its VAPID subscriptions and notification delivery.
+// Every push must display a notification, including while a client is focused.
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try { payload = event.data?.json() || {}; } catch { /* Show a fallback below. */ }
+  const title = typeof payload.title === "string" ? payload.title : "Totem OS";
+  const body = typeof payload.body === "string" ? payload.body : "Tienes una nueva notificación.";
+  const url = notificationURL(payload.url);
+  event.waitUntil(self.registration.showNotification(title, {
+    body,
+    icon: "/icons/icon-v2-192x192.png",
+    tag: typeof payload.tag === "string" ? payload.tag : undefined,
+    data: { url },
+  }));
+});
+
+function notificationURL(value) {
+  try {
+    const url = new URL(typeof value === "string" ? value : "/", self.location.origin);
+    return url.origin === self.location.origin ? url.href : self.location.origin + "/";
+  } catch { return self.location.origin + "/"; }
+}
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = notificationURL(event.notification.data?.url);
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const existing = windows.find((client) => client.url === url);
+    if (existing) return existing.focus();
+    return self.clients.openWindow(url);
+  })());
+});
 
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
@@ -32,7 +61,7 @@ self.addEventListener("message", (event) => {
   }
 });
 
-const CACHE_NAME = "totem-os-v7";
+const CACHE_NAME = "totem-os-v8";
 const STATIC_ASSETS = [
   // Mantenemos solo manifest para instalación PWA; evitamos precache de rutas HTML
   "/manifest.json",

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { resolveRoleCode } from "@/lib/roles";
 import { checkRateLimit, getClientIP } from "@/lib/rate-limiter";
 
 /**
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     // Get current session (optional — guests can subscribe too)
     const session = await auth();
     const userId = session?.user?.id ?? null;
-    const role = session?.user?.roleLegacy ?? null;
+    const role = resolveRoleCode(session?.user);
 
     // Upsert: same endpoint → update keys/lastSeenAt
     const result = await db.pushSubscription.upsert({
