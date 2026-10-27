@@ -1,6 +1,7 @@
 import Combine
 import Combine
 import Foundation
+import UIKit
 import WebKit
 import TotemOSKit
 
@@ -15,6 +16,8 @@ final class AppCoordinator: ObservableObject {
     @Published var isAssistantPresented = false
 
     private weak var webView: WKWebView?
+    // Expose only the scrolling surface used by UIKit's native edge effect.
+    var shellScrollView: UIScrollView? { webView?.scrollView }
     private var refreshTask: Task<Void, Never>?
     private var transactionMonitorTask: Task<Void, Never>?
     private var localLegacyRollbackRoutes = Set<String>()

@@ -9,7 +9,7 @@ const nativeDashboard = readFileSync(resolve(root, "ios/TotemOS/TotemOS/NativeDa
 const nativeContent = readFileSync(resolve(root, "ios/TotemOS/TotemOS/ContentView.swift"), "utf8");
 const nativeWebView = readFileSync(resolve(root, "ios/TotemOS/TotemOS/WebAppView.swift"), "utf8");
 const nativeShellState = readFileSync(resolve(root, "ios/TotemOS/TotemOSKit/AppCoordinatorContracts.swift"), "utf8");
-const nativeVariableBlur = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/TotemVariableBlur.swift"), "utf8");
+const nativeEdgeHeader = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/ShellScrollEdgeHeader.swift"), "utf8");
 const dashboardContract = readFileSync(resolve(root, "src/contracts/api-contracts.ts"), "utf8");
 
 test("la portada web conserva el dashboard completo mientras Swift usa la API nativa", () => {
@@ -41,27 +41,34 @@ test("la barra inferior mantiene la lente detrás del icono y del texto", () => 
   const designSystem = readFileSync(resolve(root, "ios/TotemOS/TotemOS/TotemDesignSystem.swift"), "utf8");
   assert.match(nativeTabBar, /let ownsLens = activeLensID == tab\.id/);
   assert.match(nativeTabBar, /TotemGlassContainer\(spacing: 8\)/);
-  assert.match(nativeTabBar, /selectionLens\(isInteracting: isInteracting\)[\s\S]*\.zIndex\(0\)/);
-  assert.match(nativeTabBar, /configuration\.label[\s\S]*\.zIndex\(1\)/);
-  assert.match(nativeTabBar, /glassEffectID\(isLensOwner \? "shell-tab-selection"/);
+  // The current native bar draws selection as a background of the label,
+  // keeping text outside the Liquid Glass compositor without zIndex layers.
+  assert.match(nativeTabBar, /configuration\.label\s*\.background\s*\{/);
+  assert.match(nativeTabBar, /fill\(tint\.opacity\(isLensOwner \? 0\.20 : 0\)\)/);
+  assert.match(nativeTabBar, /strokeBorder\(tint\.opacity\(isSelected \? 0\.45 : 0\)/);
+  assert.doesNotMatch(nativeTabBar, /glassEffectID\(/);
   assert.match(nativeTabBar, /ShellTabButtonStyle/);
   assert.doesNotMatch(nativeTabBar, /TabView\(selection:/);
   assert.match(designSystem, /glassEffect\(\.regular\.tint\(tint\)\.interactive\(\), in: shape\)/);
 });
 
-test("el header deja controles libres bajo la isla con blur progresivo", () => {
+test("el header usa el efecto de borde nativo conectado al scroll web", () => {
   const nativeHeader = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/ShellHeaderView.swift"), "utf8");
   const nativeOverlay = readFileSync(resolve(root, "ios/TotemOS/TotemOS/Shell/NativeShellOverlay.swift"), "utf8");
   assert.match(nativeHeader, /private var leftControls/);
   assert.match(nativeHeader, /private var rightControls/);
   assert.doesNotMatch(nativeHeader, /ProgressiveHeaderBlur/);
   assert.doesNotMatch(nativeHeader, /totemShellGlass\(/);
-  assert.match(nativeOverlay, /ProgressiveHeaderBlurView/);
-  assert.match(nativeOverlay, /TotemVariableBlurView/);
-  assert.match(nativeVariableBlur, /CIFilter\.linearGradient\(\)/);
-  assert.match(nativeVariableBlur, /inputMaskImage/);
-  assert.match(nativeVariableBlur, /inputRadius/);
-  assert.match(nativeVariableBlur, /CABackdropLayer/);
+  assert.match(nativeOverlay, /ShellScrollEdgeHeader\(shell: shell\)/);
+  assert.doesNotMatch(nativeOverlay, /ProgressiveHeaderBlurView|TotemVariableBlurView|\.mask\(/);
+  assert.match(nativeEdgeHeader, /UIScrollEdgeElementContainerInteraction\(\)/);
+  assert.match(nativeEdgeHeader, /edgeInteraction\.edge = \.top/);
+  assert.match(nativeEdgeHeader, /edgeInteraction\.scrollView = scrollView/);
+  assert.match(nativeEdgeHeader, /topEdgeEffect\.style = \.soft/);
+  assert.match(nativeEdgeHeader, /dismantleUIViewController[\s\S]*bind\(to: nil\)/);
+  // A departing controller must not disable a newly mounted header's effect.
+  assert.doesNotMatch(nativeEdgeHeader, /topEdgeEffect\.isHidden\s*=/);
+  assert.doesNotMatch(nativeEdgeHeader, /CAFilter|UIBlurEffect|LinearGradient/);
   assert.doesNotMatch(nativeOverlay, /backgroundExtensionEffect/);
   assert.match(nativeOverlay, /ignoresSafeArea\(edges: \.top\)/);
   assert.match(nativeOverlay, /ignoresSafeArea\(edges: \.bottom\)/);
