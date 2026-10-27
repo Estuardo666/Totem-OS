@@ -140,7 +140,15 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
 // Subscribe logic — ONLY call when Notification.permission === "granted"
 // ---------------------------------------------------------------------------
 
-async function subscribeAndRegister(): Promise<boolean> {
+let subscriptionInFlight: Promise<boolean> | null = null;
+function subscribeAndRegister(): Promise<boolean> {
+  if (!subscriptionInFlight) {
+    subscriptionInFlight = performSubscription().finally(() => { subscriptionInFlight = null; });
+  }
+  return subscriptionInFlight;
+}
+
+async function performSubscription(): Promise<boolean> {
   if (!VAPID_PUBLIC_KEY) {
     console.warn("[WebPush] NEXT_PUBLIC_VAPID_PUBLIC_KEY not set");
     return false;
@@ -152,6 +160,22 @@ async function subscribeAndRegister(): Promise<boolean> {
 
     // Check existing subscription first (re-subscribe scenario)
     let subscription = await registration.pushManager.getSubscription();
+    // An existing OneSignal subscription may use another VAPID key. Reusing
+    // it with Totem's private key is rejected by the push service (401/403).
+    if (subscription) {
+      const expected = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      const previous = subscription.options.applicationServerKey;
+      const bytes = previous ? new Uint8Array(previous) : null;
+      if (!bytes || bytes.length !== expected.length || !expected.every((byte, index) => byte === bytes[index])) {
+        const oldEndpoint = subscription.endpoint;
+        await subscription.unsubscribe();
+        await fetch("/api/push/subscribe", {
+          method: "DELETE", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: oldEndpoint }),
+        });
+        subscription = null;
+      }
+    }
 
     // If no subscription, create one
     if (!subscription) {

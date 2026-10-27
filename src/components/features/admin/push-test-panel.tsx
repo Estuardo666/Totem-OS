@@ -33,6 +33,8 @@ interface SendResult {
   sent: number;
   failed: number;
   cleaned: number;
+  localQueued: number;
+  errors: string[];
 }
 
 interface UserOption {
@@ -117,7 +119,7 @@ export function PushTestPanel() {
         targets,
       });
 
-      if (res.success && res.data) {
+      if (res.data) {
         setResult(res.data);
       } else {
         setError(res.error || "Error al enviar");
@@ -133,7 +135,7 @@ export function PushTestPanel() {
           <div className="flex items-center gap-2">
             <div>
               <h3 className="text-base font-semibold">Push de prueba</h3>
-              <p className="text-xs text-muted-foreground">Envía notificaciones push a usuarios</p>
+              <p className="text-xs text-muted-foreground">Web Push y avisos locales de iOS al sincronizar</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={loadStats}>
@@ -212,7 +214,7 @@ export function PushTestPanel() {
                   {t === "all" && <Users className="h-3.5 w-3.5" />}
                   {t === "role" && <Shield className="h-3.5 w-3.5" />}
                   {t === "users" && <Search className="h-3.5 w-3.5" />}
-                  {t === "all" && "Todos los suscritos"}
+                  {t === "all" && "Todos los usuarios"}
                   {t === "role" && "Por tipo de usuario"}
                   {t === "users" && "Usuarios específicos"}
                 </span>
@@ -324,7 +326,7 @@ export function PushTestPanel() {
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
                   <div className="text-lg font-bold text-green-600">{result.sent}</div>
-                  <div className="text-xs text-muted-foreground">Enviados</div>
+                  <div className="text-xs text-muted-foreground">Aceptados por Web Push</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-red-500">{result.failed}</div>
@@ -335,6 +337,11 @@ export function PushTestPanel() {
                   <div className="text-xs text-muted-foreground">Limpiados</div>
                 </div>
               </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                {result.localQueued} avisos guardados para iOS. Abre la app con conexión y espera la sincronización.
+                La aceptación por Web Push no confirma que el dispositivo haya mostrado el aviso.
+              </p>
+              {result.errors?.map((message) => <p key={message} className="mt-2 text-xs text-amber-600 dark:text-amber-400">{message}</p>)}
             </div>
           )}
 
