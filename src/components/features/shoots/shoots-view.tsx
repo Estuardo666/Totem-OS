@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ShootWithRelations } from "@/lib/shooting-service";
+import { parseCalendarSyncResponse } from "@/lib/calendar-sync-response";
 import type { Client } from "@prisma/client";
 
 interface ShootsViewProps {
@@ -58,8 +59,15 @@ export function ShootsView({ shootings: initialShootings, clients }: ShootsViewP
     setSyncMessage("");
     try {
       const response = await fetch("/api/google-calendar/sync", { method: "POST" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "No se pudo sincronizar Google Calendar.");
+      const { data, errorMessage } = await parseCalendarSyncResponse(response);
+      if (data?.connected === false) setIsCalendarConnected(false);
+      if (!response.ok) {
+        const apiError = typeof data?.error === "string" ? data.error : null;
+        throw new Error(apiError || errorMessage || "No se pudo sincronizar Google Calendar.");
+      }
+      if (!data) {
+        throw new Error(errorMessage || "No se pudo sincronizar Google Calendar.");
+      }
       setSyncMessage(`Sincronización completada: ${data.created} nuevos, ${data.updated} actualizados, ${data.cancelled} cancelados.`);
       // Refrescar solo si cambió algo: un refresh innecesario corta las server
       // actions que estén en curso (el "Failed to fetch" de fetchServerAction).

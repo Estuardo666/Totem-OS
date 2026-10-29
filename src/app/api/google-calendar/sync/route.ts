@@ -5,12 +5,12 @@ import { fullCalendarSync } from "@/lib/calendar-to-shoot-sync";
 import { revalidatePath } from "next/cache";
 
 export async function POST() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  }
-
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     if (!(await GoogleCalendarService.isConnected(session.user.id))) {
       return NextResponse.json({ error: "Conecta Google Calendar desde Configuración." }, { status: 409 });
     }
