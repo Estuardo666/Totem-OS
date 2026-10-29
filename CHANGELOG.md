@@ -1,5 +1,11 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.2.7] - 2026-10-28
+
+### Fixed
+
+- Sincronizar ahora muestra los errores de Google Calendar sin ocultarlos detrás de un fallo al interpretar la respuesta.
+
 ## [0.2.6] - 2026-10-27
 
 ### Fixed

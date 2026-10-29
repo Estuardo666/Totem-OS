@@ -7,6 +7,43 @@ import ts from "typescript";
 
 const require = createRequire(import.meta.url);
 const source = readFileSync(new URL("../../src/lib/calendar-to-shoot-sync.ts", import.meta.url), "utf8");
+const responseSource = readFileSync(new URL("../../src/lib/calendar-sync-response.ts", import.meta.url), "utf8");
+
+function loadResponseParser() {
+  const testModule = { exports: {} };
+  vm.runInNewContext(ts.transpileModule(responseSource, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS },
+  }).outputText, { module: testModule, exports: testModule.exports });
+  return testModule.exports.parseCalendarSyncResponse;
+}
+
+test("manual sync reports a plain-text server error without exposing a JSON parse error", async () => {
+  const parseCalendarSyncResponse = loadResponseParser();
+  const response = new Response("An error occurred with the deployment", {
+    status: 500,
+    headers: { "content-type": "text/plain; charset=utf-8" },
+  });
+
+  const result = await parseCalendarSyncResponse(response);
+
+  assert.equal(result.data, null);
+  assert.match(result.errorMessage, /An error occurred with the deployment/);
+  assert.doesNotMatch(result.errorMessage, /Unexpected token/);
+});
+
+test("manual sync parses a successful JSON response", async () => {
+  const parseCalendarSyncResponse = loadResponseParser();
+  const response = new Response(JSON.stringify({ created: 2, updated: 1, cancelled: 0 }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+
+  const result = await parseCalendarSyncResponse(response);
+
+  assert.equal(result.errorMessage, null);
+  assert.equal(result.data?.created, 2);
+  assert.equal(result.data?.updated, 1);
+});
 
 function loadSync(failImport) {
   const checkpoints = [];
@@ -68,11 +105,14 @@ function loadRoute(path, mocks) {
   return testModule.exports;
 }
 
-for (const scenario of ["unauthenticated", "disconnected", "success", "partial-failure"]) {
+for (const scenario of ["unauthenticated", "auth-error", "disconnected", "success", "partial-failure"]) {
   test(`manual sync: ${scenario}`, async () => {
     const calls = [];
     const { POST } = loadRoute("sync", {
-      "@/auth": { auth: async () => scenario === "unauthenticated" ? null : { user: { id: "session-owner" } } },
+      "@/auth": { auth: async () => {
+        if (scenario === "auth-error") throw new Error("session unavailable");
+        return scenario === "unauthenticated" ? null : { user: { id: "session-owner" } };
+      } },
       "@/lib/google-calendar": { GoogleCalendarService: { isConnected: async () => scenario !== "disconnected" } },
       "@/lib/calendar-to-shoot-sync": { fullCalendarSync: async (userId) => {
         calls.push(userId);
@@ -81,7 +121,8 @@ for (const scenario of ["unauthenticated", "disconnected", "success", "partial-f
       "next/cache": { revalidatePath: () => {} },
     });
     const response = await POST();
-    assert.equal(response.status, { unauthenticated: 401, disconnected: 409, success: 200, "partial-failure": 502 }[scenario]);
+    assert.equal(response.status, { unauthenticated: 401, "auth-error": 500, disconnected: 409, success: 200, "partial-failure": 502 }[scenario]);
+    assert.match(response.headers.get("content-type"), /application\/json/);
     assert.deepEqual(calls, ["success", "partial-failure"].includes(scenario) ? ["session-owner"] : []);
     assert.doesNotMatch(await response.text(), /private event error/);
   });
