@@ -4,7 +4,7 @@ import {
   isOverdueBy24Hours,
   isOverdueEditingTask,
   isOverduePublicationTask,
-} from "./dashboard-overdue";
+} from "../../src/components/features/dashboard/dashboard-overdue.ts";
 
 const now = new Date("2026-08-10T18:00:00.000Z");
 
