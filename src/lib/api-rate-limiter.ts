@@ -98,3 +98,38 @@ export async function checkDistributedRateLimit(
     throw new RateLimitStoreError(error instanceof Error ? error.message : undefined);
   }
 }
+
+/**
+ * Para rutas que no pasan por `withApiProtection`. Devuelve `null` si
+ * PostgreSQL no responde: la ruta debe fallar cerrada con
+ * `rateLimitUnavailableResponse()`, igual que el guard del kernel.
+ */
+export async function checkRouteRateLimit(
+  options: DistributedRateLimitOptions
+): Promise<DistributedRateLimitResult | null> {
+  try {
+    return await checkDistributedRateLimit(options);
+  } catch (error) {
+    console.error(`[rate-limit] ${options.bucket}:`, error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
+export function rateLimitUnavailableResponse(): Response {
+  return Response.json(
+    { error: "No se pudo verificar el límite de solicitudes; intenta de nuevo." },
+    { status: 503, headers: { "Retry-After": "5" } }
+  );
+}
+
+/** IP del cliente detrás de proxies; identifica peticiones sin sesión. */
+export function getClientIP(request: { headers: Headers }): string {
+  const { headers } = request;
+  return (
+    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    headers.get("x-real-ip")?.trim() ||
+    headers.get("cf-connecting-ip")?.trim() ||
+    headers.get("x-client-ip")?.trim() ||
+    "unknown"
+  );
+}

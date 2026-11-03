@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { resolveRoleCode } from "@/lib/roles";
-import { checkRateLimit, getClientIP } from "@/lib/rate-limiter";
+import { checkRouteRateLimit, getClientIP, rateLimitUnavailableResponse } from "@/lib/api-rate-limiter";
 
 /**
  * Los valores del body llegan como JSON arbitrario. Si se pasan sin validar a
@@ -31,10 +31,16 @@ const unsubscribeSchema = z.object({ endpoint: endpointSchema });
  */
 export async function POST(request: Request) {
   try {
-    // Rate limiting: 10 requests per minute per IP
+    // Rate limiting distribuido: 10 solicitudes por minuto por IP
     const clientIP = getClientIP(request);
-    const rateLimitResult = checkRateLimit(clientIP, "push-subscribe", 10, 60 * 1000);
+    const rateLimitResult = await checkRouteRateLimit({
+      identifier: clientIP,
+      bucket: "push-subscribe",
+      limit: 10,
+      windowMs: 60 * 1000,
+    });
 
+    if (!rateLimitResult) return rateLimitUnavailableResponse();
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: "Demasiados intentos. Inténtalo más tarde.", retryAfter: rateLimitResult.retryAfter },
@@ -103,8 +109,14 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const clientIP = getClientIP(request);
-    const rateLimitResult = checkRateLimit(clientIP, "push-unsubscribe", 10, 60 * 1000);
+    const rateLimitResult = await checkRouteRateLimit({
+      identifier: clientIP,
+      bucket: "push-unsubscribe",
+      limit: 10,
+      windowMs: 60 * 1000,
+    });
 
+    if (!rateLimitResult) return rateLimitUnavailableResponse();
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: "Demasiados intentos. Inténtalo más tarde.", retryAfter: rateLimitResult.retryAfter },

@@ -65,8 +65,10 @@ para React como para `URLSession` en Swift.
 - Si PostgreSQL no está disponible, el guard falla cerrado con
   `503 RATE_LIMIT_STORE_UNAVAILABLE`.
 
-El rate limiter de memoria existente queda reservado para rutas legacy hasta su
-migración; ningún endpoint nuevo debe importarlo directamente.
+Las rutas que no pasan por `withApiProtection` (asistente y suscripción push)
+usan `checkRouteRateLimit`, que comparte este mismo almacén y también falla
+cerrado (`503`). El antiguo limitador en memoria se eliminó: en Vercel cada
+instancia llevaba su propio contador y el límite no era efectivo.
 
 ## Endpoint protegido de contrato
 
