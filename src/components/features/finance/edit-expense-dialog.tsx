@@ -48,6 +48,7 @@ export function EditExpenseDialog({
   // y se vuelve a poner al guardar, para que el gasto siga marcado como compartido.
   const [sharedSuffix, setSharedSuffix] = useState<string | null>(null);
   const [payerName, setPayerName] = useState<string | null>(null);
+  const [hasPayer, setHasPayer] = useState(false);
 
   const form = useForm<UpdateExpenseInput>({
     resolver: zodResolver(updateExpenseSchema),
@@ -88,6 +89,7 @@ export function EditExpenseDialog({
               ? usersResult.data.find((user) => user.id === expense.paidByUserId)
               : undefined;
             setPayerName(payer?.name ?? null);
+            setHasPayer(Boolean(expense.paidByUserId));
 
             form.reset({
               description: baseDescription,
@@ -194,7 +196,9 @@ export function EditExpenseDialog({
               payerNotice={
                 <div className="space-y-1 rounded-lg bg-muted/40 p-3 text-sm" role="note">
                   <p className="font-medium">
-                    {payerName ? `Pagado por ${payerName}` : "Pagado por la empresa"}
+                    {!hasPayer
+                      ? "Pagado por la empresa"
+                      : `Pagado por ${payerName ?? "un miembro del equipo"}`}
                   </p>
                   {sharedSuffix && (
                     <p className="text-muted-foreground">

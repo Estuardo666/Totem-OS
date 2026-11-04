@@ -316,6 +316,11 @@ export function ExpenseFormFields({
             <FormItem className="min-w-0 flex-1">
               <FormLabel>Cliente (Opcional)</FormLabel>
               <Select
+                // Al cerrar se limpia la búsqueda, para que el cliente elegido
+                // siga visible en el campo.
+                onOpenChange={(isOpen) => {
+                  if (!isOpen) setClientQuery("");
+                }}
                 onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
                 value={field.value || "none"}
                 disabled={disabled || loadingClients}
