@@ -85,6 +85,10 @@ export const UserRow = React.memo(
     return (
       prevProps.user.id === nextProps.user.id &&
       prevProps.isSelected === nextProps.isSelected &&
+      // Sin esto, una fila que no cambió conservaba un onCheckedChange viejo:
+      // al marcar a una segunda persona se perdía la primera.
+      prevProps.onCheckedChange === nextProps.onCheckedChange &&
+      prevProps.onAmountChange === nextProps.onAmountChange &&
       prevProps.isDisabled === nextProps.isDisabled &&
       prevProps.showAmountInput === nextProps.showAmountInput &&
       prevProps.amountValue === nextProps.amountValue &&

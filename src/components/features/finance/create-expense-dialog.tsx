@@ -32,30 +32,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
-import { ExpenseFormFields, todayExpenseDate, type ExpenseFieldValues } from "./expense-form-fields";
-// Mapeo de palabras clave a categorías
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  COMIDA: ["almuerzo", "cena", "desayuno", "comida", "meal", "restaurant", "comedor", "pizza", "hamburguesa", "sushi", "café", "coffee", "lunch", "dinner", "breakfast", "food", "restaurante"],
-  TRANSPORTE: ["taxi", "uber", "bus", "colectivo", "gasolina", "combustible", "parking", "estacionamiento", "viaje", "transporte", "flight", "vuelo", "aeropuerto", "aereo", "tren", "train"],
-  INVITACIONES: ["invitación", "evento", "fiesta", "boda", "cumpleaños", "regalo", "gift", "invitación", "entrada", "ticket", "show", "concierto", "teatro"],
-  SOFTWARE: ["software", "license", "licencia", "suscripción", "subscription", "adobe", "microsoft", "google", "app", "aplicación", "plugin", "extension", "saas", "cloud", "api"],
-  OFICINA: ["oficina", "office", "supplies", "papelería", "tinta", "printer", "impresora", "escritorio", "desk", "silla", "chair", "estantería", "mueble"],
-  EQUIPOS: ["equipo", "equipment", "cámara", "camera", "micrófono", "mic", "monitor", "pantalla", "computadora", "laptop", "teclado", "keyboard", "mouse", "disco", "drone", "luz", "light"],
-};
-
-const detectCategory = (description: string): string => {
-  const lowerDescription = description.toLowerCase().trim();
-  
-  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    for (const keyword of keywords) {
-      if (lowerDescription.includes(keyword)) {
-        return category;
-      }
-    }
-  }
-  
-  return "OTROS";
-};
+import {
+  ExpenseFormFields,
+  detectExpenseCategory,
+  todayExpenseDate,
+  type ExpenseFieldValues,
+} from "./expense-form-fields";
 
 // Schema para crear gasto
 const createExpenseSchema = z.object({
@@ -156,7 +138,7 @@ function CreateExpenseDialogComponent({
   // Handler para auto-detectar categoría cuando se sale del campo de descripción
   const handleDescriptionBlur = (descriptionValue: string) => {
     if (descriptionValue && descriptionValue.trim()) {
-      const detectedCategory = detectCategory(descriptionValue);
+      const detectedCategory = detectExpenseCategory(descriptionValue);
       form.setValue("category", detectedCategory as any);
     }
   };
@@ -193,14 +175,11 @@ function CreateExpenseDialogComponent({
         processedData.clientId = data.clientId;
       }
 
-      // Si hay usuarios seleccionados, dividir el gasto entre ellos
+      // Si hay usuarios seleccionados, el servidor divide el gasto entre ellos
+      // y agrega "(Compartido - N personas)" a la descripción. No agregarlo
+      // aquí también: salía dos veces.
       if (data.paidByUserIds && data.paidByUserIds.length > 0) {
         processedData.paidByUserIds = data.paidByUserIds;
-        
-        // Si hay más de un usuario, agregar indicador de gasto compartido
-        if (data.paidByUserIds.length > 1) {
-          processedData.description = `${data.description} (Compartido - ${data.paidByUserIds.length} personas)`;
-        }
       }
 
       if (typeof navigator !== "undefined" && !navigator.onLine) {

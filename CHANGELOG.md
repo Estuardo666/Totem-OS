@@ -1,5 +1,18 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.3.5] - 2026-11-04
+
+### Fixed
+
+- Registrar gasto: al marcar a dos o más personas solo se guardaba la última. La lista de personas conservaba una selección vieja (`UserRow` memoizado ignoraba el cambio de `onCheckedChange`).
+- Registrar gasto: la etiqueta "(Compartido - N personas)" salía dos veces; ahora la agrega solo el servidor.
+- Editar gasto: un gasto compartido ya no pierde su etiqueta "Compartido" al guardar.
+- Editar gasto: ya no muestra una lista de quién pagó que no se guardaba; en su lugar indica quién lo pagó y cómo cambiarlo.
+
+### Changed
+
+- La pestaña Gasto de "Nuevo movimiento" usa los mismos campos que "Registrar gasto" y "Editar gasto". Los tres aceptan coma o punto en el monto, tienen buscador de clientes (cuando hay más de 6) y la misma sugerencia automática de categoría.
+
 ## [0.3.4] - 2026-11-04
 
 ### Fixed
