@@ -99,9 +99,18 @@ export async function updateInvoiceInDb(
   // Solo los campos editables: cualquier otra clave del payload (como `id`)
   // nunca llega a Prisma. `undefined` deja el valor actual intacto.
   const { amount, status, clientId, dueDate, generatedAt } = data;
+
+  // Marcarla pagada desde la edición registra la fecha de cobro, como
+  // markInvoiceAsPaidInDb; los reportes de ingresos filtran por paidAt.
+  let paidAt: Date | undefined;
+  if (status === "PAID") {
+    const current = await db.invoice.findUnique({ where: { id }, select: { paidAt: true } });
+    if (current && !current.paidAt) paidAt = new Date();
+  }
+
   return db.invoice.update({
     where: { id },
-    data: { amount, status, clientId, dueDate, generatedAt },
+    data: { amount, status, clientId, dueDate, generatedAt, paidAt },
   });
 }
 

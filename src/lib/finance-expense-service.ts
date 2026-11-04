@@ -235,10 +235,15 @@ export async function deleteExpenseFromDb(id: string): Promise<void> {
 }
 
 /**
- * Marca como reembolsados los gastos que estos usuarios adelantaron y aún no
- * se les devolvieron. No crea transacción: la caja ya cuenta cada gasto del
- * periodo, así que registrar el reembolso como otra salida lo duplicaría (es
- * el mismo criterio que sigue el pago de liquidación).
+ * Liquida todo lo que la empresa les debe a estos usuarios por gastos que
+ * adelantaron. Esa deuda vive en dos lugares y se salda igual que en cada fila
+ * de la tabla de gastos:
+ * - Gastos (`Expense`) con `paidByUserId` y `reimbursed = false` → reembolsados.
+ * - Transacciones `EXPENSE` con `assignedToId` en `PENDING` → `PAID`.
+ *
+ * No crea una transacción adicional: la caja ya cuenta cada gasto del periodo y
+ * cada transacción pagada, así que otra salida duplicaría el reembolso (mismo
+ * criterio que el pago de liquidación).
  */
 export async function liquidateExpenseReimbursements(
   userIds: string[]
@@ -247,19 +252,35 @@ export async function liquidateExpenseReimbursements(
   if (ids.length === 0) return { count: 0, totalAmount: 0 };
 
   return db.$transaction(async (tx) => {
-    const pending = await tx.expense.findMany({
-      where: { paidByUserId: { in: ids }, reimbursed: false },
-      select: { id: true, amount: true },
-    });
-    if (pending.length === 0) return { count: 0, totalAmount: 0 };
+    const [pendingExpenses, pendingTransactions] = await Promise.all([
+      tx.expense.findMany({
+        where: { paidByUserId: { in: ids }, reimbursed: false },
+        select: { id: true, amount: true },
+      }),
+      tx.transaction.findMany({
+        where: { type: "EXPENSE", status: "PENDING", assignedToId: { in: ids } },
+        select: { id: true, amount: true },
+      }),
+    ]);
 
-    // Se actualizan exactamente los gastos leídos, para que el total
+    // Se actualizan exactamente los registros leídos, para que el total
     // informado corresponda a lo que se marcó.
-    const { count } = await tx.expense.updateMany({
-      where: { id: { in: pending.map((expense) => expense.id) }, reimbursed: false },
-      data: { reimbursed: true },
-    });
-    const totalAmount = pending.reduce((sum, expense) => sum + expense.amount, 0);
-    return { count, totalAmount };
+    const [expenses, transactions] = await Promise.all([
+      pendingExpenses.length
+        ? tx.expense.updateMany({
+            where: { id: { in: pendingExpenses.map((row) => row.id) }, reimbursed: false },
+            data: { reimbursed: true },
+          })
+        : { count: 0 },
+      pendingTransactions.length
+        ? tx.transaction.updateMany({
+            where: { id: { in: pendingTransactions.map((row) => row.id) }, status: "PENDING" },
+            data: { status: "PAID" },
+          })
+        : { count: 0 },
+    ]);
+
+    const totalAmount = [...pendingExpenses, ...pendingTransactions].reduce((sum, row) => sum + row.amount, 0);
+    return { count: expenses.count + transactions.count, totalAmount };
   });
 }

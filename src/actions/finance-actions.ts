@@ -566,13 +566,15 @@ export async function createTransaction(input: unknown): Promise<ApiResponse<Dat
 export async function updateTransaction(
   id: string,
   input: unknown
-): Promise<ApiResponse<DataOf<typeof updateTransactionInDb>>> {
+): Promise<DataOf<typeof updateTransactionInDb>> {
   try {
     await requireAdmin();
     const validatedData = updateTransactionSchema.parse(input);
-    const transaction = await updateTransactionInDb(id, validatedData);
-    revalidateFinanceViews();
-    return { success: true, data: transaction };
+    // El servicio ya responde con ApiResponse: propagar su fallo en vez de
+    // envolverlo como éxito (la cola offline descartaría la operación).
+    const result = await updateTransactionInDb(id, validatedData);
+    if (result.success) revalidateFinanceViews();
+    return result;
   } catch (error) {
     return {
       success: false,
@@ -584,12 +586,14 @@ export async function updateTransaction(
 
 export async function markTransactionAsPaid(
   transactionId: string
-): Promise<ApiResponse<DataOf<typeof markTransactionAsPaidInDb>>> {
+): Promise<DataOf<typeof markTransactionAsPaidInDb>> {
   try {
     await requireAdmin();
-    const transaction = await markTransactionAsPaidInDb(transactionId);
-    revalidateFinanceViews();
-    return { success: true, data: transaction };
+    // El servicio ya responde con ApiResponse: propagar su fallo en vez de
+    // envolverlo como éxito (la cola offline descartaría la operación).
+    const result = await markTransactionAsPaidInDb(transactionId);
+    if (result.success) revalidateFinanceViews();
+    return result;
   } catch (error) {
     return {
       success: false,
@@ -600,12 +604,14 @@ export async function markTransactionAsPaid(
 
 export async function cancelTransaction(
   transactionId: string
-): Promise<ApiResponse<DataOf<typeof cancelTransactionInDb>>> {
+): Promise<DataOf<typeof cancelTransactionInDb>> {
   try {
     await requireAdmin();
-    const transaction = await cancelTransactionInDb(transactionId);
-    revalidateFinanceViews();
-    return { success: true, data: transaction };
+    // El servicio ya responde con ApiResponse: propagar su fallo en vez de
+    // envolverlo como éxito (la cola offline descartaría la operación).
+    const result = await cancelTransactionInDb(transactionId);
+    if (result.success) revalidateFinanceViews();
+    return result;
   } catch (error) {
     return {
       success: false,

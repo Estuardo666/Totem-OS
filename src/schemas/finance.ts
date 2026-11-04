@@ -15,7 +15,7 @@ export const expenseSchema = z.object({
   category: z.enum(["COMIDA", "TRANSPORTE", "INVITACIONES", "SOFTWARE", "OFICINA", "EQUIPOS", "SALARY", "OTROS"]),
   date: z
     .union([z.date(), z.string()])
-    .default(new Date())
+    .default(() => new Date()) // por solicitud, no al cargar el módulo
     .transform((val) => {
       if (!val) return new Date();
       return typeof val === "string" ? new Date(val) : val;

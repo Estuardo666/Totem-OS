@@ -19,6 +19,7 @@ registerHooks({ resolve(specifier, context, nextResolve) {
 } });
 
 const { liquidateExpenseReimbursements } = await import("../../src/lib/finance-expense-service.ts");
+const { updateInvoiceInDb } = await import("../../src/lib/finance-invoice-service.ts");
 
 beforeEach(async () => {
   await resetDatabase();
@@ -36,7 +37,17 @@ beforeEach(async () => {
       { id: "exp-company", description: "Pagado por la empresa", amount: 40, category: "OFICINA" },
     ],
   });
+  await prisma.transaction.createMany({
+    data: [
+      { id: "tx-ana-pending", amount: 7.5, type: "EXPENSE", status: "PENDING", assignedToId: "reimb-ana" },
+      { id: "tx-ana-paid", amount: 50, type: "EXPENSE", status: "PAID", assignedToId: "reimb-ana" },
+      { id: "tx-ana-income", amount: 300, type: "INCOME", status: "PENDING", assignedToId: "reimb-ana" },
+      { id: "tx-luis-pending", amount: 15, type: "EXPENSE", status: "PENDING", assignedToId: "reimb-luis" },
+    ],
+  });
 });
+
+const statusOf = async (id) => (await prisma.transaction.findUniqueOrThrow({ where: { id } })).status;
 
 after(async () => {
   await prisma.$disconnect();
@@ -45,20 +56,36 @@ after(async () => {
 test("liquidating a user marks only that user's pending reimbursements", async () => {
   const result = await liquidateExpenseReimbursements(["reimb-ana"]);
 
-  assert.deepEqual(result, { count: 2, totalAmount: 32.5 });
+  assert.deepEqual(result, { count: 3, totalAmount: 40 });
   const reimbursed = await prisma.expense.findMany({ where: { reimbursed: true }, orderBy: { id: "asc" }, select: { id: true } });
   assert.deepEqual(reimbursed.map((expense) => expense.id), ["exp-ana-1", "exp-ana-2", "exp-ana-old"]);
+  assert.equal(await statusOf("tx-ana-pending"), "PAID");
+  assert.equal(await statusOf("tx-ana-income"), "PENDING");
+  assert.equal(await statusOf("tx-luis-pending"), "PENDING");
 });
 
-test("liquidation records no transaction, so cash is not counted twice", async () => {
+test("liquidation records no extra transaction, so cash is not counted twice", async () => {
   await liquidateExpenseReimbursements(["reimb-ana"]);
-  assert.equal(await prisma.transaction.count(), 0);
+  assert.equal(await prisma.transaction.count(), 4);
 });
 
 test("liquidating with nothing pending is a no-op", async () => {
-  assert.deepEqual(await liquidateExpenseReimbursements(["reimb-ana"]), { count: 2, totalAmount: 32.5 });
+  assert.deepEqual(await liquidateExpenseReimbursements(["reimb-ana"]), { count: 3, totalAmount: 40 });
   assert.deepEqual(await liquidateExpenseReimbursements(["reimb-ana"]), { count: 0, totalAmount: 0 });
   assert.deepEqual(await liquidateExpenseReimbursements([]), { count: 0, totalAmount: 0 });
-  assert.equal(await prisma.transaction.count(), 0);
+  assert.equal(await prisma.transaction.count(), 4);
   assert.equal(await prisma.expense.count({ where: { paidByUserId: "reimb-luis", reimbursed: false } }), 1);
+});
+
+test("editing an invoice to PAID records when it was collected, once", async () => {
+  await prisma.client.create({ data: { id: "reimb-client", name: "Cliente" } });
+  await prisma.invoice.create({ data: { id: "inv-1", amount: 100, status: "PENDING", clientId: "reimb-client" } });
+
+  const paid = await updateInvoiceInDb("inv-1", { status: "PAID", id: "rewritten-id" });
+  assert.equal(paid.id, "inv-1");
+  assert.ok(paid.paidAt instanceof Date);
+
+  const edited = await updateInvoiceInDb("inv-1", { status: "PAID", amount: 120 });
+  assert.equal(edited.amount, 120);
+  assert.equal(edited.paidAt.getTime(), paid.paidAt.getTime());
 });
