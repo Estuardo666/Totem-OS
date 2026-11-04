@@ -5,10 +5,11 @@
 
 import { db } from "@/lib/db";
 import type { Invoice } from "@prisma/client";
+import type { InvoiceStatus } from "@/types";
 
 export interface CreateInvoiceInput {
   amount: number;
-  status: "PENDING" | "PAID" | "OVERDUE";
+  status: InvoiceStatus;
   clientId: string;
   dueDate?: Date;
   generatedAt?: Date;
@@ -89,13 +90,18 @@ export async function updateInvoiceInDb(
   id: string,
   data: {
     amount?: number;
-    status?: "PENDING" | "PAID" | "OVERDUE";
+    status?: InvoiceStatus;
+    clientId?: string;
     dueDate?: Date | null;
+    generatedAt?: Date;
   }
 ): Promise<Invoice> {
+  // Solo los campos editables: cualquier otra clave del payload (como `id`)
+  // nunca llega a Prisma. `undefined` deja el valor actual intacto.
+  const { amount, status, clientId, dueDate, generatedAt } = data;
   return db.invoice.update({
     where: { id },
-    data,
+    data: { amount, status, clientId, dueDate, generatedAt },
   });
 }
 
@@ -104,7 +110,7 @@ export async function updateInvoiceInDb(
  */
 export async function getInvoicesFromDb(options?: {
   clientId?: string;
-  status?: "PENDING" | "PAID" | "OVERDUE";
+  status?: InvoiceStatus;
   startDate?: Date;
   endDate?: Date;
 }): Promise<Invoice[]> {
@@ -132,7 +138,7 @@ export async function getInvoicesFromDb(options?: {
  * Obtiene suma de facturas
  */
 export async function getInvoicesSumFromDb(options?: {
-  status?: "PENDING" | "PAID" | "OVERDUE";
+  status?: InvoiceStatus;
   startDate?: Date;
   endDate?: Date;
 }): Promise<number> {

@@ -5,7 +5,7 @@
 
 import { db } from "@/lib/db";
 import type { Expense } from "@prisma/client";
-import type { ExpenseAllocationInput, ExpenseSplitMode } from "@/schemas/finance";
+import type { ExpenseAllocationInput, ExpenseSplitMode, UpdateExpenseInput } from "@/schemas/finance";
 
 export interface CreateExpenseInput {
   description: string;
@@ -20,16 +20,6 @@ export interface CreateExpenseInput {
   allocations?: ExpenseAllocationInput[];
   reimbursed?: boolean;
   payrollId?: string;
-}
-
-export interface UpdateExpenseInput {
-  id: string;
-  description?: string;
-  amount?: number;
-  category?: string;
-  date?: Date;
-  receiptUrl?: string;
-  clientId?: string;
 }
 
 /**
