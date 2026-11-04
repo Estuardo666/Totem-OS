@@ -5,7 +5,7 @@
 
 import { db } from "@/lib/db";
 import type { Expense } from "@prisma/client";
-import type { ExpenseAllocationInput, ExpenseSplitMode } from "@/schemas/finance";
+import type { ExpenseAllocationInput, ExpenseSplitMode, UpdateExpenseInput } from "@/schemas/finance";
 
 export interface CreateExpenseInput {
   description: string;
@@ -20,16 +20,6 @@ export interface CreateExpenseInput {
   allocations?: ExpenseAllocationInput[];
   reimbursed?: boolean;
   payrollId?: string;
-}
-
-export interface UpdateExpenseInput {
-  id: string;
-  description?: string;
-  amount?: number;
-  category?: string;
-  date?: Date;
-  receiptUrl?: string;
-  clientId?: string;
 }
 
 /**
@@ -245,32 +235,52 @@ export async function deleteExpenseFromDb(id: string): Promise<void> {
 }
 
 /**
- * Liquida reembolsos (crea transacción de pago)
+ * Liquida todo lo que la empresa les debe a estos usuarios por gastos que
+ * adelantaron. Esa deuda vive en dos lugares y se salda igual que en cada fila
+ * de la tabla de gastos:
+ * - Gastos (`Expense`) con `paidByUserId` y `reimbursed = false` → reembolsados.
+ * - Transacciones `EXPENSE` con `assignedToId` en `PENDING` → `PAID`.
+ *
+ * No crea una transacción adicional: la caja ya cuenta cada gasto del periodo y
+ * cada transacción pagada, así que otra salida duplicaría el reembolso (mismo
+ * criterio que el pago de liquidación).
  */
 export async function liquidateExpenseReimbursements(
-  expenseIds: string[]
-): Promise<{ transactionId: string }> {
-  const expenses = await db.expense.findMany({
-    where: { id: { in: expenseIds }, reimbursed: false },
+  userIds: string[]
+): Promise<{ count: number; totalAmount: number }> {
+  const ids = userIds.filter((id) => typeof id === "string" && id.trim().length > 0);
+  if (ids.length === 0) return { count: 0, totalAmount: 0 };
+
+  return db.$transaction(async (tx) => {
+    const [pendingExpenses, pendingTransactions] = await Promise.all([
+      tx.expense.findMany({
+        where: { paidByUserId: { in: ids }, reimbursed: false },
+        select: { id: true, amount: true },
+      }),
+      tx.transaction.findMany({
+        where: { type: "EXPENSE", status: "PENDING", assignedToId: { in: ids } },
+        select: { id: true, amount: true },
+      }),
+    ]);
+
+    // Se actualizan exactamente los registros leídos, para que el total
+    // informado corresponda a lo que se marcó.
+    const [expenses, transactions] = await Promise.all([
+      pendingExpenses.length
+        ? tx.expense.updateMany({
+            where: { id: { in: pendingExpenses.map((row) => row.id) }, reimbursed: false },
+            data: { reimbursed: true },
+          })
+        : { count: 0 },
+      pendingTransactions.length
+        ? tx.transaction.updateMany({
+            where: { id: { in: pendingTransactions.map((row) => row.id) }, status: "PENDING" },
+            data: { status: "PAID" },
+          })
+        : { count: 0 },
+    ]);
+
+    const totalAmount = [...pendingExpenses, ...pendingTransactions].reduce((sum, row) => sum + row.amount, 0);
+    return { count: expenses.count + transactions.count, totalAmount };
   });
-
-  const totalAmount = expenses.reduce((sum, e) => sum + e.amount, 0);
-
-  const transaction = await db.transaction.create({
-    data: {
-      amount: totalAmount,
-      type: "EXPENSE",
-      status: "PAID",
-      description: `Liquidación de ${expenses.length} reembolso(s)`,
-      category: "REIMBURSEMENT",
-    },
-  });
-
-  // Marcar todos como reembolsados
-  await db.expense.updateMany({
-    where: { id: { in: expenseIds } },
-    data: { reimbursed: true },
-  });
-
-  return { transactionId: transaction.id };
 }

@@ -74,7 +74,7 @@ async function AdvancedBody({ userRole }: { userRole: string }) {
   return (
     <StrategicFinanceDashboardClient
       stats={result.data}
-      profitability={profitabilityResult.success ? profitabilityResult.data : null}
+      profitability={profitabilityResult.success ? profitabilityResult.data ?? null : null}
       clientPlans={clientPlansResult.success ? clientPlansResult.data ?? [] : []}
       receivables={receivablesResult.success ? receivablesResult.data ?? null : null}
       periodSnapshots={periodSnapshotsResult.success ? periodSnapshotsResult.data ?? [] : []}

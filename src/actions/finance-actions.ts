@@ -1,6 +1,7 @@
 "use server";
 
 import { requireActor, requireAdmin, requireClientAccess } from "@/lib/server-access";
+import { withoutPassword } from "@/lib/access-policy";
 
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
@@ -16,7 +17,7 @@ import {
   processSalaryPaymentSchema,
 } from "@/schemas/finance";
 import type { ApiResponse } from "@/types";
-import type { User, Transaction } from "@prisma/client";
+import type { Invoice, Prisma, User, Transaction } from "@prisma/client";
 import { resolveRoleCode } from "@/lib/roles";
 
 // Import services
@@ -59,6 +60,9 @@ import {
   getFinanceDashboardPeriodSnapshotsFromDb,
   getMonthlyFinancialSummaryFromDb,
 } from "@/lib/finance-monthly-summary-service";
+/** Datos que resuelve una función async del servicio. */
+type DataOf<F extends (...args: never[]) => Promise<unknown>> = Awaited<ReturnType<F>>;
+
 export type { MonthlyFinancialSummaryData } from "@/lib/finance-monthly-summary-types";
 export type { FinanceDashboardPeriodSnapshot } from "@/lib/finance-monthly-summary-service";
 import {
@@ -250,13 +254,13 @@ export async function getStrategicClientAnalyticsPlans():
 
 // ============ INVOICE OPERATIONS ============
 
-export async function createInvoice(input: unknown): Promise<ApiResponse<any>> {
+export async function createInvoice(input: unknown): Promise<ApiResponse<DataOf<typeof createInvoiceInDb>>> {
   try {
     await requireAdmin();
     const validatedData = createInvoiceSchema.parse(input);
     const invoice = await createInvoiceInDb({
       amount: validatedData.amount,
-      status: validatedData.status as any,
+      status: validatedData.status,
       clientId: validatedData.clientId,
       dueDate: validatedData.dueDate,
       generatedAt: validatedData.generatedAt,
@@ -275,7 +279,7 @@ export async function createInvoice(input: unknown): Promise<ApiResponse<any>> {
 export async function registerPayment(
   invoiceId: string,
   amount: number
-): Promise<ApiResponse<any>> {
+): Promise<ApiResponse<Invoice | null>> {
   try {
     await requireAdmin();
     const invoice = await db.invoice.findUnique({ where: { id: invoiceId } });
@@ -296,7 +300,7 @@ export async function registerPayment(
 export async function markInvoiceAsPaid(
   invoiceId: string,
   paidAt?: string
-): Promise<ApiResponse<any>> {
+): Promise<ApiResponse<DataOf<typeof markInvoiceAsPaidInDb>>> {
   try {
     await requireAdmin();
     const invoice = await markInvoiceAsPaidInDb(invoiceId, parsePaidAt(paidAt));
@@ -327,7 +331,7 @@ export async function markRecurringAsPaid(
   recurringId: string,
   amount: number,
   options: { paidAt?: string; settlesPeriod?: boolean } = {}
-): Promise<ApiResponse<any>> {
+): Promise<ApiResponse<{ clientId: string; year: number; month: number }>> {
   try {
     await requireAdmin();
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -393,11 +397,11 @@ export async function markRecurringAsPaid(
 export async function updateInvoice(
   id: string,
   input: unknown
-): Promise<ApiResponse<any>> {
+): Promise<ApiResponse<DataOf<typeof updateInvoiceInDb>>> {
   try {
     await requireAdmin();
     const validatedData = updateInvoiceSchema.parse(input);
-    const invoice = await updateInvoiceInDb(id, validatedData as any)
+    const invoice = await updateInvoiceInDb(id, validatedData);
     revalidateFinanceViews();
     return { success: true, data: invoice };
   } catch (error) {
@@ -408,7 +412,7 @@ export async function updateInvoice(
   }
 }
 
-export async function getInvoiceById(invoiceId: string): Promise<ApiResponse<any>> {
+export async function getInvoiceById(invoiceId: string): Promise<ApiResponse<DataOf<typeof getInvoiceByIdFromDb>>> {
   try {
     await requireAdmin();
     const invoice = await getInvoiceByIdFromDb(invoiceId);
@@ -426,7 +430,7 @@ export async function getInvoiceById(invoiceId: string): Promise<ApiResponse<any
 
 // ============ EXPENSE OPERATIONS ============
 
-export async function createExpense(input: unknown): Promise<ApiResponse<any>> {
+export async function createExpense(input: unknown): Promise<ApiResponse<DataOf<typeof createExpenseInDb>>> {
   try {
     await requireActor("finance.personal.read");
     const session = await auth();
@@ -462,11 +466,11 @@ export async function createExpense(input: unknown): Promise<ApiResponse<any>> {
 export async function updateExpense(
   id: string,
   input: unknown
-): Promise<ApiResponse<any>> {
+): Promise<ApiResponse<DataOf<typeof updateExpenseInDb>>> {
   try {
     await requireAdmin();
     const validatedData = updateExpenseSchema.parse(input);
-    const expense = await updateExpenseInDb(id, validatedData as any);
+    const expense = await updateExpenseInDb(id, validatedData);
     revalidateFinanceViews();
     return { success: true, data: expense };
   } catch (error) {
@@ -480,7 +484,7 @@ export async function updateExpense(
 
 export async function markExpenseAsReimbursed(
   expenseId: string
-): Promise<ApiResponse<any>> {
+): Promise<ApiResponse<DataOf<typeof markExpenseAsReimbursedInDb>>> {
   try {
     await requireAdmin();
     const expense = await markExpenseAsReimbursedInDb(expenseId);
@@ -496,7 +500,7 @@ export async function markExpenseAsReimbursed(
 
 export async function liquidateReimbursements(
   userIds: string[]
-): Promise<ApiResponse<any>> {
+): Promise<ApiResponse<DataOf<typeof liquidateExpenseReimbursements>>> {
   try {
     await requireAdmin();
     const result = await liquidateExpenseReimbursements(userIds);
@@ -510,7 +514,7 @@ export async function liquidateReimbursements(
   }
 }
 
-export async function getExpenseById(expenseId: string): Promise<ApiResponse<any>> {
+export async function getExpenseById(expenseId: string): Promise<ApiResponse<DataOf<typeof getExpenseByIdFromDb>>> {
   try {
     await requireAdmin();
     const expense = await getExpenseByIdFromDb(expenseId);
@@ -529,7 +533,7 @@ export async function getExpenseById(expenseId: string): Promise<ApiResponse<any
 
 // ============ TRANSACTION OPERATIONS ============
 
-export async function createTransaction(input: unknown): Promise<ApiResponse<any>> {
+export async function createTransaction(input: unknown): Promise<ApiResponse<DataOf<typeof createTransactionInDb>>> {
   try {
     await requireActor("finance.personal.read");
     const session = await auth();
@@ -562,13 +566,15 @@ export async function createTransaction(input: unknown): Promise<ApiResponse<any
 export async function updateTransaction(
   id: string,
   input: unknown
-): Promise<ApiResponse<any>> {
+): Promise<DataOf<typeof updateTransactionInDb>> {
   try {
     await requireAdmin();
     const validatedData = updateTransactionSchema.parse(input);
-    const transaction = await updateTransactionInDb(id, validatedData);
-    revalidateFinanceViews();
-    return { success: true, data: transaction };
+    // El servicio ya responde con ApiResponse: propagar su fallo en vez de
+    // envolverlo como éxito (la cola offline descartaría la operación).
+    const result = await updateTransactionInDb(id, validatedData);
+    if (result.success) revalidateFinanceViews();
+    return result;
   } catch (error) {
     return {
       success: false,
@@ -580,12 +586,14 @@ export async function updateTransaction(
 
 export async function markTransactionAsPaid(
   transactionId: string
-): Promise<ApiResponse<any>> {
+): Promise<DataOf<typeof markTransactionAsPaidInDb>> {
   try {
     await requireAdmin();
-    const transaction = await markTransactionAsPaidInDb(transactionId);
-    revalidateFinanceViews();
-    return { success: true, data: transaction };
+    // El servicio ya responde con ApiResponse: propagar su fallo en vez de
+    // envolverlo como éxito (la cola offline descartaría la operación).
+    const result = await markTransactionAsPaidInDb(transactionId);
+    if (result.success) revalidateFinanceViews();
+    return result;
   } catch (error) {
     return {
       success: false,
@@ -596,12 +604,14 @@ export async function markTransactionAsPaid(
 
 export async function cancelTransaction(
   transactionId: string
-): Promise<ApiResponse<any>> {
+): Promise<DataOf<typeof cancelTransactionInDb>> {
   try {
     await requireAdmin();
-    const transaction = await cancelTransactionInDb(transactionId);
-    revalidateFinanceViews();
-    return { success: true, data: transaction };
+    // El servicio ya responde con ApiResponse: propagar su fallo en vez de
+    // envolverlo como éxito (la cola offline descartaría la operación).
+    const result = await cancelTransactionInDb(transactionId);
+    if (result.success) revalidateFinanceViews();
+    return result;
   } catch (error) {
     return {
       success: false,
@@ -756,7 +766,7 @@ export async function bulkUpdateTransactionStatus(
 
 export async function getTransactionById(
   transactionId: string
-): Promise<ApiResponse<any>> {
+): Promise<ApiResponse<DataOf<typeof getTransactionByIdFromDb>>> {
   try {
     await requireAdmin();
     const transaction = await getTransactionByIdFromDb(transactionId);
@@ -988,7 +998,7 @@ export async function getAvailableExpenseMonths(): Promise<
   }
 }
 
-export async function getGlobalProfitabilityStats(): Promise<ApiResponse<any>> {
+export async function getGlobalProfitabilityStats(): Promise<DataOf<typeof getGlobalProfitabilityStatsFromDb>> {
   try {
     await requireAdmin();
     return getGlobalProfitabilityStatsFromDb();
@@ -997,7 +1007,7 @@ export async function getGlobalProfitabilityStats(): Promise<ApiResponse<any>> {
   }
 }
 
-export async function getMonthlyFinancialSummary(monthValue?: string): Promise<ApiResponse<any>> {
+export async function getMonthlyFinancialSummary(monthValue?: string): Promise<DataOf<typeof getMonthlyFinancialSummaryFromDb>> {
   try {
     await requireAdmin();
     return getMonthlyFinancialSummaryFromDb(monthValue);
@@ -1018,7 +1028,7 @@ export async function getFinanceDashboardPeriodSnapshots(monthValues: string[]) 
 export async function getClientMonthlyClosures(
   month: number,
   year: number
-): Promise<ApiResponse<any>> {
+): Promise<DataOf<typeof getClientMonthlyClosuresFromDb>> {
   try {
     await requireAdmin();
     const session = await auth();
@@ -1131,7 +1141,7 @@ export async function closeMonthRecommended(
 export async function updateUserSalaryConfig(
   userId: string,
   input: unknown
-): Promise<ApiResponse<User>> {
+): Promise<ApiResponse<Omit<User, "password">>> {
   try {
     await requireAdmin();
     const session = await auth();
@@ -1152,7 +1162,7 @@ export async function updateUserSalaryConfig(
       return { success: false, error: "Usuario no encontrado" };
     }
 
-    const updateData: any = {};
+    const updateData: Prisma.UserUpdateInput = {};
 
     if (validatedData.salaryType !== undefined) {
       updateData.salaryType = validatedData.salaryType;
@@ -1186,7 +1196,8 @@ export async function updateUserSalaryConfig(
     revalidatePath("/finance/settlement");
     revalidatePath("/chronos");
 
-    return { success: true, data: updatedUser };
+    // Nunca devolver el hash de la contraseña al cliente.
+    return { success: true, data: withoutPassword(updatedUser) };
   } catch (error) {
     return {
       success: false,
@@ -1260,7 +1271,7 @@ export async function getCajaDelMes(
 export async function getSettlementReport(
   month: number,
   year: number
-): Promise<ApiResponse<any[]>> {
+): Promise<ApiResponse<UserSettlementReport[]>> {
   try {
     await requireAdmin();
     const session = await auth();
@@ -1552,7 +1563,7 @@ export async function runCobranzaChecks(): Promise<
 /**
  * Server Action para obtener resumen de cobranzas
  */
-export async function getCobranzaSummary(): Promise<ApiResponse<any>> {
+export async function getCobranzaSummary(): Promise<ApiResponse<DataOf<typeof import("@/lib/finance-cobranza-service").getCobranzaSummary>>> {
   try {
     await requireAdmin();
     const session = await auth();
