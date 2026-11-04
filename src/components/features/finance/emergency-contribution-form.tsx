@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface EmergencyContributionFormProps {
   currentBalance: number;
@@ -61,7 +62,7 @@ export function EmergencyContributionForm({
       if (result.success) {
         toast({
           title: "Aporte registrado",
-          description: `Saldo en caja: $${(result.data?.newBalance ?? nuevoSaldo).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+          description: `Saldo en caja: ${formatCurrency(result.data?.newBalance ?? nuevoSaldo)}`,
         });
         setAmount("");
         setReason("");
@@ -79,7 +80,7 @@ export function EmergencyContributionForm({
       <div className="rounded-lg border p-4 bg-muted/50">
         <p className="text-sm text-muted-foreground">Saldo actual en caja</p>
         <p className="text-2xl font-bold text-emerald-600">
-          ${currentBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+          {formatCurrency(currentBalance)}
         </p>
       </div>
 
@@ -142,7 +143,7 @@ export function EmergencyContributionForm({
         <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3 text-sm">
           Saldo después de este aporte:{" "}
           <span className="font-semibold text-emerald-600">
-            ${nuevoSaldo.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            {formatCurrency(nuevoSaldo)}
           </span>
         </div>
       )}

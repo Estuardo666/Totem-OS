@@ -13,7 +13,7 @@ import {
   Cell,
 } from "recharts";
 import { DollarSign, TrendingUp, Target, Award } from "lucide-react";
-import { formatCurrencyEnUS } from "@/lib/currency-format";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface TaskWithMetrics {
   id: string;
@@ -97,7 +97,7 @@ export function RevenueROIPanel({
         <div className="text-center py-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg border border-green-200 dark:border-green-800">
           <p className="text-sm text-muted-foreground mb-2">Total Revenue Generado</p>
           <p className="text-5xl font-bold text-green-600 dark:text-green-400">
-            {formatCurrencyEnUS(totalRevenue)}
+            {formatCurrency(totalRevenue)}
           </p>
           <p className="text-xs text-muted-foreground mt-2">
             Ingresos totales generados por el contenido
@@ -130,7 +130,7 @@ export function RevenueROIPanel({
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">
-                {averageCPA > 0 ? formatCurrencyEnUS(averageCPA) : "N/A"}
+                {averageCPA > 0 ? formatCurrency(averageCPA) : "N/A"}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Costo por adquisición
@@ -206,7 +206,7 @@ export function RevenueROIPanel({
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-green-600">
-                          {formatCurrencyEnUS(task.metrics?.revenue || 0)}
+                          {formatCurrency(task.metrics?.revenue || 0)}
                         </p>
                         {task.metrics?.roas && task.metrics.roas > 0 && (
                           <p className="text-xs text-muted-foreground">

@@ -31,7 +31,7 @@ import { EditHonorarioDialog } from "./edit-honorario-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { formatCurrencyEnUS } from "@/lib/currency-format";
+import { formatCurrency } from "@/lib/currency-format";
 
 // Mes (YYYY-MM) en hora de Ecuador. toISOString() usa UTC y movía los
 // movimientos de la noche al mes siguiente.
@@ -1040,7 +1040,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                         ) : (
                           <Plus className="h-4 w-4 text-green-600" />
                         )}
-                        <span>{formatCurrencyEnUS(transaction.amount)}</span>
+                        <span>{formatCurrency(transaction.amount)}</span>
                       </div>
                     </TableCell>
                     <TableCell className="w-[150px]">

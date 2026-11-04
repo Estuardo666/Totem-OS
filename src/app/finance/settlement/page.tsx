@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { PageHeader } from "@/components/shared";
 import { resolveRoleCode } from "@/lib/roles";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface SettlementPageProps {
   searchParams: Promise<{ month?: string; year?: string }>;
@@ -100,15 +101,15 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              ${caja.caja.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              {formatCurrency(caja.caja)}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              ${caja.ingresos.toLocaleString("en-US", { minimumFractionDigits: 2 })} de ingresos
-              {" − "}${caja.gastos.toLocaleString("en-US", { minimumFractionDigits: 2 })} de gastos
-              {" − "}${caja.honorarios.toLocaleString("en-US", { minimumFractionDigits: 2 })} de honorarios
+              {formatCurrency(caja.ingresos)} de ingresos
+              {" − "}{formatCurrency(caja.gastos)} de gastos
+              {" − "}{formatCurrency(caja.honorarios)} de honorarios
               {caja.aUtilidades !== 0 && (
                 <>
-                  {" − "}${caja.aUtilidades.toLocaleString("en-US", { minimumFractionDigits: 2 })} pasado a utilidades
+                  {" − "}{formatCurrency(caja.aUtilidades)} pasado a utilidades
                 </>
               )}
             </p>

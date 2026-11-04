@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface CreateProfitDistributionFormProps {
   preview: {
@@ -60,15 +61,15 @@ export function CreateProfitDistributionForm({
       <div className="grid grid-cols-3 gap-4 text-center">
         <div>
           <p className="text-xs text-muted-foreground">Utilidad neta</p>
-          <p className="text-lg font-bold">${preview.netProfit.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+          <p className="text-lg font-bold">{formatCurrency(preview.netProfit)}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Al fondo</p>
-          <p className="text-lg font-bold text-amber-600">${preview.fundContribution.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+          <p className="text-lg font-bold text-amber-600">{formatCurrency(preview.fundContribution)}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">A distribuir</p>
-          <p className="text-lg font-bold text-emerald-600">${preview.distributableAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+          <p className="text-lg font-bold text-emerald-600">{formatCurrency(preview.distributableAmount)}</p>
         </div>
       </div>
 
@@ -85,7 +86,7 @@ export function CreateProfitDistributionForm({
                   <p className="text-xs text-muted-foreground">{user.profitSharePercent}%</p>
                 </div>
                 <p className="text-sm font-semibold text-emerald-600">
-                  ${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  {formatCurrency(amount)}
                 </p>
               </div>
             );

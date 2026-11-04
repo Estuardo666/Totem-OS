@@ -33,7 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { TaskMetrics } from "@prisma/client";
 import { calculateMonthlyEngagement, calculateMonthlyEfficiency } from "@/lib/metrics-calculations";
-import { formatCurrencyEnUS } from "@/lib/currency-format";
+import { formatCurrency } from "@/lib/currency-format";
 import { TrendingUp, Brain, BarChart3, Receipt, FileText } from "lucide-react";
 import { ClientBillingForm } from "@/components/features/facturacion/ClientBillingForm";
 
@@ -309,16 +309,16 @@ export default async function ClientDetailPage({
                   <div className="space-y-4">
                     <div>
                       <p className="text-3xl font-bold">
-                        {formatCurrencyEnUS(monthlyEfficiency)}
+                        {formatCurrency(monthlyEfficiency)}
                       </p>
                       <CardDescription className="text-sm text-muted-foreground mt-2">
                         Cada interacción con un cliente potencial le costó{" "}
-                        {formatCurrencyEnUS(monthlyEfficiency)} este mes
+                        {formatCurrency(monthlyEfficiency)} este mes
                       </CardDescription>
                     </div>
                     <div className="text-sm text-muted-foreground">
                       <p>Engagement Total del Mes: {monthlyEngagement.toLocaleString()} interacciones</p>
-                      <p>Inversión Mensual: {formatCurrencyEnUS(client.monthlyRate)}</p>
+                      <p>Inversión Mensual: {formatCurrency(client.monthlyRate)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -364,7 +364,7 @@ export default async function ClientDetailPage({
                         <p className="text-lg font-semibold text-center">
                           Este mes, el contenido de Totem generó{" "}
                           <span className="text-green-600 dark:text-green-400 font-bold">
-                            {formatCurrencyEnUS(globalMetricsResult.data.businessMetrics.totalRevenue)}
+                            {formatCurrency(globalMetricsResult.data.businessMetrics.totalRevenue)}
                           </span>{" "}
                           en ventas directas para tu marca con una tasa de conversión del{" "}
                           <span className="text-green-600 dark:text-green-400 font-bold">

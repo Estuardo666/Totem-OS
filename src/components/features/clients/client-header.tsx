@@ -10,7 +10,7 @@ import { EditClientDialog } from "./edit-client-dialog";
 import { ShareReportButton } from "./share-report-button";
 import { useToast } from "@/components/ui/use-toast";
 import { BulkTaskDialog } from "../content/bulk-task-dialog";
-import { formatCurrencyEc } from "@/lib/currency-format";
+import { formatCurrency } from "@/lib/currency-format";
 
 // Helper para convertir hex a rgba (copiado de client-list.tsx)
 const hexToRgba = (hex: string, alpha: number) => {
@@ -105,7 +105,7 @@ export function ClientHeader({ client, users, isAdmin = false, canEditClient = f
                   {isAdmin && (
                     <>
                       <span aria-hidden>·</span>
-                      <span className="font-medium text-foreground tabular-nums">{formatCurrencyEc(client.monthlyRate)}</span>
+                      <span className="font-medium text-foreground tabular-nums">{formatCurrency(client.monthlyRate)}</span>
                       <span>al mes</span>
                     </>
                   )}

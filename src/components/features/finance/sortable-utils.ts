@@ -26,14 +26,6 @@ export function compareDates(a: Date, b: Date, dir: "asc" | "desc"): number {
 
 export { formatCurrency } from "@/lib/currency-format";
 
-function formatCurrencyCompact(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
 
 const CATEGORY_LABELS: Record<string, string> = {
   COMIDA: "Comida",

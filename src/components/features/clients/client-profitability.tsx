@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrencyEnUS } from "@/lib/currency-format";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface ClientProfitabilityProps {
   income: number;
@@ -41,14 +41,14 @@ export function ClientProfitability({ income, expenses }: ClientProfitabilityPro
             <span className="text-sm text-muted-foreground">Ingresos Pagados</span>
             <span className="font-semibold text-green-600 flex items-center gap-1">
               <TrendingUp className="h-4 w-4" />
-              {formatCurrencyEnUS(income)}
+              {formatCurrency(income)}
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Gastos Vinculados</span>
             <span className="font-semibold text-red-600 flex items-center gap-1">
               <TrendingDown className="h-4 w-4" />
-              {formatCurrencyEnUS(expenses)}
+              {formatCurrency(expenses)}
             </span>
           </div>
           <div className="border-t pt-4">
@@ -59,7 +59,7 @@ export function ClientProfitability({ income, expenses }: ClientProfitabilityPro
                   profitability >= 0 ? "text-green-600" : "text-red-600"
                 }`}
               >
-                {formatCurrencyEnUS(profitability)}
+                {formatCurrency(profitability)}
               </span>
             </div>
             <div className="mt-2">

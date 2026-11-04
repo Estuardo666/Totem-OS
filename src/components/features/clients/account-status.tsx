@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getClientAccountStatus } from "@/actions/finance-actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatCurrencyEnUS } from "@/lib/currency-format";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface AccountStatusProps {
   clientId: string;
@@ -85,7 +85,7 @@ export function AccountStatus({ clientId }: AccountStatusProps) {
             <div className="flex items-center justify-between">
               <CardTitle>Deudas Pendientes</CardTitle>
               <Badge variant="secondary" className="text-lg">
-                Total: {formatCurrencyEnUS(totalPending)}
+                Total: {formatCurrency(totalPending)}
               </Badge>
             </div>
           </CardHeader>
@@ -145,7 +145,7 @@ export function AccountStatus({ clientId }: AccountStatusProps) {
                                   : ""
                             }`}
                           >
-                            {formatCurrencyEnUS(debt.amount)}
+                            {formatCurrency(debt.amount)}
                           </TableCell>
                         </TableRow>
                       );
@@ -164,7 +164,7 @@ export function AccountStatus({ clientId }: AccountStatusProps) {
             <div className="flex items-center justify-between">
               <CardTitle>Historial de Pagos</CardTitle>
               <Badge variant="default" className="text-lg bg-green-500 hover:bg-green-600">
-                Total: {formatCurrencyEnUS(totalPaid)}
+                Total: {formatCurrency(totalPaid)}
               </Badge>
             </div>
           </CardHeader>
@@ -193,7 +193,7 @@ export function AccountStatus({ clientId }: AccountStatusProps) {
                           {format(new Date(payment.date), "dd/MM/yyyy")}
                         </TableCell>
                         <TableCell className="text-right font-semibold text-green-600">
-                          {formatCurrencyEnUS(payment.amount)}
+                          {formatCurrency(payment.amount)}
                         </TableCell>
                       </TableRow>
                     ))}

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { formatCurrency } from "@/lib/currency-format";
 
 type ClosureItem = ClientMonthlyClosurePageData["items"][number];
 
@@ -114,7 +115,7 @@ export function MonthlyCloseDialog({
           <DialogTitle>{item ? item.clientName : "Cerrar mes"}</DialogTitle>
           <DialogDescription>
             {item
-              ? `Plan de ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(item.monthlyRate)} · ${new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1))}`
+              ? `Plan de ${formatCurrency(item.monthlyRate)} · ${new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1))}`
               : "Selecciona un cliente para registrar su cierre mensual."}
           </DialogDescription>
         </DialogHeader>
@@ -130,7 +131,7 @@ export function MonthlyCloseDialog({
               </p>
               <p className="mt-2 text-muted-foreground">
                 Sugerencia: <span className="font-medium text-foreground">{getClosureLabel(item.recommendation.status)}</span>
-                {item.recommendation.status !== "NONE" ? ` (${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(item.recommendation.amount)})` : ""}
+                {item.recommendation.status !== "NONE" ? ` (${formatCurrency(item.recommendation.amount)})` : ""}
               </p>
             </div>
 

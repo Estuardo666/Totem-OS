@@ -39,6 +39,7 @@ import { FinanceSectionNav } from "@/components/features/finance/finance-section
 import { TransactionDialog } from "@/components/features/finance/transaction-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { formatCurrency, formatCurrencyWhole } from "@/lib/currency-format";
 
 type Receivable = {
   id: string;
@@ -211,12 +212,12 @@ function deltaPercent(current: number, previous: number) {
 
 const money = (value: number | null | undefined) => {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+  return formatCurrencyWhole(value);
 };
 
 const moneyPrecise = (value: number | null | undefined) => {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  return formatCurrency(value);
 };
 
 const percent = (value: number | null | undefined) => {

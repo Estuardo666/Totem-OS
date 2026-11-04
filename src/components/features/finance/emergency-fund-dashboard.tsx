@@ -36,6 +36,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { EmergencyWithdrawalForm } from "./emergency-withdrawal-form";
 
 import { EmergencyContributionForm } from "@/components/features/finance/emergency-contribution-form";
+import { formatCurrency } from "@/lib/currency-format";
 interface EmergencyFundDashboardProps {
   balance: {
     balance: number;
@@ -108,7 +109,7 @@ export function EmergencyFundDashboard({
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
-              ${currentBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              {formatCurrency(currentBalance)}
             </div>
             <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
               Se reparte a fin de año
@@ -124,7 +125,7 @@ export function EmergencyFundDashboard({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ${totalContributed.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              {formatCurrency(totalContributed)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">{contributions.length} aportes</p>
           </CardContent>
@@ -138,7 +139,7 @@ export function EmergencyFundDashboard({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              ${totalWithdrawn.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              {formatCurrency(totalWithdrawn)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">{withdrawals.length} retiros</p>
           </CardContent>
@@ -152,7 +153,7 @@ export function EmergencyFundDashboard({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${(currentBalance / 2).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              {formatCurrency(currentBalance / 2)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Mitad del saldo, por socio
@@ -269,10 +270,10 @@ export function EmergencyFundDashboard({
                       {getMonthName(m.month)} {m.year}
                     </TableCell>
                     <TableCell className={`font-semibold ${m.type === "CONTRIBUTION" ? "text-green-600" : "text-red-600"}`}>
-                      {m.type === "CONTRIBUTION" ? "+" : "-"}${m.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                      {m.type === "CONTRIBUTION" ? "+" : "-"}{formatCurrency(m.amount)}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      ${m.balanceAfter.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                      {formatCurrency(m.balanceAfter)}
                     </TableCell>
                     <TableCell className="text-sm max-w-[200px] truncate">
                       {m.reason || "—"}

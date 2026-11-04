@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, Wand2 } from "lucide-react";
 import type { ClientMonthlyClosurePageData } from "@/actions/finance-actions";
-import { formatCurrencyEnUS } from "@/lib/currency-format";
+import { formatCurrency } from "@/lib/currency-format";
 
 type ClientMonthlyClosureListItem = ClientMonthlyClosurePageData["items"][number];
 import { closeMonthRecommended } from "@/actions/finance-actions";
@@ -137,7 +137,7 @@ export function MonthlyClosePageClient({ data, userRole }: MonthlyClosePageClien
                   <div className="h-full rounded-full bg-emerald-500" style={{ width: `${stats.totalClients ? (doneCount / stats.totalClients) * 100 : 0}%` }} />
                 </div>
                 <span className="text-sm font-medium">{doneCount} de {stats.totalClients} listos</span>
-                <span className="text-sm text-muted-foreground">· {formatCurrencyEnUS(stats.totalAccrued)} confirmado</span>
+                <span className="text-sm text-muted-foreground">· {formatCurrency(stats.totalAccrued)} confirmado</span>
               </div>
             </div>
             <Button onClick={handleCloseRecommended} disabled={isClosing || pendientesAutomaticos === 0} className="shrink-0">
@@ -175,7 +175,7 @@ export function MonthlyClosePageClient({ data, userRole }: MonthlyClosePageClien
                             </Avatar>
                             <div>
                               <p className="font-medium">{item.clientName}</p>
-                              <p className="text-xs text-muted-foreground">Plan {formatCurrencyEnUS(item.monthlyRate)}</p>
+                              <p className="text-xs text-muted-foreground">Plan {formatCurrency(item.monthlyRate)}</p>
                             </div>
                           </div>
                         </TableCell>
@@ -191,7 +191,7 @@ export function MonthlyClosePageClient({ data, userRole }: MonthlyClosePageClien
                             <span className={`inline-flex items-center gap-1.5 font-medium ${getClosureTone(item.closure.accrualStatus)}`}>
                               <CheckCircle2 className="h-4 w-4" />
                               {getClosureLabel(item.closure.accrualStatus)}
-                              {item.closure.accrualStatus === "PARTIAL" ? ` · ${formatCurrencyEnUS(item.closure.accruedAmount)}` : ""}
+                              {item.closure.accrualStatus === "PARTIAL" ? ` · ${formatCurrency(item.closure.accruedAmount)}` : ""}
                             </span>
                           ) : isDecidedByException(item) ? (
                             <span className="inline-flex items-center gap-1.5 font-medium text-muted-foreground" title={item.recommendation.reason}>
@@ -202,7 +202,7 @@ export function MonthlyClosePageClient({ data, userRole }: MonthlyClosePageClien
                             <span className="text-amber-600">Pendiente</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right text-sm tabular-nums">{formatCurrencyEnUS(item.paidThisMonth)}</TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">{formatCurrency(item.paidThisMonth)}</TableCell>
                         <TableCell className="pr-5 text-right">
                           <Button size="sm" variant={isDone(item) ? "ghost" : "outline"} onClick={() => setSelectedClientId(item.clientId)}>
                             {isDone(item) ? "Cambiar" : "Decidir"}
