@@ -1,5 +1,18 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.2.9] - 2026-11-04
+
+### Fixed
+
+- "Liquidar reembolsos" en Gastos ahora marca como pagado todo lo que la empresa le debe al usuario: los gastos que adelantó y los reembolsos registrados como transacciones pendientes. Antes no marcaba nada y dejaba una transacción de $0. Ya no crea una transacción adicional, para no contar el gasto dos veces en la caja.
+- Marcar como pagada, editar o cancelar una transacción informa el error cuando falla. Antes mostraba éxito y la cola sin conexión descartaba la operación.
+- Al marcar una factura como pagada desde la edición se registra la fecha de cobro, así que el asistente la cuenta como ingreso.
+- La fecha por defecto de un gasto nuevo es la del momento en que se crea, no la del arranque del servidor.
+
+### Security
+
+- La configuración salarial ya no devuelve al navegador el hash de la contraseña del usuario, y la edición de facturas solo guarda los campos editables.
+
 ## [0.2.8] - 2026-11-03
 
 ### Fixed
