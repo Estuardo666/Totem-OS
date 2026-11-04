@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Settings, DollarSign } from "lucide-react";
+import { ChevronRight, DollarSign, Settings } from "lucide-react";
 import { UserSettlementReport } from "@/actions/finance-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -158,17 +158,21 @@ export function SettlementCard({
 
             {/* Gastos por Reembolsar */}
             {userReport.reimbursements > 0 && (
-              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center p-3 bg-muted/50 rounded-lg">
-                <button
-                  onClick={() => setExpensesDialogOpen(true)}
-                  className="text-left text-muted-foreground hover:text-foreground transition-colors cursor-pointer underline underline-offset-2"
-                >
-                  (+) Gastos por Reembolsar:
-                </button>
-                <span className="font-semibold text-orange-600">
-                  {formatCurrency(userReport.reimbursements)}
+              <button
+                type="button"
+                onClick={() => setExpensesDialogOpen(true)}
+                aria-label={`Ver gastos por reembolsar a ${userReport.userName}: ${formatCurrency(userReport.reimbursements)}`}
+                className="group flex w-full flex-col gap-1 rounded-lg bg-muted/50 p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span className="flex flex-col">
+                  <span className="text-muted-foreground group-hover:text-foreground">(+) Gastos por Reembolsar:</span>
+                  <span className="text-xs text-primary">Ver detalle</span>
                 </span>
-              </div>
+                <span className="flex items-center gap-1 font-semibold text-orange-600">
+                  {formatCurrency(userReport.reimbursements)}
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </span>
+              </button>
             )}
 
             {/* Pagado hasta ahora */}
@@ -232,6 +236,7 @@ export function SettlementCard({
         onOpenChange={setExpensesDialogOpen}
         userId={userReport.userId}
         userName={userReport.userName}
+        canMarkReturned={isAdmin}
       />
     </>
   );

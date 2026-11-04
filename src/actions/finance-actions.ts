@@ -34,6 +34,8 @@ import {
   updateExpenseInDb,
   markExpenseAsReimbursedInDb,
   liquidateExpenseReimbursements,
+  getPendingReimbursementsFromDb,
+  pendingReimbursementWhere,
   getExpenseByIdFromDb,
 } from "@/lib/finance-expense-service";
 
@@ -126,6 +128,7 @@ function revalidateFinanceViews() {
   revalidatePath("/finance/monthly-close");
   revalidatePath("/finance/monthly-summary");
   revalidatePath("/finance/receivables");
+  revalidatePath("/finance/settlement");
 }
 
 /**
@@ -494,6 +497,24 @@ export async function markExpenseAsReimbursed(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Error al marcar como reembolsado",
+    };
+  }
+}
+
+/** Detalle de "Gastos por Reembolsar" en la liquidación: todos los meses. */
+export async function getPendingReimbursements(
+  userId: string
+): Promise<ApiResponse<DataOf<typeof getPendingReimbursementsFromDb>>> {
+  try {
+    await requireAdmin();
+    if (typeof userId !== "string" || !userId.trim()) {
+      return { success: false, error: "Usuario no válido" };
+    }
+    return { success: true, data: await getPendingReimbursementsFromDb(userId) };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "No se pudieron cargar los gastos",
     };
   }
 }
@@ -1394,7 +1415,8 @@ export async function getSettlementReport(
         const userProfitSharePercent = user.profitSharePercent ?? 0;
 
         const pendingExpenses = await db.expense.findMany({
-          where: { paidByUserId: user.id, reimbursed: false },
+          where: pendingReimbursementWhere(user.id),
+          select: { amount: true },
         });
 
         reimbursements = pendingExpenses.reduce(
