@@ -7,19 +7,11 @@ import { Plus } from "lucide-react";
 import type { FinancialStats } from "@/actions/finance-actions";
 import { format } from "date-fns";
 import { PageHeader } from "@/components/shared";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface PersonalFinanceDashboardProps {
   stats: FinancialStats;
   userId?: string;
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 export function PersonalFinanceDashboard({ stats, userId }: PersonalFinanceDashboardProps) {

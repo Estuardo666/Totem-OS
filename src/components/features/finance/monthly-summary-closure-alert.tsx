@@ -3,18 +3,10 @@ import { AlertTriangle, ArrowRight } from "lucide-react";
 import type { MonthlyFinancialSummaryData } from "@/actions/finance-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface MonthlySummaryClosureAlertProps {
   summary: MonthlyFinancialSummaryData;
-}
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 export function MonthlySummaryClosureAlert({ summary }: MonthlySummaryClosureAlertProps) {

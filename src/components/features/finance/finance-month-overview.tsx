@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import type { FinanceDashboardPeriodSnapshot } from "@/actions/finance-actions";
 import { cn } from "@/lib/utils";
+import { formatCurrencyWhole } from "@/lib/currency-format";
 
 // Vista por defecto de finanzas: pocos números, cada uno trazable.
 // Los totales se muestran como una suma/resta visible para que se puedan verificar.
@@ -12,8 +13,7 @@ interface FinanceMonthOverviewProps {
   trend: FinanceDashboardPeriodSnapshot[];
 }
 
-const money = (value: number) =>
-  new Intl.NumberFormat("es-ES", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+const money = formatCurrencyWhole;
 
 function Delta({ current, previous, inverse = false }: { current: number; previous?: number; inverse?: boolean }) {
   if (previous === undefined) return null;

@@ -24,23 +24,8 @@ export function compareDates(a: Date, b: Date, dir: "asc" | "desc"): number {
   return dir === "asc" ? a.getTime() - b.getTime() : b.getTime() - a.getTime();
 }
 
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
+export { formatCurrency } from "@/lib/currency-format";
 
-export function formatCurrencyCompact(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
 
 const CATEGORY_LABELS: Record<string, string> = {
   COMIDA: "Comida",

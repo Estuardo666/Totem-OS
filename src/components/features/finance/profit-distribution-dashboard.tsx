@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { CreateProfitDistributionForm } from "./create-profit-distribution-form";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface ProfitDistributionDashboardProps {
   distributions: ProfitDistributionWithItems[];
@@ -141,7 +142,7 @@ export function ProfitDistributionDashboard({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${preview.collectedCash.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
+              <div className="text-2xl font-bold">{formatCurrency(preview.collectedCash)}</div>
               <p className="text-xs text-muted-foreground mt-1">{getMonthName(currentMonth)} {currentYear}</p>
             </CardContent>
           </Card>
@@ -154,7 +155,7 @@ export function ProfitDistributionDashboard({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                ${(preview.totalExpensesPaid + preview.totalHonorariosPaid).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                {formatCurrency(preview.totalExpensesPaid + preview.totalHonorariosPaid)}
               </div>
             </CardContent>
           </Card>
@@ -167,7 +168,7 @@ export function ProfitDistributionDashboard({
             </CardHeader>
             <CardContent>
               <div className={`text-2xl font-bold ${preview.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
-                ${preview.netProfit.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                {formatCurrency(preview.netProfit)}
               </div>
             </CardContent>
           </Card>
@@ -180,11 +181,11 @@ export function ProfitDistributionDashboard({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-emerald-600">
-                ${preview.distributableAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                {formatCurrency(preview.distributableAmount)}
               </div>
               {preview.fundContribution > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  (${preview.fundContribution.toLocaleString("en-US", { minimumFractionDigits: 2 })} al fondo)
+                  ({formatCurrency(preview.fundContribution)} al fondo)
                 </p>
               )}
             </CardContent>
@@ -258,12 +259,12 @@ export function ProfitDistributionDashboard({
                     <TableCell className="font-medium">
                       {getMonthName(d.month)} {d.year}
                     </TableCell>
-                    <TableCell>${d.totalProfit.toLocaleString("en-US", { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell>{formatCurrency(d.totalProfit)}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {d.fundContribution > 0 ? `$${d.fundContribution.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—"}
+                      {d.fundContribution > 0 ? `${formatCurrency(d.fundContribution)}` : "—"}
                     </TableCell>
                     <TableCell className="font-semibold text-emerald-600">
-                      ${d.distributableAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                      {formatCurrency(d.distributableAmount)}
                     </TableCell>
                     <TableCell>{d.items.length}</TableCell>
                     <TableCell><StatusBadge status={d.status} /></TableCell>
@@ -339,7 +340,7 @@ export function ProfitDistributionDashboard({
                     <TableCell className="font-medium">{item.user.name}</TableCell>
                     <TableCell>{item.percent.toFixed(1)}%</TableCell>
                     <TableCell className="font-semibold">
-                      ${item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                      {formatCurrency(item.amount)}
                     </TableCell>
                     <TableCell>
                       {item.paidTransactionId ? (

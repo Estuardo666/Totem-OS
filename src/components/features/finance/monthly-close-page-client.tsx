@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, Wand2 } from "lucide-react";
 import type { ClientMonthlyClosurePageData } from "@/actions/finance-actions";
+import { formatCurrency } from "@/lib/currency-format";
 
 type ClientMonthlyClosureListItem = ClientMonthlyClosurePageData["items"][number];
 import { closeMonthRecommended } from "@/actions/finance-actions";
@@ -19,15 +20,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 interface MonthlyClosePageClientProps {
   data: ClientMonthlyClosurePageData;
   userRole?: string;
-}
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 function getInitials(name: string) {

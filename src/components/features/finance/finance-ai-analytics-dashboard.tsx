@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import type { FinancialStats } from "@/lib/finance-reporting-service";
 import type { StrategicClientAnalyticsPlan } from "@/actions/finance-actions";
 import type { AnalyticsPredictionPoint, FinanceAiAnalyticsViewModel } from "@/types/ai-analytics";
+import { formatCurrencyWhole } from "@/lib/currency-format";
 
 interface FinanceAiAnalyticsDashboardProps {
   stats: FinancialStats;
@@ -23,15 +24,6 @@ interface FinanceAiAnalyticsDashboardProps {
 interface PredictionApiResponse {
   predictions: Array<{ month: number; revenue: number; confidence: number }>;
   recommendations: Array<{ title: string; description: string; priority: "high" | "medium" | "low"; impact: number; timeline: string }>;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 function buildFallbackPredictions(stats: FinancialStats): AnalyticsPredictionPoint[] {
@@ -78,7 +70,7 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientAnaly
     title: recommendation.title,
     description: recommendation.description,
     priority: recommendation.priority,
-    impactLabel: `${formatCurrency(recommendation.impact)} de impacto estimado`,
+    impactLabel: `${formatCurrencyWhole(recommendation.impact)} de impacto estimado`,
     actionLabel: recommendation.timeline,
     helper: "Esta sugerencia busca ayudarte a decidir qué mover primero para cuidar ingresos, rentabilidad o capacidad del equipo.",
   })) ?? [
@@ -87,7 +79,7 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientAnaly
       title: "Priorizar cobranza de cuentas con mayor ticket",
       description: "Hay caja retenida frente al valor mensual comprometido. Conviene empujar primero las cuentas que liberan más flujo.",
       priority: "high",
-      impactLabel: `${formatCurrency(pendingAmount)} por recuperar`,
+      impactLabel: `${formatCurrencyWhole(pendingAmount)} por recuperar`,
       actionLabel: "Esta semana",
       helper: "Sirve para traer dinero más rápido y darle más aire al negocio en el corto plazo.",
     },
@@ -96,7 +88,7 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientAnaly
       title: "Revisar clientes con sobrecarga operativa",
       description: "La carga de entregables y el valor medio por cliente sugieren revisar alcance o plan comercial.",
       priority: "medium",
-      impactLabel: `${formatCurrency(averageClientValue)} ticket medio`,
+      impactLabel: `${formatCurrencyWhole(averageClientValue)} ticket medio`,
       actionLabel: "Próximos 10 días",
       helper: "Ayuda a detectar si el esfuerzo que exige un cliente está siendo bien pagado o si ya toca ajustar el servicio.",
     },
@@ -159,13 +151,13 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientAnaly
           ? `Hoy es ${currentDay} y el avance va corto: deberían ir ${expectedUnitsByNow} entregables y solo va ${completedUnits}.`
           : null;
       const reason = overdueInvoices.length > 0
-        ? `Tiene ${overdueInvoices.length} factura${overdueInvoices.length > 1 ? "s" : ""} atrasada${overdueInvoices.length > 1 ? "s" : ""} por ${formatCurrency(overdueAmount)} y el mayor atraso va en ${maxDaysOverdue} día${maxDaysOverdue > 1 ? "s" : ""}. ${deliveryDelayReason ?? loadReason ?? "Conviene revisarlo pronto para destrabar el cobro."}`
+        ? `Tiene ${overdueInvoices.length} factura${overdueInvoices.length > 1 ? "s" : ""} atrasada${overdueInvoices.length > 1 ? "s" : ""} por ${formatCurrencyWhole(overdueAmount)} y el mayor atraso va en ${maxDaysOverdue} día${maxDaysOverdue > 1 ? "s" : ""}. ${deliveryDelayReason ?? loadReason ?? "Conviene revisarlo pronto para destrabar el cobro."}`
         : missingMonthlyPayment
           ? `Este mes ya debería haberse cobrado su fee y todavía no hay pago registrado. ${deliveryDelayReason ?? loadReason ?? "Conviene revisar esta cuenta antes de que el atraso siga creciendo."}`
         : deliveryDelayReason
           ? `${deliveryDelayReason} En lo económico todavía no aparece vencido, pero operativamente ya merece seguimiento.`
         : pendingInvoices.length > 0
-          ? `Tiene ${formatCurrency(clientPending)} pendientes por cobrar. ${loadReason ?? "Conviene darle seguimiento para que ese ingreso no se retrase."}`
+          ? `Tiene ${formatCurrencyWhole(clientPending)} pendientes por cobrar. ${loadReason ?? "Conviene darle seguimiento para que ese ingreso no se retrase."}`
           : usagePercent >= 85
             ? `${loadReason ?? "La carga del equipo está subiendo."} Está al día en pagos, pero ya conviene seguir de cerca esta cuenta.`
             : paidInvoicesThisMonth.length > 0
@@ -202,7 +194,7 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientAnaly
       kpis: [
         {
           title: "Ingresos actuales",
-          value: formatCurrency(stats.totalIncome),
+          value: formatCurrencyWhole(stats.totalIncome),
           detail: "Lectura del mes en curso",
           trend: stats.incomeDeltaPct ?? 0,
           tone: (stats.incomeDeltaPct ?? 0) >= 0 ? "positive" : "negative",
@@ -210,7 +202,7 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientAnaly
         },
         {
           title: "Utilidad estimada",
-          value: formatCurrency(stats.netProfit),
+          value: formatCurrencyWhole(stats.netProfit),
           detail: `Margen aproximado ${marginPercent.toFixed(1)}%`,
           trend: stats.netProfitDeltaPct ?? 0,
           tone: (stats.netProfitDeltaPct ?? 0) >= 0 ? "positive" : "negative",
@@ -218,7 +210,7 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientAnaly
         },
         {
           title: "Cobranza por aterrizar",
-          value: formatCurrency(pendingAmount),
+          value: formatCurrencyWhole(pendingAmount),
           detail: "Diferencia frente al valor mensual comprometido",
           trend: pendingAmount > 0 ? 8.4 : 0,
           tone: pendingAmount > 0 ? "negative" : "neutral",
@@ -243,9 +235,9 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientAnaly
         title: "Qué está pasando",
         description: "Resumen del momento actual del negocio para entender ingresos, utilidad y carga del equipo.",
         highlights: [
-          `Hay ${activeClients} clientes activos sosteniendo ${formatCurrency(totalPlanValue)} en valor mensual estimado.`,
+          `Hay ${activeClients} clientes activos sosteniendo ${formatCurrencyWhole(totalPlanValue)} en valor mensual estimado.`,
           `La utilidad actual deja un margen de ${marginPercent.toFixed(1)}% y marca el pulso del mes.`,
-          pendingAmount > 0 ? `Todavía faltan ${formatCurrency(pendingAmount)} por aterrizar para cerrar el mes con la meta comercial.` : "La meta comercial del mes ya está cubierta por los ingresos actuales.",
+          pendingAmount > 0 ? `Todavía faltan ${formatCurrencyWhole(pendingAmount)} por aterrizar para cerrar el mes con la meta comercial.` : "La meta comercial del mes ya está cubierta por los ingresos actuales.",
         ],
         helper: "Aquí ves cómo va el negocio hoy: cuánto ha entrado, cuánto queda y dónde puede haber presión.",
       },
@@ -255,7 +247,7 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientAnaly
         title: "Qué va a pasar",
         description: "Vista simple de lo que podría pasar en los próximos meses si el ritmo actual se mantiene.",
         highlights: [
-          `La proyección base del próximo mes apunta a ${formatCurrency(predictions[0]?.revenue ?? stats.totalIncome)}.`,
+          `La proyección base del próximo mes apunta a ${formatCurrencyWhole(predictions[0]?.revenue ?? stats.totalIncome)}.`,
           `La confianza del modelo inicia en ${Math.round((predictions[0]?.confidence ?? 0.8) * 100)}% y baja gradualmente al proyectar más lejos.`,
           `Si mantienes el ritmo actual, el cierre de caja mejora mientras controles egresos y cuentas pendientes.`,
         ],
@@ -265,13 +257,13 @@ function buildViewModel(stats: FinancialStats, clientPlans: StrategicClientAnaly
       forecastCards: [
         {
           title: "Ingreso proyectado cercano",
-          value: formatCurrency(predictions[0]?.revenue ?? stats.totalIncome),
+          value: formatCurrencyWhole(predictions[0]?.revenue ?? stats.totalIncome),
           support: "Próximo mes con mayor confianza",
           helper: "Es la estimación más útil para planificar el siguiente mes con mayor seguridad.",
         },
         {
           title: "Utilidad proyectada",
-          value: formatCurrency(Math.round((predictions[0]?.revenue ?? stats.totalIncome) - stats.totalExpenses)),
+          value: formatCurrencyWhole(Math.round((predictions[0]?.revenue ?? stats.totalIncome) - stats.totalExpenses)),
           support: "Estimación manteniendo estructura actual",
           helper: "Te muestra cuánto podrías ganar si sigues operando con una estructura parecida a la de hoy.",
         },
@@ -407,8 +399,8 @@ export function FinanceAiAnalyticsDashboard({ stats, clientPlans }: FinanceAiAna
                 <AreaChart data={model.current.cashflow}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
                   <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                  <YAxis tickFormatter={(value: number) => formatCurrency(value).replace("US$", "$")} tick={{ fontSize: 12 }} />
-                  <RechartsTooltip formatter={(value: number) => formatCurrency(value)} />
+                  <YAxis tickFormatter={(value: number) => formatCurrencyWhole(value).replace("US$", "$")} tick={{ fontSize: 12 }} />
+                  <RechartsTooltip formatter={(value: number) => formatCurrencyWhole(value)} />
                   <Area type="monotone" dataKey="ingresos" stroke="#2563eb" fill="#93c5fd" fillOpacity={0.3} />
                   <Area type="monotone" dataKey="egresos" stroke="#f97316" fill="#fdba74" fillOpacity={0.25} />
                   <Area type="monotone" dataKey="utilidad" stroke="#10b981" fill="#6ee7b7" fillOpacity={0.2} />
@@ -450,9 +442,9 @@ export function FinanceAiAnalyticsDashboard({ stats, clientPlans }: FinanceAiAna
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <MetricMiniCard label="Plan mensual" value={formatCurrency(client.planValue)} />
+                    <MetricMiniCard label="Plan mensual" value={formatCurrencyWhole(client.planValue)} />
                     <MetricMiniCard label="Carga del equipo" value={`${client.usagePercent}%`} />
-                    <MetricMiniCard label="Pendiente real" value={formatCurrency(client.pendingAmount)} />
+                    <MetricMiniCard label="Pendiente real" value={formatCurrencyWhole(client.pendingAmount)} />
                     <MetricMiniCard label="Nivel de riesgo" value={client.riskScore >= 75 ? "Alto" : client.riskScore >= 55 ? "Medio" : "Bajo"} />
                   </div>
                 </div>
@@ -498,8 +490,8 @@ export function FinanceAiAnalyticsDashboard({ stats, clientPlans }: FinanceAiAna
                   <AreaChart data={model.forecast.projections}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
                     <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                    <YAxis tickFormatter={(value: number) => formatCurrency(value).replace("US$", "$")} tick={{ fontSize: 12 }} />
-                    <RechartsTooltip formatter={(value: number) => formatCurrency(value)} />
+                    <YAxis tickFormatter={(value: number) => formatCurrencyWhole(value).replace("US$", "$")} tick={{ fontSize: 12 }} />
+                    <RechartsTooltip formatter={(value: number) => formatCurrencyWhole(value)} />
                     <Area type="monotone" dataKey="revenue" stroke="#7c3aed" fill="#c4b5fd" fillOpacity={0.35} />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -510,7 +502,7 @@ export function FinanceAiAnalyticsDashboard({ stats, clientPlans }: FinanceAiAna
                 <div key={prediction.label} className="rounded-lg border border-border/60 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium">{prediction.label}</p>
-                    <span className="text-sm font-semibold">{formatCurrency(prediction.revenue)}</span>
+                    <span className="text-sm font-semibold">{formatCurrencyWhole(prediction.revenue)}</span>
                   </div>
                   <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                     <span>Qué tan confiable es esta estimación</span>

@@ -13,7 +13,7 @@ import {
   Cell,
 } from "recharts";
 import { DollarSign, TrendingUp, Target, Award } from "lucide-react";
-import { formatCurrency } from "@/lib/metrics-calculations";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface TaskWithMetrics {
   id: string;

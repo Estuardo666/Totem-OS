@@ -1,7 +1,8 @@
 import { ArrowDownCircle, ArrowUpCircle, Landmark, PiggyBank, Wallet, WalletCards } from "lucide-react";
 import type { MonthlyFinancialSummaryData } from "@/actions/finance-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency, formatPercent } from "@/components/features/finance/monthly-summary-utils";
+import { formatPercent } from "@/components/features/finance/monthly-summary-utils";
+import { formatCurrencyWhole } from "@/lib/currency-format";
 
 interface MonthlySummaryKpisProps {
   summary: MonthlyFinancialSummaryData;
@@ -72,17 +73,17 @@ export function MonthlySummaryKpis({ summary }: MonthlySummaryKpisProps) {
           const isRecognizedRevenueCard = item.key === "recognizedRevenue";
           const secondary = isRecognizedRevenueCard
             ? isProvisional
-              ? `Confirmado ${formatCurrency(summary.quality.confirmedRecurringRevenue)} · Pendiente ${formatCurrency(summary.quality.pendingRecurringRevenue)}`
+              ? `Confirmado ${formatCurrencyWhole(summary.quality.confirmedRecurringRevenue)} · Pendiente ${formatCurrencyWhole(summary.quality.pendingRecurringRevenue)}`
               : `Recurrente ${formatPercent(summary.quality.recurringSharePct)}`
             : item.key === "collectedCash"
               ? `Eficiencia ${formatPercent(summary.quality.collectionEfficiencyPct)}`
               : item.key === "directCosts"
                 ? `Margen bruto ${formatPercent(summary.executive.grossMarginPct)}`
                 : item.key === "operatingExpenses"
-                  ? `Disponible por asignar ${formatCurrency(summary.treasury.availableToAllocate)}`
+                  ? `Disponible por asignar ${formatCurrencyWhole(summary.treasury.availableToAllocate)}`
                   : item.key === "operatingResult"
                     ? `Margen ${formatPercent(summary.executive.operatingMarginPct)}`
-                    : `Corriente ${formatCurrency(summary.receivables.current)}`;
+                    : `Corriente ${formatCurrencyWhole(summary.receivables.current)}`;
 
           return (
             <Card key={item.key} className="border-border/60 shadow-sm">
@@ -96,7 +97,7 @@ export function MonthlySummaryKpis({ summary }: MonthlySummaryKpisProps) {
                 <Icon className={`h-5 w-5 ${item.accent}`} />
               </CardHeader>
               <CardContent className="space-y-2">
-                <div className="text-3xl font-semibold tracking-tight">{formatCurrency(value)}</div>
+                <div className="text-3xl font-semibold tracking-tight">{formatCurrencyWhole(value)}</div>
                 <p className="text-xs font-medium text-muted-foreground">{secondary}</p>
               </CardContent>
             </Card>

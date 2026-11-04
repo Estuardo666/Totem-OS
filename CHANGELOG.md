@@ -1,5 +1,15 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.3.0] - 2026-11-04
+
+### Changed
+
+- Todos los montos de la interfaz se muestran con el formato de Ecuador: `$1.234,50`. Antes convivían cuatro formatos según la pantalla (`$1,234.50`, `1234,50 US$`, `1235 US$` y `$1.234,5`). Los indicadores que ya redondeaban a dólares enteros siguen igual, ahora como `$1.235`. Las facturas del SRI (XML y RIDE) conservan su formato normativo.
+
+### Internal
+
+- Un único módulo de formato de montos (`src/lib/currency-format.ts`) reemplaza 23 copias locales y unas 40 cifras armadas a mano. Se unifican los dos hooks de debounce.
+
 ## [0.2.9] - 2026-11-04
 
 ### Fixed

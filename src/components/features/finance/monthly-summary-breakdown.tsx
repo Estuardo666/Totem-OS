@@ -2,7 +2,8 @@ import { AlertTriangle, CheckCircle2, CircleDollarSign, ShieldAlert } from "luci
 import type { MonthlyFinancialSummaryData } from "@/actions/finance-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatPercent, getAlertClasses } from "@/components/features/finance/monthly-summary-utils";
+import { formatPercent, getAlertClasses } from "@/components/features/finance/monthly-summary-utils";
+import { formatCurrencyWhole } from "@/lib/currency-format";
 
 interface MonthlySummaryBreakdownProps {
   summary: MonthlyFinancialSummaryData;
@@ -26,7 +27,7 @@ function LedgerRow({ label, value, emphasis, tone = "default", helper }: LedgerR
           <p className={`text-sm ${emphasis ? "font-semibold" : "font-medium"}`}>{label}</p>
           {helper ? <p className="text-xs text-muted-foreground">{helper}</p> : null}
         </div>
-        <p className={`text-sm font-semibold ${toneClass}`}>{formatCurrency(value)}</p>
+        <p className={`text-sm font-semibold ${toneClass}`}>{formatCurrencyWhole(value)}</p>
       </div>
     </div>
   );
@@ -39,7 +40,7 @@ function AgingBar({ label, value, total }: { label: string; value: number; total
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">{label}</span>
-        <span className="font-semibold">{formatCurrency(value)}</span>
+        <span className="font-semibold">{formatCurrencyWhole(value)}</span>
       </div>
       <div className="h-2 rounded-full bg-muted">
         <div className="h-2 rounded-full bg-foreground/80" style={{ width: `${width}%` }} />
@@ -131,59 +132,59 @@ export function MonthlySummaryBreakdown({ summary }: MonthlySummaryBreakdownProp
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-4">
               <p className="text-sm font-medium text-emerald-900">Caja cobrada</p>
-              <p className="mt-2 text-3xl font-semibold text-emerald-950">{formatCurrency(summary.treasury.collectedCash)}</p>
+              <p className="mt-2 text-3xl font-semibold text-emerald-950">{formatCurrencyWhole(summary.treasury.collectedCash)}</p>
               <p className="mt-2 text-xs text-emerald-800">Eficiencia de cobranza: {formatPercent(summary.quality.collectionEfficiencyPct)}</p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-medium text-slate-900">Disponible por asignar</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-950">{formatCurrency(summary.treasury.availableToAllocate)}</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-950">{formatCurrencyWhole(summary.treasury.availableToAllocate)}</p>
               <p className="mt-2 text-xs text-slate-700">Cobros menos salidas efectivamente pagadas.</p>
             </div>
             <div className="space-y-3 rounded-lg border border-border/60 p-4 md:col-span-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Salidas directas</span>
-                <span className="font-semibold">{formatCurrency(summary.treasury.directCashOut)}</span>
+                <span className="font-semibold">{formatCurrencyWhole(summary.treasury.directCashOut)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Salidas operativas</span>
-                <span className="font-semibold">{formatCurrency(summary.treasury.operatingCashOut)}</span>
+                <span className="font-semibold">{formatCurrencyWhole(summary.treasury.operatingCashOut)}</span>
               </div>
               <div className="flex items-center justify-between border-t border-border/60 pt-3 text-sm font-semibold">
                 <span>Salidas efectivamente pagadas</span>
-                <span>{formatCurrency(summary.treasury.paidCashOut)}</span>
+                <span>{formatCurrencyWhole(summary.treasury.paidCashOut)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Transferido a ahorro</span>
-                <span className="font-semibold">{formatCurrency(summary.treasury.transferredToSavings)}</span>
+                <span className="font-semibold">{formatCurrencyWhole(summary.treasury.transferredToSavings)}</span>
               </div>
               {summary.treasury.withdrawnFromSavings > 0 ? (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Retirado de ahorro</span>
-                  <span className="font-semibold">{formatCurrency(summary.treasury.withdrawnFromSavings)}</span>
+                  <span className="font-semibold">{formatCurrencyWhole(summary.treasury.withdrawnFromSavings)}</span>
                 </div>
               ) : null}
               <div className="flex items-center justify-between text-sm font-semibold">
                 <span>Saldo operativo final</span>
-                <span>{formatCurrency(summary.treasury.operatingEndingBalance)}</span>
+                <span>{formatCurrencyWhole(summary.treasury.operatingEndingBalance)}</span>
               </div>
               <p className="border-t border-border/60 pt-3 text-xs font-medium text-muted-foreground">
                 Obligaciones abiertas · {summary.treasury.commitmentsScopeLabel}
               </p>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Reembolsos pendientes a personas</span>
-                <span className="font-semibold">{formatCurrency(summary.treasury.pendingReimbursements)}</span>
+                <span className="font-semibold">{formatCurrencyWhole(summary.treasury.pendingReimbursements)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Gastos pendientes de pagar</span>
-                <span className="font-semibold">{formatCurrency(summary.treasury.pendingExpenseTransactions)}</span>
+                <span className="font-semibold">{formatCurrencyWhole(summary.treasury.pendingExpenseTransactions)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Honorarios pendientes</span>
-                <span className="font-semibold">{formatCurrency(summary.treasury.pendingCompensation)}</span>
+                <span className="font-semibold">{formatCurrencyWhole(summary.treasury.pendingCompensation)}</span>
               </div>
               <div className="flex items-center justify-between border-t border-border/60 pt-3 text-sm font-semibold">
                 <span>Compromisos pendientes</span>
-                <span>{formatCurrency(summary.treasury.pendingCommitments)}</span>
+                <span>{formatCurrencyWhole(summary.treasury.pendingCommitments)}</span>
               </div>
             </div>
           </CardContent>
@@ -205,7 +206,7 @@ export function MonthlySummaryBreakdown({ summary }: MonthlySummaryBreakdownProp
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
                 <p className="text-sm text-muted-foreground">Cartera al cierre</p>
-                <p className="mt-2 text-2xl font-semibold">{formatCurrency(summary.receivables.total)}</p>
+                <p className="mt-2 text-2xl font-semibold">{formatCurrencyWhole(summary.receivables.total)}</p>
               </div>
               <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
                 <p className="text-sm text-muted-foreground">Cliente principal</p>
@@ -230,7 +231,7 @@ export function MonthlySummaryBreakdown({ summary }: MonthlySummaryBreakdownProp
                     <Badge variant="outline" className={getAlertClasses(debtor.risk)}>
                       {debtor.risk === "critical" ? "Crítico" : debtor.risk === "warning" ? "Seguimiento" : "Sano"}
                     </Badge>
-                    <span className="text-sm font-semibold">{formatCurrency(debtor.amount)}</span>
+                    <span className="text-sm font-semibold">{formatCurrencyWhole(debtor.amount)}</span>
                   </div>
                 </div>
               ))}

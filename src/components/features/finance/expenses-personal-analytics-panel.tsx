@@ -5,18 +5,10 @@ import { ArrowRightLeft, Scale, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface ExpensesPersonalAnalyticsPanelProps {
   financeSettingsMetrics?: FinanceSettingsMetrics;
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 export function ExpensesPersonalAnalyticsPanel({

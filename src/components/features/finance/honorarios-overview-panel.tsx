@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatCurrency } from "@/lib/currency-format";
 
 export function HonorariosOverviewPanel() {
   const [rows, setRows] = useState<HonorariosUserRow[]>([]);
@@ -64,16 +65,16 @@ export function HonorariosOverviewPanel() {
         <div className="grid grid-cols-3 gap-4">
           <div className="rounded-lg border p-3">
             <p className="text-xs text-muted-foreground">Total mensual</p>
-            <p className="text-xl font-bold">${totalBase.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+            <p className="text-xl font-bold">{formatCurrency(totalBase)}</p>
           </div>
           <div className="rounded-lg border p-3">
             <p className="text-xs text-muted-foreground">Pagado este mes</p>
-            <p className="text-xl font-bold text-green-600">${totalPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+            <p className="text-xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
           </div>
           <div className="rounded-lg border p-3">
             <p className="text-xs text-muted-foreground">Pendiente</p>
             <p className={`text-xl font-bold ${totalRemaining > 0 ? "text-amber-600" : "text-green-600"}`}>
-              ${totalRemaining.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              {formatCurrency(totalRemaining)}
             </p>
           </div>
         </div>
@@ -125,19 +126,19 @@ export function HonorariosOverviewPanel() {
                     </TableCell>
                     <TableCell>
                       <span className="font-semibold">
-                        ${row.baseSalary.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                        {formatCurrency(row.baseSalary)}
                       </span>
                     </TableCell>
                     <TableCell>
                       <span className={row.paidThisMonth > 0 ? "text-green-600" : "text-muted-foreground"}>
-                        ${row.paidThisMonth.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                        {formatCurrency(row.paidThisMonth)}
                       </span>
                     </TableCell>
                     <TableCell>
                       {row.remaining > 0 ? (
                         <span className="flex items-center gap-1 text-amber-600 font-medium">
                           <AlertCircle className="h-3 w-3" />
-                          ${row.remaining.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                          {formatCurrency(row.remaining)}
                         </span>
                       ) : row.baseSalary > 0 ? (
                         <span className="flex items-center gap-1 text-green-600">

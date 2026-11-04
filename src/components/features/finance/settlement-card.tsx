@@ -12,6 +12,7 @@ import { SalaryConfigDialog } from "./salary-config-dialog";
 import { ProcessPaymentDialog } from "./process-payment-dialog";
 import { PendingExpensesDialog } from "./pending-expenses-dialog";
 import type { User } from "@prisma/client";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface SettlementCardProps {
   userReport: UserSettlementReport;
@@ -31,15 +32,6 @@ export function SettlementCard({
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [expensesDialogOpen, setExpensesDialogOpen] = useState(false);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
 
   const getSalaryTypeBadge = (salaryType: string, _role: string, hasProfitShare: boolean) => {
     const badges = [];

@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatCurrency } from "@/lib/currency-format";
+
+const numberFormatter = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
 function formatValue(value: number, kind: "number" | "currency") {
-  return new Intl.NumberFormat("en-US", kind === "currency"
-    ? { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }
-    : { maximumFractionDigits: 0 }
-  ).format(value);
+  return kind === "currency" ? formatCurrency(value) : numberFormatter.format(value);
 }
 
 export function AnimatedNumber({ value, kind = "number" }: { value: number; kind?: "number" | "currency" }) {

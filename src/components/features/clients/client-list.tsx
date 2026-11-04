@@ -17,6 +17,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { cn } from "@/lib/utils";
 import { EditClientDialog } from "./edit-client-dialog";
 import { ClientCardContextMenu } from "./client-card-context-menu";
+import { formatCurrency } from "@/lib/currency-format";
 
 type ClientRow = Client & {
   hasPendingFeedback?: boolean;
@@ -60,15 +61,6 @@ function hexToRgba(hex: string, opacity: number): string {
 
 function formatShortDate(date: Date): string {
   return format(date, "d MMM, HH:mm", { locale: es });
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-EC", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 export function ClientList({ clients, isAdmin, canEditClient = false, users }: ClientListProps) {

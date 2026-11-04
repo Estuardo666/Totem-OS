@@ -10,6 +10,7 @@ import { EditClientDialog } from "./edit-client-dialog";
 import { ShareReportButton } from "./share-report-button";
 import { useToast } from "@/components/ui/use-toast";
 import { BulkTaskDialog } from "../content/bulk-task-dialog";
+import { formatCurrency } from "@/lib/currency-format";
 
 // Helper para convertir hex a rgba (copiado de client-list.tsx)
 const hexToRgba = (hex: string, alpha: number) => {
@@ -17,16 +18,6 @@ const hexToRgba = (hex: string, alpha: number) => {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
-// Helper para formatear dinero
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat("es-EC", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
 };
 
 interface ClientHeaderProps {

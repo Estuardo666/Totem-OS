@@ -28,6 +28,7 @@ import { AnimatedNumber } from "@/components/features/dashboard/animated-number"
 import { isOverdueEditingTask, isOverduePublicationTask } from "@/components/features/dashboard/dashboard-overdue";
 import { HomeMotion } from "@/components/features/dashboard/home-motion";
 import { AiDigest } from "@/components/features/dashboard/ai-digest";
+import { formatCurrency } from "@/lib/currency-format";
 
 type Feedback = {
   id: string;
@@ -75,15 +76,6 @@ const PIPELINE_STAGES = [
   { key: "REVIEW", label: "Revisión", color: "hsl(var(--theme-warning))" },
   { key: "PUBLISHED", label: "Publicado", color: "hsl(var(--theme-success))" },
 ];
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
 
 function initials(name: string) {
   return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface EmergencyWithdrawalFormProps {
   currentBalance: number;
@@ -67,7 +68,7 @@ export function EmergencyWithdrawalForm({
       <div className="rounded-lg border p-4 bg-muted/50">
         <p className="text-sm text-muted-foreground">Saldo disponible</p>
         <p className="text-2xl font-bold text-emerald-600">
-          ${currentBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+          {formatCurrency(currentBalance)}
         </p>
       </div>
 

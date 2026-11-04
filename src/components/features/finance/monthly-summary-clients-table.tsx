@@ -3,7 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { MonthlyFinancialSummaryData } from "@/actions/finance-actions";
-import { formatCurrency, formatPercent, getStatusClasses } from "@/components/features/finance/monthly-summary-utils";
+import { formatPercent, getStatusClasses } from "@/components/features/finance/monthly-summary-utils";
+import { formatCurrencyWhole } from "@/lib/currency-format";
 
 interface MonthlySummaryClientsTableProps {
   summary: MonthlyFinancialSummaryData;
@@ -63,18 +64,18 @@ export function MonthlySummaryClientsTable({ summary }: MonthlySummaryClientsTab
                   <TableCell>
                     <Badge variant="outline">{client.billingModel}</Badge>
                   </TableCell>
-                  <TableCell className="font-semibold">{formatCurrency(client.recognizedRevenue)}</TableCell>
-                  <TableCell>{formatCurrency(client.collectedCash)}</TableCell>
-                  <TableCell>{formatCurrency(client.directCosts)}</TableCell>
+                  <TableCell className="font-semibold">{formatCurrencyWhole(client.recognizedRevenue)}</TableCell>
+                  <TableCell>{formatCurrencyWhole(client.collectedCash)}</TableCell>
+                  <TableCell>{formatCurrencyWhole(client.directCosts)}</TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-semibold">{formatCurrency(client.contributionMargin)}</p>
+                      <p className="font-semibold">{formatCurrencyWhole(client.contributionMargin)}</p>
                       <p className="text-xs text-muted-foreground">
                         {client.contributionMarginPct === null ? "Sin base" : formatPercent(client.contributionMarginPct)}
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell>{formatCurrency(client.outstanding)}</TableCell>
+                  <TableCell>{formatCurrencyWhole(client.outstanding)}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={getStatusClasses(client.collectionStatus)}>
                       {client.collectionStatus}

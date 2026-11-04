@@ -3,19 +3,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface ClientProfitabilityProps {
   income: number;
   expenses: number;
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 export function ClientProfitability({ income, expenses }: ClientProfitabilityProps) {

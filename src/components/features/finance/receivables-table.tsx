@@ -37,6 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { formatCurrency } from "@/lib/currency-format";
 
 type Receivable = ReceivablesTableProps["transactions"][number];
 
@@ -58,15 +59,6 @@ interface ReceivablesTableProps {
     status: "PENDING" | "PAID";
     sourceType: "INVOICE" | "TRANSACTION" | "RECURRING";
   }>;
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 export function ReceivablesTable({ transactions }: ReceivablesTableProps) {

@@ -1,12 +1,3 @@
-export function formatCurrency(value: number) {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 export function formatPercent(value: number) {
   return `${value.toFixed(1)}%`;
 }

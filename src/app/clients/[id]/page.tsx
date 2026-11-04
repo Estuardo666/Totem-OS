@@ -32,7 +32,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ContentTaskWithClient } from "@/actions/content-actions";
 import type { TaskMetrics } from "@prisma/client";
-import { calculateMonthlyEngagement, calculateMonthlyEfficiency, formatCurrency } from "@/lib/metrics-calculations";
+import { calculateMonthlyEngagement, calculateMonthlyEfficiency } from "@/lib/metrics-calculations";
+import { formatCurrency } from "@/lib/currency-format";
 import { TrendingUp, Brain, BarChart3, Receipt, FileText } from "lucide-react";
 import { ClientBillingForm } from "@/components/features/facturacion/ClientBillingForm";
 

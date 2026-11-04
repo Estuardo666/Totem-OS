@@ -1,6 +1,7 @@
 import { AlertTriangle, ShieldCheck, Siren } from "lucide-react";
 import type { MonthlyFinancialSummaryData } from "@/actions/finance-actions";
-import { formatCurrency, formatPercent } from "@/components/features/finance/monthly-summary-utils";
+import { formatPercent } from "@/components/features/finance/monthly-summary-utils";
+import { formatCurrencyWhole } from "@/lib/currency-format";
 
 interface MonthlySummaryHeroFocusProps {
   summary: MonthlyFinancialSummaryData;
@@ -33,7 +34,7 @@ function getFocusStyles(tone: "healthy" | "warning" | "critical") {
 function formatFocusValue(summary: MonthlyFinancialSummaryData) {
   return summary.heroFocus.metricFormat === "percent"
     ? formatPercent(summary.heroFocus.metricValue)
-    : formatCurrency(summary.heroFocus.metricValue);
+    : formatCurrencyWhole(summary.heroFocus.metricValue);
 }
 
 export function MonthlySummaryHeroFocus({ summary }: MonthlySummaryHeroFocusProps) {
