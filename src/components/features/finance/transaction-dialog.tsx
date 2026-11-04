@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSession } from "next-auth/react";
 import { Loader2, Plus } from "lucide-react";
@@ -63,32 +63,14 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  ExpenseFormFields,
+  detectExpenseCategory,
+  todayExpenseDate,
+  type ExpenseFieldValues,
+} from "./expense-form-fields";
 
 const INCOME_OTHER_OPTION = "__OTHER__";
-
-// Mapeo de palabras clave a categorías
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  COMIDA: ["almuerzo", "cena", "desayuno", "comida", "meal", "restaurant", "comedor", "pizza", "hamburguesa", "sushi", "café", "coffee", "lunch", "dinner", "breakfast", "food", "restaurante"],
-  TRANSPORTE: ["taxi", "uber", "bus", "colectivo", "gasolina", "combustible", "parking", "estacionamiento", "viaje", "transporte", "flight", "vuelo", "aeropuerto", "aereo", "tren", "train"],
-  INVITACIONES: ["invitación", "evento", "fiesta", "boda", "cumpleaños", "regalo", "gift", "invitación", "entrada", "ticket", "show", "concierto", "teatro"],
-  SOFTWARE: ["software", "license", "licencia", "suscripción", "subscription", "adobe", "microsoft", "google", "app", "aplicación", "plugin", "extension", "saas", "cloud", "api"],
-  OFICINA: ["oficina", "office", "supplies", "papelería", "tinta", "printer", "impresora", "escritorio", "desk", "silla", "chair", "estantería", "mueble"],
-  EQUIPOS: ["equipo", "equipment", "cámara", "camera", "micrófono", "mic", "monitor", "pantalla", "computadora", "laptop", "teclado", "keyboard", "mouse", "disco", "drone", "luz", "light"],
-};
-
-const detectCategory = (description: string): CreateExpenseInput["category"] => {
-  const lowerDescription = description.toLowerCase().trim();
-  
-  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    for (const keyword of keywords) {
-      if (lowerDescription.includes(keyword)) {
-        return category as CreateExpenseInput["category"];
-      }
-    }
-  }
-  
-  return "OTROS";
-};
 
 interface TransactionDialogProps {
   children?: React.ReactNode;
@@ -191,11 +173,8 @@ export function TransactionDialog({
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(isAdmin ? "income" : "expense");
   const [incomeClientQuery, setIncomeClientQuery] = useState("");
-  const [expenseClientQuery, setExpenseClientQuery] = useState("");
   const debouncedIncomeClientQuery = useDebounce(incomeClientQuery, 250);
-  const debouncedExpenseClientQuery = useDebounce(expenseClientQuery, 250);
   const [incomeAmountInput, setIncomeAmountInput] = useState<string>("");
-  const [expenseAmountInput, setExpenseAmountInput] = useState<string>("");
   const [honorariosAmountInput, setHonorariosAmountInput] = useState<string>("");
   const [incomeAmountMode, setIncomeAmountMode] = useState<"100" | "50" | "other">("other");
   const [incomeOtherText, setIncomeOtherText] = useState("");
@@ -224,7 +203,7 @@ export function TransactionDialog({
       description: "",
       amount: 0,
       category: "OTROS",
-      date: getCurrentDateInEcuador(),
+      date: todayExpenseDate(),
       paidByUserId: undefined,
       paidByUserIds: [],
       clientId: undefined,
@@ -258,11 +237,9 @@ export function TransactionDialog({
       }
 
       const incomeAmt = incomeForm.getValues("amount");
-      const expenseAmt = expenseForm.getValues("amount");
       const honorAmt = honorariosForm.getValues("amount");
 
       setIncomeAmountInput(incomeAmt && incomeAmt !== 0 ? String(incomeAmt) : "");
-      setExpenseAmountInput(expenseAmt && expenseAmt !== 0 ? String(expenseAmt) : "");
       setHonorariosAmountInput(honorAmt && honorAmt !== 0 ? String(honorAmt) : "");
 
       if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -313,9 +290,7 @@ export function TransactionDialog({
       expenseForm.reset();
       honorariosForm.reset({ ...honorariosForm.formState.defaultValues, periodMonth: getCurrentMonthInEcuador() });
       setIncomeClientQuery("");
-      setExpenseClientQuery("");
       setIncomeAmountInput("");
-      setExpenseAmountInput("");
       setHonorariosAmountInput("");
       setIncomeOtherText("");
       setIncomeClientSelection("");
@@ -331,11 +306,6 @@ export function TransactionDialog({
       .includes(debouncedIncomeClientQuery.trim().toLowerCase())
   );
 
-  const filteredExpenseClients = clients.filter((client) =>
-    client.name
-      ?.toLowerCase()
-      .includes(debouncedExpenseClientQuery.trim().toLowerCase())
-  );
 
   // Watch selected client for income form to populate percentage-based amount
   const incomeSelectedClientId = incomeForm.watch("clientId");
@@ -383,9 +353,7 @@ export function TransactionDialog({
   // Handler para auto-detectar categoría cuando se sale del campo de descripción
   const handleExpenseDescriptionBlur = (descriptionValue: string) => {
     if (descriptionValue && descriptionValue.trim()) {
-      const detectedCategory = detectCategory(descriptionValue);
-      console.log("Detected category:", detectedCategory, "from description:", descriptionValue);
-      expenseForm.setValue("category", detectCategory(descriptionValue));
+      expenseForm.setValue("category", detectExpenseCategory(descriptionValue));
     }
   };
 
@@ -908,250 +876,14 @@ export function TransactionDialog({
                 onSubmit={expenseForm.handleSubmit(onExpenseSubmit)}
                 className="space-y-4"
               >
-                {/* Descripción - Primer campo */}
-                <FormField
-                  control={expenseForm.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Descripción</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Ej: Suscripción Adobe Creative Cloud"
-                          className="text-2xl font-bold"
-                          {...field}
-                          onBlur={(e) => {
-                            field.onBlur();
-                            handleExpenseDescriptionBlur(e.currentTarget.value);
-                          }}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Monto y Fecha - Grid 50/50 */}
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={expenseForm.control}
-                    name="amount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Monto</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground dark:text-gray-400">$</span>
-                            <Input
-                              type="text"
-                              placeholder="0.00"
-                              className="pl-8 text-2xl font-bold"
-                              inputMode="decimal"
-                              pattern="[0-9]*[.,]?[0-9]*"
-                              value={expenseAmountInput}
-                              onChange={(e) => setExpenseAmountInput(normalizeDecimalInputValue(e.target.value))}
-                              onBlur={(e) => {
-                                field.onBlur();
-                                if (e.target.value === "") {
-                                  field.onChange(undefined);
-                                } else {
-                                  const normalizedValue = normalizeDecimalInputValue(e.target.value);
-                                  setExpenseAmountInput(normalizedValue);
-                                  field.onChange(parseDecimalInputValue(normalizedValue));
-                                }
-                              }}
-                              onFocus={() => {
-                                if (field.value === 0) {
-                                  setExpenseAmountInput("");
-                                }
-                              }}
-                              disabled={isSubmitting}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={expenseForm.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Fecha</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            className="text-2xl font-bold"
-                            value={formatDateValue(field.value as Date | string | undefined) || formatDateValue(getCurrentDateInEcuador())}
-                            onChange={(e) => {
-                              field.onChange(
-                                e.target.value ? parseDateFromInput(e.target.value) : getCurrentDateInEcuador()
-                              );
-                            }}
-                            disabled={isSubmitting}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Categoría y cliente en una sola fila (50/50) */}
-                <div className="flex w-full flex-row gap-3 sm:gap-4">
-                <FormField
-                  control={expenseForm.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0 flex-1">
-                      <FormLabel>Categoría</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={isSubmitting}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="min-w-0 gap-2 px-3 sm:px-4">
-                            <SelectValue placeholder="Selecciona la categoría" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="COMIDA">Comida</SelectItem>
-                          <SelectItem value="TRANSPORTE">Transporte</SelectItem>
-                          <SelectItem value="INVITACIONES">Invitaciones</SelectItem>
-                          <SelectItem value="SOFTWARE">Software</SelectItem>
-                          <SelectItem value="OFICINA">Oficina</SelectItem>
-                          <SelectItem value="EQUIPOS">Equipos</SelectItem>
-                          <SelectItem value="OTROS">Otros</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={expenseForm.control}
-                  name="clientId"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0 flex-1">
-                      <FormLabel>Cliente (Opcional)</FormLabel>
-                      <Select
-                        onValueChange={(value) =>
-                          field.onChange(value === "none" ? undefined : value)
-                        }
-                        value={field.value || "none"}
-                        disabled={isSubmitting || loadingClients}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="min-w-0 gap-2 px-3 sm:px-4">
-                            <SelectValue placeholder="Selecciona un cliente (opcional)" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <div className="p-2">
-                            <Input
-                              placeholder="Buscar cliente..."
-                              value={expenseClientQuery}
-                              onChange={(event) => setExpenseClientQuery(event.target.value)}
-                              onKeyDown={(event) => event.stopPropagation()}
-                              disabled={loadingClients}
-                            />
-                          </div>
-                          <SelectItem value="none">Sin cliente</SelectItem>
-                          {filteredExpenseClients.length === 0 ? (
-                            <div className="px-2 pb-2 text-sm text-muted-foreground">
-                              Sin resultados
-                            </div>
-                          ) : (
-                            filteredExpenseClients.map((client) => (
-                              <SelectItem key={client.id} value={client.id}>
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="h-6 w-6">
-                                    <AvatarImage src={client.logo || undefined} alt={client.name} />
-                                    <AvatarFallback className="text-xs">
-                                      {client.name
-                                        ?.split(" ")
-                                        .map((n) => n[0])
-                                        .join("")
-                                        .toUpperCase()
-                                        .slice(0, 2) || "??"}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span>{client.name}</span>
-                                </div>
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                </div>
-                <p className="-mt-2 text-xs text-muted-foreground">
-                  Vincular un cliente permite medir la rentabilidad de su proyecto.
-                </p>
-
-                <FormField
-                  control={expenseForm.control}
-                  name="paidByUserIds"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="space-y-3">
-                        <div className="space-y-1">
-                          <FormLabel>Asignar a Usuarios (Para Reembolso)</FormLabel>
-                          <p className="text-sm text-muted-foreground">
-                            Selecciona uno o más usuarios. Si seleccionas múltiples, el monto se dividirá equitativamente.
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          {users.map((user) => {
-                            const firstName = user.name?.split(' ')[0] || user.name;
-                            const initials = user.name
-                              ?.split(' ')
-                              .map(n => n[0])
-                              .join('')
-                              .toUpperCase()
-                              .slice(0, 2) || '??';
-                            
-                            return (
-                              <div key={user.id} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`user-${user.id}`}
-                                  checked={field.value?.includes(user.id) || false}
-                                  onCheckedChange={(checked) => {
-                                    const currentValue = field.value || [];
-                                    if (checked) {
-                                      field.onChange([...currentValue, user.id]);
-                                    } else {
-                                      field.onChange(currentValue.filter((id) => id !== user.id));
-                                    }
-                                  }}
-                                  disabled={isSubmitting || loadingUsers}
-                                />
-                                <Label
-                                  htmlFor={`user-${user.id}`}
-                                  className="flex items-center gap-2 cursor-pointer flex-1"
-                                >
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarImage src={user.image || undefined} alt={firstName} />
-                                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-sm font-normal truncate">{firstName}</span>
-                                </Label>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                <ExpenseFormFields
+                  control={expenseForm.control as unknown as Control<ExpenseFieldValues>}
+                  users={users}
+                  clients={clients}
+                  disabled={isSubmitting}
+                  loadingUsers={loadingUsers}
+                  loadingClients={loadingClients}
+                  onDescriptionBlur={handleExpenseDescriptionBlur}
                 />
 
                 <div className="flex gap-4 pt-4">

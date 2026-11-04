@@ -44,9 +44,11 @@ export function EditExpenseDialog({
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
-  const [isSharedExpense, setIsSharedExpense] = useState(false);
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [numPeople, setNumPeople] = useState(1);
+  // Sufijo "(Compartido - N personas)" del gasto original: se oculta al editar
+  // y se vuelve a poner al guardar, para que el gasto siga marcado como compartido.
+  const [sharedSuffix, setSharedSuffix] = useState<string | null>(null);
+  const [payerName, setPayerName] = useState<string | null>(null);
+  const [hasPayer, setHasPayer] = useState(false);
 
   const form = useForm<UpdateExpenseInput>({
     resolver: zodResolver(updateExpenseSchema),
@@ -76,35 +78,26 @@ export function EditExpenseDialog({
           if (expenseResult.success && expenseResult.data) {
             const expense = expenseResult.data;
             
-            // Detectar si es un gasto compartido
-            const sharedMatch = expense.description.match(/\(Compartido - (\d+) personas\)/);
-            const isShared = !!sharedMatch;
-            
-            // Usar relatedUserIds del servidor para obtener el número real de personas
-            const relatedUserIds = (expense as any).relatedUserIds || (expense.paidByUserId ? [expense.paidByUserId] : []);
-            // El número de personas debe ser la longitud de relatedUserIds, no el número en la descripción
-            const peopleCount = relatedUserIds.length > 0 ? relatedUserIds.length : (isShared ? parseInt(sharedMatch[1]) : 1);
-            
-            setIsSharedExpense(isShared);
-            setNumPeople(peopleCount);
-            
-            // Si es compartido, usar el totalAmount del servidor (suma de todos los gastos relacionados)
-            // Si no está disponible, calcular como fallback usando el número real de personas
-            const total = (expense as any).totalAmount || (isShared ? expense.amount * peopleCount : expense.amount);
-            setTotalAmount(total);
-            
-            // Extraer la descripción base (sin el sufijo de compartido)
-            const baseDescription = isShared 
-              ? expense.description.replace(/\s*\(Compartido - \d+ personas\)/g, "").trim()
-              : expense.description;
-            
+            // Un gasto compartido se guarda como una fila por persona; aquí se
+            // edita solo esta fila (la parte de una persona).
+            const sharedMatch = expense.description.match(/\(Compartido - \d+ personas\)/);
+            setSharedSuffix(sharedMatch ? sharedMatch[0] : null);
+            const baseDescription = expense.description
+              .replace(/\s*\(Compartido - \d+ personas\)/g, "")
+              .trim();
+            const payer = usersResult.success && usersResult.data
+              ? usersResult.data.find((user) => user.id === expense.paidByUserId)
+              : undefined;
+            setPayerName(payer?.name ?? null);
+            setHasPayer(Boolean(expense.paidByUserId));
+
             form.reset({
               description: baseDescription,
-              amount: total, // Mostrar el monto total en el formulario
+              amount: expense.amount,
               category: expense.category as any,
               date: expense.date,
               paidByUserId: expense.paidByUserId || undefined,
-              paidByUserIds: relatedUserIds, // Incluir todos los usuarios relacionados si es compartido
+              paidByUserIds: expense.paidByUserId ? [expense.paidByUserId] : [],
               clientId: expense.clientId || undefined,
             });
           }
@@ -136,21 +129,21 @@ export function EditExpenseDialog({
     setIsSubmitting(true);
 
     try {
-      // Si es un gasto compartido y se cambió el monto, el monto en el formulario es el TOTAL
-      // Necesitamos calcular el monto por persona antes de enviarlo
-      let processedData = { ...data };
-      
+      const processedData = { ...data };
+
       // Asegurar que clientId sea undefined si es "none" o cadena vacía
       if (processedData.clientId === "none" || processedData.clientId === "") {
         processedData.clientId = undefined;
       }
-      
-      if (isSharedExpense && data.amount !== undefined && numPeople > 1) {
-        // El monto en el formulario es el total, calcular el monto por persona
-        const amountPerPerson = Math.round((data.amount / numPeople) * 100) / 100;
-        processedData.amount = amountPerPerson;
+
+      // Quién pagó no se cambia desde aquí (el servidor no lo guarda al editar).
+      delete processedData.paidByUserId;
+      delete processedData.paidByUserIds;
+
+      if (sharedSuffix && processedData.description) {
+        processedData.description = `${processedData.description.trim()} ${sharedSuffix}`;
       }
-      
+
       const result = await updateExpense(expenseId, processedData);
 
       if (result.success) {
@@ -200,6 +193,24 @@ export function EditExpenseDialog({
               disabled={isSubmitting || loadingExpense}
               loadingUsers={loadingUsers}
               loadingClients={loadingClients}
+              payerNotice={
+                <div className="space-y-1 rounded-lg bg-muted/40 p-3 text-sm" role="note">
+                  <p className="font-medium">
+                    {!hasPayer
+                      ? "Pagado por la empresa"
+                      : `Pagado por ${payerName ?? "un miembro del equipo"}`}
+                  </p>
+                  {sharedSuffix && (
+                    <p className="text-muted-foreground">
+                      Este gasto está dividido entre varias personas. Aquí cambias solo la parte de{" "}
+                      {payerName ?? "esta persona"}.
+                    </p>
+                  )}
+                  <p className="text-muted-foreground">
+                    Para cambiar quién lo pagó, borra este gasto y vuelve a registrarlo.
+                  </p>
+                </div>
+              }
             />
             <div className="flex gap-4 pt-4">
               <Button

@@ -26,6 +26,7 @@ test("transaction modal renders one fully opaque form during tab switches and re
       import {TransactionDialog} from './src/components/features/finance/transaction-dialog';
       createRoot(document.getElementById('root')).render(<TransactionDialog defaultTab="expense"><button>Abrir transacción</button></TransactionDialog>);` },
     bundle: true, outfile: path.join(dir, "app.js"), platform: "browser", jsx: "automatic",
+    banner: { js: "window.process = window.process || { env: {} };" },
     tsconfig: path.join(root, "tsconfig.json"),
     plugins: [{ name: "mock-server-boundaries", setup(bundler) {
       bundler.onResolve({ filter: /^(next\/navigation|next-auth\/react|@\/actions\/|@\/components\/ui\/use-toast)/ }, () => ({ path: "boundaries", namespace: "mock" }));
