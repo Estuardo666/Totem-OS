@@ -57,7 +57,7 @@ export function SettlementPaymentsDialog({
           </DialogTitle>
           <DialogDescription>
             Estos son los pagos que suma &quot;Pagado hasta ahora&quot;: honorarios y sueldos registrados como
-            pagados en el mes, según la hora de Ecuador.
+            pagados en el mes, según la hora de Ecuador. Los repartos de utilidades no se cuentan aquí.
           </DialogDescription>
         </DialogHeader>
 

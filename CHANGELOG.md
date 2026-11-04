@@ -1,5 +1,16 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.3.3] - 2026-11-04
+
+### Fixed
+
+- Resumen mensual: las mensualidades con día de pago 1 y los gastos con fecha del día 1 ya no se cuentan en el mes anterior. Cada fecha se lee según su tipo: fecha de calendario tal cual, momento real en hora de Ecuador.
+- Liquidación: los repartos de utilidades ya no se suman a "Pagado hasta ahora" (podían esconder sueldo o reembolsos pendientes).
+
+### Added
+
+- `scripts/cleanup-empty-reimbursement-liquidations.mjs`: lista (y con `--apply` borra) las filas antiguas "Liquidación de N reembolso(s)" en $0. Las que tienen monto solo se muestran.
+
 ## [0.3.2] - 2026-11-04
 
 ### Fixed

@@ -19,3 +19,28 @@ export function ecuadorMonthTimestampRange(year: number, month: number): { start
     end: new Date(Date.UTC(year, month, 1, ECUADOR_UTC_OFFSET_HOURS) - 1),
   };
 }
+
+/**
+ * Rango amplio para consultar campos que mezclan fechas de calendario
+ * (medianoche UTC) y momentos reales (`new Date()`): desde medianoche UTC del
+ * día 1 hasta el fin del mes en Ecuador. Filtrar después con
+ * `isInBusinessMonth`.
+ */
+export function mixedDateQueryRange(year: number, month: number): { start: Date; end: Date } {
+  return {
+    start: new Date(Date.UTC(year, month - 1, 1)),
+    end: ecuadorMonthTimestampRange(year, month).end,
+  };
+}
+
+/**
+ * ¿A qué mes pertenece una fecha que puede ser de calendario o un momento real?
+ * Medianoche UTC exacta = fecha de calendario (se lee tal cual); cualquier otra
+ * hora = momento real (se lee en hora de Ecuador).
+ */
+export function isInBusinessMonth(date: Date, year: number, month: number): boolean {
+  const isCalendarDate =
+    date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0;
+  const local = isCalendarDate ? date : new Date(date.getTime() - ECUADOR_UTC_OFFSET_HOURS * 3600 * 1000);
+  return local.getUTCFullYear() === year && local.getUTCMonth() === month - 1;
+}
