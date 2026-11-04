@@ -35,7 +35,7 @@ export default async function WhatsAppAdminPage() {
     getWhatsAppConfig(), getWhatsAppStatus(), getWorkerHealth(),
     db.whatsAppGroup.findMany({ include: { client: { select: { id: true, name: true } } }, orderBy: { name: "asc" } }),
     db.client.findMany({ select: { id: true, name: true, whatsappPhone: true, paymentReminderTarget: true, approvalReminderHours: true }, orderBy: { name: "asc" } }),
-    db.user.findMany({ where: { roleLegacy: { in: ["ADMIN", "EDITOR", "USER"] } }, select: { id: true, name: true, email: true, roleCode: true, roleLegacy: true, phone: true, whatsappOptIn: true, activeSchedule: true }, orderBy: { name: "asc" } }),
+    db.user.findMany({ where: { roleCode: { in: ["ADMIN", "EDITOR", "USER"] } }, select: { id: true, name: true, email: true, roleCode: true, roleLegacy: true, phone: true, whatsappOptIn: true, activeSchedule: true }, orderBy: { name: "asc" } }),
     db.whatsAppOwnerPrompt.findMany({ where: { status: "OPEN", expiresAt: { gt: new Date() } }, orderBy: { createdAt: "asc" } }),
     db.whatsAppMessage.findMany({ where: { status: "DRAFT" }, orderBy: { createdAt: "asc" } }),
     db.whatsAppApprovalRequest.findMany({ include: { task: { select: { id: true, title: true, status: true, client: { select: { name: true } } } } }, orderBy: { createdAt: "desc" }, take: 100 }),

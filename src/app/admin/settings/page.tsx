@@ -11,6 +11,7 @@ import { GoogleCalendarSuccessToast } from "@/components/features/admin/google-c
 import { SettingsSkeleton } from "@/components/features/settings/settings-skeleton";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { resolveRoleCode } from "@/lib/roles";
 import { PushTestPanel } from "@/components/features/admin/push-test-panel";
 import { SettingsShell, type SettingsPanel } from "@/components/features/settings/settings-shell";
 import { AppPageHeader } from "@/components/shared/app-page-header";
@@ -29,6 +30,7 @@ async function SettingsContent() {
       id: true,
       name: true,
       email: true,
+      roleCode: true,
       roleLegacy: true,
       primaryColor: true,
       darkMode: true,
@@ -42,7 +44,7 @@ async function SettingsContent() {
     redirect("/sign-in");
   }
 
-  if (user.roleLegacy !== "ADMIN") {
+  if (resolveRoleCode(user) !== "ADMIN") {
     redirect("/");
   }
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { z } from "zod";
@@ -24,7 +24,6 @@ import {
 } from "@/lib/finance-offline-store";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -32,23 +31,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { OptimizedAvatar } from "@/components/ui/optimized-avatar";
-import { UserList } from "./user-list-row";
+import { Form } from "@/components/ui/form";
+import { ExpenseFormFields, todayExpenseDate, type ExpenseFieldValues } from "./expense-form-fields";
 // Mapeo de palabras clave a categorías
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   COMIDA: ["almuerzo", "cena", "desayuno", "comida", "meal", "restaurant", "comedor", "pizza", "hamburguesa", "sushi", "café", "coffee", "lunch", "dinner", "breakfast", "food", "restaurante"],
@@ -71,24 +55,6 @@ const detectCategory = (description: string): string => {
   }
   
   return "OTROS";
-};
-// Función helper para obtener la fecha actual en zona horaria de Ecuador (America/Guayaquil)
-const getCurrentDateInEcuador = (): Date => {
-  const now = new Date();
-  const ecuadorTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Guayaquil" }));
-  ecuadorTime.setHours(0, 0, 0, 0);
-  return ecuadorTime;
-};
-
-const formatDateValue = (value?: Date | string) => {
-  if (!value) return "";
-  if (typeof value === "string") return value.split("T")[0];
-  
-  const date = new Date(value);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 };
 
 // Schema para crear gasto
@@ -134,7 +100,7 @@ function CreateExpenseDialogComponent({
       description: "",
       amount: 0,
       category: "OTROS",
-      date: getCurrentDateInEcuador(),
+      date: todayExpenseDate(),
       paidByUserIds: [],
       clientId: undefined,
     },
@@ -191,7 +157,6 @@ function CreateExpenseDialogComponent({
   const handleDescriptionBlur = (descriptionValue: string) => {
     if (descriptionValue && descriptionValue.trim()) {
       const detectedCategory = detectCategory(descriptionValue);
-      console.log("Detected category:", detectedCategory, "from description:", descriptionValue);
       form.setValue("category", detectedCategory as any);
     }
   };
@@ -203,7 +168,7 @@ function CreateExpenseDialogComponent({
         description: "",
         amount: 0,
         category: "OTROS",
-        date: new Date(),
+        date: todayExpenseDate(),
         paidByUserIds: [],
         clientId: undefined,
       });
@@ -296,209 +261,15 @@ function CreateExpenseDialogComponent({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Descripción - Primer campo */}
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Descripción</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Ej: Suscripción Adobe Creative Cloud"
-                      className="text-2xl font-bold"
-                      {...field}
-                      onBlur={(e) => {
-                        field.onBlur();
-                        handleDescriptionBlur(e.currentTarget.value);
-                      }}
-                      disabled={isSubmitting}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+            <ExpenseFormFields
+              control={form.control as unknown as Control<ExpenseFieldValues>}
+              users={users}
+              clients={clients}
+              disabled={isSubmitting}
+              loadingUsers={loadingUsers}
+              loadingClients={loadingClients}
+              onDescriptionBlur={handleDescriptionBlur}
             />
-
-            {/* Monto y Fecha - Grid 50/50 */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Monto</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground dark:text-gray-400">$</span>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0.01"
-                          placeholder="0.00"
-                          className="pl-8 text-2xl font-bold"
-                          inputMode="decimal"
-                          value={field.value === 0 ? "" : field.value ?? ""}
-                          onChange={(e) => {
-                            if (e.target.value === "") {
-                              field.onChange(undefined);
-                            } else {
-                              field.onChange(parseFloat(e.target.value) || 0);
-                            }
-                          }}
-                          onFocus={(e) => {
-                            if (field.value === 0) {
-                              field.onChange(undefined);
-                              e.currentTarget.value = "";
-                            }
-                          }}
-                          disabled={isSubmitting}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fecha</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        className="text-2xl font-bold"
-                        value={
-                          field.value
-                            ? formatDateValue(field.value)
-                            : formatDateValue(getCurrentDateInEcuador())
-                        }
-                        onChange={(e) => {
-                          field.onChange(
-                            e.target.value ? new Date(e.target.value) : getCurrentDateInEcuador()
-                          );
-                        }}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Categoría</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={isSubmitting}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona la categoría" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="COMIDA">Comida</SelectItem>
-                      <SelectItem value="TRANSPORTE">Transporte</SelectItem>
-                      <SelectItem value="INVITACIONES">Invitaciones</SelectItem>
-                      <SelectItem value="SOFTWARE">Software</SelectItem>
-                      <SelectItem value="OFICINA">Oficina</SelectItem>
-                      <SelectItem value="EQUIPOS">Equipos</SelectItem>
-                      <SelectItem value="OTROS">Otros</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="clientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente (Opcional)</FormLabel>
-                  <Select
-                    onValueChange={(value) =>
-                      field.onChange(value === "none" ? undefined : value)
-                    }
-                    value={field.value || "none"}
-                    disabled={isSubmitting || loadingClients}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un cliente (opcional)" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Sin cliente</SelectItem>
-                      {clients.map((client) => {
-                        const initials = client.name
-                          ?.split(' ')
-                          .map(n => n[0])
-                          .join('')
-                          .toUpperCase()
-                          .slice(0, 2) || '??';
-                        
-                        return (
-                          <SelectItem key={client.id} value={client.id}>
-                            <div className="flex items-center gap-2">
-                              <OptimizedAvatar
-                                src={client.logo}
-                                alt={client.name}
-                                fallback={initials}
-                                size="sm"
-                              />
-                              <span>{client.name}</span>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="paidByUserIds"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="space-y-3">
-                    <FormLabel>Asignar a Usuarios (Para Reembolso)</FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      Selecciona uno o más usuarios. Si seleccionas múltiples, el monto se dividirá equitativamente.
-                    </p>
-                    <UserList
-                      users={users}
-                      selectedIds={field.value || []}
-                      isLoading={isSubmitting || loadingUsers}
-                      onChange={(userId) => {
-                        const currentValue = field.value || [];
-                        if (currentValue.includes(userId)) {
-                          field.onChange(currentValue.filter((id) => id !== userId));
-                        } else {
-                          field.onChange([...currentValue, userId]);
-                        }
-                      }}
-                    />
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <div className="flex gap-4 pt-4">
               <Button
                 type="submit"
