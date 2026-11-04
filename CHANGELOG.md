@@ -1,5 +1,15 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.3.1] - 2026-11-04
+
+### Fixed
+
+- En Liquidación, el detalle de "Gastos por Reembolsar" muestra los mismos gastos que suma la tarjeta: todo lo que la persona adelantó y aún no se le devolvió, de cualquier mes. Antes solo listaba los del mes actual, así que el detalle no cuadraba con el total.
+
+### Changed
+
+- El detalle se rediseñó para quien no es contador: muestra cuánto se le debe a la persona, los gastos agrupados por mes con su fecha, categoría y cliente, y un botón "Ya se lo devolví" que pide confirmación antes de marcar el gasto como devuelto. La fila de la tarjeta ahora indica que se puede abrir ("Ver detalle").
+
 ## [0.3.0] - 2026-11-04
 
 ### Changed

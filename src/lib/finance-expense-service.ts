@@ -4,7 +4,7 @@
  */
 
 import { db } from "@/lib/db";
-import type { Expense } from "@prisma/client";
+import type { Expense, Prisma } from "@prisma/client";
 import type { ExpenseAllocationInput, ExpenseSplitMode, UpdateExpenseInput } from "@/schemas/finance";
 
 export interface CreateExpenseInput {
@@ -175,6 +175,41 @@ export async function updateExpenseInDb(
       ...(data.clientId !== undefined && { clientId: data.clientId || null }),
     },
   });
+}
+
+/**
+ * Criterio único de "lo que la empresa le debe a un usuario por gastos que
+ * adelantó". Lo usan la tarjeta de liquidación, su detalle y la liquidación,
+ * para que el total y la lista siempre coincidan.
+ */
+export function pendingReimbursementWhere(userId: string): Prisma.ExpenseWhereInput {
+  return { paidByUserId: userId, reimbursed: false };
+}
+
+export interface PendingReimbursement {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  date: Date;
+  clientName: string | null;
+}
+
+/** Gastos pendientes de devolver a un usuario, de todos los meses, del más antiguo al más reciente. */
+export async function getPendingReimbursementsFromDb(userId: string): Promise<PendingReimbursement[]> {
+  const rows = await db.expense.findMany({
+    where: pendingReimbursementWhere(userId),
+    orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+    select: {
+      id: true,
+      description: true,
+      amount: true,
+      category: true,
+      date: true,
+      client: { select: { name: true } },
+    },
+  });
+  return rows.map(({ client, ...row }) => ({ ...row, clientName: client?.name ?? null }));
 }
 
 /**

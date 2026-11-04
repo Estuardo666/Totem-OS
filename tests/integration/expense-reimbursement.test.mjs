@@ -18,7 +18,7 @@ registerHooks({ resolve(specifier, context, nextResolve) {
   return nextResolve(specifier, context);
 } });
 
-const { liquidateExpenseReimbursements } = await import("../../src/lib/finance-expense-service.ts");
+const { liquidateExpenseReimbursements, getPendingReimbursementsFromDb, pendingReimbursementWhere } = await import("../../src/lib/finance-expense-service.ts");
 const { updateInvoiceInDb } = await import("../../src/lib/finance-invoice-service.ts");
 
 beforeEach(async () => {
@@ -88,4 +88,23 @@ test("editing an invoice to PAID records when it was collected, once", async () 
   const edited = await updateInvoiceInDb("inv-1", { status: "PAID", amount: 120 });
   assert.equal(edited.amount, 120);
   assert.equal(edited.paidAt.getTime(), paid.paidAt.getTime());
+});
+
+test("pending reimbursements list every month and match the settlement total", async () => {
+  await prisma.client.create({ data: { id: "reimb-client-2", name: "Cafetería Sol" } });
+  await prisma.expense.updateMany({ where: { id: "exp-ana-1" }, data: { date: new Date("2026-10-12T15:00:00Z"), clientId: "reimb-client-2" } });
+  await prisma.expense.updateMany({ where: { id: "exp-ana-2" }, data: { date: new Date("2026-11-02T15:00:00Z") } });
+
+  const pending = await getPendingReimbursementsFromDb("reimb-ana");
+  assert.deepEqual(pending.map((row) => row.id), ["exp-ana-1", "exp-ana-2"]);
+  assert.equal(pending[0].clientName, "Cafetería Sol");
+  assert.equal(pending[1].clientName, null);
+
+  const settlementRows = await prisma.expense.findMany({ where: pendingReimbursementWhere("reimb-ana") });
+  const settlementTotal = settlementRows.reduce((sum, row) => sum + row.amount, 0);
+  assert.equal(pending.reduce((sum, row) => sum + row.amount, 0), settlementTotal);
+  assert.equal(settlementTotal, 32.5);
+
+  await liquidateExpenseReimbursements(["reimb-ana"]);
+  assert.deepEqual(await getPendingReimbursementsFromDb("reimb-ana"), []);
 });
