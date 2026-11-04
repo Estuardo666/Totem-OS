@@ -245,32 +245,31 @@ export async function deleteExpenseFromDb(id: string): Promise<void> {
 }
 
 /**
- * Liquida reembolsos (crea transacción de pago)
+ * Marca como reembolsados los gastos que estos usuarios adelantaron y aún no
+ * se les devolvieron. No crea transacción: la caja ya cuenta cada gasto del
+ * periodo, así que registrar el reembolso como otra salida lo duplicaría (es
+ * el mismo criterio que sigue el pago de liquidación).
  */
 export async function liquidateExpenseReimbursements(
-  expenseIds: string[]
-): Promise<{ transactionId: string }> {
-  const expenses = await db.expense.findMany({
-    where: { id: { in: expenseIds }, reimbursed: false },
+  userIds: string[]
+): Promise<{ count: number; totalAmount: number }> {
+  const ids = userIds.filter((id) => typeof id === "string" && id.trim().length > 0);
+  if (ids.length === 0) return { count: 0, totalAmount: 0 };
+
+  return db.$transaction(async (tx) => {
+    const pending = await tx.expense.findMany({
+      where: { paidByUserId: { in: ids }, reimbursed: false },
+      select: { id: true, amount: true },
+    });
+    if (pending.length === 0) return { count: 0, totalAmount: 0 };
+
+    // Se actualizan exactamente los gastos leídos, para que el total
+    // informado corresponda a lo que se marcó.
+    const { count } = await tx.expense.updateMany({
+      where: { id: { in: pending.map((expense) => expense.id) }, reimbursed: false },
+      data: { reimbursed: true },
+    });
+    const totalAmount = pending.reduce((sum, expense) => sum + expense.amount, 0);
+    return { count, totalAmount };
   });
-
-  const totalAmount = expenses.reduce((sum, e) => sum + e.amount, 0);
-
-  const transaction = await db.transaction.create({
-    data: {
-      amount: totalAmount,
-      type: "EXPENSE",
-      status: "PAID",
-      description: `Liquidación de ${expenses.length} reembolso(s)`,
-      category: "REIMBURSEMENT",
-    },
-  });
-
-  // Marcar todos como reembolsados
-  await db.expense.updateMany({
-    where: { id: { in: expenseIds } },
-    data: { reimbursed: true },
-  });
-
-  return { transactionId: transaction.id };
 }
