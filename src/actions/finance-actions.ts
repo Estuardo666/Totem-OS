@@ -19,6 +19,7 @@ import {
 import type { ApiResponse } from "@/types";
 import type { Invoice, Prisma, User, Transaction } from "@prisma/client";
 import { resolveRoleCode } from "@/lib/roles";
+import { ecuadorMonthTimestampRange } from "@/lib/business-month";
 
 // Import services
 import {
@@ -119,7 +120,17 @@ export interface UserSettlementReport {
   profitSharePercent: number;
   reimbursements: number;
   paidSoFar: number;
+  /** Pagos que suman "Pagado hasta ahora", para mostrarlos en el detalle. */
+  payments: SettlementPayment[];
   remaining: number;
+}
+
+export interface SettlementPayment {
+  id: string;
+  description: string | null;
+  amount: number;
+  paidAt: Date;
+  kind: "HONORARIOS" | "SALARY";
 }
 
 function revalidateFinanceViews() {
@@ -1247,17 +1258,21 @@ export async function getCajaDelMes(
       return { success: false, error: "No autorizado" };
     }
 
+    // Fechas de calendario (factura devengada, fecha del gasto): corte UTC.
     const monthStart = new Date(year, month - 1, 1);
     monthStart.setHours(0, 0, 0, 0);
     const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+    // Momento real de cada transacción: corte a medianoche de Ecuador, igual
+    // que la lista de transacciones.
+    const { start: txStart, end: txEnd } = ecuadorMonthTimestampRange(year, month);
 
     const [invoices, incomeTx, expenses, expenseTx, honorariosTx, movimientos] =
       await Promise.all([
         db.invoice.findMany({ where: { status: "PAID", generatedAt: { gte: monthStart, lte: monthEnd } } }),
-        db.transaction.findMany({ where: { type: "INCOME", status: "PAID", createdAt: { gte: monthStart, lte: monthEnd } } }),
+        db.transaction.findMany({ where: { type: "INCOME", status: "PAID", createdAt: { gte: txStart, lte: txEnd } } }),
         db.expense.findMany({ where: { date: { gte: monthStart, lte: monthEnd } } }),
-        db.transaction.findMany({ where: { type: "EXPENSE", status: "PAID", createdAt: { gte: monthStart, lte: monthEnd } } }),
-        db.transaction.findMany({ where: { type: "HONORARIOS", status: "PAID", createdAt: { gte: monthStart, lte: monthEnd } } }),
+        db.transaction.findMany({ where: { type: "EXPENSE", status: "PAID", createdAt: { gte: txStart, lte: txEnd } } }),
+        db.transaction.findMany({ where: { type: "HONORARIOS", status: "PAID", createdAt: { gte: txStart, lte: txEnd } } }),
         db.emergencyFundMovement.findMany({ where: { year, month } }),
       ]);
 
@@ -1306,6 +1321,10 @@ export async function getSettlementReport(
     const monthStart = new Date(year, month - 1, 1);
     monthStart.setHours(0, 0, 0, 0);
     const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+    // Pagos, transacciones y horas trabajadas son momentos reales: el mes se
+    // corta a medianoche de Ecuador, como en la lista de transacciones. Las
+    // fechas de calendario (factura devengada, fecha del gasto) siguen en UTC.
+    const { start: txStart, end: txEnd } = ecuadorMonthTimestampRange(year, month);
 
     const users = await db.user.findMany({
       select: {
@@ -1329,7 +1348,7 @@ export async function getSettlementReport(
       where: {
         type: "INCOME",
         status: "PAID",
-        createdAt: { gte: monthStart, lte: monthEnd },
+        createdAt: { gte: txStart, lte: txEnd },
       },
     });
 
@@ -1351,7 +1370,7 @@ export async function getSettlementReport(
       where: {
         type: "EXPENSE",
         status: "PAID",
-        createdAt: { gte: monthStart, lte: monthEnd },
+        createdAt: { gte: txStart, lte: txEnd },
       },
     });
 
@@ -1359,7 +1378,7 @@ export async function getSettlementReport(
       where: {
         type: "HONORARIOS",
         status: "PAID",
-        createdAt: { gte: monthStart, lte: monthEnd },
+        createdAt: { gte: txStart, lte: txEnd },
       },
     });
 
@@ -1377,7 +1396,7 @@ export async function getSettlementReport(
     const allPaidTransactionsThisMonth = await db.transaction.findMany({
       where: {
         status: "PAID",
-        createdAt: { gte: monthStart, lte: monthEnd },
+        createdAt: { gte: txStart, lte: txEnd },
       },
     });
 
@@ -1396,7 +1415,7 @@ export async function getSettlementReport(
             where: {
               userId: user.id,
               status: "COMPLETED",
-              startTime: { gte: monthStart, lte: monthEnd },
+              startTime: { gte: txStart, lte: txEnd },
             },
             select: { duration: true },
           });
@@ -1432,6 +1451,15 @@ export async function getSettlementReport(
         );
 
         paidSoFar = userPaidTransactions.reduce((sum, t) => sum + t.amount, 0);
+        const payments: SettlementPayment[] = userPaidTransactions
+          .map((t) => ({
+            id: t.id,
+            description: t.description,
+            amount: t.amount,
+            paidAt: t.createdAt,
+            kind: t.type === "HONORARIOS" ? ("HONORARIOS" as const) : ("SALARY" as const),
+          }))
+          .sort((a, b) => a.paidAt.getTime() - b.paidAt.getTime());
         const remaining = salary + profitShare + reimbursements - paidSoFar;
 
         return {
@@ -1444,6 +1472,7 @@ export async function getSettlementReport(
           profitSharePercent: userProfitSharePercent,
           reimbursements,
           paidSoFar,
+          payments,
           remaining: Math.max(0, remaining),
         };
       })

@@ -1,5 +1,15 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.3.2] - 2026-11-04
+
+### Fixed
+
+- Liquidación y "Caja del mes" deciden a qué mes pertenece cada pago con la hora de Ecuador, igual que la lista de transacciones. Antes usaban la hora del servidor (UTC, 5 horas adelantada): un honorario registrado el 30 de septiembre por la noche se sumaba a "Pagado hasta ahora" de octubre, aunque la lista lo mostrara en septiembre. Las fechas de calendario (fecha de un gasto, mes devengado de una factura) no cambian.
+
+### Changed
+
+- "Pagado hasta ahora" ahora se puede abrir ("Ver pagos") y lista cada pago que suma, con fecha, concepto y monto.
+
 ## [0.3.1] - 2026-11-04
 
 ### Fixed
