@@ -59,7 +59,8 @@ para React como para `URLSession` en Swift.
 - Ventana fija y contador incrementado con `INSERT ... ON CONFLICT DO UPDATE`.
 - Operación atómica entre múltiples instancias de Next/Vercel.
 - Solo se persiste un HMAC del identificador; no se guarda la IP en claro.
-- Expirados se limpian durante la transacción.
+- Las ventanas vencidas se limpian por lotes en ~2 % de las comprobaciones,
+  fuera del upsert y con `SKIP LOCKED`, para no serializar peticiones concurrentes.
 - `429 RATE_LIMITED` incluye `Retry-After`, `x-ratelimit-limit`,
   `x-ratelimit-remaining` y `x-ratelimit-reset`.
 - Si PostgreSQL no está disponible, el guard falla cerrado con

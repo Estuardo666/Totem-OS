@@ -47,6 +47,31 @@ function assertOptions(options: DistributedRateLimitOptions): void {
   }
 }
 
+/** Fracción de comprobaciones que además limpian ventanas vencidas. */
+const EXPIRED_CLEANUP_PROBABILITY = 0.02;
+
+/**
+ * Borra un lote de ventanas vencidas sin esperar filas que otra instancia ya
+ * esté borrando. Antes se borraban todas en cada comprobación, dentro de la
+ * misma transacción: con tráfico concurrente las peticiones se serializaban.
+ * Un fallo aquí nunca debe afectar a la petición.
+ */
+export async function pruneExpiredBuckets(now: Date = new Date()): Promise<void> {
+  try {
+    await db.$executeRaw(Prisma.sql`
+      DELETE FROM "api_rate_limit_bucket"
+      WHERE "id" IN (
+        SELECT "id" FROM "api_rate_limit_bucket"
+        WHERE "expiresAt" < ${now}
+        LIMIT 500
+        FOR UPDATE SKIP LOCKED
+      )
+    `);
+  } catch (error) {
+    console.error("[rate-limit] cleanup:", error instanceof Error ? error.message : error);
+  }
+}
+
 /**
  * Fixed-window check atómico en PostgreSQL. El contador se incrementa dentro
  * del upsert para que varias instancias de Next no puedan sobrepasar el límite
@@ -63,23 +88,21 @@ export async function checkDistributedRateLimit(
   const hash = identifierHash(options.bucket, options.identifier);
 
   try {
-    const rows = await db.$transaction(async (tx) => {
-      await tx.$executeRaw(
-        Prisma.sql`DELETE FROM "api_rate_limit_bucket" WHERE "expiresAt" < ${now}`
-      );
+    // Un único INSERT ... ON CONFLICT es atómico por sí mismo: no hace falta
+    // una transacción interactiva que retenga bloqueos entre sentencias.
+    const rows = await db.$queryRaw<Array<{ count: number }>>(Prisma.sql`
+      INSERT INTO "api_rate_limit_bucket"
+        ("id", "bucket", "identifierHash", "windowStart", "count", "expiresAt", "createdAt", "updatedAt")
+      VALUES
+        (${globalThis.crypto.randomUUID()}, ${options.bucket}, ${hash}, ${windowStart}, 1, ${expiresAt}, ${now}, ${now})
+      ON CONFLICT ("bucket", "identifierHash", "windowStart")
+      DO UPDATE SET
+        "count" = "api_rate_limit_bucket"."count" + 1,
+        "updatedAt" = ${now}
+      RETURNING "count"
+    `);
 
-      return tx.$queryRaw<Array<{ count: number }>>(Prisma.sql`
-        INSERT INTO "api_rate_limit_bucket"
-          ("id", "bucket", "identifierHash", "windowStart", "count", "expiresAt", "createdAt", "updatedAt")
-        VALUES
-          (${globalThis.crypto.randomUUID()}, ${options.bucket}, ${hash}, ${windowStart}, 1, ${expiresAt}, ${now}, ${now})
-        ON CONFLICT ("bucket", "identifierHash", "windowStart")
-        DO UPDATE SET
-          "count" = "api_rate_limit_bucket"."count" + 1,
-          "updatedAt" = ${now}
-        RETURNING "count"
-      `);
-    });
+    if (Math.random() < EXPIRED_CLEANUP_PROBABILITY) await pruneExpiredBuckets(now);
 
     const count = Number(rows[0]?.count ?? 0);
     const allowed = count <= options.limit;
