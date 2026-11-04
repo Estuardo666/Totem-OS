@@ -42,5 +42,5 @@ export default async function WhatsAppAdminPage() {
     db.whatsAppMessage.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
     db.whatsAppEvent.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
   ]);
-  return <WhatsAppAdmin config={{ ...config, ...status }} health={health} groups={groups} clients={clients} team={team.map((person) => ({ ...person, roleLegacy: person.roleLegacy ?? person.roleCode ?? "USER" }))} prompts={prompts} drafts={drafts} approvals={approvals} history={history} events={events} />;
+  return <WhatsAppAdmin config={{ ...config, ...status }} health={health} groups={groups} clients={clients} team={team.map((person) => ({ ...person, roleLegacy: resolveRoleCode(person) ?? "USER" }))} prompts={prompts} drafts={drafts} approvals={approvals} history={history} events={events} />;
 }

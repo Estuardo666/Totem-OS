@@ -7,6 +7,7 @@ import { es } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { resolveRoleCode } from "@/lib/roles";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -127,8 +128,8 @@ export function UsersDataTable({ users }: UsersDataTableProps) {
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
                     <TableCell>
-                      <Badge variant={getRoleBadgeVariant(user.roleLegacy || "EDITOR")}>
-                        {user.roleLegacy || "EDITOR"}
+                      <Badge variant={getRoleBadgeVariant(resolveRoleCode(user) || "EDITOR")}>
+                        {resolveRoleCode(user) || "EDITOR"}
                       </Badge>
                     </TableCell>
                     <TableCell>
