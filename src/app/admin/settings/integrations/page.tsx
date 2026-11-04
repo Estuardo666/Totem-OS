@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { PageHeader } from "@/components/shared";
 import { integrationErrorMessage } from "@/lib/integration-errors";
+import { resolveRoleCode } from "@/lib/roles";
 
 async function IntegrationsContent() {
   const userResult = await getCurrentUser();
@@ -24,8 +25,7 @@ async function IntegrationsContent() {
   const user = userResult.data;
 
   // Solo ADMIN puede ver esta página
-  const userRole = user.roleLegacy;
-  if (userRole !== "ADMIN") {
+  if (resolveRoleCode(user) !== "ADMIN") {
     redirect("/");
   }
 

@@ -1,5 +1,17 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.3.4] - 2026-11-04
+
+### Fixed
+
+- Registrar gasto: la fecha elegida ya no se muestra un día antes en Ecuador, y "hoy" se guarda como fecha de calendario.
+- El campo "Monto" del formulario de gastos queda bien asociado a su etiqueta (lectores de pantalla y pruebas).
+
+### Changed
+
+- Permisos de administrador con una sola regla (`roleCode`, vía `resolveRoleCode`): Configuración, Integraciones, WhatsApp, el aviso del watchdog, la lista de administradores de Configuración financiera, el estado del worker de facturación, la búsqueda de usuarios para push y la tabla/ficha de usuarios ya no leen el rol antiguo (`roleLegacy`), que podía dar o quitar acceso distinto al resto de la app.
+- "Registrar gasto" y "Editar gasto" usan los mismos campos (`expense-form-fields.tsx`): un arreglo en uno ya aplica al otro. Editar gana el selector de cliente con logo.
+
 ## [0.3.3] - 2026-11-04
 
 ### Fixed

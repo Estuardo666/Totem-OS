@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useTransition } from "react";
+import { resolveRoleCode } from "@/lib/roles";
 import { useSession } from "next-auth/react";
 import { Loader2, MessageSquare } from "lucide-react";
 import { updateTask, type ContentTaskWithClient } from "@/actions/content-actions";
@@ -57,7 +58,7 @@ export function TaskReviewTab({
         {
           id: crypto.randomUUID(),
           authorName: session?.user?.name || "Equipo",
-          authorRole: session?.user?.roleLegacy || session?.user?.role || "EDITOR",
+          authorRole: resolveRoleCode(session?.user) || "EDITOR",
           authorColor: session?.user?.primaryColor || undefined,
           createdAt: new Date().toISOString(),
           resolved: false,
@@ -82,7 +83,7 @@ export function TaskReviewTab({
                 {
                   id: crypto.randomUUID(),
                   authorName: session?.user?.name || "Equipo",
-                  authorRole: session?.user?.roleLegacy || session?.user?.role || "EDITOR",
+                  authorRole: resolveRoleCode(session?.user) || "EDITOR",
                   authorColor: session?.user?.primaryColor || undefined,
                   createdAt: new Date().toISOString(),
                   resolved: false,

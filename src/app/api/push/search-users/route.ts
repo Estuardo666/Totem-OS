@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveRoleCode } from "@/lib/roles";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
         id: true,
         name: true,
         email: true,
+        roleCode: true,
         roleLegacy: true,
       },
       take: 10,
@@ -42,7 +44,7 @@ export async function GET(request: Request) {
         id: u.id,
         name: u.name,
         email: u.email,
-        role: u.roleLegacy,
+        role: resolveRoleCode(u) ?? "USER",
       })),
     });
   } catch (error) {

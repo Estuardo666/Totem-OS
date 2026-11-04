@@ -2,20 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import {
   updateExpenseSchema,
   type UpdateExpenseInput,
 } from "@/schemas/finance";
-import type { Expense, User, Client } from "@prisma/client";
+import type { User, Client } from "@prisma/client";
 import { updateExpense, getExpenseById } from "@/actions/finance-actions";
 import { getUsers } from "@/actions/user.actions";
 import { getClients } from "@/actions/client-actions";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -23,24 +22,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { UserList } from "./user-list-row";
+import { Form } from "@/components/ui/form";
+import { ExpenseFormFields, type ExpenseFieldValues } from "./expense-form-fields";
 
 interface EditExpenseDialogProps {
   expenseId: string | null;
@@ -210,179 +193,14 @@ export function EditExpenseDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Categoría</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={isSubmitting}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona la categoría" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="COMIDA">Comida</SelectItem>
-                      <SelectItem value="TRANSPORTE">Transporte</SelectItem>
-                      <SelectItem value="INVITACIONES">Invitaciones</SelectItem>
-                      <SelectItem value="SOFTWARE">Software</SelectItem>
-                      <SelectItem value="OFICINA">Oficina</SelectItem>
-                      <SelectItem value="EQUIPOS">Equipos</SelectItem>
-                      <SelectItem value="OTROS">Otros</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+            <ExpenseFormFields
+              control={form.control as unknown as Control<ExpenseFieldValues>}
+              users={users}
+              clients={clients}
+              disabled={isSubmitting || loadingExpense}
+              loadingUsers={loadingUsers}
+              loadingClients={loadingClients}
             />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Descripción</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Ej: Suscripción Adobe Creative Cloud"
-                      {...field}
-                      disabled={isSubmitting}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Monto ($)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      placeholder="0.00"
-                      value={field.value === 0 ? "" : field.value ?? ""}
-                      onChange={(e) => {
-                        // Permitir borrar completamente
-                        if (e.target.value === "") {
-                          field.onChange(undefined);
-                        } else {
-                          field.onChange(parseFloat(e.target.value) || 0);
-                        }
-                      }}
-                      onFocus={(e) => {
-                        if (field.value === 0) {
-                          field.onChange(undefined);
-                          e.target.value = "";
-                        }
-                      }}
-                      inputMode="decimal"
-                      disabled={isSubmitting}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Fecha</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      value={
-                        field.value
-                          ? new Date(field.value).toISOString().split("T")[0]
-                          : new Date().toISOString().split("T")[0]
-                      }
-                      onChange={(e) => {
-                        field.onChange(
-                          e.target.value ? new Date(e.target.value) : new Date()
-                        );
-                      }}
-                      disabled={isSubmitting}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="clientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente (Opcional)</FormLabel>
-                  <Select
-                    onValueChange={(value) =>
-                      field.onChange(value === "none" ? undefined : value)
-                    }
-                    value={field.value || "none"}
-                    disabled={isSubmitting || loadingClients}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un cliente (opcional)" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Sin cliente</SelectItem>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="paidByUserIds"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="space-y-3">
-                    <FormLabel>Asignar a Usuarios (Para Reembolso)</FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      Selecciona uno o más usuarios. Si seleccionas múltiples, el monto se dividirá equitativamente.
-                    </p>
-                    <UserList
-                      users={users}
-                      selectedIds={field.value || []}
-                      isLoading={isSubmitting || loadingUsers}
-                      onChange={(userId) => {
-                        const currentValue = field.value || [];
-                        if (currentValue.includes(userId)) {
-                          field.onChange(currentValue.filter((id) => id !== userId));
-                        } else {
-                          field.onChange([...currentValue, userId]);
-                        }
-                      }}
-                    />
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <div className="flex gap-4 pt-4">
               <Button
                 type="submit"

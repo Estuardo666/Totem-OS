@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
+import { resolveRoleCode } from "@/lib/roles";
 import { registrarLatido, getWorkerStatus } from "@/services/facturacion/configuracion-service";
 import { isWorkerRequestAuthorized } from "@/lib/worker-auth";
 
@@ -48,8 +49,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const session = await auth();
-    const role = session?.user?.roleLegacy ?? session?.user?.role;
-    if (!session?.user?.id || role !== "ADMIN") {
+    if (!session?.user?.id || resolveRoleCode(session.user) !== "ADMIN") {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 

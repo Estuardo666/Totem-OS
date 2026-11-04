@@ -36,6 +36,7 @@ import { createUser, updateUser } from "@/actions/admin/user-actions";
 import { getSpecialties } from "@/actions/admin/specialty-actions";
 import { UserImageUpload } from "./user-image-upload";
 import type { AdminUserWithRelations } from "@/actions/admin/user-actions";
+import { resolveRoleCode } from "@/lib/roles";
 
 interface UserSheetProps {
   user?: AdminUserWithRelations | null;
@@ -66,7 +67,7 @@ export function UserSheet({ user, trigger, mode = "create", open: externalOpen, 
       name: user?.name || "",
       email: user?.email || "",
       password: "",
-      roleLegacy: user?.roleLegacy || "EDITOR",
+      roleLegacy: (user && resolveRoleCode(user)) || "EDITOR",
       specialty: user?.specialty || "",
       image: user?.image || "",
     },
@@ -86,7 +87,7 @@ export function UserSheet({ user, trigger, mode = "create", open: externalOpen, 
         name: user.name,
         email: user.email,
         password: "",
-        roleLegacy: user.roleLegacy || "EDITOR",
+        roleLegacy: resolveRoleCode(user) || "EDITOR",
         specialty: user.specialty || "",
         image: user.image || "",
       });

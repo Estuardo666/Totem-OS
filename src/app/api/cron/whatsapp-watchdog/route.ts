@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     : null;
   const targets = owner
     ? [owner.id]
-    : (await db.user.findMany({ where: { OR: [{ roleCode: "ADMIN" }, { roleLegacy: "ADMIN" }] }, select: { id: true } })).map((admin) => admin.id);
+    : (await db.user.findMany({ where: { roleCode: "ADMIN" }, select: { id: true } })).map((admin) => admin.id);
   if (!targets.length) return NextResponse.json({ success: true, data: { healthy: false, alerted: false, minutesDown, reason: "no-notification-recipient" } });
 
   let pushSucceeded = false;

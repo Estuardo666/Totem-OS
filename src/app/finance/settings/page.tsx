@@ -5,6 +5,7 @@ import { getUsers } from "@/actions/user.actions";
 import { FinanceSettingsForm } from "@/components/features/finance/finance-settings-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared";
+import { resolveRoleCode } from "@/lib/roles";
 
 export default async function FinanceSettingsPage() {
   const session = await auth();
@@ -52,12 +53,7 @@ export default async function FinanceSettingsPage() {
     );
   }
 
-  const adminUsers = usersResult.data.filter((user) => {
-    const roleLegacy = (user as Record<string, unknown>).roleLegacy;
-    const role = (user as Record<string, unknown>).role;
-
-    return roleLegacy === "ADMIN" || role === "ADMIN";
-  });
+  const adminUsers = usersResult.data.filter((user) => resolveRoleCode(user) === "ADMIN");
 
   return (
     <div className="container mx-auto space-y-6 p-3">
