@@ -2,6 +2,7 @@
 
 import { TrendingDown, DollarSign, Receipt, Percent, UserX, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface ExpensesSummaryProps {
   totalExpensesThisMonth: number;
@@ -10,15 +11,6 @@ interface ExpensesSummaryProps {
   previousMonthTotal: number;
   reimbursedAmount: number;
   expensesWithoutClient: { count: number; amount: number };
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 export function ExpensesSummary({

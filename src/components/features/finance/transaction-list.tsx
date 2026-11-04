@@ -31,6 +31,7 @@ import { EditHonorarioDialog } from "./edit-honorario-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { formatCurrencyEnUS } from "@/lib/currency-format";
 
 // Mes (YYYY-MM) en hora de Ecuador. toISOString() usa UTC y movía los
 // movimientos de la noche al mes siguiente.
@@ -100,16 +101,6 @@ interface TransactionListProps {
   transactions: FinancialStats["recentTransactions"];
 }
 
-
-// Función para formatear dinero como USD
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
 
 // Función para obtener el label de la categoría
 function getCategoryLabel(category?: string): string {
@@ -1049,7 +1040,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                         ) : (
                           <Plus className="h-4 w-4 text-green-600" />
                         )}
-                        <span>{formatCurrency(transaction.amount)}</span>
+                        <span>{formatCurrencyEnUS(transaction.amount)}</span>
                       </div>
                     </TableCell>
                     <TableCell className="w-[150px]">

@@ -9,7 +9,8 @@ import { MonthlySummaryKpis } from "@/components/features/finance/monthly-summar
 import { MonthlySummaryPeriodSelector } from "@/components/features/finance/monthly-summary-period-selector";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatPercent } from "@/components/features/finance/monthly-summary-utils";
+import { formatPercent } from "@/components/features/finance/monthly-summary-utils";
+import { formatCurrencyWhole } from "@/lib/currency-format";
 
 interface MonthlySummaryDashboardProps {
   summary: MonthlyFinancialSummaryData;
@@ -57,18 +58,18 @@ export function MonthlySummaryDashboard({ summary, userRole }: MonthlySummaryDas
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-white/60">Resultado</p>
-                <p className="mt-2 text-xl font-semibold">{formatCurrency(summary.executive.operatingResult)}</p>
+                <p className="mt-2 text-xl font-semibold">{formatCurrencyWhole(summary.executive.operatingResult)}</p>
                 <p className="mt-1 text-xs text-white/70">Margen {formatPercent(summary.executive.operatingMarginPct)}</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-white/60">Caja</p>
-                <p className="mt-2 text-xl font-semibold">{formatCurrency(summary.executive.netCashFlow)}</p>
-                <p className="mt-1 text-xs text-white/70">Cobrado {formatCurrency(summary.executive.collectedCash)}</p>
+                <p className="mt-2 text-xl font-semibold">{formatCurrencyWhole(summary.executive.netCashFlow)}</p>
+                <p className="mt-1 text-xs text-white/70">Cobrado {formatCurrencyWhole(summary.executive.collectedCash)}</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-white/60">Cartera</p>
-                <p className="mt-2 text-xl font-semibold">{formatCurrency(summary.executive.closingReceivables)}</p>
-                <p className="mt-1 text-xs text-white/70">Corriente {formatCurrency(summary.receivables.current)}</p>
+                <p className="mt-2 text-xl font-semibold">{formatCurrencyWhole(summary.executive.closingReceivables)}</p>
+                <p className="mt-1 text-xs text-white/70">Corriente {formatCurrencyWhole(summary.receivables.current)}</p>
               </div>
             </div>
           </CardContent>

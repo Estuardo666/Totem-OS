@@ -28,6 +28,7 @@ import { AnimatedNumber } from "@/components/features/dashboard/animated-number"
 import { isOverdueEditingTask, isOverduePublicationTask } from "@/components/features/dashboard/dashboard-overdue";
 import { HomeMotion } from "@/components/features/dashboard/home-motion";
 import { AiDigest } from "@/components/features/dashboard/ai-digest";
+import { formatCurrencyEnUS } from "@/lib/currency-format";
 
 type Feedback = {
   id: string;
@@ -75,15 +76,6 @@ const PIPELINE_STAGES = [
   { key: "REVIEW", label: "Revisión", color: "hsl(var(--theme-warning))" },
   { key: "PUBLISHED", label: "Publicado", color: "hsl(var(--theme-success))" },
 ];
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
 
 function initials(name: string) {
   return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
@@ -452,7 +444,7 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                 <FinanceMetric label="Proyectado" value={projectedBalance} tone="positive" />
               </div>
               <div className="divide-y divide-border/60">
-                {finance.recentTransactions.slice(0, 3).map((transaction) => <Link href="/finance/transactions" key={transaction.id} className="flex items-center gap-3 py-3 transition-colors hover:bg-primary/[0.1]"><span className={`flex size-7 items-center justify-center rounded-lg ${transaction.type === "INCOME" ? "bg-[hsl(var(--theme-success)/0.12)] text-[hsl(var(--theme-success))]" : "bg-muted text-muted-foreground"}`}>{transaction.type === "INCOME" ? <ArrowDownLeft className="size-3.5" /> : <ArrowUpRight className="size-3.5" />}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{transaction.description}</span><span className="block text-xs text-muted-foreground">{format(new Date(transaction.date), "d MMM", { locale: es })}</span></span><span className={`text-xs font-semibold ${transaction.type === "INCOME" ? "text-[hsl(var(--theme-success))]" : "text-muted-foreground"}`}>{transaction.type === "INCOME" ? "+" : "−"}{formatCurrency(transaction.amount)}</span></Link>)}
+                {finance.recentTransactions.slice(0, 3).map((transaction) => <Link href="/finance/transactions" key={transaction.id} className="flex items-center gap-3 py-3 transition-colors hover:bg-primary/[0.1]"><span className={`flex size-7 items-center justify-center rounded-lg ${transaction.type === "INCOME" ? "bg-[hsl(var(--theme-success)/0.12)] text-[hsl(var(--theme-success))]" : "bg-muted text-muted-foreground"}`}>{transaction.type === "INCOME" ? <ArrowDownLeft className="size-3.5" /> : <ArrowUpRight className="size-3.5" />}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{transaction.description}</span><span className="block text-xs text-muted-foreground">{format(new Date(transaction.date), "d MMM", { locale: es })}</span></span><span className={`text-xs font-semibold ${transaction.type === "INCOME" ? "text-[hsl(var(--theme-success))]" : "text-muted-foreground"}`}>{transaction.type === "INCOME" ? "+" : "−"}{formatCurrencyEnUS(transaction.amount)}</span></Link>)}
               </div>
             </div>
           </section> : <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_8px_30px_hsl(var(--foreground)/0.03)] xl:col-span-6"><SectionHeading icon={Clock3} title="Próximas entregas" description="Fechas que se acercan" href="/content" action="Ver calendario" /><div className="divide-y divide-border/60">{tasks.filter((task) => task.dueDate && task.status !== "PUBLISHED").sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()).slice(0, 3).map((task) => <Link href={`/content?task=${task.id}`} key={task.id} className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-primary/[0.1] sm:px-6"><span className="flex size-7 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Clock3 className="size-3.5" /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{task.title}</span><span className="flex items-center gap-1.5 text-xs text-muted-foreground"><ClientMark name={task.client.name} logo={task.client.logo} color={task.client.color} /><span className="truncate">{task.client.name}</span></span></span><span className="text-xs text-muted-foreground">{relativeDate(new Date(task.dueDate!))}</span></Link>)}</div></section>}
@@ -511,7 +503,7 @@ function MetricHelper({ text }: { text: string }) {
 }
 
 function FinanceMetric({ label, value, tone }: { label: string; value: number; tone: "positive" | "pending" | "neutral" }) {
-  return <div><p className="text-xs text-muted-foreground">{label}</p><p className={`mt-1 truncate text-sm font-semibold tracking-[-0.02em] ${tone === "positive" ? "text-[hsl(var(--theme-success))]" : tone === "pending" ? "text-[hsl(var(--theme-warning))]" : "text-foreground"}`}>{formatCurrency(value)}</p></div>;
+  return <div><p className="text-xs text-muted-foreground">{label}</p><p className={`mt-1 truncate text-sm font-semibold tracking-[-0.02em] ${tone === "positive" ? "text-[hsl(var(--theme-success))]" : tone === "pending" ? "text-[hsl(var(--theme-warning))]" : "text-foreground"}`}>{formatCurrencyEnUS(value)}</p></div>;
 }
 
 function PerformanceMetric({ label, value, delta, positive, points, color }: { label: string; value: string | number; delta: string; positive: boolean; points?: number[]; color: string }) {

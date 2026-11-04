@@ -17,6 +17,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { cn } from "@/lib/utils";
 import { EditClientDialog } from "./edit-client-dialog";
 import { ClientCardContextMenu } from "./client-card-context-menu";
+import { formatCurrencyEc } from "@/lib/currency-format";
 
 type ClientRow = Client & {
   hasPendingFeedback?: boolean;
@@ -60,15 +61,6 @@ function hexToRgba(hex: string, opacity: number): string {
 
 function formatShortDate(date: Date): string {
   return format(date, "d MMM, HH:mm", { locale: es });
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-EC", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 export function ClientList({ clients, isAdmin, canEditClient = false, users }: ClientListProps) {
@@ -362,7 +354,7 @@ function ClientCard({
       {hasBilling && (
         <p className="mt-3 text-xs text-muted-foreground">
           Cobro el día {client.paymentDay}
-          {isAdmin && <> · <span className="font-medium text-foreground">{formatCurrency(client.monthlyRate!)}</span> al mes</>}
+          {isAdmin && <> · <span className="font-medium text-foreground">{formatCurrencyEc(client.monthlyRate!)}</span> al mes</>}
         </p>
       )}
 
@@ -437,7 +429,7 @@ function ClientRowView({ client, index, isAdmin }: { client: ClientRow; index: n
         {hasBilling ? (
           <>
             <p>Día {client.paymentDay}</p>
-            {isAdmin && <p className="text-xs text-muted-foreground">{formatCurrency(client.monthlyRate!)}</p>}
+            {isAdmin && <p className="text-xs text-muted-foreground">{formatCurrencyEc(client.monthlyRate!)}</p>}
           </>
         ) : (
           <p className="text-muted-foreground">—</p>

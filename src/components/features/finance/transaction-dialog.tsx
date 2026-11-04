@@ -13,7 +13,7 @@ import {
   type CreateTransactionInput,
 } from "@/schemas/finance";
 import { getClients } from "@/actions/client-actions";
-import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useDebounce } from "@/hooks/use-debounce";
 import { getUsers } from "@/actions/user.actions";
 import { createExpense, createTransaction } from "@/actions/finance-actions";
 import type {
@@ -192,8 +192,8 @@ export function TransactionDialog({
   const [activeTab, setActiveTab] = useState<string>(isAdmin ? "income" : "expense");
   const [incomeClientQuery, setIncomeClientQuery] = useState("");
   const [expenseClientQuery, setExpenseClientQuery] = useState("");
-  const debouncedIncomeClientQuery = useDebouncedValue(incomeClientQuery, 250);
-  const debouncedExpenseClientQuery = useDebouncedValue(expenseClientQuery, 250);
+  const debouncedIncomeClientQuery = useDebounce(incomeClientQuery, 250);
+  const debouncedExpenseClientQuery = useDebounce(expenseClientQuery, 250);
   const [incomeAmountInput, setIncomeAmountInput] = useState<string>("");
   const [expenseAmountInput, setExpenseAmountInput] = useState<string>("");
   const [honorariosAmountInput, setHonorariosAmountInput] = useState<string>("");

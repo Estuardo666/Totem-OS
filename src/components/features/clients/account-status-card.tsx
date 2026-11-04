@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface AccountStatusCardProps {
   financial: {
@@ -22,16 +23,6 @@ interface AccountStatusCardProps {
   monthlyRate: number;
   month: string;
   year: number;
-}
-
-// Función para formatear dinero como USD
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 function getStatusLabel(status: string): string {

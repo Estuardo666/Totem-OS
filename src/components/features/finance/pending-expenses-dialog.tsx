@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface PendingExpensesDialogProps {
   open: boolean;
@@ -64,15 +65,6 @@ export function PendingExpensesDialog({
         });
     }
   }, [open, userId]);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
 
   const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString("es-ES", {

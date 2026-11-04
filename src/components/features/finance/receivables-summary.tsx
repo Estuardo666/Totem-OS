@@ -2,20 +2,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Users, Target } from "lucide-react";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface ReceivablesSummaryProps {
   totalReceivable: number;
   clientsWithDebt: number;
   monthProjection: number;
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 export function ReceivablesSummary({

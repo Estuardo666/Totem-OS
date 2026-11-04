@@ -5,18 +5,10 @@ import { AlertTriangle, CheckCircle2, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { formatCurrency } from "@/lib/currency-format";
 
 interface ExpensesBusinessPanelProps {
   financeSettingsMetrics?: FinanceSettingsMetrics;
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 function getBudgetStatusLabel(status: FinanceSettingsMetrics["overview"]["globalBudgetStatus"]): string {

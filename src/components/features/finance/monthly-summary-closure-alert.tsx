@@ -3,18 +3,10 @@ import { AlertTriangle, ArrowRight } from "lucide-react";
 import type { MonthlyFinancialSummaryData } from "@/actions/finance-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatCurrencyEnUS } from "@/lib/currency-format";
 
 interface MonthlySummaryClosureAlertProps {
   summary: MonthlyFinancialSummaryData;
-}
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 export function MonthlySummaryClosureAlert({ summary }: MonthlySummaryClosureAlertProps) {
@@ -36,7 +28,7 @@ export function MonthlySummaryClosureAlert({ summary }: MonthlySummaryClosureAle
                 {summary.closureControl.pendingCount} cliente(s) recurrente(s) siguen sin cierre de {summary.periodLabel}
               </p>
               <p className="mt-1 max-w-3xl text-sm text-rose-800">
-                Antes de confiar en esta lectura contable, define si esos fees se devengan o no. El monto potencial todavía abierto es {formatCurrency(summary.closureControl.pendingAmount)}.
+                Antes de confiar en esta lectura contable, define si esos fees se devengan o no. El monto potencial todavía abierto es {formatCurrencyEnUS(summary.closureControl.pendingAmount)}.
               </p>
             </div>
           </div>

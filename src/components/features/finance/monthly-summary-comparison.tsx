@@ -1,7 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import type { MonthlyFinancialSummaryData } from "@/actions/finance-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/components/features/finance/monthly-summary-utils";
+import { formatCurrencyWhole } from "@/lib/currency-format";
 
 interface MonthlySummaryComparisonProps {
   summary: MonthlyFinancialSummaryData;
@@ -20,7 +20,7 @@ function getToneClasses(tone: "positive" | "negative" | "neutral") {
 }
 
 function formatDelta(value: number) {
-  const absoluteValue = formatCurrency(Math.abs(value));
+  const absoluteValue = formatCurrencyWhole(Math.abs(value));
   if (value > 0) return `+${absoluteValue}`;
   if (value < 0) return `-${absoluteValue}`;
   return absoluteValue;
@@ -62,8 +62,8 @@ export function MonthlySummaryComparison({ summary }: MonthlySummaryComparisonPr
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <p className="text-2xl font-semibold tracking-tight">{formatCurrency(metric.currentValue)}</p>
-                  <p className="text-xs text-muted-foreground">Anterior: {formatCurrency(metric.previousValue)} en {summary.comparison.previousPeriodLabel}</p>
+                  <p className="text-2xl font-semibold tracking-tight">{formatCurrencyWhole(metric.currentValue)}</p>
+                  <p className="text-xs text-muted-foreground">Anterior: {formatCurrencyWhole(metric.previousValue)} en {summary.comparison.previousPeriodLabel}</p>
                 </div>
                 <div className={`rounded-lg border px-3 py-2 ${getToneClasses(metric.tone)}`}>
                   <p className="text-sm font-semibold">{formatDelta(metric.deltaValue)}</p>

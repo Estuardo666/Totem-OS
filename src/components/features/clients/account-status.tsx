@@ -7,18 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getClientAccountStatus } from "@/actions/finance-actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatCurrencyEnUS } from "@/lib/currency-format";
 
 interface AccountStatusProps {
   clientId: string;
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 export function AccountStatus({ clientId }: AccountStatusProps) {
@@ -93,7 +85,7 @@ export function AccountStatus({ clientId }: AccountStatusProps) {
             <div className="flex items-center justify-between">
               <CardTitle>Deudas Pendientes</CardTitle>
               <Badge variant="secondary" className="text-lg">
-                Total: {formatCurrency(totalPending)}
+                Total: {formatCurrencyEnUS(totalPending)}
               </Badge>
             </div>
           </CardHeader>
@@ -153,7 +145,7 @@ export function AccountStatus({ clientId }: AccountStatusProps) {
                                   : ""
                             }`}
                           >
-                            {formatCurrency(debt.amount)}
+                            {formatCurrencyEnUS(debt.amount)}
                           </TableCell>
                         </TableRow>
                       );
@@ -172,7 +164,7 @@ export function AccountStatus({ clientId }: AccountStatusProps) {
             <div className="flex items-center justify-between">
               <CardTitle>Historial de Pagos</CardTitle>
               <Badge variant="default" className="text-lg bg-green-500 hover:bg-green-600">
-                Total: {formatCurrency(totalPaid)}
+                Total: {formatCurrencyEnUS(totalPaid)}
               </Badge>
             </div>
           </CardHeader>
@@ -201,7 +193,7 @@ export function AccountStatus({ clientId }: AccountStatusProps) {
                           {format(new Date(payment.date), "dd/MM/yyyy")}
                         </TableCell>
                         <TableCell className="text-right font-semibold text-green-600">
-                          {formatCurrency(payment.amount)}
+                          {formatCurrencyEnUS(payment.amount)}
                         </TableCell>
                       </TableRow>
                     ))}
