@@ -1400,6 +1400,18 @@ export async function getSettlementReport(
       },
     });
 
+    // Los repartos de utilidades también se pagan como HONORARIOS, pero no son
+    // parte de lo que se le debe a la persona por el mes: si se sumaran a
+    // "Pagado hasta ahora" esconderían sueldo o reembolsos pendientes.
+    const profitPayoutIds = new Set(
+      (
+        await db.profitDistributionItem.findMany({
+          where: { paidTransactionId: { in: allPaidTransactionsThisMonth.map((t) => t.id) } },
+          select: { paidTransactionId: true },
+        })
+      ).map((item) => item.paidTransactionId)
+    );
+
     const settlementReports = await Promise.all(
       users.map(async (user) => {
         let salary = 0;
@@ -1446,6 +1458,7 @@ export async function getSettlementReport(
         const userPaidTransactions = allPaidTransactionsThisMonth.filter(
           (t) =>
             t.userId === user.id &&
+            !profitPayoutIds.has(t.id) &&
             (t.type === "HONORARIOS" ||
               (t.type === "EXPENSE" && t.category === "SALARY"))
         );

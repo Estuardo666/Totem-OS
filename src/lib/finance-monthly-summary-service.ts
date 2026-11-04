@@ -1,5 +1,6 @@
 // Internal server service. Public mutations must go through authorized actions.
 
+import { isInBusinessMonth, mixedDateQueryRange } from "@/lib/business-month";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import {
@@ -135,17 +136,20 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
   const periodLabel = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(monthStart);
   const cutoffLabel = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(cutoffDate);
 
+  const { start: mixedStart, end: mixedEnd } = mixedDateQueryRange(monthStart.getFullYear(), monthStart.getMonth() + 1);
   const commitmentCutoff = isCurrentMonth ? new Date() : queryEnd;
-  const [clients, invoices, incomeTransactions, expenseTransactions, honorarios, expenses, pendingExpenseTransactions, pendingHonorarios, pendingExpenses, savingsMovements, receivablesResult] = await Promise.all([
+  const [clients, rawInvoices, incomeTransactions, expenseTransactions, honorarios, rawExpenses, pendingExpenseTransactions, pendingHonorarios, pendingExpenses, savingsMovements, receivablesResult] = await Promise.all([
     db.client.findMany({
       where: { status: { not: "INACTIVE" } },
       select: { id: true, name: true, logo: true, status: true, monthlyRate: true, paymentDay: true, billingStartDate: true, createdAt: true },
     }),
-    db.invoice.findMany({ where: { generatedAt: { gte: queryStart, lte: queryEnd } }, include: { client: true } }),
+    // Factura y gasto pueden traer fecha de calendario (medianoche UTC) o un
+    // momento real: se consulta un rango amplio y se filtra cada uno abajo.
+    db.invoice.findMany({ where: { generatedAt: { gte: mixedStart, lte: mixedEnd } }, include: { client: true } }),
     db.transaction.findMany({ where: { type: "INCOME", status: "PAID", createdAt: { gte: queryStart, lte: queryEnd } }, include: { relatedClient: true } }),
     db.transaction.findMany({ where: { type: "EXPENSE", status: "PAID", createdAt: { gte: queryStart, lte: queryEnd } }, include: { relatedClient: true } }),
     db.transaction.findMany({ where: { type: "HONORARIOS", status: "PAID", createdAt: { gte: queryStart, lte: queryEnd } }, include: { relatedClient: true } }),
-    db.expense.findMany({ where: { date: { gte: queryStart, lte: queryEnd } }, include: { client: true } }),
+    db.expense.findMany({ where: { date: { gte: mixedStart, lte: mixedEnd } }, include: { client: true } }),
     db.transaction.findMany({ where: { type: "EXPENSE", status: "PENDING", createdAt: { lte: commitmentCutoff } } }),
     db.transaction.findMany({ where: { type: "HONORARIOS", status: "PENDING", createdAt: { lte: commitmentCutoff } } }),
     db.expense.findMany({
@@ -158,6 +162,10 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
     db.emergencyFundMovement.findMany({ where: { year: monthStart.getFullYear(), month: monthStart.getMonth() + 1 } }),
     getReceivablesFromDb(userId, monthStart),
   ]);
+
+  const inPeriod = (date: Date) => isInBusinessMonth(date, monthStart.getFullYear(), monthStart.getMonth() + 1);
+  const invoices = rawInvoices.filter((invoice) => inPeriod(invoice.generatedAt));
+  const expenses = rawExpenses.filter((expense) => inPeriod(expense.date));
 
   const recurringClientIds = clients.filter((client) => client.paymentDay && client.monthlyRate > 0 && client.status !== "PAUSED").map((client) => client.id);
   const [billingExceptions, closureRows] = await Promise.all([
