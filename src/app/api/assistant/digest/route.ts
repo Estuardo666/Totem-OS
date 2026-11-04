@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { resolveRoleCode } from "@/lib/roles";
-import { checkRateLimit } from "@/lib/rate-limiter";
+import { checkRouteRateLimit, rateLimitUnavailableResponse } from "@/lib/api-rate-limiter";
 import { generateDigest, type Digest } from "@/lib/assistant/digest";
 
 export const runtime = "nodejs";
@@ -46,7 +46,16 @@ async function handle(refresh: boolean) {
     return Response.json({ digest: stored.digest, cached: true });
   }
 
-  const limit = checkRateLimit(userId, "assistant-digest", 6, 10 * 60_000);
+  const limit = await checkRouteRateLimit({
+    identifier: userId,
+    bucket: "assistant-digest",
+    limit: 6,
+    windowMs: 10 * 60_000,
+  });
+  if (!limit) {
+    if (stored) return Response.json({ digest: stored.digest, cached: true });
+    return rateLimitUnavailableResponse();
+  }
   if (!limit.allowed) {
     if (stored) return Response.json({ digest: stored.digest, cached: true });
     return Response.json({ error: "Demasiadas solicitudes; espera unos minutos." }, { status: 429 });

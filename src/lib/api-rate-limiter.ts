@@ -47,6 +47,31 @@ function assertOptions(options: DistributedRateLimitOptions): void {
   }
 }
 
+/** Fracción de comprobaciones que además limpian ventanas vencidas. */
+const EXPIRED_CLEANUP_PROBABILITY = 0.02;
+
+/**
+ * Borra un lote de ventanas vencidas sin esperar filas que otra instancia ya
+ * esté borrando. Antes se borraban todas en cada comprobación, dentro de la
+ * misma transacción: con tráfico concurrente las peticiones se serializaban.
+ * Un fallo aquí nunca debe afectar a la petición.
+ */
+export async function pruneExpiredBuckets(now: Date = new Date()): Promise<void> {
+  try {
+    await db.$executeRaw(Prisma.sql`
+      DELETE FROM "api_rate_limit_bucket"
+      WHERE "id" IN (
+        SELECT "id" FROM "api_rate_limit_bucket"
+        WHERE "expiresAt" < ${now}
+        LIMIT 500
+        FOR UPDATE SKIP LOCKED
+      )
+    `);
+  } catch (error) {
+    console.error("[rate-limit] cleanup:", error instanceof Error ? error.message : error);
+  }
+}
+
 /**
  * Fixed-window check atómico en PostgreSQL. El contador se incrementa dentro
  * del upsert para que varias instancias de Next no puedan sobrepasar el límite
@@ -63,23 +88,21 @@ export async function checkDistributedRateLimit(
   const hash = identifierHash(options.bucket, options.identifier);
 
   try {
-    const rows = await db.$transaction(async (tx) => {
-      await tx.$executeRaw(
-        Prisma.sql`DELETE FROM "api_rate_limit_bucket" WHERE "expiresAt" < ${now}`
-      );
+    // Un único INSERT ... ON CONFLICT es atómico por sí mismo: no hace falta
+    // una transacción interactiva que retenga bloqueos entre sentencias.
+    const rows = await db.$queryRaw<Array<{ count: number }>>(Prisma.sql`
+      INSERT INTO "api_rate_limit_bucket"
+        ("id", "bucket", "identifierHash", "windowStart", "count", "expiresAt", "createdAt", "updatedAt")
+      VALUES
+        (${globalThis.crypto.randomUUID()}, ${options.bucket}, ${hash}, ${windowStart}, 1, ${expiresAt}, ${now}, ${now})
+      ON CONFLICT ("bucket", "identifierHash", "windowStart")
+      DO UPDATE SET
+        "count" = "api_rate_limit_bucket"."count" + 1,
+        "updatedAt" = ${now}
+      RETURNING "count"
+    `);
 
-      return tx.$queryRaw<Array<{ count: number }>>(Prisma.sql`
-        INSERT INTO "api_rate_limit_bucket"
-          ("id", "bucket", "identifierHash", "windowStart", "count", "expiresAt", "createdAt", "updatedAt")
-        VALUES
-          (${globalThis.crypto.randomUUID()}, ${options.bucket}, ${hash}, ${windowStart}, 1, ${expiresAt}, ${now}, ${now})
-        ON CONFLICT ("bucket", "identifierHash", "windowStart")
-        DO UPDATE SET
-          "count" = "api_rate_limit_bucket"."count" + 1,
-          "updatedAt" = ${now}
-        RETURNING "count"
-      `);
-    });
+    if (Math.random() < EXPIRED_CLEANUP_PROBABILITY) await pruneExpiredBuckets(now);
 
     const count = Number(rows[0]?.count ?? 0);
     const allowed = count <= options.limit;
@@ -97,4 +120,39 @@ export async function checkDistributedRateLimit(
     if (error instanceof RateLimitStoreError) throw error;
     throw new RateLimitStoreError(error instanceof Error ? error.message : undefined);
   }
+}
+
+/**
+ * Para rutas que no pasan por `withApiProtection`. Devuelve `null` si
+ * PostgreSQL no responde: la ruta debe fallar cerrada con
+ * `rateLimitUnavailableResponse()`, igual que el guard del kernel.
+ */
+export async function checkRouteRateLimit(
+  options: DistributedRateLimitOptions
+): Promise<DistributedRateLimitResult | null> {
+  try {
+    return await checkDistributedRateLimit(options);
+  } catch (error) {
+    console.error(`[rate-limit] ${options.bucket}:`, error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
+export function rateLimitUnavailableResponse(): Response {
+  return Response.json(
+    { error: "No se pudo verificar el límite de solicitudes; intenta de nuevo." },
+    { status: 503, headers: { "Retry-After": "5" } }
+  );
+}
+
+/** IP del cliente detrás de proxies; identifica peticiones sin sesión. */
+export function getClientIP(request: { headers: Headers }): string {
+  const { headers } = request;
+  return (
+    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    headers.get("x-real-ip")?.trim() ||
+    headers.get("cf-connecting-ip")?.trim() ||
+    headers.get("x-client-ip")?.trim() ||
+    "unknown"
+  );
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { checkDistributedRateLimit } from "../../src/lib/api-rate-limiter.ts";
+import { checkDistributedRateLimit, pruneExpiredBuckets } from "../../src/lib/api-rate-limiter.ts";
 import { prisma, resetDatabase } from "./prisma-test-db.mjs";
 
 const windowMs = 60_000;
@@ -46,4 +46,17 @@ test("rate limit distribuido incrementa atómicamente y reinicia por ventana", a
   });
   assert.equal(rows.length, 2);
   assert.deepEqual(rows.map((row) => row.count).sort((a, b) => a - b), [1, 3]);
+});
+
+test("la limpieza borra solo ventanas vencidas", async () => {
+  const bucket = "cp04.cleanup";
+  await checkDistributedRateLimit({ identifier: "old", bucket, limit: 5, windowMs, now });
+  const later = new Date(now.getTime() + 5 * windowMs);
+  await checkDistributedRateLimit({ identifier: "fresh", bucket, limit: 5, windowMs, now: later });
+
+  await pruneExpiredBuckets(later);
+
+  const rows = await prisma.apiRateLimitBucket.findMany({ where: { bucket } });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].windowStart.getTime(), Math.floor(later.getTime() / windowMs) * windowMs);
 });

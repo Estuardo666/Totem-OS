@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { auth } from "@/auth";
 import { resolveRoleCode } from "@/lib/roles";
-import { checkRateLimit } from "@/lib/rate-limiter";
+import { checkRouteRateLimit, rateLimitUnavailableResponse } from "@/lib/api-rate-limiter";
 import { runAssistantTurn } from "@/lib/assistant/agent";
 
 export const runtime = "nodejs";
@@ -22,7 +22,13 @@ export async function POST(request: Request) {
     return Response.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const limit = checkRateLimit(session.user.id, "assistant-agent", 30, 60_000);
+  const limit = await checkRouteRateLimit({
+    identifier: session.user.id,
+    bucket: "assistant-agent",
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (!limit) return rateLimitUnavailableResponse();
   if (!limit.allowed) {
     return Response.json({ error: "Demasiadas consultas; espera un momento." }, { status: 429 });
   }

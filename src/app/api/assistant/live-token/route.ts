@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { auth } from "@/auth";
 import { resolveRoleCode } from "@/lib/roles";
-import { checkRateLimit } from "@/lib/rate-limiter";
+import { checkRouteRateLimit, rateLimitUnavailableResponse } from "@/lib/api-rate-limiter";
 import { getProviderApiKey, getVoiceSettings } from "@/lib/assistant/config";
 import {
   DEFAULT_LIVE_MODEL,
@@ -25,7 +25,13 @@ export async function POST() {
     return Response.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const limit = checkRateLimit(session.user.id, "assistant-live-token", 10, 60_000);
+  const limit = await checkRouteRateLimit({
+    identifier: session.user.id,
+    bucket: "assistant-live-token",
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!limit) return rateLimitUnavailableResponse();
   if (!limit.allowed) {
     return Response.json({ error: "Demasiados intentos; espera un momento." }, { status: 429 });
   }

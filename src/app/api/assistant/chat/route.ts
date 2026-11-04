@@ -1,7 +1,7 @@
 import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from "ai";
 import { auth } from "@/auth";
 import { resolveRoleCode } from "@/lib/roles";
-import { checkRateLimit } from "@/lib/rate-limiter";
+import { checkRouteRateLimit, rateLimitUnavailableResponse } from "@/lib/api-rate-limiter";
 import { getAssistantModel } from "@/lib/assistant/config";
 import { buildAssistantTools } from "@/lib/assistant/tools";
 import { buildSystemPrompt } from "@/lib/assistant/prompt";
@@ -19,7 +19,13 @@ export async function POST(request: Request) {
     return Response.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const limit = checkRateLimit(session.user.id, "assistant-chat", 30, 60_000);
+  const limit = await checkRouteRateLimit({
+    identifier: session.user.id,
+    bucket: "assistant-chat",
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (!limit) return rateLimitUnavailableResponse();
   if (!limit.allowed) {
     return Response.json({ error: "Demasiadas consultas; espera un momento." }, { status: 429 });
   }

@@ -1,5 +1,15 @@
 # 📋 CHANGELOG - OPTIMIZACIONES IMPLEMENTADAS
 
+## [0.2.8] - 2026-11-03
+
+### Fixed
+
+- El asistente (chat, voz en vivo, agente y digest) y la suscripción push aplican su límite de solicitudes de forma real en Vercel: el contador vive en PostgreSQL y se comparte entre instancias. Si la base no responde, la solicitud se rechaza con 503.
+
+### Removed
+
+- Código sin uso (~7.000 líneas), scripts y guías de OneSignal, archivos sueltos de la raíz y la dependencia `react-day-picker`.
+
 ## [0.2.7] - 2026-10-28
 
 ### Fixed

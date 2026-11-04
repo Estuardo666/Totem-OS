@@ -20,8 +20,8 @@ import {
   RateLimitStoreError,
   type DistributedRateLimitOptions,
   type DistributedRateLimitResult,
+  getClientIP,
 } from "./api-rate-limiter.ts";
-import { getClientIP } from "./rate-limiter.ts";
 
 export type ApiActorResolver = (request: Request) => Promise<ApiActor | null>;
 export type ApiRateLimitChecker = (

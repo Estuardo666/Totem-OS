@@ -1,6 +1,6 @@
 {
   "name": "totem-os",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -83,7 +83,6 @@
     "pusher-js": "^8.4.0",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
-    "react-day-picker": "8.10.1",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.53.0",
     "react-markdown": "^10.1.0",
