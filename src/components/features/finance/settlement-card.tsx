@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SalaryConfigDialog } from "./salary-config-dialog";
 import { ProcessPaymentDialog } from "./process-payment-dialog";
 import { PendingExpensesDialog } from "./pending-expenses-dialog";
+import { SettlementPaymentsDialog } from "./settlement-payments-dialog";
 import type { User } from "@prisma/client";
 import { formatCurrency } from "@/lib/currency-format";
 
@@ -32,6 +33,7 @@ export function SettlementCard({
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [expensesDialogOpen, setExpensesDialogOpen] = useState(false);
+  const [paymentsDialogOpen, setPaymentsDialogOpen] = useState(false);
 
   const getSalaryTypeBadge = (salaryType: string, _role: string, hasProfitShare: boolean) => {
     const badges = [];
@@ -177,12 +179,21 @@ export function SettlementCard({
 
             {/* Pagado hasta ahora */}
             {userReport.paidSoFar > 0 && (
-              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center p-3 bg-muted/50 rounded-lg">
-                <span className="text-muted-foreground">(-) Pagado hasta ahora:</span>
-                <span className="font-semibold text-green-600">
-                  {formatCurrency(userReport.paidSoFar)}
+              <button
+                type="button"
+                onClick={() => setPaymentsDialogOpen(true)}
+                aria-label={`Ver pagos a ${userReport.userName}: ${formatCurrency(userReport.paidSoFar)}`}
+                className="group flex w-full flex-col gap-1 rounded-lg bg-muted/50 p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span className="flex flex-col">
+                  <span className="text-muted-foreground group-hover:text-foreground">(-) Pagado hasta ahora:</span>
+                  <span className="text-xs text-primary">Ver pagos</span>
                 </span>
-              </div>
+                <span className="flex items-center gap-1 font-semibold text-green-600">
+                  {formatCurrency(userReport.paidSoFar)}
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </span>
+              </button>
             )}
 
             {/* Total Pendiente */}
@@ -237,6 +248,14 @@ export function SettlementCard({
         userId={userReport.userId}
         userName={userReport.userName}
         canMarkReturned={isAdmin}
+      />
+      <SettlementPaymentsDialog
+        open={paymentsDialogOpen}
+        onOpenChange={setPaymentsDialogOpen}
+        userName={userReport.userName}
+        month={month}
+        year={year}
+        payments={userReport.payments ?? []}
       />
     </>
   );
