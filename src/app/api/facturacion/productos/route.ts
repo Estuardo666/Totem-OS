@@ -5,7 +5,7 @@
 // DELETE /api/facturacion/productos?id=xxx - Eliminar
 
 import { NextRequest, NextResponse } from "next/server";
-import { db as prisma } from "@/lib/sri/database";
+import { db as prisma } from "@/lib/db";
 
 import { auth } from "@/auth";
 export async function GET() {
