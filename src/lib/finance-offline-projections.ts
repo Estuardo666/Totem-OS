@@ -32,7 +32,8 @@ function getUserNames(userIds: string[], users: OfflineUserOption[]) {
 
 function sortTransactions(transactions: TransactionsSnapshot) {
   return [...transactions].sort(
-    (left, right) => right.date.getTime() - left.date.getTime()
+    (left, right) =>
+      new Date(right.activityAt ?? right.date).getTime() - new Date(left.activityAt ?? left.date).getTime()
   );
 }
 
