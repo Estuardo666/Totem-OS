@@ -26,6 +26,7 @@ import type { FinancialStats } from "@/actions/finance-actions";
 import { DashboardRefresh } from "@/components/features/content/dashboard-refresh";
 import { AnimatedNumber } from "@/components/features/dashboard/animated-number";
 import { isOverdueEditingTask, isOverduePublicationTask } from "@/components/features/dashboard/dashboard-overdue";
+import { countsTowardTeamLateness, getLatenessOwner } from "@/lib/content-task-lateness";
 import { HomeMotion } from "@/components/features/dashboard/home-motion";
 import { AiDigest } from "@/components/features/dashboard/ai-digest";
 import { formatCurrency } from "@/lib/currency-format";
@@ -244,7 +245,7 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
     .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
     .slice(0, 6);
   const priorityTasks = tasks
-    .filter((task) => task.dueDate && task.status !== "PUBLISHED" && new Date(task.dueDate) <= new Date(Date.now() + 1000 * 60 * 60 * 24 * 4))
+    .filter((task) => task.dueDate && countsTowardTeamLateness(task.status) && new Date(task.dueDate) <= new Date(Date.now() + 1000 * 60 * 60 * 24 * 4))
     .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
     .slice(0, 6);
   const publishedThisMonth = monthTasks.filter((task) => task.status === "PUBLISHED").length;
@@ -343,14 +344,14 @@ export function HomeCommandCenter({ firstName, userRole, specialty, tasks, clien
                 const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                 const overdue = Boolean(dueDate && startOfDay(dueDate) < today);
                 const priority = task.priority === "URGENT" || task.priority === "HIGH";
-                const owner = getTaskOwnerRecord(task);
+                const owner = getLatenessOwner(task);
                 return (
                   <Link href={`/content?task=${task.id}`} key={task.id} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-l-2 ${overdue ? "border-[hsl(var(--theme-error)/0.7)]" : "border-transparent"} px-5 py-3.5 transition-colors hover:bg-primary/[0.1] sm:grid-cols-[minmax(0,1fr)_112px_88px_82px] sm:px-6`}>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-card-foreground">{task.title}</p>
                       <p className="mt-1 flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground"><ClientMark name={task.client.name} logo={task.client.logo} color={task.client.color} /><span className="truncate">{task.client.name}</span></p>
                     </div>
-                    <span className="hidden min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground sm:flex"><UserMark name={owner?.name || "Sin asignar"} image={owner?.image} /><span className="truncate">{getTaskOwner(task)}</span></span>
+                    <span className="hidden min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground sm:flex"><UserMark name={owner?.name || "Sin asignar"} image={owner?.image} /><span className="truncate">{owner?.name || "Sin asignar"}</span></span>
                     <div className="flex items-center justify-end gap-2 whitespace-nowrap sm:contents">
                       <span className={`text-xs font-medium ${overdue ? "text-[hsl(var(--theme-error))]" : priority ? "text-[hsl(var(--theme-warning))]" : "text-muted-foreground"}`}>{overdue ? "Vencida" : priority ? "Alta" : "Normal"}</span>
                       <span className={`text-right text-xs ${overdue ? "font-semibold text-[hsl(var(--theme-error))]" : "text-muted-foreground"}`}>{relativeDate(dueDate)}</span>

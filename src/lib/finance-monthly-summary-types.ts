@@ -117,7 +117,10 @@ export interface MonthlyFinancialSummaryData {
     }>;
   };
   treasury: {
+    /** Dinero cobrado dentro del mes (por fecha de cobro), sin importar a qué mes corresponde. */
     collectedCash: number;
+    /** Parte de collectedCash que corresponde a meses anteriores (pagos atrasados). */
+    collectedFromPriorPeriods: number;
     directCashOut: number;
     operatingCashOut: number;
     paidCashOut: number;

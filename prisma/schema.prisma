@@ -450,6 +450,7 @@ model Transaction {
   status      String  @default("PENDING") // PENDING, PAID, CANCELLED
   description String?
   category    String? // Comida, Transporte, Invitaciones, Software, Otros
+  paidAt      DateTime? // Fecha real de cobro/pago (caja); createdAt = mes al que corresponde
 
   // Relaciones
   relatedClientId String?

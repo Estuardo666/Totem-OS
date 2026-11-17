@@ -31,6 +31,14 @@ function resolvePeriodCreatedAt(periodMonth?: string): Date | undefined {
   return date.getTime() > now.getTime() ? undefined : date;
 }
 
+/** Fecha de cobro (YYYY-MM-DD) a mediodía de Ecuador, para que no cambie de día por zona horaria. */
+function resolvePaidAt(paidAt?: string): Date {
+  if (!paidAt) return new Date();
+  const [year, month, day] = paidAt.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 17));
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
 export async function createTransactionInDb(
   input: unknown,
   userId: string,
@@ -71,6 +79,7 @@ export async function createTransactionInDb(
         clientId: validatedData.clientId ?? null,
         assignedToId: validatedData.assignedToId ?? null,
         userId: validatedData.userId ?? null,
+        paidAt: validatedData.status === "PAID" ? resolvePaidAt(validatedData.paidAt) : null,
         ...(resolvePeriodCreatedAt(validatedData.periodMonth) && {
           createdAt: resolvePeriodCreatedAt(validatedData.periodMonth),
         }),
@@ -245,6 +254,9 @@ export async function markTransactionAsPaidInDb(
     }
 
     const result = await updateTransactionInDb(transactionId, { status: "PAID" });
+    if (result.success) {
+      await db.transaction.update({ where: { id: transactionId }, data: { paidAt: new Date() } });
+    }
 
     // Notificar si es pago de honorarios
     if (result.success && transactionBefore.type === "HONORARIOS" && transactionBefore.userId) {

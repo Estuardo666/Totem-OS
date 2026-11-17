@@ -5,7 +5,8 @@ import { ecuadorDayBounds, isConfiguredTeamDailyMinute, isWhatsAppScheduleActive
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ECUADOR_OFFSET_MS = 5 * 60 * 60 * 1000;
-const CLOSED_STATUSES = ["PUBLISHED", "APPROVED", "CLIENT_APPROVED", "PAUSED", "CANCELLED", "REJECTED"];
+// REVIEW_CLIENT espera al cliente: no es un pendiente ni un atraso del equipo.
+const CLOSED_STATUSES = ["PUBLISHED", "APPROVED", "CLIENT_APPROVED", "REVIEW_CLIENT", "PAUSED", "CANCELLED", "REJECTED"];
 
 export async function enqueueWhatsAppTeamDailySummaries(now = new Date()) {
   const config = await getWhatsAppConfig();
