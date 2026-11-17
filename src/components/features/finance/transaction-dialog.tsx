@@ -122,6 +122,13 @@ const formatDateNatural = (value?: Date | string) => {
   }
 };
 
+// "2026-09" -> "septiembre de 2026"
+const formatMonthNatural = (value?: string) => {
+  if (!value || !/^\d{4}-\d{2}$/.test(value)) return "";
+  const [y, m] = value.split("-").map(Number);
+  return new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(new Date(y, m - 1, 1));
+};
+
 // Parse a date-only input (YYYY-MM-DD) into a local Date at midnight
 const parseDateFromInput = (value?: string) => {
   if (!value) return undefined;
@@ -179,8 +186,7 @@ export function TransactionDialog({
   const [incomeAmountMode, setIncomeAmountMode] = useState<"100" | "50" | "other">("other");
   const [incomeOtherText, setIncomeOtherText] = useState("");
   const [incomeClientSelection, setIncomeClientSelection] = useState<string>("");
-  const [incomeInvoiceDate, setIncomeInvoiceDate] = useState<Date>(getCurrentDateInEcuador());
-  const [incomeDueDate, setIncomeDueDate] = useState<Date | undefined>(undefined);
+  const [incomePaidDate, setIncomePaidDate] = useState<Date>(getCurrentDateInEcuador());
   const [honorariosUserIds, setHonorariosUserIds] = useState<string[]>([]);
 
   // Formulario de Ingreso
@@ -193,6 +199,7 @@ export function TransactionDialog({
       clientId: undefined,
       relatedClientId: undefined,
       description: "",
+      periodMonth: getCurrentMonthInEcuador(),
     },
   });
 
@@ -286,7 +293,7 @@ export function TransactionDialog({
   // Resetear formularios cuando se cierra el dialog
   useEffect(() => {
     if (!open) {
-      incomeForm.reset();
+      incomeForm.reset({ ...incomeForm.formState.defaultValues, periodMonth: getCurrentMonthInEcuador() });
       expenseForm.reset();
       honorariosForm.reset({ ...honorariosForm.formState.defaultValues, periodMonth: getCurrentMonthInEcuador() });
       setIncomeClientQuery("");
@@ -294,8 +301,7 @@ export function TransactionDialog({
       setHonorariosAmountInput("");
       setIncomeOtherText("");
       setIncomeClientSelection("");
-      setIncomeInvoiceDate(getCurrentDateInEcuador());
-      setIncomeDueDate(undefined);
+      setIncomePaidDate(getCurrentDateInEcuador());
       setHonorariosUserIds([]);
     }
   }, [open, incomeForm, expenseForm, honorariosForm]);
@@ -312,6 +318,11 @@ export function TransactionDialog({
   const isIncomeOtherSelected = incomeClientSelection === INCOME_OTHER_OPTION;
   const incomeSelectedClient = clients.find((c) => c.id === incomeSelectedClientId);
   const incomeSelectedMonthly = incomeSelectedClient?.monthlyRate ?? 0;
+  // Pago atrasado: corresponde a un mes anterior al actual. El ingreso se imputa
+  // a ese mes (periodMonth) para no inflar el mes en curso.
+  const incomePeriodMonth = incomeForm.watch("periodMonth");
+  const incomeStatus = incomeForm.watch("status");
+  const isIncomeLate = Boolean(incomePeriodMonth && incomePeriodMonth < getCurrentMonthInEcuador());
 
   useEffect(() => {
     const currentClientId = incomeForm.getValues("clientId");
@@ -370,12 +381,21 @@ export function TransactionDialog({
         return;
       }
 
+      const baseDescription = isIncomeOtherSelected
+        ? incomeOtherText.trim()
+        : incomeSelectedClient?.name || "Ingreso";
+      const isLate = Boolean(data.periodMonth && data.periodMonth < getCurrentMonthInEcuador());
+      const lateNote = !isLate
+        ? ""
+        : data.status === "PAID"
+          ? ` · Atrasado, cobrado el ${formatDateNatural(incomePaidDate)}`
+          : " · Atrasado";
+
       const payload: CreateTransactionInput = {
         ...data,
         type: "INCOME",
-        description: isIncomeOtherSelected
-          ? incomeOtherText.trim()
-          : incomeSelectedClient?.name || "Ingreso",
+        description: `${baseDescription}${lateNote}`,
+        paidAt: isLate && data.status === "PAID" ? formatDateValue(incomePaidDate) : undefined,
         clientId:
           isIncomeOtherSelected || !data.clientId ? undefined : data.clientId,
         relatedClientId:
@@ -801,43 +821,52 @@ export function TransactionDialog({
                 </div>
 
                 <div className="space-y-4">
-                  <FormItem>
-                    <FormLabel>Fecha (Factura)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        value={formatDateValue(incomeInvoiceDate)}
-                        onChange={(e) => {
-                          setIncomeInvoiceDate(
-                            e.target.value ? parseDateFromInput(e.target.value) ?? getCurrentDateInEcuador() : getCurrentDateInEcuador()
-                          );
-                        }}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {formatDateNatural(incomeInvoiceDate)}
-                    </div>
-                  </FormItem>
+                  <FormField
+                    control={incomeForm.control}
+                    name="periodMonth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Corresponde a</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="month"
+                            {...field}
+                            value={field.value ?? ""}
+                            max={getCurrentMonthInEcuador()}
+                            disabled={isSubmitting}
+                          />
+                        </FormControl>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {isIncomeLate
+                            ? `Pago atrasado: cuenta en los ingresos de ${formatMonthNatural(incomePeriodMonth)}, no en los del mes actual.`
+                            : "Cuenta en los ingresos del mes actual."}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                  <FormItem>
-                    <FormLabel>Fecha de Vencimiento (Opcional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        value={formatDateValue(incomeDueDate)}
-                        onChange={(e) => {
-                          setIncomeDueDate(
-                            e.target.value ? parseDateFromInput(e.target.value) : undefined
-                          );
-                        }}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {formatDateNatural(incomeDueDate)}
-                    </div>
-                  </FormItem>
+                  {isIncomeLate && incomeStatus === "PAID" ? (
+                    <FormItem>
+                      <FormLabel>Fecha de cobro</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          value={formatDateValue(incomePaidDate)}
+                          max={formatDateValue(getCurrentDateInEcuador())}
+                          onChange={(e) => {
+                            setIncomePaidDate(
+                              (e.target.value ? parseDateFromInput(e.target.value) : undefined) ?? getCurrentDateInEcuador()
+                            );
+                          }}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        {`Se guardará como "Atrasado, cobrado el ${formatDateNatural(incomePaidDate)}".`}
+                      </div>
+                    </FormItem>
+                  ) : null}
                 </div>
 
                 <div className="flex gap-4 pt-4">

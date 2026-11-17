@@ -31,6 +31,9 @@ interface KanbanBoardProps {
   clients?: Array<{ id: string; name: string; logo?: string | null; color?: string | null }>;
   isCompactView?: boolean;
   clientId?: string; // Si se proporciona, filtra las tareas solo para este cliente
+  // Si el padre filtra las tareas (Content Factory), recibe aquí la lista completa
+  // del servidor para re-filtrarla; el tablero no agrega tareas por su cuenta.
+  onServerTasksSynced?: (tasks: ContentTaskWithClient[]) => void;
 }
 
 // Estados que se mostrarán en el Kanban
@@ -69,7 +72,7 @@ function applyOptimisticTaskStatusChange(
   return nextTask;
 }
 
-export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompactView = false, clientId }: KanbanBoardProps) {
+export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompactView = false, clientId, onServerTasksSynced }: KanbanBoardProps) {
   const { data: session } = useSession();
   const actor = { userId: session?.user?.id ?? "", role: resolveRoleCode(session?.user) ?? "USER" };
   const { toast } = useToast();
@@ -103,6 +106,11 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
   useEffect(() => {
     clientIdRef.current = clientId;
   }, [clientId]);
+
+  const onServerTasksSyncedRef = useRef(onServerTasksSynced);
+  useEffect(() => {
+    onServerTasksSyncedRef.current = onServerTasksSynced;
+  }, [onServerTasksSynced]);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -354,17 +362,25 @@ export function KanbanBoard({ tasks: initialTasks, users, clients = [], isCompac
           console.log("Tareas obtenidas del servidor:", filteredData.length, currentClientId ? `(filtradas para cliente ${currentClientId})` : "(todas)");
           
           // Fusionar: preservar el orden local, actualizar datos del servidor
+          const syncToParent = onServerTasksSyncedRef.current;
           setTasks((prevTasks) => {
-            // Solo actualizar datos de tareas existentes en el estado local.
-            // NO agregar tareas del servidor que no estén aquí: evita que tareas
-            // de otros clientes/filtros aparezcan brevemente (flash de +N tareas).
             const newTasksMap = new Map(filteredData.map(t => [t.id, t]));
+            const updatedExisting = prevTasks
+              .filter((task) => newTasksMap.has(task.id))
+              .map((task) => newTasksMap.get(task.id)!);
+
+            // Con un padre que filtra, NO agregar tareas que no estén ya en el
+            // tablero: serían las que el filtro oculta y aparecerían de golpe
+            // hasta el siguiente refresh. Las nuevas llegan re-filtradas vía props.
+            if (syncToParent) return updatedExisting;
+
             const previousIds = new Set(prevTasks.map((task) => task.id));
             return [
-              ...prevTasks.filter((task) => newTasksMap.has(task.id)).map((task) => newTasksMap.get(task.id)!),
+              ...updatedExisting,
               ...filteredData.filter((task) => !previousIds.has(task.id)),
             ];
           });
+          syncToParent?.(result.data);
           
           // Mostrar toast de confirmación (solo si hubo cambios reales)
           toast({

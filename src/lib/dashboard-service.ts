@@ -9,6 +9,7 @@ import type {
 import { resolveRoleCode } from "./roles.ts";
 import type { ApiActor } from "./api-actor.ts";
 import { db } from "./db.ts";
+import { countsTowardTeamLateness } from "./content-task-lateness.ts";
 import { getReceivablesFromDb } from "./finance-transaction-service.ts";
 
 const EDITOR_PENDING_STATUSES = new Set(["RECORDED", "EDITING", "REVIEW_CLIENT"]);
@@ -187,7 +188,7 @@ export async function loadDashboard(actor: ApiActor): Promise<DashboardData> {
     .sort((left, right) => Date.parse(left.scheduledAt!) - Date.parse(right.scheduledAt!))
     .slice(0, 6);
   const priorityTasks = dashboardTasks
-    .filter((task) => task.dueDate && task.status !== "PUBLISHED" && new Date(task.dueDate) <= fourDaysFromNow)
+    .filter((task) => task.dueDate && countsTowardTeamLateness(task.status) && new Date(task.dueDate) <= fourDaysFromNow)
     .sort((left, right) => Date.parse(left.dueDate!) - Date.parse(right.dueDate!))
     .slice(0, 6);
   const monthTasks = taskRows.filter((task) => (task.publishedAt ?? task.dueDate ?? task.createdAt) >= monthStart);

@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { resolveRoleCode } from "@/lib/roles";
 import { canEditAssignedTask } from "@/lib/access-policy";
+import { countsTowardTeamLateness } from "@/lib/content-task-lateness";
 
 import { format, isBefore, isToday, startOfDay } from "date-fns";
 import { Video, Image as ImageIconLucide, Camera, ImageIcon, CheckCircle2, AlertCircle, CalendarDays } from "lucide-react";
@@ -77,7 +78,8 @@ export function TaskCard({ task, index, onCardClick, onOptimisticStatusChange, i
   const showDateRow = !isCompactView && task.status !== "IDEA";
   const isOverdue = Boolean(
     displayDate &&
-    task.status !== "PUBLISHED" &&
+    // En Revisión Cliente la fecha depende del cliente: no se marca como atrasada.
+    countsTowardTeamLateness(task.status) &&
     isBefore(new Date(displayDate), startOfDay(new Date()))
   );
 

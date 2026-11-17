@@ -168,7 +168,7 @@ export async function getContentDashboardData(): Promise<ApiResponse<DashboardDa
             // Tareas urgentes/atrasadas
             {
               status: {
-                notIn: ["PUBLISHED", "CLIENT_APPROVED", "PAUSED", "CANCELLED", "REJECTED"],
+                notIn: ["PUBLISHED", "CLIENT_APPROVED", "REVIEW_CLIENT", "PAUSED", "CANCELLED", "REJECTED"],
               },
               scheduledAt: {
                 lte: twoDaysFromNow,

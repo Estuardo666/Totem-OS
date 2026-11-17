@@ -244,6 +244,7 @@ export function ContentFactoryWrapper({
             users={users} 
             clients={activeClients.map(c => ({ id: c.id, name: c.name, logo: c.logo, color: c.color }))}
             isCompactView={isCompactView}
+            onServerTasksSynced={setAllTasks}
           />
         </TabsContent>
         

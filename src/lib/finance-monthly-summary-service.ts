@@ -138,7 +138,11 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
 
   const { start: mixedStart, end: mixedEnd } = mixedDateQueryRange(monthStart.getFullYear(), monthStart.getMonth() + 1);
   const commitmentCutoff = isCurrentMonth ? new Date() : queryEnd;
-  const [clients, rawInvoices, incomeTransactions, expenseTransactions, honorarios, rawExpenses, pendingExpenseTransactions, pendingHonorarios, pendingExpenses, savingsMovements, receivablesResult] = await Promise.all([
+  // Caja: lo cobrado dentro del mes según la fecha real de cobro. Los registros
+  // sin fecha de cobro (anteriores a la columna) usan su fecha de devengo.
+  const cashWindow = { gte: queryStart, lte: queryEnd };
+  const mixedWindow = { gte: mixedStart, lte: mixedEnd };
+  const [clients, rawInvoices, incomeTransactions, expenseTransactions, honorarios, rawExpenses, pendingExpenseTransactions, pendingHonorarios, pendingExpenses, savingsMovements, receivablesResult, rawCashInvoices, cashIncomeTransactions] = await Promise.all([
     db.client.findMany({
       where: { status: { not: "INACTIVE" } },
       select: { id: true, name: true, logo: true, status: true, monthlyRate: true, paymentDay: true, billingStartDate: true, createdAt: true },
@@ -161,11 +165,20 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
     }),
     db.emergencyFundMovement.findMany({ where: { year: monthStart.getFullYear(), month: monthStart.getMonth() + 1 } }),
     getReceivablesFromDb(userId, monthStart),
+    db.invoice.findMany({
+      where: { status: "PAID", OR: [{ paidAt: mixedWindow }, { paidAt: null, generatedAt: mixedWindow }] },
+      select: { amount: true, generatedAt: true, paidAt: true },
+    }),
+    db.transaction.findMany({
+      where: { type: "INCOME", status: "PAID", OR: [{ paidAt: cashWindow }, { paidAt: null, createdAt: cashWindow }] },
+      select: { amount: true, createdAt: true },
+    }),
   ]);
 
   const inPeriod = (date: Date) => isInBusinessMonth(date, monthStart.getFullYear(), monthStart.getMonth() + 1);
   const invoices = rawInvoices.filter((invoice) => inPeriod(invoice.generatedAt));
   const expenses = rawExpenses.filter((expense) => inPeriod(expense.date));
+  const cashInvoices = rawCashInvoices.filter((invoice) => inPeriod(invoice.paidAt ?? invoice.generatedAt));
 
   const recurringClientIds = clients.filter((client) => client.paymentDay && client.monthlyRate > 0 && client.status !== "PAUSED").map((client) => client.id);
   const [billingExceptions, closureRows] = await Promise.all([
@@ -314,7 +327,12 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
   }
 
   const recognizedRevenue = recurringCommittedRevenue + extraordinaryRevenue;
-  const collectedCash = invoices.filter((invoice) => invoice.status === "PAID").reduce((sum, invoice) => sum + invoice.amount, 0) + incomeTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+  const collectedCash =
+    cashInvoices.reduce((sum, invoice) => sum + invoice.amount, 0) +
+    cashIncomeTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+  const collectedFromPriorPeriods =
+    cashInvoices.filter((invoice) => invoice.generatedAt < queryStart && !inPeriod(invoice.generatedAt)).reduce((sum, invoice) => sum + invoice.amount, 0) +
+    cashIncomeTransactions.filter((transaction) => transaction.createdAt < queryStart).reduce((sum, transaction) => sum + transaction.amount, 0);
   const grossMargin = recognizedRevenue - directCosts;
   const operatingResult = grossMargin - operatingExpenses;
   const pendingReimbursements = pendingExpenses.reduce((sum, item) => sum + item.amount, 0);
@@ -397,6 +415,7 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
     },
     treasury: {
       collectedCash,
+      collectedFromPriorPeriods,
       directCashOut,
       operatingCashOut,
       paidCashOut: treasuryPosition.paidCashOut,

@@ -13,6 +13,7 @@
 import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { countsTowardTeamLateness, getLatenessOwner } from "@/lib/content-task-lateness";
 import { getAssistantModel } from "./config";
 import { buildAnalysisTools } from "./analysis-tools";
 import { buildAssistantTools, type AssistantUser } from "./tools";
@@ -98,7 +99,7 @@ function buildDigestSkills(user: AssistantUser) {
 
     riesgoTareas: tool({
       description:
-        "Riesgo operativo de contenido: tareas vencidas agrupadas por responsable y cliente, entregas de los próximos 7 días y piezas estancadas en revisión más de 48 h.",
+        "Riesgo operativo de contenido: tareas vencidas agrupadas por responsable y cliente (sin contar las que esperan revisión del cliente; las aprobadas sin publicar son de la community manager), entregas de los próximos 7 días y piezas estancadas en revisión más de 48 h.",
       inputSchema: z.object({}),
       execute: async () => {
         const now = new Date();
@@ -116,8 +117,10 @@ function buildDigestSkills(user: AssistantUser) {
           orderBy: { dueDate: "asc" },
           take: 200,
         });
-        const owner = (t: (typeof tasks)[number]) => t.assignedEditor?.name ?? t.assignedCommunity?.name ?? "Sin asignar";
-        const overdue = tasks.filter((t) => t.dueDate! < now);
+        const owner = (t: (typeof tasks)[number]) => getLatenessOwner(t)?.name ?? "Sin asignar";
+        // Revisión Cliente espera al cliente: no es atraso del equipo. Lo aprobado
+        // sin publicar es de la community manager.
+        const overdue = tasks.filter((t) => t.dueDate! < now && countsTowardTeamLateness(t.status));
         const upcoming = tasks.filter((t) => t.dueDate! >= now);
         const byOwner: Record<string, number> = {};
         const byClient: Record<string, number> = {};

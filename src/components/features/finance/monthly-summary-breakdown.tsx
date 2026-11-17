@@ -134,6 +134,11 @@ export function MonthlySummaryBreakdown({ summary }: MonthlySummaryBreakdownProp
               <p className="text-sm font-medium text-emerald-900">Caja cobrada</p>
               <p className="mt-2 text-3xl font-semibold text-emerald-950">{formatCurrencyWhole(summary.treasury.collectedCash)}</p>
               <p className="mt-2 text-xs text-emerald-800">Eficiencia de cobranza: {formatPercent(summary.quality.collectionEfficiencyPct)}</p>
+              {summary.treasury.collectedFromPriorPeriods > 0 ? (
+                <p className="mt-1 text-xs text-emerald-800">
+                  Incluye {formatCurrencyWhole(summary.treasury.collectedFromPriorPeriods)} de pagos atrasados de meses anteriores.
+                </p>
+              ) : null}
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-medium text-slate-900">Disponible por asignar</p>
