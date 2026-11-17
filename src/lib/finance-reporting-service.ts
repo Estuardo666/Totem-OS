@@ -45,6 +45,8 @@ export interface FinancialStats {
     amount: number;
     description: string;
     date: Date;
+    /** Fecha del movimiento real (cobro de un pago atrasado); por defecto `date`. */
+    activityAt?: Date;
     clientId?: string;
     clientName?: string;
     clientLogo?: string | null;
@@ -133,6 +135,10 @@ export interface GlobalProfitabilityStatsData {
     stuart: number;
     paty: number;
   };
+}
+
+function activityTime(item: { date: Date; activityAt?: Date }): number {
+  return (item.activityAt ?? item.date).getTime();
 }
 
 /**
@@ -633,9 +639,7 @@ export async function getFinancialStatsFromDb(
           }
         : { id: undefined };
 
-    const allTransactionsPromise = db.transaction.findMany({
-      where: transactionWhereClause,
-      include: {
+    const transactionInclude = {
         relatedClient: true,
         assignedTo: {
           select: {
@@ -649,11 +653,29 @@ export async function getFinancialStatsFromDb(
             image: true,
           },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: recentTake,
+    } as const;
+
+    // Un pago atrasado se fecha en su mes devengado (createdAt) pero se cobra
+    // hoy (paidAt). Con límite de recientes se traen ambos órdenes para que
+    // el cobro de hoy no quede fuera por tener un devengo antiguo.
+    const allTransactionsPromise = Promise.all([
+      db.transaction.findMany({
+        where: transactionWhereClause,
+        include: transactionInclude,
+        orderBy: { createdAt: "desc" },
+        take: recentTake,
+      }),
+      recentTake
+        ? db.transaction.findMany({
+            where: { AND: [transactionWhereClause, { paidAt: { not: null } }] },
+            include: transactionInclude,
+            orderBy: { paidAt: "desc" },
+            take: recentTake,
+          })
+        : Promise.resolve([]),
+    ]).then(([byCreated, byPaid]) => {
+      const seen = new Set(byCreated.map((t) => t.id));
+      return [...byCreated, ...byPaid.filter((t) => !seen.has(t.id))];
     });
 
     const [allInvoices, allExpenses, allTransactions] = await Promise.all([
@@ -704,6 +726,11 @@ export async function getFinancialStatsFromDb(
         amount: transaction.amount,
         description: transaction.description || "Transacción",
         date: transaction.createdAt,
+        // Momento del movimiento: el cobro si fue posterior al devengo.
+        activityAt:
+          transaction.paidAt && transaction.paidAt > transaction.createdAt
+            ? transaction.paidAt
+            : transaction.createdAt,
         clientId: transaction.relatedClientId ?? undefined,
         clientName: transaction.relatedClient?.name,
         clientLogo: transaction.relatedClient?.logo ?? undefined,
@@ -747,7 +774,7 @@ export async function getFinancialStatsFromDb(
 
         return true;
       })
-      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .sort((a, b) => activityTime(b) - activityTime(a))
       .slice(0, options.recentLimit ?? undefined) as FinancialStats["recentTransactions"];
 
     // Calcular datos del mapa de calor (solo para ADMIN)
