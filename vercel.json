@@ -1,4 +1,5 @@
 {
+  "installCommand": "npm install --legacy-peer-deps --prefer-offline --no-audit",
   "crons": [
     {
       "path": "/api/cron/sync-social-metrics",
