@@ -1,4 +1,5 @@
 {
+  "buildCommand": "npm run build -- --turbopack",
   "installCommand": "npm install --legacy-peer-deps --prefer-offline --no-audit",
   "crons": [
     {
