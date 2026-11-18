@@ -66,8 +66,8 @@ import {
 /** Datos que resuelve una función async del servicio. */
 type DataOf<F extends (...args: never[]) => Promise<unknown>> = Awaited<ReturnType<F>>;
 
-export type { MonthlyFinancialSummaryData } from "@/lib/finance-monthly-summary-types";
-export type { FinanceDashboardPeriodSnapshot } from "@/lib/finance-monthly-summary-service";
+export type MonthlyFinancialSummaryData = import("@/lib/finance-monthly-summary-types").MonthlyFinancialSummaryData;
+export type FinanceDashboardPeriodSnapshot = import("@/lib/finance-monthly-summary-service").FinanceDashboardPeriodSnapshot;
 import {
   getClientMonthlyClosuresFromDb,
   upsertClientMonthlyClosureFromDb,
@@ -77,10 +77,8 @@ import {
   getCurrentEcuadorMonthRange,
   getStrategicClientScope,
 } from "@/lib/finance-strategic-access";
-export type {
-  ClientMonthlyClosurePageData,
-  MonthlyClosureAccrualStatus,
-} from "@/lib/finance-monthly-close-service";
+export type ClientMonthlyClosurePageData = import("@/lib/finance-monthly-close-service").ClientMonthlyClosurePageData;
+export type MonthlyClosureAccrualStatus = import("@/lib/finance-monthly-close-service").MonthlyClosureAccrualStatus;
 
 // Type definitions
 export type FinancialStats = FinancialStatsData;
