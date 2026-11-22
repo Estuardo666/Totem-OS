@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   calculateTreasuryPosition,
+  invoiceCashDateWhere,
   isExpensePaidFromCompanyCash,
+  transactionCashDateWhere,
 } from "../../src/lib/finance-treasury-logic.ts";
 
 test("separa costos devengados de salidas reales de caja", () => {
@@ -50,4 +52,14 @@ test("separa ahorro y compromisos del disponible por asignar", () => {
   assert.equal(result.withdrawnFromSavings, 20);
   assert.equal(result.operatingEndingBalance, 270);
   assert.equal(result.pendingCommitments, 75);
+});
+
+test("la caja usa la fecha real de pago y solo cae al devengo sin paidAt", () => {
+  const window = { gte: new Date("2026-11-01T05:00:00Z"), lte: new Date("2026-12-01T04:59:59.999Z") };
+  assert.deepEqual(transactionCashDateWhere(window), {
+    OR: [{ paidAt: window }, { paidAt: null, createdAt: window }],
+  });
+  assert.deepEqual(invoiceCashDateWhere(window), {
+    OR: [{ paidAt: window }, { paidAt: null, generatedAt: window }],
+  });
 });

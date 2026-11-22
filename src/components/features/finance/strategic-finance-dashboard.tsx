@@ -127,6 +127,7 @@ function aggregateSnapshots(
 
   for (const snapshot of sortedSnapshots) {
     let selectedRevenueForOverhead = 0;
+    let snapshotRowCash = 0;
 
     for (const row of snapshot.clients) {
       if (clientId !== "all" && row.id !== clientId) continue;
@@ -151,6 +152,7 @@ function aggregateSnapshots(
       clientTotals.set(row.id, existing);
       recognizedRevenue += rowRevenue;
       collectedCash += rowCash;
+      snapshotRowCash += rowCash;
       directCosts += rowCosts;
       selectedRevenueForOverhead += rowRevenue;
     }
@@ -177,6 +179,11 @@ function aggregateSnapshots(
     directCosts += unattributedDirectCosts * overheadShare;
     operatingExpenses += snapshot.executive.operatingExpenses * overheadShare;
     paidCashOut += snapshot.treasury.paidCashOut * overheadShare;
+    // Sin filtros, la caja es la del banco: incluye cobros sin cliente que la
+    // suma por cliente deja fuera.
+    if (clientId === "all" && service === "all") {
+      collectedCash += snapshot.treasury.collectedCash - snapshotRowCash;
+    }
   }
 
   if (lastSnapshot) {

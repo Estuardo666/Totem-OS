@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { invoiceCashDateWhere, transactionCashDateWhere } from "@/lib/finance-treasury-logic";
 import type { ApiResponse } from "@/types";
 import type {
   CreateProfitDistributionInput,
@@ -57,19 +58,22 @@ export async function getProfitPreview(
     }
 
     const { start, end } = getMonthRange(year, month);
+    const cashWindow = { gte: start, lte: end };
 
-    // Collected cash: PAID invoices + PAID INCOME transactions in the month
+    // Caja del mes por fecha real de cobro/pago (paidAt). Un pago atrasado
+    // registrado en su mes devengado se cobró después: contarlo en su devengo
+    // lo sumaba aquí y también en la caja del mes en que llegó al banco.
     const [paidInvoices, paidIncomeTx, paidExpenseTx, paidHonorariosTx] =
       await Promise.all([
         db.invoice.findMany({
-          where: { status: "PAID", generatedAt: { gte: start, lte: end } },
+          where: { status: "PAID", ...invoiceCashDateWhere(cashWindow) },
           select: { amount: true },
         }),
         db.transaction.findMany({
           where: {
             type: "INCOME",
             status: "PAID",
-            createdAt: { gte: start, lte: end },
+            ...transactionCashDateWhere(cashWindow),
           },
           select: { amount: true },
         }),
@@ -77,7 +81,7 @@ export async function getProfitPreview(
           where: {
             type: "EXPENSE",
             status: "PAID",
-            createdAt: { gte: start, lte: end },
+            ...transactionCashDateWhere(cashWindow),
           },
           select: { amount: true },
         }),
@@ -85,7 +89,7 @@ export async function getProfitPreview(
           where: {
             type: "HONORARIOS",
             status: "PAID",
-            createdAt: { gte: start, lte: end },
+            ...transactionCashDateWhere(cashWindow),
           },
           select: { amount: true },
         }),
