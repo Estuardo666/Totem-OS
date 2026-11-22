@@ -41,3 +41,19 @@ export function calculateTreasuryPosition(input: TreasuryPositionInput) {
     operatingEndingBalance,
   };
 }
+
+export type DateWindow = { gte: Date; lte: Date };
+
+/**
+ * Caja = fecha real del movimiento. Una transacción de un mes anterior
+ * (pago atrasado) conserva su devengo en `createdAt` pero entra o sale del
+ * banco en `paidAt`. Sin `paidAt` (registros anteriores a la columna) se usa
+ * el devengo.
+ */
+export function transactionCashDateWhere(window: DateWindow) {
+  return { OR: [{ paidAt: window }, { paidAt: null, createdAt: window }] };
+}
+
+export function invoiceCashDateWhere(window: DateWindow) {
+  return { OR: [{ paidAt: window }, { paidAt: null, generatedAt: window }] };
+}

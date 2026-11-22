@@ -21,7 +21,9 @@ import { getClientMonthlyClosureRows } from "@/lib/finance-monthly-close-service
 import { getReceivablesFromDb } from "@/lib/finance-transaction-service";
 import {
   calculateTreasuryPosition,
+  invoiceCashDateWhere,
   isExpensePaidFromCompanyCash,
+  transactionCashDateWhere,
 } from "@/lib/finance-treasury-logic";
 import type {
   ClientSummaryAccumulator,
@@ -166,12 +168,25 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
     db.emergencyFundMovement.findMany({ where: { year: monthStart.getFullYear(), month: monthStart.getMonth() + 1 } }),
     getReceivablesFromDb(userId, monthStart),
     db.invoice.findMany({
-      where: { status: "PAID", OR: [{ paidAt: mixedWindow }, { paidAt: null, generatedAt: mixedWindow }] },
-      select: { amount: true, generatedAt: true, paidAt: true },
+      where: { status: "PAID", ...invoiceCashDateWhere(mixedWindow) },
+      select: { amount: true, generatedAt: true, paidAt: true, clientId: true, client: { select: { name: true, logo: true } } },
     }),
     db.transaction.findMany({
-      where: { type: "INCOME", status: "PAID", OR: [{ paidAt: cashWindow }, { paidAt: null, createdAt: cashWindow }] },
-      select: { amount: true, createdAt: true },
+      where: { type: "INCOME", status: "PAID", ...transactionCashDateWhere(cashWindow) },
+      select: { amount: true, createdAt: true, relatedClientId: true, clientId: true, relatedClient: { select: { name: true, logo: true } } },
+    }),
+  ]);
+  // Salidas de caja por fecha real de pago: un honorario o gasto de un mes
+  // anterior pagado hoy sale del banco hoy, no en su mes devengado.
+  // Fuera del Promise.all anterior para no agotar la inferencia de tipos.
+  const [cashExpenseTransactions, cashHonorarios] = await Promise.all([
+    db.transaction.findMany({
+      where: { type: "EXPENSE", status: "PAID", ...transactionCashDateWhere(cashWindow) },
+      select: { amount: true, relatedClientId: true, clientId: true },
+    }),
+    db.transaction.findMany({
+      where: { type: "HONORARIOS", status: "PAID", ...transactionCashDateWhere(cashWindow) },
+      select: { amount: true },
     }),
   ]);
 
@@ -276,12 +291,14 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
     extraordinaryRevenue += transaction.amount;
   }
 
-  for (const invoice of invoices.filter((item) => item.status === "PAID")) {
+  // Caja por cliente según la fecha real de cobro, igual que la caja total:
+  // un pago atrasado suma al mes en que llegó al banco, no a su devengo.
+  for (const invoice of cashInvoices) {
     const row = getRow({ id: invoice.clientId, name: invoice.client.name, logo: invoice.client.logo, billingModel: recurringClientIds.includes(invoice.clientId) ? "Recurrente" : "Proyecto" });
     row.collectedCash += invoice.amount;
   }
 
-  for (const transaction of incomeTransactions) {
+  for (const transaction of cashIncomeTransactions) {
     const relatedClientId = transaction.relatedClientId ?? transaction.clientId ?? null;
     if (!relatedClientId) continue;
     const row = getRow({ id: relatedClientId, name: transaction.relatedClient?.name || "Ingreso sin cliente", logo: transaction.relatedClient?.logo, billingModel: recurringClientIds.includes(relatedClientId) ? "Recurrente" : "Proyecto" });
@@ -340,12 +357,12 @@ async function buildMonthlyFinancialSummary(userId: string, monthDate: Date): Pr
   const pendingCompensation = pendingHonorarios.reduce((sum, item) => sum + item.amount, 0);
   const cashExpenses = expenses.filter(isExpensePaidFromCompanyCash);
   const directCashOut =
-    honorarios.reduce((sum, item) => sum + item.amount, 0) +
+    cashHonorarios.reduce((sum, item) => sum + item.amount, 0) +
     cashExpenses.filter((expense) => expense.clientId).reduce((sum, item) => sum + item.amount, 0) +
-    expenseTransactions.filter((transaction) => transaction.relatedClientId ?? transaction.clientId).reduce((sum, item) => sum + item.amount, 0);
+    cashExpenseTransactions.filter((transaction) => transaction.relatedClientId ?? transaction.clientId).reduce((sum, item) => sum + item.amount, 0);
   const operatingCashOut =
     cashExpenses.filter((expense) => !expense.clientId).reduce((sum, item) => sum + item.amount, 0) +
-    expenseTransactions.filter((transaction) => !(transaction.relatedClientId ?? transaction.clientId)).reduce((sum, item) => sum + item.amount, 0);
+    cashExpenseTransactions.filter((transaction) => !(transaction.relatedClientId ?? transaction.clientId)).reduce((sum, item) => sum + item.amount, 0);
   const treasuryPosition = calculateTreasuryPosition({
     collectedCash,
     directCashOut,
